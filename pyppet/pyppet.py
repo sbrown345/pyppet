@@ -226,8 +226,47 @@ class Slider(object):
 		#print('CONNECT OK')
 		return row
 
-
 ##############################
+
+
+############### Fluid Synth ############
+class SynthChannel(object):
+	def __init__(self, synth=None, index=0, sound_font=None, bank=0, patch=0 ):
+		print('new synth channel', index, sound_font, bank, patch)
+		self.synth = synth
+		self.index = index
+		self.sound_font = sound_font
+		self.bank = bank
+		self.patch = patch
+
+		self.keys = [ 0.0 for i in range(128) ]				# driveable: 0.0-1.0
+		self.previous_state = [ 0 for i in range(128) ]
+		self.update_program()
+
+	def update_program(self):
+		self.synth.select_program( self.sound_font, self.index, self.bank, self.patch )
+
+	def update(self):
+		#if self.state == self.previous_state: return
+		for i, value in enumerate(self.keys):
+			v = int( value*127 )
+			if v != self.previous_state[i]:
+				self.previous_state[i] = v
+				print('updating key state', i, v)
+				if v: self.synth.note_on( self.index, i, v )
+				else: self.synth.note_off( self.index, i, v )
+
+
+	def next_patch( self ):
+		self.patch += 1
+		if self.patch > 127: self.patch = 127
+		self.update_program()
+
+	def previous_patch( self ):
+		self.patch -= 1
+		if self.patch < 0: self.patch = 0
+		self.update_program()
+
 
 class Synth( object ):
 	Vibrato = 1
@@ -248,10 +287,8 @@ class Synth( object ):
 		self.synth = fluid.new_fluid_synth( self.settings )
 
 		self.samples = 1024
-		self.buffer = (ctypes.c_int16 * self.buffersize)()
+		self.buffer = (ctypes.c_int16 * self.samples)()
 		self.buffer_ptr = ctypes.pointer( self.buffer )
-
-		self.keys = [ None for i in range(128) ]
 
 
 	def get_stereo_samples( self ):
@@ -259,13 +296,23 @@ class Synth( object ):
 			self.synth,
 			self.samples,
 			self.buffer_ptr, 0, 1,
-			self.buffer_ptr, 1, 1
+			self.buffer_ptr, 1, 1,
+		)
+		return self.buffer
+
+	def get_mono_samples( self ):
+		fluid.synth_write_s16( 
+			self.synth,
+			self.samples,
+			self.buffer_ptr, 0, 1,
+			self.buffer_ptr, 0, 1,
 		)
 		return self.buffer
 
 
 	def open_sound_font(self, url, update_midi_preset=0):
 		id = fluid.synth_sfload( self.synth, url, update_midi_preset)
+		assert id != -1
 		self.sound_fonts[ os.path.split(url)[-1] ] = id
 		return id
 
@@ -273,11 +320,9 @@ class Synth( object ):
 		fluid.synth_program_select( self.synth, channel, id, bank, preset )
 
 	def note_on( self, chan, key, vel=127 ):
-		self.keys[ key ] = vel
 		fluid.synth_noteon( self.synth, chan, key, vel )
 
 	def note_off( self, chan, key, vel=127 ):
-		self.keys[ key ] = None
 		fluid.synth_noteoff( self.synth, chan, key, vel )
 
 	def pitch_bend(self, chan, value):
@@ -312,23 +357,35 @@ class Synth( object ):
 	def reset(self):
 		fluid.synth_program_reset( self.synth )
 
-
+######################
 class SynthMachine( Synth ):
 	def setup(self):
-		self.patch = 0
-		self.bank = 0
-		self.channel = 0
-		self.sound_font = self.open_sound_font( 'SoundFonts/Vintage Dreams Waves v2.sf2' )
+		self.active = True
+		url = os.path.join( SCRIPT_DIR, 'SoundFonts/Vintage Dreams Waves v2.sf2' )
+		self.sound_font = self.open_sound_font( url )
+		self.speakers = []
+		s = Speaker( frequency=self.frequency, streaming=True )
+		self.speakers.append( s )
 
-	def next_patch( self ):
-		self.patch += 1
-		if self.patch > 127: self.patch = 127
-		self.select_program( self.sound_font, self.channel, self.bank, self.patch )
+		self.channels = []
+		for i in range(4):
+			s = SynthChannel(synth=self, index=i, sound_font=self.sound_font, patch=i)
+			self.channels.append( s )
+			s.keys[ 64 ] = 0.8
 
-	def previous_patch( self ):
-		self.patch -= 1
-		if self.patch < 0: self.patch = 0
-		self.select_program( self.sound_font, self.channel, self.bank, self.patch )
+	def update(self):
+		if not self.active: return
+
+		for chan in self.channels: chan.update()
+
+		buff = self.get_mono_samples()
+		#print(buff)
+		for speaker in self.speakers:
+			speaker.stream( buff )
+			if not speaker.playing:
+				speaker.play()
+
+
 
 ## TODO sliders, gamepad driven synth ##
 
@@ -649,7 +706,6 @@ class Microphone( Audio ):
 		b.connect('toggled', lambda b,s: setattr(s,'streaming',b.get_active()), self)
 		root.pack_start( b, expand=False )
 
-
 		return frame
 
 class AudioThread(object):
@@ -659,12 +715,15 @@ class AudioThread(object):
 		self.context = al.CreateContext( self.output )
 		al.MakeContextCurrent( self.context )
 		self.microphone = Microphone( analysis=True, streaming=False )
+		self.synth = SynthMachine()
+		self.synth.setup()
 
 	def update(self): self.microphone.sync()	# called from main
 
 	def loop(self):
 		while self.active:
 			self.microphone.update()
+			self.synth.update()
 			time.sleep(0.0333)
 
 	def start(self):
