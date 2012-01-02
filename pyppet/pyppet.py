@@ -1,9 +1,10 @@
 # _*_ coding: utf-8 _*_
-#Ⲣⲩⲣⲣⲉⲧ2 - Dec29, 2011
-#by Brett Hart
-#http://pyppet.blogspot.com
-#License: BSD
-VERSION = '1.9.2h'
+# Pyppet2
+# Jan2, 2012
+# by Brett Hart
+# http://pyppet.blogspot.com
+# License: BSD
+VERSION = '1.9.2i'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -49,12 +50,14 @@ if sys.platform.startswith('win'):
 from openGL import *
 import gtk3 as gtk
 import SDL as sdl
+import fluidsynth as fluid
+import openal as al
+import fftw
+
 import Webcam
 import Kinect
 import Wiimote
 
-import openal as al
-import fftw
 
 import Blender
 import Physics
@@ -226,7 +229,111 @@ class Slider(object):
 
 ##############################
 
+class Synth( object ):
+	Vibrato = 1
+	Volume = 7
+	Pan = 10
+	Expression = 11
+	Sustain = 64
+	Reverb = 91
+	Chorus = 93
 
+	def __init__(self, gain=0.5, frequency=22050):
+		self.gain = gain
+		self.frequency = frequency
+		self.settings = fluid.new_fluid_settings()
+		fluid.settings_setnum( self.settings, 'synth.gain', gain )
+		fluid.settings_setnum( self.settings, 'synth.sample-rate', frequency )
+		self.sound_fonts = {}
+		self.synth = fluid.new_fluid_synth( self.settings )
+
+		self.samples = 1024
+		self.buffer = (ctypes.c_int16 * self.buffersize)()
+		self.buffer_ptr = ctypes.pointer( self.buffer )
+
+		self.keys = [ None for i in range(128) ]
+
+
+	def get_stereo_samples( self ):
+		fluid.synth_write_s16( 
+			self.synth,
+			self.samples,
+			self.buffer_ptr, 0, 1,
+			self.buffer_ptr, 1, 1
+		)
+		return self.buffer
+
+
+	def open_sound_font(self, url, update_midi_preset=0):
+		id = fluid.synth_sfload( self.synth, url, update_midi_preset)
+		self.sound_fonts[ os.path.split(url)[-1] ] = id
+		return id
+
+	def select_program( self, id, channel=0, bank=0, preset=0 ):
+		fluid.synth_program_select( self.synth, channel, id, bank, preset )
+
+	def note_on( self, chan, key, vel=127 ):
+		self.keys[ key ] = vel
+		fluid.synth_noteon( self.synth, chan, key, vel )
+
+	def note_off( self, chan, key, vel=127 ):
+		self.keys[ key ] = None
+		fluid.synth_noteoff( self.synth, chan, key, vel )
+
+	def pitch_bend(self, chan, value):
+		assert value >= -1.0 and value <= 1.0
+		fluid.synth_pitch_bend( self.synth, chan, int(value*8192))
+
+	def control_change( self, chan, ctrl, value ):
+		"""Send control change value
+		The controls that are recognized are dependent on the
+		SoundFont.  Values are always 0 to 127.  Typical controls
+		include:
+		1 : vibrato
+		7 : volume
+		10 : pan (left to right)
+		11 : expression (soft to loud)
+		64 : sustain
+		91 : reverb
+		93 : chorus
+		""" 
+		fluid.synth_cc(self.synth, chan, ctrl, value)
+
+	def change_program( self, chan, prog ):
+		fluid.synth_program_change(self.synth, chan, prog )
+
+	def select_bank( self, chan, bank ):
+		fluid.synth_bank_select( self.synth, chan, bank )
+
+	def select_sound_font( self, chan, name ):
+		id = self.sound_fonts[ name ]
+		fluid.synth_sfont_select( self.synth, chan, id )
+
+	def reset(self):
+		fluid.synth_program_reset( self.synth )
+
+
+class SynthMachine( Synth ):
+	def setup(self):
+		self.patch = 0
+		self.bank = 0
+		self.channel = 0
+		self.sound_font = self.open_sound_font( 'SoundFonts/Vintage Dreams Waves v2.sf2' )
+
+	def next_patch( self ):
+		self.patch += 1
+		if self.patch > 127: self.patch = 127
+		self.select_program( self.sound_font, self.channel, self.bank, self.patch )
+
+	def previous_patch( self ):
+		self.patch -= 1
+		if self.patch < 0: self.patch = 0
+		self.select_program( self.sound_font, self.channel, self.bank, self.patch )
+
+## TODO sliders, gamepad driven synth ##
+
+
+##############################
 class Speaker(object):
 
 	def __init__(self, frequency=22050, streaming=False):
@@ -2688,7 +2795,13 @@ class WiimotesWidget(object):
 
 
 if __name__ == '__main__':
-	os.system('python ./wnck-helper.py')		# worst hack ever!
+
+	## TODO deprecate wnck-helper hack ##
+	wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
+	assert os.path.isfile( wnck_helper )
+	os.system( wnck_helper )
+
+	## run pyppet ##
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 	Pyppet.mainloop()
 
