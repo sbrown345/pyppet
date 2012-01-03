@@ -226,10 +226,95 @@ class Slider(object):
 		#print('CONNECT OK')
 		return row
 
+class ToggleButton(object):
+	def __init__(self, name=None, driveable=True):
+		self.name = name
+
+		self.widget = gtk.Frame()
+		self.box = gtk.HBox(); self.widget.add( self.box )
+
+		self.button = gtk.ToggleButton( self.name )
+		self.box.pack_start( self.button, expand=False )
+
+		if driveable:
+			DND.make_destination( self.widget )
+			self.widget.connect( 'drag-drop', self.drop_driver )
+
+	def cb_by_index( self, button ):
+		vec = getattr( self.target, self.target_path )
+		vec[ self.target_index ] = self.cast( button.get_active() )
+
+	def connect( self, object, path=None, index=None, cast=bool ):
+		self.target = object
+		self.target_path = path
+		self.target_index = index
+		self.cast = cast
+		self.button.connect('toggled', self.cb_by_index)
+
+	def drop_driver(self, wid, context, x, y, time):
+		output = DND.object
+		driver = output.bind( 'UUU', target=self.target, path=self.target_path, index=self.target_index, min=-2, max=2, mode='=' )
+
+		self.button.set_label( '%s%s' %(icons.DRIVER,self.name.strip()))
+		widget = driver.get_widget( title='', expander=True )
+		self.box.pack_start( widget, expand=False )
+		self.widget.show_all()
+
+
+
+class SimpleSlider(object):
+	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False):
+		if title: self.title = title
+		else: self.title = name.replace('_',' ')
+
+		if len(self.title) < 20:
+			self.widget = gtk.Frame()
+			self.modal = row = gtk.HBox()
+			row.pack_start( gtk.Label(self.title), expand=False )
+		else:
+			self.widget = gtk.Frame( title )
+			self.modal = row = gtk.HBox()
+		self.widget.add( row )
+
+		if object is not None: value = getattr( object, name )
+		self.adjustment = adjust = gtk.Adjustment( value=value, lower=min, upper=max )
+		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
+		scale.set_digits(2)
+		row.pack_start( scale )
+
+		if object is not None:
+			adjust.connect(
+				'value-changed', lambda a,o,n: setattr(o, n, a.get_value()),
+				object, name
+			)
+
+		self.widget.set_border_width( border_width )
+
+		if driveable:
+			DND.make_destination( self.widget )
+			self.widget.connect(
+				'drag-drop', self.drop_driver,
+				object, name
+			)
+
+	def drop_driver(self, wid, context, x, y, time, target, path):
+		print('on drop')
+		output = DND.object
+		if path.startswith('ode_'):
+			driver = output.bind( 'YYY', target=target, path=path, max=500 )
+		else:
+			driver = output.bind( 'YYY', target=target, path=path, min=-2, max=2 )
+
+		self.widget.set_label( '%s	(%s%s)' %(self.title, icons.DRIVER, driver.name) )
+		self.widget.remove( self.modal )
+		self.modal = driver.get_widget( title='', expander=False )
+		self.widget.add( self.modal )
+		self.modal.show_all()
+
 ##############################
 
 class AudioThread(object):
-	lock = threading._allocate_lock()
+	lock = threading._allocate_lock()		# not required
 
 	def __init__(self):
 		self.active = False
@@ -240,13 +325,15 @@ class AudioThread(object):
 		self.synth = SynthMachine()
 		self.synth.setup()
 
-	def update(self): self.microphone.sync()	# called from main
+	def update(self):		# called from main #
+		if self.active: self.microphone.sync()
 
 	def loop(self):
 		while self.active:
 			self.microphone.update()
 			self.synth.update()
 			time.sleep(0.05)
+		print('..audio thread finished..')
 
 	def start(self):
 		self.active = True
@@ -255,27 +342,30 @@ class AudioThread(object):
 
 
 	def exit(self):
+		print('audio thread exit')
+		self.active = False
+		self.synth.active = False
+		self.microphone.close()
+
 		#ctx=al.GetCurrentContext()
 		#dev = al.GetContextsDevice(ctx)
 		al.DestroyContext( self.context )
 		if self.output: al.CloseDevice( self.output )
-		if self.input: al.CloseDevice( self.input )
-
 
 ##############################
 class Speaker(object):
-	Speakers = []
-	@classmethod
-	def thread(self):
-		while True:
-			AudioThread.lock.acquire()
-			for speaker in self.Speakers:
-				speaker.update()
-			AudioThread.lock.release()
-			time.sleep(0.1)
+	#Speakers = []
+	#@classmethod
+	#def thread(self):
+	#	while True:
+	#		AudioThread.lock.acquire()
+	#		for speaker in self.Speakers:
+	#			speaker.update()
+	#		AudioThread.lock.release()
+	#		time.sleep(0.1)
 
 	def __init__(self, frequency=22050, streaming=False):
-		Speaker.Speakers.append( self )
+		#Speaker.Speakers.append( self )
 		self.format=al.AL_FORMAT_MONO16
 		self.frequency = frequency
 		self.streaming = streaming
@@ -295,6 +385,19 @@ class Speaker(object):
 
 		self.gain = 1.0
 		self.pitch = 1.0
+
+	def get_widget(self):
+		root = gtk.HBox()
+
+		bx = gtk.VBox(); root.pack_start( bx )
+
+		slider = SimpleSlider( self, name='gain', driveable=True )
+		bx.pack_start( slider.widget, expand=False )
+		slider = SimpleSlider( self, name='pitch', driveable=True )
+		bx.pack_start( slider.widget, expand=False )
+
+		return root
+
 
 
 	def generate_buffers(self):
@@ -336,10 +439,10 @@ class Speaker(object):
 		ret = ctypes.pointer( ctypes.c_int(0) )
 		al.GetSourcei( self.id, al.SOURCE_STATE, ret )
 		if ret.contents.value != al.PLAYING:
-			AudioThread.lock.acquire()
-			print('RESTARTING PLAYBACK')
+			#AudioThread.lock.acquire()
+			#print('RESTARTING PLAYBACK')
 			self.play()
-			AudioThread.lock.release()
+			#AudioThread.lock.release()
 
 		self.update()
 
@@ -369,6 +472,8 @@ class Speaker(object):
 				assert al.GetError() == al.NO_ERROR
 				al.DeleteBuffers( n, ptr )
 				assert al.GetError() == al.NO_ERROR
+
+
 
 ############### Fluid Synth ############
 class SynthChannel(object):
@@ -408,17 +513,48 @@ class SynthChannel(object):
 		if self.patch < 0: self.patch = 0
 		self.update_program()
 
+	def cb_adjust_patch(self, adj):
+		self.patch = int( adj.get_value() )
+		self.update_program()
+
 	def get_widget(self):
-		root = gtk.VBox()
+		root = gtk.HBox()
+
+		frame = gtk.Frame('patch')
+		root.pack_start( frame, expand=False )
+		b = gtk.SpinButton(); frame.add( b )
+		adj = b.get_adjustment()
+		adj.configure( 
+			value=self.patch, 
+			lower=0, 
+			upper=127, 
+			step_increment=1,
+			page_increment=1,
+			page_size=1,
+		)
+		adj.connect('value-changed', self.cb_adjust_patch)
+
+		root.pack_start( gtk.Label() )
+
+		keyboard = gtk.VBox(); keyboard.set_border_width(4)
+		root.pack_start( keyboard, expand=False )
 		row = gtk.HBox()
-		root.pack_start( row, expand=False )
-		for i in range(128):
-			b = gtk.ToggleButton()
-			b.connect('toggled', self.toggle_key, i)
-			row.pack_start( b, expand=False )
-			if i == 64:
+		keyboard.pack_start( row, expand=False )
+		for i in range(20, 100):
+			if i == 60:
 				row = gtk.HBox()
-				root.pack_start( row, expand=False )
+				keyboard.pack_start( row, expand=False )
+
+			#b = gtk.ToggleButton(' ')
+			#b.connect('toggled', self.toggle_key, i)
+			#row.pack_start( b, expand=False )
+			b = ToggleButton(' ')
+			b.connect( self, path='keys', index=i, cast=float )
+			row.pack_start( b.widget, expand=False )
+
+		#root.pack_start( gtk.Label() )
+
+		root.pack_start( self.synth.speaker.get_widget(), expand=True )
 
 		return root
 
@@ -479,6 +615,8 @@ class Synth( object ):
 		fluid.synth_program_select( self.synth, channel, id, bank, preset )
 
 	def note_on( self, chan, key, vel=127 ):
+		if vel > 127: vel = 127
+		elif vel < 0: vel = 0
 		fluid.synth_noteon( self.synth, chan, key, vel )
 
 	def note_off( self, chan, key ):
@@ -522,29 +660,20 @@ class SynthMachine( Synth ):
 		self.active = True
 		url = os.path.join( SCRIPT_DIR, 'SoundFonts/Vintage Dreams Waves v2.sf2' )
 		self.sound_font = self.open_sound_font( url )
-		self.speakers = []
-		s = Speaker( frequency=self.frequency, streaming=True )
-		self.speakers.append( s )
-
+		self.speaker = Speaker( frequency=self.frequency, streaming=True )
 		self.channels = []
 		for i in range(4):
 			s = SynthChannel(synth=self, index=i, sound_font=self.sound_font, patch=i)
 			self.channels.append( s )
-			#s.keys[ 64 ] = 0.8
 
 	def update(self):
 		if not self.active: return
-
 		for chan in self.channels: chan.update()
-
 		buff = self.get_mono_samples()
-		#print(buff)
-		for speaker in self.speakers:
-			speaker.stream( buff )
-			if not speaker.playing:
-				speaker.play()
-
-		#for speaker in self.speakers: speaker.update()
+		speaker = self.speaker
+		speaker.stream( buff )
+		if not speaker.playing:
+			speaker.play()
 
 
 
@@ -554,6 +683,8 @@ class SynthMachine( Synth ):
 
 class Audio(object):
 	def __init__(self, analysis=False, streaming=True):
+		self.active = True
+
 		self.analysis = analysis
 		self.streaming = streaming
 		self.speakers = []
@@ -702,6 +833,7 @@ class Audio(object):
 
 
 	def sync(self):	# called from main - (gtk not thread safe)
+		if not self.active: return
 
 		for i,power in enumerate( self.raw_bands ):
 			self.raw_adjustments[ i ].set_value( power )
@@ -732,6 +864,7 @@ class Microphone( Audio ):
 
 	def start_capture( self, frequency=22050 ):
 		print('starting capture...')
+		self.active = True
 		self.frequency = frequency
 		self.format=al.AL_FORMAT_MONO16
 		self.input = al.CaptureOpenDevice( None, self.frequency, self.format, self.buffersize*2 )
@@ -745,6 +878,15 @@ class Microphone( Audio ):
 	def stop_capture( self ):
 		al.CaptureStop( self.input )
 		self.input = None
+		self.active = False
+
+	def close(self):
+		self.active = False
+		if self.input:
+			al.CaptureStop( self.input )
+			al.CloseDevice( self.input )
+			self.input = None
+
 
 	def toggle_capture(self,button):
 		if button.get_active(): self.start_capture()
@@ -776,54 +918,6 @@ class Microphone( Audio ):
 
 ##############################
 
-class SimpleSlider(object):
-	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=4, driveable=False):
-		if title: self.title = title
-		else: self.title = name.replace('_',' ')
-
-		if len(self.title) < 20:
-			self.widget = gtk.Frame()
-			self.modal = row = gtk.HBox()
-			row.pack_start( gtk.Label(self.title), expand=False )
-		else:
-			self.widget = gtk.Frame( title )
-			self.modal = row = gtk.HBox()
-		self.widget.add( row )
-
-		if object is not None: value = getattr( object, name )
-		self.adjustment = adjust = gtk.Adjustment( value=value, lower=min, upper=max )
-		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
-		scale.set_digits(2)
-		row.pack_start( scale )
-
-		if object is not None:
-			adjust.connect(
-				'value-changed', lambda a,o,n: setattr(o, n, a.get_value()),
-				object, name
-			)
-
-		self.widget.set_border_width( border_width )
-
-		if driveable:
-			DND.make_destination( self.widget )
-			self.widget.connect(
-				'drag-drop', self.drop_driver,
-				object, name
-			)
-
-	def drop_driver(self, wid, context, x, y, time, target, path):
-		print('on drop')
-		output = DND.object
-		if path.startswith('ode_'):
-			driver = output.bind( 'YYY', target=target, path=path, max=500 )
-		else:
-			driver = output.bind( 'YYY', target=target, path=path, min=-2, max=2 )
-
-		self.widget.set_label( '%s	(%s%s)' %(self.title, icons.DRIVER, driver.name) )
-		self.widget.remove( self.modal )
-		self.modal = driver.get_widget( title='', expander=False )
-		self.widget.add( self.modal )
-		self.modal.show_all()
 
 
 
@@ -1812,6 +1906,7 @@ class PyppetAPI(object):
 ##########################################################
 class App( PyppetAPI ):
 	def exit(self, arg):
+		self.audio.exit()
 		self.active = False
 		sdl.Quit()
 		print('clean exit')
@@ -2057,7 +2152,7 @@ class App( PyppetAPI ):
 		#win.set_title('stolen window')
 		#self.socket.show_all()
 		self.bwidth = win.get_width() - 40
-		self.bheight = win.get_height() - 100
+		self.bheight = win.get_height() - 140
 		self.socket.set_size_request( self.bwidth, self.bheight )
 		#Blender.window_expand()
 		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
@@ -2095,7 +2190,10 @@ class App( PyppetAPI ):
 
 			#if not DND.dragging:
 			if True:
-				Blender.iterate(C)#, self.lock)
+				Blender.iterate(C)
+				if not self.active: break
+
+
 				#print('mainloop', self.context, self.context.scene)	# THIS TRICK WORKS!
 
 				win = Blender.Window( self.context.window )
