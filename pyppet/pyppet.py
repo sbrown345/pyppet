@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.2i'
+VERSION = '1.9.2j'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -236,9 +236,19 @@ class ToggleButton(object):
 		self.button = gtk.ToggleButton( self.name )
 		self.box.pack_start( self.button, expand=False )
 
+		self.button.connect('button-press-event', self.on_click )
+
+		self.driver = False
 		if driveable:
 			DND.make_destination( self.widget )
 			self.widget.connect( 'drag-drop', self.drop_driver )
+
+	def on_click(self, button, event):
+		event = gtk.GdkEventButton( pointer=ctypes.c_void_p(event), cast=True )
+		if event.button==3 and self.driver:		# right-click
+			widget = self.driver.get_widget( title='', expander=False )
+			win = ToolWindow( title=self.driver.name, x=int(event.x_root), y=int(event.y_root), width=240, child=widget )
+			win.window.show_all()
 
 	def cb_by_index( self, button ):
 		vec = getattr( self.target, self.target_path )
@@ -253,12 +263,9 @@ class ToggleButton(object):
 
 	def drop_driver(self, wid, context, x, y, time):
 		output = DND.object
-		driver = output.bind( 'UUU', target=self.target, path=self.target_path, index=self.target_index, min=-2, max=2, mode='=' )
-
+		self.driver = output.bind( 'UUU', target=self.target, path=self.target_path, index=self.target_index, min=-2, max=2, mode='=' )
+		self.driver.gain = 1.0
 		self.button.set_label( '%s%s' %(icons.DRIVER,self.name.strip()))
-		widget = driver.get_widget( title='', expander=True )
-		self.box.pack_start( widget, expand=False )
-		self.widget.show_all()
 
 
 
@@ -917,11 +924,37 @@ class Microphone( Audio ):
 
 
 ##############################
+class ToolWindow(object):
+	def __init__(self, title='', x=0, y=0, width=100, height=40, child=None):
+		self.object = None
+		self.window = win = gtk.Window()
+		win.set_title( title )
+		win.move( x, y )
+		win.set_keep_above(True)
+		win.set_skip_pager_hint(True)
+		win.set_skip_taskbar_hint(True)
+		win.set_size_request( width, height )
+		if child:
+			self.root = child
+			win.add( child )
 
 
 
+class Popup( ToolWindow ):
+	def __init__(self):
+		self.modal = gtk.Frame()
+		ToolWindow.__init__(self, x=200, y=140, width=360, height=280, child=self.modal)
+		win = self.window
+		win.connect('destroy', self.hide )
+		win.set_deletable(False)
 
-class Popup(object):
+
+	def hide(self,win):
+		print('HIDE')
+		win.hide()
+
+
+
 	def refresh(self): self.object = None	# force reload
 
 	def cb_drop_driver(self, wid, context, x, y, time, target, path, index, page):
@@ -1157,12 +1190,10 @@ class Popup(object):
 				label.connect( 'drag-drop', self.cb_drop_joint, root )
 
 			self.modal.show_all()
-			print('POPUP updated OK')
 
 
 
 	def cb_drop_joint(self, wid, context, x, y, time, page):
-		print('POPUP on drop joint')
 		#widget = DND.callback( self.object )
 		wrap = DND.object
 		widget = wrap.attach( self.object )
@@ -1176,23 +1207,6 @@ class Popup(object):
 		if button.get_active(): self.window.show_all()
 		else: self.window.hide()
 
-	def hide(self,win):
-		print('HIDE')
-		win.hide()
-
-	def __init__(self):
-		self.object = None
-		self.window = win = gtk.Window()
-		win.set_size_request( 360, 280 )
-		win.set_keep_above(True)
-		win.move( 200, 140 )
-		self.modal = gtk.Frame()
-		win.add( self.modal )
-		win.connect('destroy', self.hide )
-		print(dir(win))
-		win.set_deletable(False)
-		win.set_skip_pager_hint(True)
-		win.set_skip_taskbar_hint(True)
 
 #####################################################
 
@@ -1241,7 +1255,6 @@ class Target(object):
 		return ex
 
 	def cb_drop_target_driver(self, ex, context, x, y, time):
-		print('POPUP on drop targets')
 		ex.set_expanded(True)
 		ex.remove( self.modal )
 
