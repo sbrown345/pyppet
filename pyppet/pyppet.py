@@ -228,6 +228,147 @@ class Slider(object):
 
 ##############################
 
+class AudioThread(object):
+	lock = threading._allocate_lock()
+
+	def __init__(self):
+		self.active = False
+		self.output = al.OpenDevice()
+		self.context = al.CreateContext( self.output )
+		al.MakeContextCurrent( self.context )
+		self.microphone = Microphone( analysis=True, streaming=False )
+		self.synth = SynthMachine()
+		self.synth.setup()
+
+	def update(self): self.microphone.sync()	# called from main
+
+	def loop(self):
+		while self.active:
+			self.microphone.update()
+			self.synth.update()
+			time.sleep(0.05)
+
+	def start(self):
+		self.active = True
+		threading._start_new_thread(self.loop, ())
+		#threading._start_new_thread(Speaker.thread, ())
+
+
+	def exit(self):
+		#ctx=al.GetCurrentContext()
+		#dev = al.GetContextsDevice(ctx)
+		al.DestroyContext( self.context )
+		if self.output: al.CloseDevice( self.output )
+		if self.input: al.CloseDevice( self.input )
+
+
+##############################
+class Speaker(object):
+	Speakers = []
+	@classmethod
+	def thread(self):
+		while True:
+			AudioThread.lock.acquire()
+			for speaker in self.Speakers:
+				speaker.update()
+			AudioThread.lock.release()
+			time.sleep(0.1)
+
+	def __init__(self, frequency=22050, streaming=False):
+		Speaker.Speakers.append( self )
+		self.format=al.AL_FORMAT_MONO16
+		self.frequency = frequency
+		self.streaming = streaming
+		self.buffersize = 1024
+		self.playing = False
+
+		array = (ctypes.c_uint * 1)()
+		al.GenSources( 1, array )
+		assert al.GetError() == al.AL_NO_ERROR
+		self.id = array[0]
+
+		self.output_buffer_index = 0
+		self.output_buffer_ids = None
+		self.num_output_buffers = 16
+		self.trash = []
+		self.generate_buffers()
+
+		self.gain = 1.0
+		self.pitch = 1.0
+
+
+	def generate_buffers(self):
+		self.output_buffer_ids = (ctypes.c_uint * self.num_output_buffers)()
+		al.GenBuffers( self.num_output_buffers, ctypes.pointer(self.output_buffer_ids) )
+		assert al.GetError() == al.NO_ERROR
+
+
+	def play(self, loop=False):
+		self.playing = True
+		al.SourcePlay( self.id )
+		assert al.GetError() == al.NO_ERROR
+		if loop: al.Sourcei( self.id, al.LOOPING, al.TRUE )
+
+	def stream( self, array ):
+		self.output_buffer_index += 1
+		if self.output_buffer_index == self.num_output_buffers:
+			self.output_buffer_index = 0
+			self.generate_buffers()
+		bid = self.output_buffer_ids[ self.output_buffer_index ]
+
+		pointer = ctypes.pointer( array )
+		bytes = len(array) * 2	# assume 16bit audio
+
+		al.BufferData(
+			bid,
+			self.format, 
+			pointer, 
+			bytes,
+			self.frequency,
+		)
+		assert al.GetError() == al.NO_ERROR
+
+		al.SourceQueueBuffers( self.id, 1, ctypes.pointer(ctypes.c_uint(bid)) )
+		assert al.GetError() == al.NO_ERROR
+
+		self.trash.insert( 0, bid )
+
+		ret = ctypes.pointer( ctypes.c_int(0) )
+		al.GetSourcei( self.id, al.SOURCE_STATE, ret )
+		if ret.contents.value != al.PLAYING:
+			AudioThread.lock.acquire()
+			print('RESTARTING PLAYBACK')
+			self.play()
+			AudioThread.lock.release()
+
+		self.update()
+
+	def update(self):
+		if not self.playing: return
+
+		seconds = ctypes.pointer( ctypes.c_float(0.0) )
+		al.GetSourcef( self.id, al.SEC_OFFSET, seconds )
+		self.seconds = seconds.contents.value
+
+		info = {}
+		ret = ctypes.pointer( ctypes.c_int(0) )
+		for tag in 'BYTE_OFFSET SOURCE_TYPE LOOPING BUFFER SOURCE_STATE BUFFERS_QUEUED BUFFERS_PROCESSED'.split():
+			param = getattr(al, tag)
+			al.GetSourcei( self.id, param, ret )
+			info[tag] = ret.contents.value
+
+
+		if self.streaming:
+			#print( 'buffers processed', info['BUFFERS_PROCESSED'] )
+			#print( 'buffers queued', info['BUFFERS_QUEUED'] )
+			n = info['BUFFERS_PROCESSED']
+			if n >= 1:
+				#AudioThread.lock.acquire()
+				ptr = (ctypes.c_uint * n)( *[self.trash.pop() for i in range(n)] )
+				al.SourceUnqueueBuffers( self.id, n, ptr )
+				assert al.GetError() == al.NO_ERROR
+				al.DeleteBuffers( n, ptr )
+				assert al.GetError() == al.NO_ERROR
 
 ############### Fluid Synth ############
 class SynthChannel(object):
@@ -254,7 +395,7 @@ class SynthChannel(object):
 				self.previous_state[i] = v
 				print('updating key state', i, v)
 				if v: self.synth.note_on( self.index, i, v )
-				else: self.synth.note_off( self.index, i, v )
+				else: self.synth.note_off( self.index, i )
 
 
 	def next_patch( self ):
@@ -266,6 +407,24 @@ class SynthChannel(object):
 		self.patch -= 1
 		if self.patch < 0: self.patch = 0
 		self.update_program()
+
+	def get_widget(self):
+		root = gtk.VBox()
+		row = gtk.HBox()
+		root.pack_start( row, expand=False )
+		for i in range(128):
+			b = gtk.ToggleButton()
+			b.connect('toggled', self.toggle_key, i)
+			row.pack_start( b, expand=False )
+			if i == 64:
+				row = gtk.HBox()
+				root.pack_start( row, expand=False )
+
+		return root
+
+	def toggle_key( self, button, index ):
+		if button.get_active(): self.keys[ index ] = 1.0
+		else: self.keys[ index ] = 0.0
 
 
 class Synth( object ):
@@ -322,8 +481,8 @@ class Synth( object ):
 	def note_on( self, chan, key, vel=127 ):
 		fluid.synth_noteon( self.synth, chan, key, vel )
 
-	def note_off( self, chan, key, vel=127 ):
-		fluid.synth_noteoff( self.synth, chan, key, vel )
+	def note_off( self, chan, key ):
+		fluid.synth_noteoff( self.synth, chan, key )
 
 	def pitch_bend(self, chan, value):
 		assert value >= -1.0 and value <= 1.0
@@ -371,7 +530,7 @@ class SynthMachine( Synth ):
 		for i in range(4):
 			s = SynthChannel(synth=self, index=i, sound_font=self.sound_font, patch=i)
 			self.channels.append( s )
-			s.keys[ 64 ] = 0.8
+			#s.keys[ 64 ] = 0.8
 
 	def update(self):
 		if not self.active: return
@@ -385,108 +544,13 @@ class SynthMachine( Synth ):
 			if not speaker.playing:
 				speaker.play()
 
-
-
-## TODO sliders, gamepad driven synth ##
-
-
-##############################
-class Speaker(object):
-
-	def __init__(self, frequency=22050, streaming=False):
-		self.format=al.AL_FORMAT_MONO16
-		self.frequency = frequency
-		self.streaming = streaming
-		self.buffersize = 1024
-		self.playing = False
-
-		array = (ctypes.c_uint * 1)()
-		al.GenSources( 1, array )
-		assert al.GetError() == al.AL_NO_ERROR
-		self.id = array[0]
-
-		self.output_buffer_index = 0
-		self.output_buffer_ids = None
-		self.num_output_buffers = 16
-		self.trash = []
-		self.generate_buffers()
-
-		self.gain = 1.0
-		self.pitch = 1.0
-
-
-	def generate_buffers(self):
-		self.output_buffer_ids = (ctypes.c_uint * self.num_output_buffers)()
-		al.GenBuffers( self.num_output_buffers, ctypes.pointer(self.output_buffer_ids) )
-		assert al.GetError() == al.NO_ERROR
-
-
-	def play(self, loop=False):
-		print('playing...')
-		self.playing = True
-		al.SourcePlay( self.id )
-		assert al.GetError() == al.NO_ERROR
-		if loop: al.Sourcei( self.id, al.LOOPING, al.TRUE )
-
-	def stream( self, array ):
-		self.output_buffer_index += 1
-		if self.output_buffer_index == self.num_output_buffers:
-			self.output_buffer_index = 0
-			self.generate_buffers()
-		bid = self.output_buffer_ids[ self.output_buffer_index ]
-
-		pointer = ctypes.pointer( array )
-		bytes = len(array) * 2	# assume 16bit audio
-
-		al.BufferData(
-			bid,
-			self.format, 
-			pointer, 
-			bytes,
-			self.frequency,
-		)
-		assert al.GetError() == al.NO_ERROR
-
-		al.SourceQueueBuffers( self.id, 1, ctypes.pointer(ctypes.c_uint(bid)) )
-		assert al.GetError() == al.NO_ERROR
-
-		self.trash.insert( 0, bid )
-
-		ret = ctypes.pointer( ctypes.c_int(0) )
-		al.GetSourcei( self.id, al.SOURCE_STATE, ret )
-		if ret.contents.value != al.PLAYING:
-			print('RESTARTING PLAYBACK')
-			self.play()
+		#for speaker in self.speakers: speaker.update()
 
 
 
-	def update(self):
-		if not self.playing: return
-
-		seconds = ctypes.pointer( ctypes.c_float(0.0) )
-		al.GetSourcef( self.id, al.SEC_OFFSET, seconds )
-		self.seconds = seconds.contents.value
-
-		info = {}
-		ret = ctypes.pointer( ctypes.c_int(0) )
-		for tag in 'BYTE_OFFSET SOURCE_TYPE LOOPING BUFFER SOURCE_STATE BUFFERS_QUEUED BUFFERS_PROCESSED'.split():
-			param = getattr(al, tag)
-			al.GetSourcei( self.id, param, ret )
-			info[tag] = ret.contents.value
 
 
-		if self.streaming:
-			#print( 'buffers processed', info['AL_BUFFERS_PROCESSED'] )
-			#print( 'buffers queued', info['AL_BUFFERS_QUEUED'] )
-			n = info['BUFFERS_PROCESSED']
-			if n >= 1:
-				ptr = (ctypes.c_uint * n)( *[self.trash.pop() for i in range(n)] )
-				al.SourceUnqueueBuffers( self.id, n, ptr )
-				assert al.GetError() == al.NO_ERROR
-				al.DeleteBuffers( n, ptr )
-				assert al.GetError() == al.NO_ERROR
-
-
+###########################################
 
 class Audio(object):
 	def __init__(self, analysis=False, streaming=True):
@@ -582,7 +646,7 @@ class Audio(object):
 
 
 	def update(self):	# called from thread
-		for speaker in self.speakers: speaker.update()
+		#for speaker in self.speakers: speaker.update()
 
 		if self.analysis:
 			complex = ctypes.c_double*2
@@ -708,35 +772,6 @@ class Microphone( Audio ):
 
 		return frame
 
-class AudioThread(object):
-	def __init__(self):
-		self.active = False
-		self.output = al.OpenDevice()
-		self.context = al.CreateContext( self.output )
-		al.MakeContextCurrent( self.context )
-		self.microphone = Microphone( analysis=True, streaming=False )
-		self.synth = SynthMachine()
-		self.synth.setup()
-
-	def update(self): self.microphone.sync()	# called from main
-
-	def loop(self):
-		while self.active:
-			self.microphone.update()
-			self.synth.update()
-			time.sleep(0.0333)
-
-	def start(self):
-		self.active = True
-		threading._start_new_thread(self.loop, ())
-
-
-	def exit(self):
-		#ctx=al.GetCurrentContext()
-		#dev = al.GetContextsDevice(ctx)
-		al.DestroyContext( self.context )
-		if self.output: al.CloseDevice( self.output )
-		if self.input: al.CloseDevice( self.input )
 
 
 ##############################
@@ -1934,7 +1969,7 @@ class App( PyppetAPI ):
 		win = gtk.Window()
 		win.set_size_request( 640, 480 )
 		win.set_title( 'Pyppet '+VERSION )
-		root = gtk.VBox()
+		self.root = root = gtk.VBox()
 		win.add( root )
 
 		self.header = gtk.HBox()
@@ -1990,6 +2025,13 @@ class App( PyppetAPI ):
 		self.canvas.put( eb, 0,0 )
 		self.socket.connect('plug-added', self.on_plug)
 
+		####################################
+		self.footer = gtk.Frame()
+		self.root.pack_start( self.footer, expand=False )
+		w = self.audio.synth.channels[0].get_widget()
+		self.footer.add( w )
+
+		############## overlays #############
 		ui = PropertiesUI( self.canvas, self.lock, context )
 		self.components.append( ui )
 		self.overlays += ui.overlays
