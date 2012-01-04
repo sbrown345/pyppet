@@ -1316,6 +1316,13 @@ class Bone(object):
 			w = ENGINE.get_wrapper( ob )
 			w.body.AddRelTorque( x,y,z )
 
+	def get_velocity_local( self ):
+		w = ENGINE.get_wrapper( self.shaft )
+		return w.get_linear_vel()
+	def get_angular_velocity_local( self ):	# TODO what space is this?
+		w = ENGINE.get_wrapper( self.shaft )
+		return w.get_angular_vel()
+
 
 	def __init__(self, arm, name, stretch=False):
 		self.armature = arm
@@ -1688,6 +1695,9 @@ class Biped( AbstractArmature ):
 		slider = SimpleSlider( self, name='primary_heading', min=-180, max=180, driveable=True )
 		root.pack_start( slider.widget, expand=False )
 
+		slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
+		root.pack_start( slider.widget, expand=False )
+
 
 		slider = SimpleSlider( self, name='standing_height_threshold', min=.0, max=1.0 )
 		root.pack_start( slider.widget, expand=False )
@@ -1721,8 +1731,10 @@ class Biped( AbstractArmature ):
 		print('making biped...')
 
 		self.primary_heading = 0.0
+		self.stance = 0.1
 
 		self.head = None
+		self.chest = None
 		self.pelvis = None
 		self.left_foot = self.right_foot = None
 		self.left_toe = self.right_toe = None
@@ -1770,6 +1782,11 @@ class Biped( AbstractArmature ):
 				if x > 0: self.left_hand = B
 				elif x < 0: self.right_hand = B
 
+			elif 'chest' in name:
+				self.chest = self.rig[ name ]
+
+		assert self.head and self.chest and self.pelvis
+
 		ob = bpy.data.objects.new(name='PELVIS-SHADOW',object_data=None)
 		self.pelvis.shadow = ob
 		Pyppet.context.scene.objects.link( ob )
@@ -1783,36 +1800,88 @@ class Biped( AbstractArmature ):
 		cns.use_target_z = True
 
 		## foot and hand solvers ##
-		bname = self.left_foot.name
-		ob = bpy.data.objects.new(name='LFOOT-TARGET',object_data=None)
-		self.left_foot.shadow = ob
+		self.helper_setup_foot( self.left_foot, self.left_hand )
+		self.helper_setup_foot( self.right_foot, self.right_hand, flip=True )
+
+		if 0:
+			bname = self.left_foot.name
+			ob = bpy.data.objects.new(name='LFOOT-TARGET',object_data=None)
+			self.left_foot.shadow = ob
+			Pyppet.context.scene.objects.link( ob )
+
+			target = self.create_target( bname, ob, weight=30, z=.0 )
+			self.foot_solver_targets.append( target )
+			ob.empty_draw_type = 'SINGLE_ARROW'
+
+			target = self.create_target( self.left_hand.name, ob, z=-0.15 )
+			self.hand_solver_targets.append( target )
+
+			bname = self.right_foot.name
+			ob = bpy.data.objects.new(name='RFOOT-TARGET',object_data=None)
+			self.right_foot.shadow = ob
+			Pyppet.context.scene.objects.link( ob )
+			target = self.create_target( bname, ob, weight=30, z=.0 )
+			self.foot_solver_targets.append( target )
+			ob.empty_draw_type = 'SINGLE_ARROW'
+
+			target = self.create_target( self.right_hand.name, ob, z=-0.15 )
+			self.hand_solver_targets.append( target )
+
+	def helper_setup_foot( self, foot, hand=None, flip=False ):
+		ob = bpy.data.objects.new(
+			name='RING.%s'%foot.name,
+			object_data=None
+		)
+		foot.shadow_parent = ob
 		Pyppet.context.scene.objects.link( ob )
-		target = self.create_target( bname, ob, weight=30, z=.0 )
-		self.foot_solver_targets.append( target )
+		cns = ob.constraints.new('TRACK_TO')		# points on the Y
+		cns.target = self.pelvis.shadow
+		if flip: cns.track_axis = 'TRACK_NEGATIVE_Z'
+		else: cns.track_axis = 'TRACK_Z'
+		cns.up_axis = 'UP_Y'
+		cns.use_target_z = True
+
+
+		ob = bpy.data.objects.new(
+			name='FOOT-TARGET.%s'%foot.name,
+			object_data=None
+		)
+		foot.shadow = ob
 		ob.empty_draw_type = 'SINGLE_ARROW'
-
-		target = self.create_target( self.left_hand.name, ob, z=-0.15 )
-		self.hand_solver_targets.append( target )
-
-		bname = self.right_foot.name
-		ob = bpy.data.objects.new(name='RFOOT-TARGET',object_data=None)
-		self.right_foot.shadow = ob
 		Pyppet.context.scene.objects.link( ob )
-		target = self.create_target( bname, ob, weight=30, z=.0 )
-		self.foot_solver_targets.append( target )
-		ob.empty_draw_type = 'SINGLE_ARROW'
+		ob.parent = foot.shadow_parent
 
-		target = self.create_target( self.right_hand.name, ob, z=-0.15 )
-		self.hand_solver_targets.append( target )
+		target = self.create_target( foot.name, ob, weight=30, z=.0 )
+		self.foot_solver_targets.append( target )
+
+		if hand:
+			target = self.create_target( hand.name, ob, z=-0.15 )
+			self.hand_solver_targets.append( target )
+
 
 
 	def update(self, context):
 		AbstractArmature.update(self,context)
 
+		x,y,z = self.chest.get_velocity_local()
+		#print('chest vel', x,y,z)
+		if x < -2: print('moving right')
+		elif x > 2: print('moving left')
+		if y < -0.1: print('moving forward')
+		elif y > 0.1: print('moving backwards')
+
+		x,y,z = self.chest.get_angular_velocity_local()
+		#print('chest angular vel', x,y,z)
+
+
 		loc,rot,scl = self.pelvis.shadow.matrix_world.decompose()
 		euler = rot.to_euler()
 		tilt = sum( [abs(math.degrees(euler.x)), abs(math.degrees(euler.y))] ) / 2.0
 		#print(tilt)	# 0-45
+
+		self.left_foot.shadow.location.x = -(self.stance*tilt)
+		self.right_foot.shadow.location.x = self.stance*tilt
+
 
 		x1,y1,z1 = self.pelvis.get_location()
 		current_pelvis_height = z1
@@ -1828,21 +1897,28 @@ class Biped( AbstractArmature ):
 		cx = math.sin( -rad )
 		cy = math.cos( -rad )
 		if not self.left_foot_loc or random() > 0.9:
-			v = self.left_foot.shadow.location
+			#v = self.left_foot.shadow.location
+			v = self.left_foot.shadow_parent.location
 			v.x = x+cx
 			v.y = y+cy
 			v.z = .0
 			self.left_foot_loc = v
 
+
 		rad = euler.z + math.radians(90+self.primary_heading)
 		cx = math.sin( -rad )
 		cy = math.cos( -rad )
 		if not self.right_foot_loc or random() > 0.9:
-			v = self.right_foot.shadow.location
+			#v = self.right_foot.shadow.location
+			v = self.right_foot.shadow_parent.location
 			v.x = x+cx
 			v.y = y+cy
 			v.z = .0
 			self.right_foot_loc = v
+
+			#self.left_foot.shadow.location.x = -0.1
+			#self.right_foot.shadow.location.x = 0.1
+
 
 		## falling ##
 		if current_pelvis_height < self.pelvis.rest_height * (1.0-self.standing_height_threshold):

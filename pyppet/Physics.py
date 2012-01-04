@@ -520,14 +520,20 @@ class Object( object ):
 				return bo.data.materials[0]
 
 	def get_linear_vel( self ):
+		if self.body: return self.body.GetLinearVel()		# localspace
+
+	def get_average_linear_vel( self ):
 		if self.body: 
 			x,y,z = self.body.GetLinearVel()
 			v = abs(x)+abs(y)+abs(z)
 			return v/3.0
+
 	def get_angular_vel( self ):
 		if self.body: return self.body.GetAngularVel()
 
 
+
+	###################################################
 	def get_friction(self, pos, normal, depth ):
 		mu = 0.0
 		bo = bpy.data.objects[ self.name ]
