@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.2j'
+VERSION = '1.9.3a'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -1362,6 +1362,14 @@ class Bone(object):
 		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
 		self.shaft.ode_use_collision = True		# needs matrix_world to be in sync before this is set
 
+		################ pole-target (up-vector) ##############
+		self.pole = bpy.data.objects.new( name='POLE.'+name, object_data=None )
+		#self.pole.empty_draw_type = 'CUBE'
+		#self.pole.hide_select = True
+		Pyppet.context.scene.objects.link(self.pole)
+		self.pole.location.z = -10.0
+		self.pole.parent = self.shaft
+
 
 		################# tail ###############
 		self.tail = bpy.data.objects.new(name='TAIL.'+name,object_data=None)
@@ -1400,10 +1408,21 @@ class Bone(object):
 			#cns.bulge = 1.5
 
 		else:
-			cns = pbone.constraints.new('IK')
+			self.ik = cns = pbone.constraints.new('IK')
 			cns.target = self.tail
 			cns.chain_count = 1
 			#cns.use_stretch = stretch
+			#cns.pole_target = self.pole		# creates invalid state - blender bug?
+
+		if 0:
+			#cns = pbone.constraints.new('LOCKED_TRACK')
+			#cns.target = self.pole
+			#cns.track_axis = 'TRACK_Z'
+			#cns.lock_axis = 'LOCK_Y'
+			cns = pbone.constraints.new('TRACK_TO')
+			cns.target = self.pole
+			cns.track_axis = 'TRACK_Y'
+			cns.up_axis = 'UP_Z'
 
 
 		if self.head:
@@ -1420,7 +1439,11 @@ class Bone(object):
 			)
 			#self.primary_joints[ ebone.name ]['head'] = joint
 
-		for ob in self.get_objects(): ob.parent = self.armature
+		if self.armature.parent:
+			for ob in self.get_objects():
+				if not ob.parent:
+					ob.parent = self.armature.parent
+
 
 	def set_parent( self, parent ):
 		parent = ENGINE.get_wrapper( parent.tail )
@@ -1521,6 +1544,10 @@ class AbstractArmature(object):
 		## bind body to tail of parent ##
 		for name in self.rig:
 			child = self.rig[name]
+
+			child.ik.pole_target = child.pole	# blender bug?
+			child.ik.pole_angle = math.radians( -90 )
+
 			if child.parent_name:
 				parent = self.rig[ child.parent_name ]
 				child.set_parent( parent )
@@ -1658,6 +1685,10 @@ class Biped( AbstractArmature ):
 		widget = self.get_widget()
 		root.pack_start( widget, expand=False )
 
+		slider = SimpleSlider( self, name='primary_heading', min=-180, max=180, driveable=True )
+		root.pack_start( slider.widget, expand=False )
+
+
 		slider = SimpleSlider( self, name='standing_height_threshold', min=.0, max=1.0 )
 		root.pack_start( slider.widget, expand=False )
 
@@ -1688,6 +1719,9 @@ class Biped( AbstractArmature ):
 
 	def setup(self):
 		print('making biped...')
+
+		self.primary_heading = 0.0
+
 		self.head = None
 		self.pelvis = None
 		self.left_foot = self.right_foot = None
@@ -1714,6 +1748,7 @@ class Biped( AbstractArmature ):
 		for name in self.rig:
 			if 'pelvis' in name or 'hip' in name or 'root' in name:
 				self.pelvis = self.rig[ name ]
+
 			elif 'head' in name or 'skull' in name:
 				self.head = self.rig[ name ]
 
@@ -1789,7 +1824,7 @@ class Biped( AbstractArmature ):
 		loc,rot,scale = ob.matrix_world.decompose()
 		euler = rot.to_euler()
 
-		rad = euler.z - math.radians(90)
+		rad = euler.z - math.radians(90+self.primary_heading)
 		cx = math.sin( -rad )
 		cy = math.cos( -rad )
 		if not self.left_foot_loc or random() > 0.9:
@@ -1799,7 +1834,7 @@ class Biped( AbstractArmature ):
 			v.z = .0
 			self.left_foot_loc = v
 
-		rad = euler.z + math.radians(90)
+		rad = euler.z + math.radians(90+self.primary_heading)
 		cx = math.sin( -rad )
 		cy = math.cos( -rad )
 		if not self.right_foot_loc or random() > 0.9:
