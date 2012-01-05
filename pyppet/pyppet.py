@@ -1730,6 +1730,9 @@ class Biped( AbstractArmature ):
 	def setup(self):
 		print('making biped...')
 
+		self.solver_objects = []
+
+		self.prev_heading = .0
 		self.primary_heading = 0.0
 		self.stance = 0.1
 
@@ -1748,7 +1751,7 @@ class Biped( AbstractArmature ):
 		self.standing_height_threshold = 0.75
 		self.when_standing_foot_target_goal_weight = 100.0
 		self.when_standing_head_lift = 100.0				# magic - only when foot touches ground lift head
-		self.when_standing_foot_step_far_lift = 40			# if foot is far from target lift it up
+		self.when_standing_foot_step_far_lift = 10			# if foot is far from target lift it up
 		self.when_standing_foot_step_near_pull = 10		# if foot is near from target pull it down
 
 		self.when_falling_and_hands_down_lift_head_by_tilt_factor = 4.0
@@ -1785,7 +1788,15 @@ class Biped( AbstractArmature ):
 			elif 'chest' in name:
 				self.chest = self.rig[ name ]
 
+			else: continue
+
+			self.solver_objects.append( self.rig[name] )
+
 		assert self.head and self.chest and self.pelvis
+
+		for o in self.solver_objects:
+			o.biped_solver = {}
+
 
 		ob = bpy.data.objects.new(name='PELVIS-SHADOW',object_data=None)
 		self.pelvis.shadow = ob
@@ -1800,42 +1811,39 @@ class Biped( AbstractArmature ):
 		cns.use_target_z = True
 
 		## foot and hand solvers ##
-		self.helper_setup_foot( self.left_foot, self.left_hand )
-		self.helper_setup_foot( self.right_foot, self.right_hand, flip=True )
+		self.helper_setup_foot( self.left_foot, self.left_toe )
+		self.helper_setup_foot( self.right_foot, self.right_toe, flip=True )
 
-		if 0:
-			bname = self.left_foot.name
-			ob = bpy.data.objects.new(name='LFOOT-TARGET',object_data=None)
-			self.left_foot.shadow = ob
-			Pyppet.context.scene.objects.link( ob )
+		self.helper_setup_hand( self.left_hand, self.left_foot )
+		self.helper_setup_hand( self.right_hand, self.right_foot )
 
-			target = self.create_target( bname, ob, weight=30, z=.0 )
-			self.foot_solver_targets.append( target )
-			ob.empty_draw_type = 'SINGLE_ARROW'
 
-			target = self.create_target( self.left_hand.name, ob, z=-0.15 )
-			self.hand_solver_targets.append( target )
+	def helper_setup_hand( self, hand, foot ):
+		ob = bpy.data.objects.new(
+			name='HAND-TARGET.%s'%hand.name,
+			object_data=None
+		)
+		hand.biped_solver['swing-target'] = ob
+		ob.empty_draw_type = 'CUBE'
+		ob.empty_draw_size = 0.1
+		Pyppet.context.scene.objects.link( ob )
+		ob.parent = foot.biped_solver['target-parent']
+		target = self.create_target( hand.name, ob, weight=20, z=0.0 )
+		self.hand_solver_targets.append( target )
 
-			bname = self.right_foot.name
-			ob = bpy.data.objects.new(name='RFOOT-TARGET',object_data=None)
-			self.right_foot.shadow = ob
-			Pyppet.context.scene.objects.link( ob )
-			target = self.create_target( bname, ob, weight=30, z=.0 )
-			self.foot_solver_targets.append( target )
-			ob.empty_draw_type = 'SINGLE_ARROW'
 
-			target = self.create_target( self.right_hand.name, ob, z=-0.15 )
-			self.hand_solver_targets.append( target )
-
-	def helper_setup_foot( self, foot, hand=None, flip=False ):
+	def helper_setup_foot( self, foot, toe=None, flip=False ):
 		ob = bpy.data.objects.new(
 			name='RING.%s'%foot.name,
 			object_data=None
 		)
 		foot.shadow_parent = ob
+		foot.biped_solver[ 'target-parent' ] = ob
 		Pyppet.context.scene.objects.link( ob )
 		cns = ob.constraints.new('TRACK_TO')		# points on the Y
+
 		cns.target = self.pelvis.shadow
+
 		if flip: cns.track_axis = 'TRACK_NEGATIVE_Z'
 		else: cns.track_axis = 'TRACK_Z'
 		cns.up_axis = 'UP_Y'
@@ -1847,30 +1855,52 @@ class Biped( AbstractArmature ):
 			object_data=None
 		)
 		foot.shadow = ob
+		foot.biped_solver[ 'target' ] = ob
+
 		ob.empty_draw_type = 'SINGLE_ARROW'
 		Pyppet.context.scene.objects.link( ob )
 		ob.parent = foot.shadow_parent
 
 		target = self.create_target( foot.name, ob, weight=30, z=.0 )
-		self.foot_solver_targets.append( target )
+		self.foot_solver_targets.append( target )	# standing or falling modifies all foot targets
+		foot.biped_solver[ 'TARGET' ] = target
 
-		if hand:
-			target = self.create_target( hand.name, ob, z=-0.15 )
-			self.hand_solver_targets.append( target )
+		target = self.create_target( foot.name, self.pelvis.shaft, weight=0, z=.0 )	# pull feet to hip when fallen
+		foot.biped_solver[ 'TARGET:pelvis' ] = target
 
+
+		if toe:
+			target = self.create_target( toe.name, ob, weight=30, z=.0 )
+			self.foot_solver_targets.append( target )
+			toe.biped_solver['TARGET'] = target
 
 
 	def update(self, context):
 		AbstractArmature.update(self,context)
 
+		step_left = step_right = False
+
+		if not self.left_foot_loc:
+			self.left_foot_loc = self.left_foot.shadow_parent.location
+			step_left = True
+		if not self.right_foot_loc:
+			self.right_foot_loc = self.right_foot.shadow_parent.location
+			step_right = True
+
 		x,y,z = self.chest.get_velocity_local()
 		#print('chest vel', x,y,z)
-		if x < -2: print('moving right')
-		elif x > 2: print('moving left')
-		if y < -0.1: print('moving forward')
-		elif y > 0.1: print('moving backwards')
 
-		x,y,z = self.chest.get_angular_velocity_local()
+		sideways = None
+		sideways_rate = abs( x )
+		if x < -2: sideways = 'RIGHT'
+		elif x > 2: sideways = 'LEFT'
+
+		moving = None
+		motion_rate = abs( y )
+		if y < -0.5: moving = 'FORWARD'
+		elif y > 0.5: moving = 'BACKWARD'
+
+		#x,y,z = self.chest.get_angular_velocity_local()
 		#print('chest angular vel', x,y,z)
 
 
@@ -1879,56 +1909,137 @@ class Biped( AbstractArmature ):
 		tilt = sum( [abs(math.degrees(euler.x)), abs(math.degrees(euler.y))] ) / 2.0
 		#print(tilt)	# 0-45
 
-		self.left_foot.shadow.location.x = -(self.stance*tilt)
-		self.right_foot.shadow.location.x = self.stance*tilt
+		#self.left_foot.shadow.location.x = -(self.stance*tilt)
+		#self.right_foot.shadow.location.x = self.stance*tilt
 
 
-		x1,y1,z1 = self.pelvis.get_location()
-		current_pelvis_height = z1
-		x2,y2,z2 = self.head.get_location()
-		x = (x1+x2)/2.0
-		y = (y1+y2)/2.0
+		x,y,z = self.pelvis.get_location()
+		current_pelvis_height = z
+
+		#if random()*random() < 0.5:
+		hx,hy,hz = self.head.get_location()
+
+		x = (x+hx)/2.0
+		y = (y+hy)/2.0
+
 		ob = self.pelvis.shadow
-		ob.location = (x,y,0)
+		ob.location = (x,y,-0.5)
 		loc,rot,scale = ob.matrix_world.decompose()
 		euler = rot.to_euler()
 
-		rad = euler.z - math.radians(90+self.primary_heading)
-		cx = math.sin( -rad )
-		cy = math.cos( -rad )
-		if not self.left_foot_loc or random() > 0.9:
-			#v = self.left_foot.shadow.location
+		heading = math.degrees( euler.z )
+		spin = self.prev_heading - heading
+		self.prev_heading = heading
+		turning = None
+		turning_rate =  abs(spin) #/ 360.0
+		if abs(spin) < 300:	# ignore euler flip
+			if spin < -1.0: turning = 'LEFT'
+			elif spin > 1.0: turning = 'RIGHT'
+
+		if turning:
+			print('turning', turning)
+			print('turning rate', turning_rate)
+
+		if not turning:
+			#self.left_foot.shadow.location.x = 0.0
+			#self.right_foot.shadow.location.x = 0.0
+			pass
+
+		elif turning == 'LEFT':
+
+			if moving == 'BACKWARD':
+				#self.left_foot.shadow.location.x = -0.75 #-(self.stance*tilt)
+				self.left_foot.shadow.location.x = -(motion_rate * 0.25)
+				self.right_foot.shadow.location.x = -0.5 #self.stance*tilt
+
+			elif moving == 'FORWARD':
+				self.left_foot.shadow.location.x = 0.1
+				self.right_foot.shadow.location.x = 0.2
+
+				print('motion rate', motion_rate)
+				if motion_rate > 2:
+					if random() > 0.8:
+						step_right = True
+						self.left_foot.shadow.location.x = -(motion_rate * 0.25)
+					self.right_foot.shadow.location.x = motion_rate * 0.25
+
+
+			if not step_right and random() > 0.2:
+				if random() > 0.1:
+					step_left = True
+				else:
+					step_right = True
+
+		hand_swing_targets = []
+		v = self.left_hand.biped_solver['swing-target'].location
+		hand_swing_targets.append( v )
+		v.x = -( self.left_foot.biped_solver['target'].location.x )
+
+		v = self.right_hand.biped_solver['swing-target'].location
+		hand_swing_targets.append( v )
+		v.x = -( self.right_foot.biped_solver['target'].location.x )
+
+		v = self.left_foot.biped_solver['target'].location
+		if v.x < 0:		# if foot moving backward only pull on heel/foot
+			self.left_toe.biped_solver['TARGET'].weight = 0.0
+		elif v.x > 0:	# if foot moving forward only pull on toe
+			self.left_foot.biped_solver['TARGET'].weight = 0.0
+			#self.when_standing_foot_target_goal_weight:
+
+		v = self.right_foot.biped_solver['target'].location
+		if v.x < 0:		# if foot moving backward only pull on heel/foot
+			self.right_toe.biped_solver['TARGET'].weight = 0.0
+		elif v.x > 0:	# if foot moving forward only pull on toe
+			self.right_foot.biped_solver['TARGET'].weight = 0.0
+			#self.when_standing_foot_target_goal_weight:
+
+
+		if moving == 'BACKWARD':	# hands forward if moving backwards
+			for v in hand_swing_targets: v.x += 0.1
+
+		if step_left:
+			rad = euler.z - math.radians(90+self.primary_heading)
+			cx = math.sin( -rad )
+			cy = math.cos( -rad )
 			v = self.left_foot.shadow_parent.location
 			v.x = x+cx
 			v.y = y+cy
 			v.z = .0
 			self.left_foot_loc = v
-
-
-		rad = euler.z + math.radians(90+self.primary_heading)
-		cx = math.sin( -rad )
-		cy = math.cos( -rad )
-		if not self.right_foot_loc or random() > 0.9:
-			#v = self.right_foot.shadow.location
+		if step_right:
+			rad = euler.z + math.radians(90+self.primary_heading)
+			cx = math.sin( -rad )
+			cy = math.cos( -rad )
 			v = self.right_foot.shadow_parent.location
 			v.x = x+cx
 			v.y = y+cy
 			v.z = .0
 			self.right_foot_loc = v
 
-			#self.left_foot.shadow.location.x = -0.1
-			#self.right_foot.shadow.location.x = 0.1
 
 
-		## falling ##
+		#################### falling ####################
 		if current_pelvis_height < self.pelvis.rest_height * (1.0-self.standing_height_threshold):
+
+			if current_pelvis_height < 0.2:
+				for foot in (self.left_foot, self.right_foot):
+					target = foot.biped_solver[ 'TARGET:pelvis' ]
+					if target.weight < 50: target.weight += 1.0
+
+					foot.add_local_torque( -30, 0, 0 )
+
+			else:
+				for foot in (self.left_foot, self.right_foot):
+					target = foot.biped_solver[ 'TARGET:pelvis' ]
+					target.weight *= 0.9
+
 
 			for target in self.foot_solver_targets:	# reduce foot step force
 				target.weight *= 0.9
 
-			for target in self.hand_solver_targets:	# increase hand plant force
-				if target.weight < self.when_falling_hand_target_goal_weight:
-					target.weight += 1
+			#for target in self.hand_solver_targets:	# increase hand plant force
+			#	if target.weight < self.when_falling_hand_target_goal_weight:
+			#		target.weight += 1
 
 
 			for hand in (self.left_hand, self.right_hand):
@@ -1937,6 +2048,7 @@ class Biped( AbstractArmature ):
 
 				u = self.when_falling_pull_hands_down_by_tilt_factor * tilt
 				hand.add_force( 0,0, -u )
+				print('pulling hands down', -u)
 
 				x,y,z = hand.get_location()
 				if z < 0.1:
@@ -1950,20 +2062,31 @@ class Biped( AbstractArmature ):
 					hand.add_local_force( 0, 3, 0 )
 
 		else:	# standing
+
+			for foot in (self.left_foot, self.right_foot):
+				target = foot.biped_solver[ 'TARGET:pelvis' ]
+				target.weight *= 0.9
+
+
 			for target in self.foot_solver_targets:
 				if target.weight < self.when_standing_foot_target_goal_weight:
 					target.weight += 1
 
-			for target in self.hand_solver_targets:	# reduce hand plant force
-				target.weight *= 0.9
+			#for target in self.hand_solver_targets:	# reduce hand plant force
+			#	target.weight *= 0.9
 
+
+			head_lift = self.when_standing_head_lift
+			for toe in ( self.left_toe, self.right_toe ):
+				x,y,z = toe.get_location()
+				if z < 0.1:
+					self.head.add_force( 0,0, head_lift*0.5 )
 
 			## lift feet ##
-			head_lift = self.when_standing_head_lift
-
 			foot = self.left_foot
 			v1 = foot.get_location().copy()
-			if v1.z < 0.1: self.head.add_force( 0,0, head_lift )
+			if v1.z < 0.1: self.head.add_force( 0,0, head_lift*0.5 )
+
 			v2 = self.left_foot_loc.copy()
 			v1.z = .0; v2.z = .0
 			dist = (v1 - v2).length
@@ -1976,7 +2099,8 @@ class Biped( AbstractArmature ):
 
 			foot = self.right_foot
 			v1 = foot.get_location().copy()
-			if v1.z < 0.1: self.head.add_force( 0,0, head_lift )
+			if v1.z < 0.1: self.head.add_force( 0,0, head_lift*0.5 )
+
 			v2 = self.right_foot_loc.copy()
 			v1.z = .0; v2.z = .0
 			dist = (v1 - v2).length
@@ -2195,6 +2319,12 @@ class App( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
+		self.popup = Popup()
+		b = gtk.ToggleButton( icons.POPUP )
+		b.connect('toggled',self.popup.toggle_popup)
+		self.header.pack_start( b, expand=False )
+
+
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
 		s.set_tooltip_text( 'toggle physics' )
@@ -2227,10 +2357,6 @@ class App( PyppetAPI ):
 		b.connect('toggled',self.toggle_overlays)
 		self.header.pack_end( b, expand=False )
 
-		self.popup = Popup()
-		b = gtk.ToggleButton( icons.POPUP )
-		b.connect('toggled',self.popup.toggle_popup)
-		self.header.pack_end( b, expand=False )
 
 
 		self.body = gtk.HBox(); root.pack_start( self.body )
