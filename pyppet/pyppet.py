@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan2, 2012
+# Jan5, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3a'
+VERSION = '1.9.3b'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -279,7 +279,7 @@ class SimpleSlider(object):
 			self.modal = row = gtk.HBox()
 			row.pack_start( gtk.Label(self.title), expand=False )
 		else:
-			self.widget = gtk.Frame( title )
+			self.widget = gtk.Frame( self.title )
 			self.modal = row = gtk.HBox()
 		self.widget.add( row )
 
@@ -943,7 +943,7 @@ class ToolWindow(object):
 class Popup( ToolWindow ):
 	def __init__(self):
 		self.modal = gtk.Frame()
-		ToolWindow.__init__(self, x=200, y=140, width=360, height=280, child=self.modal)
+		ToolWindow.__init__(self, x=200, y=140, width=320, height=220, child=self.modal)
 		win = self.window
 		win.connect('destroy', self.hide )
 		win.set_deletable(False)
@@ -1695,9 +1695,8 @@ class Biped( AbstractArmature ):
 		slider = SimpleSlider( self, name='primary_heading', min=-180, max=180, driveable=True )
 		root.pack_start( slider.widget, expand=False )
 
-		slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
-		root.pack_start( slider.widget, expand=False )
-
+		#slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
+		#root.pack_start( slider.widget, expand=False )
 
 		slider = SimpleSlider( self, name='standing_height_threshold', min=.0, max=1.0 )
 		root.pack_start( slider.widget, expand=False )
@@ -1719,8 +1718,8 @@ class Biped( AbstractArmature ):
 				slider = SimpleSlider( self, name=tag, min=0, max=50 )
 			box.pack_start( slider.widget, expand=False )
 
-
 		return sw
+
 
 	def reset(self):
 		self.left_foot_loc = None
@@ -1828,7 +1827,7 @@ class Biped( AbstractArmature ):
 		ob.empty_draw_size = 0.1
 		Pyppet.context.scene.objects.link( ob )
 		ob.parent = foot.biped_solver['target-parent']
-		target = self.create_target( hand.name, ob, weight=20, z=0.0 )
+		target = self.create_target( hand.name, ob, weight=30, z=-0.1 )
 		self.hand_solver_targets.append( target )
 
 
@@ -1888,7 +1887,6 @@ class Biped( AbstractArmature ):
 			step_right = True
 
 		x,y,z = self.chest.get_velocity_local()
-		#print('chest vel', x,y,z)
 
 		sideways = None
 		sideways_rate = abs( x )
@@ -1900,28 +1898,18 @@ class Biped( AbstractArmature ):
 		if y < -0.5: moving = 'FORWARD'
 		elif y > 0.5: moving = 'BACKWARD'
 
-		#x,y,z = self.chest.get_angular_velocity_local()
-		#print('chest angular vel', x,y,z)
-
-
 		loc,rot,scl = self.pelvis.shadow.matrix_world.decompose()
 		euler = rot.to_euler()
-		tilt = sum( [abs(math.degrees(euler.x)), abs(math.degrees(euler.y))] ) / 2.0
-		#print(tilt)	# 0-45
-
-		#self.left_foot.shadow.location.x = -(self.stance*tilt)
-		#self.right_foot.shadow.location.x = self.stance*tilt
+		tilt = sum( [abs(math.degrees(euler.x)), abs(math.degrees(euler.y))] ) / 2.0		# 0-45
 
 
 		x,y,z = self.pelvis.get_location()
 		current_pelvis_height = z
+		falling = current_pelvis_height < self.pelvis.rest_height * (1.0-self.standing_height_threshold)
 
-		#if random()*random() < 0.5:
 		hx,hy,hz = self.head.get_location()
-
 		x = (x+hx)/2.0
 		y = (y+hy)/2.0
-
 		ob = self.pelvis.shadow
 		ob.location = (x,y,-0.5)
 		loc,rot,scale = ob.matrix_world.decompose()
@@ -1936,39 +1924,43 @@ class Biped( AbstractArmature ):
 			if spin < -1.0: turning = 'LEFT'
 			elif spin > 1.0: turning = 'RIGHT'
 
-		if turning:
-			print('turning', turning)
-			print('turning rate', turning_rate)
 
-		if not turning:
-			#self.left_foot.shadow.location.x = 0.0
-			#self.right_foot.shadow.location.x = 0.0
-			pass
-
-		elif turning == 'LEFT':
-
+		if turning == 'LEFT':
 			if moving == 'BACKWARD':
-				#self.left_foot.shadow.location.x = -0.75 #-(self.stance*tilt)
 				self.left_foot.shadow.location.x = -(motion_rate * 0.25)
-				self.right_foot.shadow.location.x = -0.5 #self.stance*tilt
+				self.right_foot.shadow.location.x = -0.5
 
 			elif moving == 'FORWARD':
 				self.left_foot.shadow.location.x = 0.1
 				self.right_foot.shadow.location.x = 0.2
-
-				print('motion rate', motion_rate)
 				if motion_rate > 2:
 					if random() > 0.8:
 						step_right = True
 						self.left_foot.shadow.location.x = -(motion_rate * 0.25)
 					self.right_foot.shadow.location.x = motion_rate * 0.25
 
-
 			if not step_right and random() > 0.2:
-				if random() > 0.1:
-					step_left = True
-				else:
-					step_right = True
+				if random() > 0.1: step_left = True
+				else: step_right = True
+
+		elif turning == 'RIGHT':
+			if moving == 'BACKWARD':
+				self.right_foot.shadow.location.x = -(motion_rate * 0.25)
+				self.left_foot.shadow.location.x = -0.5
+
+			elif moving == 'FORWARD':
+				self.right_foot.shadow.location.x = 0.1
+				self.left_foot.shadow.location.x = 0.2
+				if motion_rate > 2:
+					if random() > 0.8:
+						step_left = True
+						self.right_foot.shadow.location.x = -(motion_rate * 0.25)
+					self.left_foot.shadow.location.x = motion_rate * 0.25
+
+			if not step_left and random() > 0.2:
+				if random() > 0.1: step_right = True
+				else: step_left = True
+
 
 		hand_swing_targets = []
 		v = self.left_hand.biped_solver['swing-target'].location
@@ -1984,14 +1976,12 @@ class Biped( AbstractArmature ):
 			self.left_toe.biped_solver['TARGET'].weight = 0.0
 		elif v.x > 0:	# if foot moving forward only pull on toe
 			self.left_foot.biped_solver['TARGET'].weight = 0.0
-			#self.when_standing_foot_target_goal_weight:
 
 		v = self.right_foot.biped_solver['target'].location
 		if v.x < 0:		# if foot moving backward only pull on heel/foot
 			self.right_toe.biped_solver['TARGET'].weight = 0.0
 		elif v.x > 0:	# if foot moving forward only pull on toe
 			self.right_foot.biped_solver['TARGET'].weight = 0.0
-			#self.when_standing_foot_target_goal_weight:
 
 
 		if moving == 'BACKWARD':	# hands forward if moving backwards
@@ -2017,9 +2007,8 @@ class Biped( AbstractArmature ):
 			self.right_foot_loc = v
 
 
-
 		#################### falling ####################
-		if current_pelvis_height < self.pelvis.rest_height * (1.0-self.standing_height_threshold):
+		if falling:
 
 			if current_pelvis_height < 0.2:
 				for foot in (self.left_foot, self.right_foot):
@@ -2041,14 +2030,10 @@ class Biped( AbstractArmature ):
 			#	if target.weight < self.when_falling_hand_target_goal_weight:
 			#		target.weight += 1
 
-
 			for hand in (self.left_hand, self.right_hand):
-
 				self.head.add_local_torque( -self.when_falling_head_curl, 0, 0 )
-
 				u = self.when_falling_pull_hands_down_by_tilt_factor * tilt
 				hand.add_force( 0,0, -u )
-				print('pulling hands down', -u)
 
 				x,y,z = hand.get_location()
 				if z < 0.1:
@@ -2092,10 +2077,8 @@ class Biped( AbstractArmature ):
 			dist = (v1 - v2).length
 			if dist > 0.5:
 				foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
-				#self.pelvis.add_force( 0,0, -head_lift*0.25 )
 			elif dist < 0.25:
 				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
-				#self.head.add_force( 0,0, head_lift )
 
 			foot = self.right_foot
 			v1 = foot.get_location().copy()
@@ -2106,10 +2089,8 @@ class Biped( AbstractArmature ):
 			dist = (v1 - v2).length
 			if dist > 0.5:
 				foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
-				#self.pelvis.add_force( 0,0, -head_lift*0.25 )
 			elif dist < 0.25:
 				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
-				#self.head.add_force( 0,0, head_lift )
 
 
 
@@ -2324,6 +2305,11 @@ class App( PyppetAPI ):
 		b.connect('toggled',self.popup.toggle_popup)
 		self.header.pack_start( b, expand=False )
 
+		b = gtk.ToggleButton( icons.OVERLAY )
+		b.connect('toggled',self.toggle_overlays)
+		self.header.pack_start( b, expand=False )
+
+		self.header.pack_start( gtk.Label() )
 
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
@@ -2341,11 +2327,6 @@ class App( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
-
-		self.header.pack_start( self.get_playback_widget() )
-
-		self.header.pack_start( gtk.Label() )
-
 		self._frame = gtk.Frame()
 		self._modal = gtk.Label()
 		self._frame.add( self._modal )
@@ -2353,11 +2334,7 @@ class App( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
-		b = gtk.ToggleButton( icons.OVERLAY )
-		b.connect('toggled',self.toggle_overlays)
-		self.header.pack_end( b, expand=False )
-
-
+		self.header.pack_start( self.get_playback_widget() )
 
 		self.body = gtk.HBox(); root.pack_start( self.body )
 		self.canvas = gtk.Fixed()
