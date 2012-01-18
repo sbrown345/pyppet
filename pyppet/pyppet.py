@@ -120,7 +120,10 @@ def dump_collada( name, center=False ):
 	ob.select = True
 	loc = ob.location
 	if center: ob.location = (0,0,0)
-	bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
+	#bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
+	S = Blender.Scene( Pyppet.context.scene )
+	#print(S, dir(S))
+	S.collada_export( '/tmp/dump.dae', True )
 	if center: ob.location = loc
 	restore_selection( state )
 	return open('/tmp/dump.dae','rb').read()

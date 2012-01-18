@@ -73,6 +73,10 @@ def Window( win ):
 	ptr = ctypes.POINTER(ctypes.c_void_p).from_address( win.as_pointer() )
 	return blender.wmWindow( pointer=ctypes.pointer(ptr), cast=True )
 
+def Scene( s ):
+	ptr = ctypes.POINTER(ctypes.c_void_p).from_address( s.as_pointer() )
+	return blender.Scene( pointer=ctypes.pointer(ptr), cast=True )
+
 
 ##########################################################################
 

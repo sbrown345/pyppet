@@ -702,9 +702,7 @@ def _rpythonic_strip_prefixes_( prefixes ):
 
 
 _clib_name_ = 'libblender'
-print('loading lib', _clib_name_)
-print( os.path.abspath( os.path.curdir ) )
-CTYPES_DLL = _load_ctypes_lib( _clib_name_ )
+CTYPES_DLL = _load_ctypes_lib( '' )
 assert CTYPES_DLL
 print( CTYPES_DLL._name )
 
@@ -1122,6 +1120,26 @@ ReportListFlags = {
 	"RPT_OP_HOLD" : 8, 
 }
 
+DerivedMeshType = { 
+	"DM_TYPE_CDDM" : 0, 
+	"DM_TYPE_EDITMESH" : 1, 
+	"DM_TYPE_CCGDM" : 2, 
+}
+
+FP_NAN = 0 
+FP_INFINITE = 1 
+FP_ZERO = 2 
+FP_SUBNORMAL = 3 
+FP_NORMAL = 4 
+
+IEEE_ = -1 
+SVID_ = 0 
+XOPEN_ = 1 
+POSIX_ = 2 
+ISOC_ = 3 
+
+COLLISION_IN_FUTURE = 2 
+
 IMB_BlendMode = { 
 	"IMB_BLEND_MIX" : 0, 
 	"IMB_BLEND_ADD" : 1, 
@@ -1372,18 +1390,6 @@ GPUDriverType = {
 	"GPU_DRIVER_SOFTWARE" : 16777216, 
 	"GPU_DRIVER_ANY" : 16711680, 
 }
-
-FP_NAN = 0 
-FP_INFINITE = 1 
-FP_ZERO = 2 
-FP_SUBNORMAL = 3 
-FP_NORMAL = 4 
-
-IEEE_ = -1 
-SVID_ = 0 
-XOPEN_ = 1 
-POSIX_ = 2 
-ISOC_ = 3 
 
 eEulerRotationOrders = { 
 	"EULER_ORDER_DEFAULT" : 1, 
@@ -2316,6 +2322,105 @@ Controller_type_PYTHON = 3
 
 Curve_dimensions_2D = 0 
 Curve_dimensions_3D = 1 
+
+KeyingSetInfo_bl_options_INSERTKEY_NEEDED = 1 
+KeyingSetInfo_bl_options_INSERTKEY_VISUAL = 2 
+KeyingSetInfo_bl_options_INSERTKEY_XYZ_TO_RGB = 32 
+
+KeyingSetPath_group_method_NAMED = 0 
+KeyingSetPath_group_method_NONE = 1 
+KeyingSetPath_group_method_KEYINGSET = 2 
+
+KeyingSetPath_id_type_ACTION = 17217 
+KeyingSetPath_id_type_ARMATURE = 21057 
+KeyingSetPath_id_type_BRUSH = 21058 
+KeyingSetPath_id_type_CAMERA = 16707 
+KeyingSetPath_id_type_CURVE = 21827 
+KeyingSetPath_id_type_FONT = 18006 
+KeyingSetPath_id_type_GREASEPENCIL = 17479 
+KeyingSetPath_id_type_GROUP = 21063 
+KeyingSetPath_id_type_IMAGE = 19785 
+KeyingSetPath_id_type_KEY = 17739 
+KeyingSetPath_id_type_LAMP = 16716 
+KeyingSetPath_id_type_LIBRARY = 18764 
+KeyingSetPath_id_type_LATTICE = 21580 
+KeyingSetPath_id_type_MATERIAL = 16717 
+KeyingSetPath_id_type_META = 16973 
+KeyingSetPath_id_type_MESH = 17741 
+KeyingSetPath_id_type_NODETREE = 21582 
+KeyingSetPath_id_type_OBJECT = 16975 
+KeyingSetPath_id_type_PARTICLE = 16720 
+KeyingSetPath_id_type_SCENE = 17235 
+KeyingSetPath_id_type_SCREEN = 21075 
+KeyingSetPath_id_type_SPEAKER = 19283 
+KeyingSetPath_id_type_SOUND = 20307 
+KeyingSetPath_id_type_TEXT = 22612 
+KeyingSetPath_id_type_TEXTURE = 17748 
+KeyingSetPath_id_type_WORLD = 20311 
+KeyingSetPath_id_type_WINDOWMANAGER = 19799 
+
+KeyingSetPath_bl_options_INSERTKEY_NEEDED = 1 
+KeyingSetPath_bl_options_INSERTKEY_VISUAL = 2 
+KeyingSetPath_bl_options_INSERTKEY_XYZ_TO_RGB = 32 
+
+KinematicConstraint_reference_axis_BONE = 0 
+KinematicConstraint_reference_axis_TARGET = 16384 
+
+KinematicConstraint_ik_type_COPY_POSE = 0 
+KinematicConstraint_ik_type_DISTANCE = 1 
+
+KinematicConstraint_limit_mode_LIMITDIST_INSIDE = 0 
+KinematicConstraint_limit_mode_LIMITDIST_OUTSIDE = 1 
+KinematicConstraint_limit_mode_LIMITDIST_ONSURFACE = 2 
+
+Lamp_type_POINT = 0 
+Lamp_type_SUN = 1 
+Lamp_type_SPOT = 2 
+Lamp_type_HEMI = 3 
+Lamp_type_AREA = 4 
+
+LampSkySettings_sky_blend_type_MIX = 0 
+LampSkySettings_sky_blend_type_ADD = 1 
+LampSkySettings_sky_blend_type_MULTIPLY = 2 
+LampSkySettings_sky_blend_type_SUBTRACT = 3 
+LampSkySettings_sky_blend_type_SCREEN = 4 
+LampSkySettings_sky_blend_type_DIVIDE = 5 
+LampSkySettings_sky_blend_type_DIFFERENCE = 6 
+LampSkySettings_sky_blend_type_DARKEN = 7 
+LampSkySettings_sky_blend_type_LIGHTEN = 8 
+LampSkySettings_sky_blend_type_OVERLAY = 9 
+LampSkySettings_sky_blend_type_DODGE = 10 
+LampSkySettings_sky_blend_type_BURN = 11 
+LampSkySettings_sky_blend_type_HUE = 12 
+LampSkySettings_sky_blend_type_SATURATION = 13 
+LampSkySettings_sky_blend_type_VALUE = 14 
+LampSkySettings_sky_blend_type_COLOR = 15 
+LampSkySettings_sky_blend_type_SOFT_LIGHT = 16 
+LampSkySettings_sky_blend_type_LINEAR_LIGHT = 17 
+
+LampSkySettings_sky_color_space_SMPTE = 0 
+LampSkySettings_sky_color_space_REC709 = 1 
+LampSkySettings_sky_color_space_CIE = 2 
+
+LampTextureSlot_texture_coords_GLOBAL = 8 
+LampTextureSlot_texture_coords_VIEW = 128 
+LampTextureSlot_texture_coords_OBJECT = 32 
+
+Lattice_interpolation_type_u_KEY_LINEAR = 0 
+Lattice_interpolation_type_u_KEY_CARDINAL = 1 
+Lattice_interpolation_type_u_KEY_BSPLINE = 2 
+
+Lattice_interpolation_type_v_KEY_LINEAR = 0 
+Lattice_interpolation_type_v_KEY_CARDINAL = 1 
+Lattice_interpolation_type_v_KEY_BSPLINE = 2 
+
+Lattice_interpolation_type_w_KEY_LINEAR = 0 
+Lattice_interpolation_type_w_KEY_CARDINAL = 1 
+Lattice_interpolation_type_w_KEY_BSPLINE = 2 
+
+LimitDistanceConstraint_limit_mode_LIMITDIST_INSIDE = 0 
+LimitDistanceConstraint_limit_mode_LIMITDIST_OUTSIDE = 1 
+LimitDistanceConstraint_limit_mode_LIMITDIST_ONSURFACE = 2 
 
 Curve_twist_mode_Z_UP = 0 
 Curve_twist_mode_MINIMUM = 3 
@@ -3855,105 +3960,6 @@ Keyframe_type_JITTER = 3
 KeyingSet_bl_options_INSERTKEY_NEEDED = 1 
 KeyingSet_bl_options_INSERTKEY_VISUAL = 2 
 KeyingSet_bl_options_INSERTKEY_XYZ_TO_RGB = 32 
-
-KeyingSetInfo_bl_options_INSERTKEY_NEEDED = 1 
-KeyingSetInfo_bl_options_INSERTKEY_VISUAL = 2 
-KeyingSetInfo_bl_options_INSERTKEY_XYZ_TO_RGB = 32 
-
-KeyingSetPath_group_method_NAMED = 0 
-KeyingSetPath_group_method_NONE = 1 
-KeyingSetPath_group_method_KEYINGSET = 2 
-
-KeyingSetPath_id_type_ACTION = 17217 
-KeyingSetPath_id_type_ARMATURE = 21057 
-KeyingSetPath_id_type_BRUSH = 21058 
-KeyingSetPath_id_type_CAMERA = 16707 
-KeyingSetPath_id_type_CURVE = 21827 
-KeyingSetPath_id_type_FONT = 18006 
-KeyingSetPath_id_type_GREASEPENCIL = 17479 
-KeyingSetPath_id_type_GROUP = 21063 
-KeyingSetPath_id_type_IMAGE = 19785 
-KeyingSetPath_id_type_KEY = 17739 
-KeyingSetPath_id_type_LAMP = 16716 
-KeyingSetPath_id_type_LIBRARY = 18764 
-KeyingSetPath_id_type_LATTICE = 21580 
-KeyingSetPath_id_type_MATERIAL = 16717 
-KeyingSetPath_id_type_META = 16973 
-KeyingSetPath_id_type_MESH = 17741 
-KeyingSetPath_id_type_NODETREE = 21582 
-KeyingSetPath_id_type_OBJECT = 16975 
-KeyingSetPath_id_type_PARTICLE = 16720 
-KeyingSetPath_id_type_SCENE = 17235 
-KeyingSetPath_id_type_SCREEN = 21075 
-KeyingSetPath_id_type_SPEAKER = 19283 
-KeyingSetPath_id_type_SOUND = 20307 
-KeyingSetPath_id_type_TEXT = 22612 
-KeyingSetPath_id_type_TEXTURE = 17748 
-KeyingSetPath_id_type_WORLD = 20311 
-KeyingSetPath_id_type_WINDOWMANAGER = 19799 
-
-KeyingSetPath_bl_options_INSERTKEY_NEEDED = 1 
-KeyingSetPath_bl_options_INSERTKEY_VISUAL = 2 
-KeyingSetPath_bl_options_INSERTKEY_XYZ_TO_RGB = 32 
-
-KinematicConstraint_reference_axis_BONE = 0 
-KinematicConstraint_reference_axis_TARGET = 16384 
-
-KinematicConstraint_ik_type_COPY_POSE = 0 
-KinematicConstraint_ik_type_DISTANCE = 1 
-
-KinematicConstraint_limit_mode_LIMITDIST_INSIDE = 0 
-KinematicConstraint_limit_mode_LIMITDIST_OUTSIDE = 1 
-KinematicConstraint_limit_mode_LIMITDIST_ONSURFACE = 2 
-
-Lamp_type_POINT = 0 
-Lamp_type_SUN = 1 
-Lamp_type_SPOT = 2 
-Lamp_type_HEMI = 3 
-Lamp_type_AREA = 4 
-
-LampSkySettings_sky_blend_type_MIX = 0 
-LampSkySettings_sky_blend_type_ADD = 1 
-LampSkySettings_sky_blend_type_MULTIPLY = 2 
-LampSkySettings_sky_blend_type_SUBTRACT = 3 
-LampSkySettings_sky_blend_type_SCREEN = 4 
-LampSkySettings_sky_blend_type_DIVIDE = 5 
-LampSkySettings_sky_blend_type_DIFFERENCE = 6 
-LampSkySettings_sky_blend_type_DARKEN = 7 
-LampSkySettings_sky_blend_type_LIGHTEN = 8 
-LampSkySettings_sky_blend_type_OVERLAY = 9 
-LampSkySettings_sky_blend_type_DODGE = 10 
-LampSkySettings_sky_blend_type_BURN = 11 
-LampSkySettings_sky_blend_type_HUE = 12 
-LampSkySettings_sky_blend_type_SATURATION = 13 
-LampSkySettings_sky_blend_type_VALUE = 14 
-LampSkySettings_sky_blend_type_COLOR = 15 
-LampSkySettings_sky_blend_type_SOFT_LIGHT = 16 
-LampSkySettings_sky_blend_type_LINEAR_LIGHT = 17 
-
-LampSkySettings_sky_color_space_SMPTE = 0 
-LampSkySettings_sky_color_space_REC709 = 1 
-LampSkySettings_sky_color_space_CIE = 2 
-
-LampTextureSlot_texture_coords_GLOBAL = 8 
-LampTextureSlot_texture_coords_VIEW = 128 
-LampTextureSlot_texture_coords_OBJECT = 32 
-
-Lattice_interpolation_type_u_KEY_LINEAR = 0 
-Lattice_interpolation_type_u_KEY_CARDINAL = 1 
-Lattice_interpolation_type_u_KEY_BSPLINE = 2 
-
-Lattice_interpolation_type_v_KEY_LINEAR = 0 
-Lattice_interpolation_type_v_KEY_CARDINAL = 1 
-Lattice_interpolation_type_v_KEY_BSPLINE = 2 
-
-Lattice_interpolation_type_w_KEY_LINEAR = 0 
-Lattice_interpolation_type_w_KEY_CARDINAL = 1 
-Lattice_interpolation_type_w_KEY_BSPLINE = 2 
-
-LimitDistanceConstraint_limit_mode_LIMITDIST_INSIDE = 0 
-LimitDistanceConstraint_limit_mode_LIMITDIST_OUTSIDE = 1 
-LimitDistanceConstraint_limit_mode_LIMITDIST_ONSURFACE = 2 
 
 LockedTrackConstraint_lock_axis_LOCK_X = 0 
 LockedTrackConstraint_lock_axis_LOCK_Y = 1 
@@ -5848,6 +5854,9 @@ RPYTHONIC_GLOBAL_ENUMS = {
  "PAINT_SHOW_BRUSH" : 1,  "PAINT_FAST_NAVIGATE" : 2,  "PAINT_SHOW_BRUSH_ON_SURFACE" : 4, 
  "CTX_MODE_EDIT_MESH" : 0,  "CTX_MODE_EDIT_CURVE" : 1,  "CTX_MODE_EDIT_SURFACE" : 2,  "CTX_MODE_EDIT_TEXT" : 3,  "CTX_MODE_EDIT_ARMATURE" : 4,  "CTX_MODE_EDIT_METABALL" : 5,  "CTX_MODE_EDIT_LATTICE" : 6,  "CTX_MODE_POSE" : 7,  "CTX_MODE_SCULPT" : 8,  "CTX_MODE_PAINT_WEIGHT" : 9,  "CTX_MODE_PAINT_VERTEX" : 10,  "CTX_MODE_PAINT_TEXTURE" : 11,  "CTX_MODE_PARTICLE" : 12,  "CTX_MODE_OBJECT" : 13, 
  "CTX_DATA_TYPE_POINTER" : 0,  "CTX_DATA_TYPE_COLLECTION" : 1, 
+ "FP_NAN" : 0,  "FP_INFINITE" : 1,  "FP_ZERO" : 2,  "FP_SUBNORMAL" : 3,  "FP_NORMAL" : 4, 
+ "IEEE_" : -1,  "SVID_" : 0,  "XOPEN_" : 1,  "POSIX_" : 2,  "ISOC_" : 3, 
+ "COLLISION_IN_FUTURE" : 2, 
  "RGN_TYPE_WINDOW" : 0,  "RGN_TYPE_HEADER" : 1,  "RGN_TYPE_CHANNELS" : 2,  "RGN_TYPE_TEMPORARY" : 3,  "RGN_TYPE_UI" : 4,  "RGN_TYPE_TOOLS" : 5,  "RGN_TYPE_TOOL_PROPS" : 6,  "RGN_TYPE_PREVIEW" : 7, 
  "CAMERA_UNITS_PX" : 0,  "CAMERA_UNITS_MM" : 1, 
  "INFO_RPT_DEBUG" : 1,  "INFO_RPT_INFO" : 2,  "INFO_RPT_OP" : 4,  "INFO_RPT_WARN" : 8,  "INFO_RPT_ERR" : 16, 
@@ -5862,8 +5871,6 @@ RPYTHONIC_GLOBAL_ENUMS = {
  "P_NOT_STARTED" : 0,  "P_STARTING" : 1,  "P_IN_PROGRESS" : 2,  "P_FINISHING" : 3,  "P_FINISHED" : 4, 
  "WM_LOG_DEBUG" : 0,  "WM_LOG_INFO" : 1000,  "WM_LOG_WARNING" : 2000,  "WM_ERROR_UNDEFINED" : 3000,  "WM_ERROR_INVALID_INPUT" : 3001,  "WM_ERROR_INVALID_CONTEXT" : 3002,  "WM_ERROR_OUT_OF_MEMORY" : 3003, 
  "WM_HANDLER_DEFAULT" : 0,  "WM_HANDLER_FILESELECT" : 1, 
- "FP_NAN" : 0,  "FP_INFINITE" : 1,  "FP_ZERO" : 2,  "FP_SUBNORMAL" : 3,  "FP_NORMAL" : 4, 
- "IEEE_" : -1,  "SVID_" : 0,  "XOPEN_" : 1,  "POSIX_" : 2,  "ISOC_" : 3, 
  "GHOST_kFailure" : 0,  "GHOST_kSuccess" : 1, 
  "GHOST_kTabletModeNone" : 0,  "GHOST_kTabletModeStylus" : 1,  "GHOST_kTabletModeEraser" : 2, 
  "GHOST_kNotVisible" : 0,  "GHOST_kPartiallyVisible" : 1,  "GHOST_kFullyVisible" : 2, 
@@ -5974,6 +5981,21 @@ RPYTHONIC_GLOBAL_ENUMS = {
  "Context_mode_EDIT_MESH" : 0,  "Context_mode_EDIT_CURVE" : 1,  "Context_mode_EDIT_SURFACE" : 2,  "Context_mode_EDIT_TEXT" : 3,  "Context_mode_EDIT_ARMATURE" : 4,  "Context_mode_EDIT_METABALL" : 5,  "Context_mode_EDIT_LATTICE" : 6,  "Context_mode_POSE" : 7,  "Context_mode_SCULPT" : 8,  "Context_mode_PAINT_WEIGHT" : 9,  "Context_mode_PAINT_VERTEX" : 10,  "Context_mode_PAINT_TEXTURE" : 11,  "Context_mode_PARTICLE" : 12,  "Context_mode_OBJECT" : 13, 
  "Controller_type_LOGIC_AND" : 0,  "Controller_type_LOGIC_OR" : 1,  "Controller_type_LOGIC_NAND" : 4,  "Controller_type_LOGIC_NOR" : 5,  "Controller_type_LOGIC_XOR" : 6,  "Controller_type_LOGIC_XNOR" : 7,  "Controller_type_EXPRESSION" : 2,  "Controller_type_PYTHON" : 3, 
  "Curve_dimensions_2D" : 0,  "Curve_dimensions_3D" : 1, 
+ "KeyingSetInfo_bl_options_INSERTKEY_NEEDED" : 1,  "KeyingSetInfo_bl_options_INSERTKEY_VISUAL" : 2,  "KeyingSetInfo_bl_options_INSERTKEY_XYZ_TO_RGB" : 32, 
+ "KeyingSetPath_group_method_NAMED" : 0,  "KeyingSetPath_group_method_NONE" : 1,  "KeyingSetPath_group_method_KEYINGSET" : 2, 
+ "KeyingSetPath_id_type_ACTION" : 17217,  "KeyingSetPath_id_type_ARMATURE" : 21057,  "KeyingSetPath_id_type_BRUSH" : 21058,  "KeyingSetPath_id_type_CAMERA" : 16707,  "KeyingSetPath_id_type_CURVE" : 21827,  "KeyingSetPath_id_type_FONT" : 18006,  "KeyingSetPath_id_type_GREASEPENCIL" : 17479,  "KeyingSetPath_id_type_GROUP" : 21063,  "KeyingSetPath_id_type_IMAGE" : 19785,  "KeyingSetPath_id_type_KEY" : 17739,  "KeyingSetPath_id_type_LAMP" : 16716,  "KeyingSetPath_id_type_LIBRARY" : 18764,  "KeyingSetPath_id_type_LATTICE" : 21580,  "KeyingSetPath_id_type_MATERIAL" : 16717,  "KeyingSetPath_id_type_META" : 16973,  "KeyingSetPath_id_type_MESH" : 17741,  "KeyingSetPath_id_type_NODETREE" : 21582,  "KeyingSetPath_id_type_OBJECT" : 16975,  "KeyingSetPath_id_type_PARTICLE" : 16720,  "KeyingSetPath_id_type_SCENE" : 17235,  "KeyingSetPath_id_type_SCREEN" : 21075,  "KeyingSetPath_id_type_SPEAKER" : 19283,  "KeyingSetPath_id_type_SOUND" : 20307,  "KeyingSetPath_id_type_TEXT" : 22612,  "KeyingSetPath_id_type_TEXTURE" : 17748,  "KeyingSetPath_id_type_WORLD" : 20311,  "KeyingSetPath_id_type_WINDOWMANAGER" : 19799, 
+ "KeyingSetPath_bl_options_INSERTKEY_NEEDED" : 1,  "KeyingSetPath_bl_options_INSERTKEY_VISUAL" : 2,  "KeyingSetPath_bl_options_INSERTKEY_XYZ_TO_RGB" : 32, 
+ "KinematicConstraint_reference_axis_BONE" : 0,  "KinematicConstraint_reference_axis_TARGET" : 16384, 
+ "KinematicConstraint_ik_type_COPY_POSE" : 0,  "KinematicConstraint_ik_type_DISTANCE" : 1, 
+ "KinematicConstraint_limit_mode_LIMITDIST_INSIDE" : 0,  "KinematicConstraint_limit_mode_LIMITDIST_OUTSIDE" : 1,  "KinematicConstraint_limit_mode_LIMITDIST_ONSURFACE" : 2, 
+ "Lamp_type_POINT" : 0,  "Lamp_type_SUN" : 1,  "Lamp_type_SPOT" : 2,  "Lamp_type_HEMI" : 3,  "Lamp_type_AREA" : 4, 
+ "LampSkySettings_sky_blend_type_MIX" : 0,  "LampSkySettings_sky_blend_type_ADD" : 1,  "LampSkySettings_sky_blend_type_MULTIPLY" : 2,  "LampSkySettings_sky_blend_type_SUBTRACT" : 3,  "LampSkySettings_sky_blend_type_SCREEN" : 4,  "LampSkySettings_sky_blend_type_DIVIDE" : 5,  "LampSkySettings_sky_blend_type_DIFFERENCE" : 6,  "LampSkySettings_sky_blend_type_DARKEN" : 7,  "LampSkySettings_sky_blend_type_LIGHTEN" : 8,  "LampSkySettings_sky_blend_type_OVERLAY" : 9,  "LampSkySettings_sky_blend_type_DODGE" : 10,  "LampSkySettings_sky_blend_type_BURN" : 11,  "LampSkySettings_sky_blend_type_HUE" : 12,  "LampSkySettings_sky_blend_type_SATURATION" : 13,  "LampSkySettings_sky_blend_type_VALUE" : 14,  "LampSkySettings_sky_blend_type_COLOR" : 15,  "LampSkySettings_sky_blend_type_SOFT_LIGHT" : 16,  "LampSkySettings_sky_blend_type_LINEAR_LIGHT" : 17, 
+ "LampSkySettings_sky_color_space_SMPTE" : 0,  "LampSkySettings_sky_color_space_REC709" : 1,  "LampSkySettings_sky_color_space_CIE" : 2, 
+ "LampTextureSlot_texture_coords_GLOBAL" : 8,  "LampTextureSlot_texture_coords_VIEW" : 128,  "LampTextureSlot_texture_coords_OBJECT" : 32, 
+ "Lattice_interpolation_type_u_KEY_LINEAR" : 0,  "Lattice_interpolation_type_u_KEY_CARDINAL" : 1,  "Lattice_interpolation_type_u_KEY_BSPLINE" : 2, 
+ "Lattice_interpolation_type_v_KEY_LINEAR" : 0,  "Lattice_interpolation_type_v_KEY_CARDINAL" : 1,  "Lattice_interpolation_type_v_KEY_BSPLINE" : 2, 
+ "Lattice_interpolation_type_w_KEY_LINEAR" : 0,  "Lattice_interpolation_type_w_KEY_CARDINAL" : 1,  "Lattice_interpolation_type_w_KEY_BSPLINE" : 2, 
+ "LimitDistanceConstraint_limit_mode_LIMITDIST_INSIDE" : 0,  "LimitDistanceConstraint_limit_mode_LIMITDIST_OUTSIDE" : 1,  "LimitDistanceConstraint_limit_mode_LIMITDIST_ONSURFACE" : 2, 
  "Curve_twist_mode_Z_UP" : 0,  "Curve_twist_mode_MINIMUM" : 3,  "Curve_twist_mode_TANGENT" : 4, 
  "CurveMap_extend_HORIZONTAL" : 0,  "CurveMap_extend_EXTRAPOLATED" : 1, 
  "CurveMapPoint_handle_type_AUTO" : 0,  "CurveMapPoint_handle_type_VECTOR" : 2, 
@@ -6062,21 +6084,6 @@ RPYTHONIC_GLOBAL_ENUMS = {
  "Keyframe_handle_right_type_FREE" : 0,  "Keyframe_handle_right_type_VECTOR" : 2,  "Keyframe_handle_right_type_ALIGNED" : 3,  "Keyframe_handle_right_type_AUTO" : 1,  "Keyframe_handle_right_type_AUTO_CLAMPED" : 4, 
  "Keyframe_type_KEYFRAME" : 0,  "Keyframe_type_BREAKDOWN" : 2,  "Keyframe_type_EXTREME" : 1,  "Keyframe_type_JITTER" : 3, 
  "KeyingSet_bl_options_INSERTKEY_NEEDED" : 1,  "KeyingSet_bl_options_INSERTKEY_VISUAL" : 2,  "KeyingSet_bl_options_INSERTKEY_XYZ_TO_RGB" : 32, 
- "KeyingSetInfo_bl_options_INSERTKEY_NEEDED" : 1,  "KeyingSetInfo_bl_options_INSERTKEY_VISUAL" : 2,  "KeyingSetInfo_bl_options_INSERTKEY_XYZ_TO_RGB" : 32, 
- "KeyingSetPath_group_method_NAMED" : 0,  "KeyingSetPath_group_method_NONE" : 1,  "KeyingSetPath_group_method_KEYINGSET" : 2, 
- "KeyingSetPath_id_type_ACTION" : 17217,  "KeyingSetPath_id_type_ARMATURE" : 21057,  "KeyingSetPath_id_type_BRUSH" : 21058,  "KeyingSetPath_id_type_CAMERA" : 16707,  "KeyingSetPath_id_type_CURVE" : 21827,  "KeyingSetPath_id_type_FONT" : 18006,  "KeyingSetPath_id_type_GREASEPENCIL" : 17479,  "KeyingSetPath_id_type_GROUP" : 21063,  "KeyingSetPath_id_type_IMAGE" : 19785,  "KeyingSetPath_id_type_KEY" : 17739,  "KeyingSetPath_id_type_LAMP" : 16716,  "KeyingSetPath_id_type_LIBRARY" : 18764,  "KeyingSetPath_id_type_LATTICE" : 21580,  "KeyingSetPath_id_type_MATERIAL" : 16717,  "KeyingSetPath_id_type_META" : 16973,  "KeyingSetPath_id_type_MESH" : 17741,  "KeyingSetPath_id_type_NODETREE" : 21582,  "KeyingSetPath_id_type_OBJECT" : 16975,  "KeyingSetPath_id_type_PARTICLE" : 16720,  "KeyingSetPath_id_type_SCENE" : 17235,  "KeyingSetPath_id_type_SCREEN" : 21075,  "KeyingSetPath_id_type_SPEAKER" : 19283,  "KeyingSetPath_id_type_SOUND" : 20307,  "KeyingSetPath_id_type_TEXT" : 22612,  "KeyingSetPath_id_type_TEXTURE" : 17748,  "KeyingSetPath_id_type_WORLD" : 20311,  "KeyingSetPath_id_type_WINDOWMANAGER" : 19799, 
- "KeyingSetPath_bl_options_INSERTKEY_NEEDED" : 1,  "KeyingSetPath_bl_options_INSERTKEY_VISUAL" : 2,  "KeyingSetPath_bl_options_INSERTKEY_XYZ_TO_RGB" : 32, 
- "KinematicConstraint_reference_axis_BONE" : 0,  "KinematicConstraint_reference_axis_TARGET" : 16384, 
- "KinematicConstraint_ik_type_COPY_POSE" : 0,  "KinematicConstraint_ik_type_DISTANCE" : 1, 
- "KinematicConstraint_limit_mode_LIMITDIST_INSIDE" : 0,  "KinematicConstraint_limit_mode_LIMITDIST_OUTSIDE" : 1,  "KinematicConstraint_limit_mode_LIMITDIST_ONSURFACE" : 2, 
- "Lamp_type_POINT" : 0,  "Lamp_type_SUN" : 1,  "Lamp_type_SPOT" : 2,  "Lamp_type_HEMI" : 3,  "Lamp_type_AREA" : 4, 
- "LampSkySettings_sky_blend_type_MIX" : 0,  "LampSkySettings_sky_blend_type_ADD" : 1,  "LampSkySettings_sky_blend_type_MULTIPLY" : 2,  "LampSkySettings_sky_blend_type_SUBTRACT" : 3,  "LampSkySettings_sky_blend_type_SCREEN" : 4,  "LampSkySettings_sky_blend_type_DIVIDE" : 5,  "LampSkySettings_sky_blend_type_DIFFERENCE" : 6,  "LampSkySettings_sky_blend_type_DARKEN" : 7,  "LampSkySettings_sky_blend_type_LIGHTEN" : 8,  "LampSkySettings_sky_blend_type_OVERLAY" : 9,  "LampSkySettings_sky_blend_type_DODGE" : 10,  "LampSkySettings_sky_blend_type_BURN" : 11,  "LampSkySettings_sky_blend_type_HUE" : 12,  "LampSkySettings_sky_blend_type_SATURATION" : 13,  "LampSkySettings_sky_blend_type_VALUE" : 14,  "LampSkySettings_sky_blend_type_COLOR" : 15,  "LampSkySettings_sky_blend_type_SOFT_LIGHT" : 16,  "LampSkySettings_sky_blend_type_LINEAR_LIGHT" : 17, 
- "LampSkySettings_sky_color_space_SMPTE" : 0,  "LampSkySettings_sky_color_space_REC709" : 1,  "LampSkySettings_sky_color_space_CIE" : 2, 
- "LampTextureSlot_texture_coords_GLOBAL" : 8,  "LampTextureSlot_texture_coords_VIEW" : 128,  "LampTextureSlot_texture_coords_OBJECT" : 32, 
- "Lattice_interpolation_type_u_KEY_LINEAR" : 0,  "Lattice_interpolation_type_u_KEY_CARDINAL" : 1,  "Lattice_interpolation_type_u_KEY_BSPLINE" : 2, 
- "Lattice_interpolation_type_v_KEY_LINEAR" : 0,  "Lattice_interpolation_type_v_KEY_CARDINAL" : 1,  "Lattice_interpolation_type_v_KEY_BSPLINE" : 2, 
- "Lattice_interpolation_type_w_KEY_LINEAR" : 0,  "Lattice_interpolation_type_w_KEY_CARDINAL" : 1,  "Lattice_interpolation_type_w_KEY_BSPLINE" : 2, 
- "LimitDistanceConstraint_limit_mode_LIMITDIST_INSIDE" : 0,  "LimitDistanceConstraint_limit_mode_LIMITDIST_OUTSIDE" : 1,  "LimitDistanceConstraint_limit_mode_LIMITDIST_ONSURFACE" : 2, 
  "LockedTrackConstraint_lock_axis_LOCK_X" : 0,  "LockedTrackConstraint_lock_axis_LOCK_Y" : 1,  "LockedTrackConstraint_lock_axis_LOCK_Z" : 2, 
  "LockedTrackConstraint_track_axis_TRACK_X" : 0,  "LockedTrackConstraint_track_axis_TRACK_Y" : 1,  "LockedTrackConstraint_track_axis_TRACK_Z" : 2,  "LockedTrackConstraint_track_axis_TRACK_NEGATIVE_X" : 3,  "LockedTrackConstraint_track_axis_TRACK_NEGATIVE_Y" : 4,  "LockedTrackConstraint_track_axis_TRACK_NEGATIVE_Z" : 5, 
  "Macro_bl_options_REGISTER" : 1,  "Macro_bl_options_UNDO" : 2,  "Macro_bl_options_BLOCKING" : 4,  "Macro_bl_options_MACRO" : 8,  "Macro_bl_options_GRAB_POINTER" : 16,  "Macro_bl_options_PRESET" : 32,  "Macro_bl_options_INTERNAL" : 64, 
@@ -6645,6 +6652,47 @@ class Header(_rpythonic_struct_): pass
 class MenuType(_rpythonic_struct_): _array_wrapper_ = True
 class Menu(_rpythonic_struct_): pass
 class anim(_rpythonic_struct_): pass
+class CustomDataLayer(_rpythonic_struct_): _array_wrapper_ = True
+class CustomDataExternal(_rpythonic_struct_): _array_wrapper_ = True
+class CustomData(_rpythonic_struct_): pass
+class BVHTree(_rpythonic_struct_): pass
+class BVHTreeOverlap(_rpythonic_struct_): pass
+class BVHTreeNearest(_rpythonic_struct_): _array_wrapper_ = True
+class BVHTreeRay(_rpythonic_struct_): _array_wrapper_ = True
+class BVHTreeRayHit(_rpythonic_struct_): _array_wrapper_ = True
+class MVert(_rpythonic_struct_): pass
+class MFace(_rpythonic_struct_): pass
+class BVHTreeFromMesh(_rpythonic_struct_): pass
+class MEdge(_rpythonic_struct_): pass
+class KeyBlock(_rpythonic_struct_): pass
+class ModifierData(_rpythonic_struct_): pass
+class MCol(_rpythonic_struct_): pass
+class PBVH(_rpythonic_struct_): pass
+class DMGridData(_rpythonic_struct_): _array_wrapper_ = True
+class DMGridAdjacency(_rpythonic_struct_): _array_wrapper_ = True
+class DerivedMesh(_rpythonic_struct_): pass
+class DMVertexAttribs(_rpythonic_struct_): _array_wrapper_ = True
+class tface(_rpythonic_struct_): _array_wrapper_ = True
+class mcol(_rpythonic_struct_): _array_wrapper_ = True
+class tang(_rpythonic_struct_): pass
+class orco(_rpythonic_struct_): pass
+class EditMeshDerivedMesh(_rpythonic_struct_): pass
+class exception(_rpythonic_struct_): pass
+class ClothSimSettings(_rpythonic_struct_): _array_wrapper_ = True
+class EffectorWeights(_rpythonic_struct_): pass
+class ClothCollSettings(_rpythonic_struct_): pass
+class Cloth(_rpythonic_struct_): pass
+class ClothModifierData(_rpythonic_struct_): pass
+class CollisionModifierData(_rpythonic_struct_): pass
+class CollPair(_rpythonic_struct_): _array_wrapper_ = True
+class EdgeCollPair(_rpythonic_struct_): _array_wrapper_ = True
+class FaceCollPair(_rpythonic_struct_): _array_wrapper_ = True
+class ColliderCache(_rpythonic_struct_): pass
+class bGPDlayer(_rpythonic_struct_): pass
+class MovieReconstructContext(_rpythonic_struct_): pass
+class MovieTrackingContext(_rpythonic_struct_): pass
+class MovieDistortion(_rpythonic_struct_): pass
+class Camera(_rpythonic_struct_): pass
 class ImMetaData(_rpythonic_struct_): pass
 class ImBuf(_rpythonic_struct_): _array_wrapper_ = True
 class MEM_CacheLimiterHandle_s(_rpythonic_struct_): pass
@@ -6661,7 +6709,6 @@ class RenderResult(_rpythonic_struct_): pass
 class RenderStats(_rpythonic_struct_): _array_wrapper_ = True
 class bArmature(_rpythonic_struct_): pass
 class Bone(_rpythonic_struct_): pass
-class DerivedMesh(_rpythonic_struct_): pass
 class MeshDeformModifierData(_rpythonic_struct_): pass
 class SK_Sketch(_rpythonic_struct_): pass
 class ViewContext(_rpythonic_struct_): pass
@@ -6757,16 +6804,12 @@ class GPUOffScreen(_rpythonic_struct_): pass
 class GPUShader(_rpythonic_struct_): pass
 class GPUVertexAttribs(_rpythonic_struct_): _array_wrapper_ = True
 class layer(_rpythonic_struct_): _array_wrapper_ = True
-class DMGridData(_rpythonic_struct_): pass
 class GPUVertPointLink(_rpythonic_struct_): pass
 class GPUBuffer(_rpythonic_struct_): pass
 class GPUBufferMaterial(_rpythonic_struct_): pass
 class GPUDrawObject(_rpythonic_struct_): pass
 class GPUAttrib(_rpythonic_struct_): pass
 class GPU_Buffers(_rpythonic_struct_): pass
-class MVert(_rpythonic_struct_): pass
-class MFace(_rpythonic_struct_): pass
-class exception(_rpythonic_struct_): pass
 class DualQuat(_rpythonic_struct_): _array_wrapper_ = True
 class VertexTangent(_rpythonic_struct_): _array_wrapper_ = True
 class BHead(_rpythonic_struct_): pass
@@ -6802,6 +6845,7 @@ class plCollisionBroadphaseHandle__(_rpythonic_struct_): pass
 class plBroadphaseProxyHandle__(_rpythonic_struct_): pass
 class plCollisionWorldHandle__(_rpythonic_struct_): pass
 class plRayCastResult(_rpythonic_struct_): pass
+class BulletSoftBody(_rpythonic_struct_): pass
 class Ipo(_rpythonic_struct_): pass
 class Ocean(_rpythonic_struct_): pass
 class MTex(_rpythonic_struct_): _array_wrapper_ = True
@@ -6854,13 +6898,13 @@ __freeze_rpythonic_struct( __wait_terminated, [
 	( "__w_termsig", ctypes.c_uint ),
 	( "__w_coredump", ctypes.c_uint ),
 	( "__w_retcode", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xcdc6f0c>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xc95d20c>
 ])
 
 __freeze_rpythonic_struct( __wait_stopped, [
 	( "__w_stopval", ctypes.c_uint ),
 	( "__w_stopsig", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xcdcb0cc>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xc95d3ac>
 ])
 
 __freeze_rpythonic_struct( wait, [
@@ -6937,7 +6981,7 @@ __freeze_rpythonic_struct( __pthread_mutex_s, [
 	( "__owner", ctypes.c_int ),
 	( "__kind", ctypes.c_int ),
 	( "__nusers", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xce2caec>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xc9d8dcc>
 ])
 
 __freeze_rpythonic_struct( pthread_mutex_t, [
@@ -9105,6 +9149,356 @@ __freeze_rpythonic_struct( Menu, [
 __freeze_rpythonic_struct( anim, [
 ])
 
+__freeze_rpythonic_struct( CustomDataLayer, [
+	( "C_type", ctypes.c_int ),
+	( "offset", ctypes.c_int ),
+	( "flag", ctypes.c_int ),
+	( "active", ctypes.c_int ),
+	( "active_rnd", ctypes.c_int ),
+	( "active_clone", ctypes.c_int ),
+	( "active_mask", ctypes.c_int ),
+	( "pad", ( ctypes.c_char * 4 ) ),
+	( "name", ( ctypes.c_char * 32 ) ),
+	( "data", ctypes.POINTER(ctypes.c_void_p) ),
+])
+
+__freeze_rpythonic_struct( CustomDataExternal, [
+	( "filename", ( ctypes.c_char * 240 ) ),
+])
+
+__freeze_rpythonic_struct( CustomData, [
+	( "layers", ctypes.POINTER(CustomDataLayer) ),
+	( "totlayer", ctypes.c_int ),
+	( "maxlayer", ctypes.c_int ),
+	( "totsize", ctypes.c_int ),
+	( "pad", ctypes.c_int ),
+	( "pool", ctypes.POINTER(ctypes.c_void_p) ),
+	( "external", ctypes.POINTER(CustomDataExternal) ),
+])
+
+__freeze_rpythonic_struct( BVHTree, [
+])
+
+__freeze_rpythonic_struct( BVHTreeOverlap, [
+	( "indexA", ctypes.c_int ),
+	( "indexB", ctypes.c_int ),
+])
+
+__freeze_rpythonic_struct( BVHTreeNearest, [
+	( "index", ctypes.c_int ),
+	( "co", ( ctypes.c_float * 3 ) ),
+	( "no", ( ctypes.c_float * 3 ) ),
+	( "dist", ctypes.c_float ),
+])
+
+__freeze_rpythonic_struct( BVHTreeRay, [
+	( "origin", ( ctypes.c_float * 3 ) ),
+	( "direction", ( ctypes.c_float * 3 ) ),
+	( "radius", ctypes.c_float ),
+])
+
+__freeze_rpythonic_struct( BVHTreeRayHit, [
+	( "index", ctypes.c_int ),
+	( "co", ( ctypes.c_float * 3 ) ),
+	( "no", ( ctypes.c_float * 3 ) ),
+	( "dist", ctypes.c_float ),
+])
+
+__freeze_rpythonic_struct( MVert, [
+])
+
+__freeze_rpythonic_struct( MFace, [
+])
+
+__freeze_rpythonic_struct( BVHTreeFromMesh, [
+	( "tree", ctypes.POINTER(BVHTree) ),
+	( "nearest_callback", ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),ctypes.c_int,ctypes.POINTER(ctypes.c_float),ctypes.POINTER(BVHTreeNearest),) ),
+	( "raycast_callback", ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),ctypes.c_int,ctypes.POINTER(BVHTreeRay),ctypes.POINTER(BVHTreeRayHit),) ),
+	( "mesh", ctypes.POINTER(DerivedMesh) ),
+	( "vert", ctypes.POINTER(MVert) ),
+	( "edge", ctypes.POINTER(MEdge) ),
+	( "face", ctypes.POINTER(MFace) ),
+	( "sphere_radius", ctypes.c_float ),
+	( "cached", ctypes.c_int ),
+	( "em_evil", ctypes.POINTER(ctypes.c_void_p) ),
+])
+
+__freeze_rpythonic_struct( MEdge, [
+])
+
+__freeze_rpythonic_struct( KeyBlock, [
+])
+
+__freeze_rpythonic_struct( ModifierData, [
+])
+
+__freeze_rpythonic_struct( MCol, [
+])
+
+__freeze_rpythonic_struct( PBVH, [
+])
+
+__freeze_rpythonic_struct( DMGridData, [
+	( "co", ( ctypes.c_float * 3 ) ),
+	( "no", ( ctypes.c_float * 3 ) ),
+])
+
+__freeze_rpythonic_struct( DMGridAdjacency, [
+	( "index", ( ctypes.c_int * 4 ) ),
+	( "rotation", ( ctypes.c_int * 4 ) ),
+])
+
+__freeze_rpythonic_struct( DerivedMesh, [
+	( "vertData", CustomData ),
+	( "edgeData", CustomData ),
+	( "faceData", CustomData ),
+	( "numVertData", ctypes.c_int ),
+	( "numEdgeData", ctypes.c_int ),
+	( "numFaceData", ctypes.c_int ),
+	( "needsFree", ctypes.c_int ),
+	( "deformedOnly", ctypes.c_int ),
+	( "bvhCache", ctypes.POINTER(LinkNode) ),
+	( "drawObject", ctypes.POINTER(GPUDrawObject) ),
+	( "C_type", ctypes.c_int ),
+	( "auto_bump_scale", ctypes.c_float ),
+	( "getNumVerts", ctypes.c_void_p ),
+	( "getNumFaces", ctypes.c_void_p ),
+	( "getNumEdges", ctypes.c_void_p ),
+	( "getVert", ctypes.c_void_p ),
+	( "getEdge", ctypes.c_void_p ),
+	( "getFace", ctypes.c_void_p ),
+	( "getVertArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getEdgeArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getFaceArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "copyVertArray", ctypes.c_void_p ),
+	( "copyEdgeArray", ctypes.c_void_p ),
+	( "copyFaceArray", ctypes.c_void_p ),
+	( "dupVertArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "dupEdgeArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "dupFaceArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getVertData", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getEdgeData", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getFaceData", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getVertDataArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getEdgeDataArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getFaceDataArray", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getNumGrids", ctypes.c_void_p ),
+	( "getGridSize", ctypes.c_void_p ),
+	( "getGridData", ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p)) ),
+	( "getGridAdjacency", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getGridOffset", ctypes.POINTER(ctypes.c_void_p) ),
+	( "foreachMappedVert", ctypes.c_void_p ),
+	( "foreachMappedEdge", ctypes.c_void_p ),
+	( "foreachMappedFaceCenter", ctypes.c_void_p ),
+	( "getMinMax", ctypes.c_void_p ),
+	( "getVertCo", ctypes.c_void_p ),
+	( "getVertCos", ctypes.c_void_p ),
+	( "getVertNo", ctypes.c_void_p ),
+	( "getFaceMap", ctypes.POINTER(ctypes.c_void_p) ),
+	( "getPBVH", ctypes.POINTER(ctypes.c_void_p) ),
+	( "drawVerts", ctypes.c_void_p ),
+	( "drawUVEdges", ctypes.c_void_p ),
+	( "drawEdges", ctypes.c_void_p ),
+	( "drawLooseEdges", ctypes.c_void_p ),
+	( "drawFacesSolid", ctypes.c_void_p ),
+	( "drawFacesColored", ctypes.c_void_p ),
+	( "drawFacesTex", ctypes.c_void_p ),
+	( "drawFacesGLSL", ctypes.c_void_p ),
+	( "drawMappedFaces", ctypes.c_void_p ),
+	( "drawMappedFacesTex", ctypes.c_void_p ),
+	( "drawMappedFacesGLSL", ctypes.c_void_p ),
+	( "drawMappedEdges", ctypes.c_void_p ),
+	( "drawMappedEdgesInterp", ctypes.c_void_p ),
+	( "drawMappedFacesMat", ctypes.c_void_p ),
+	( "release", ctypes.c_void_p ),
+])
+
+__freeze_rpythonic_struct( DMVertexAttribs, [
+	( "tface", ( tface * 8 ) ),
+	( "mcol", ( mcol * 8 ) ),
+	( "tang", tang ),
+	( "orco", orco ),
+	( "tottface", ctypes.c_int ),
+	( "totmcol", ctypes.c_int ),
+	( "tottang", ctypes.c_int ),
+	( "totorco", ctypes.c_int ),
+])
+
+__freeze_rpythonic_struct( tface, [
+	( "array", ctypes.POINTER(( MTFace * 8 )) ),
+	( "emOffset", ( ctypes.c_int * 8 ) ),
+	( "glIndex", ( ctypes.c_int * 8 ) ),
+	( "glTexco", ( ctypes.c_int * 8 ) ),
+])
+
+__freeze_rpythonic_struct( mcol, [
+	( "array", ctypes.POINTER(( MCol * 8 )) ),
+	( "emOffset", ( ctypes.c_int * 8 ) ),
+	( "glIndex", ( ctypes.c_int * 8 ) ),
+])
+
+__freeze_rpythonic_struct( tang, [
+	( "array", ctypes.POINTER(ctypes.c_float) ),
+	( "emOffset", ctypes.c_int ),
+	( "glIndex", ctypes.c_int ),
+])
+
+__freeze_rpythonic_struct( orco, [
+	( "array", ctypes.POINTER(ctypes.c_float) ),
+	( "emOffset", ctypes.c_int ),
+	( "glIndex", ctypes.c_int ),
+	( "glTexco", ctypes.c_int ),
+])
+
+__freeze_rpythonic_struct( EditMeshDerivedMesh, [
+	( "dm", DerivedMesh ),
+	( "em", ctypes.POINTER(EditMesh) ),
+	( "vertexCos", ctypes.POINTER(ctypes.c_float) ),
+	( "vertexNos", ctypes.POINTER(ctypes.c_float) ),
+	( "faceNos", ctypes.POINTER(ctypes.c_float) ),
+])
+
+__freeze_rpythonic_struct( exception, [
+	( "C_type", ctypes.c_int ),
+	( "name", ctypes.POINTER(ctypes.c_char) ),
+	( "arg1", ctypes.c_double ),
+	( "arg2", ctypes.c_double ),
+	( "retval", ctypes.c_double ),
+])
+
+__freeze_rpythonic_struct( ClothSimSettings, [
+	( "cache", ctypes.POINTER(LinkNode) ),
+	( "mingoal", ctypes.c_float ),
+	( "Cdis", ctypes.c_float ),
+	( "Cvi", ctypes.c_float ),
+	( "gravity", ( ctypes.c_float * 3 ) ),
+	( "dt", ctypes.c_float ),
+	( "mass", ctypes.c_float ),
+	( "structural", ctypes.c_float ),
+	( "shear", ctypes.c_float ),
+	( "bending", ctypes.c_float ),
+	( "max_bend", ctypes.c_float ),
+	( "max_struct", ctypes.c_float ),
+	( "max_shear", ctypes.c_float ),
+	( "avg_spring_len", ctypes.c_float ),
+	( "timescale", ctypes.c_float ),
+	( "maxgoal", ctypes.c_float ),
+	( "eff_force_scale", ctypes.c_float ),
+	( "eff_wind_scale", ctypes.c_float ),
+	( "sim_time_old", ctypes.c_float ),
+	( "defgoal", ctypes.c_float ),
+	( "goalspring", ctypes.c_float ),
+	( "goalfrict", ctypes.c_float ),
+	( "velocity_smooth", ctypes.c_float ),
+	( "collider_friction", ctypes.c_float ),
+	( "stepsPerFrame", ctypes.c_int ),
+	( "flags", ctypes.c_int ),
+	( "preroll", ctypes.c_int ),
+	( "maxspringlen", ctypes.c_int ),
+	( "solver_type", ctypes.c_short ),
+	( "vgroup_bend", ctypes.c_short ),
+	( "vgroup_mass", ctypes.c_short ),
+	( "vgroup_struct", ctypes.c_short ),
+	( "shapekey_rest", ctypes.c_short ),
+	( "presets", ctypes.c_short ),
+	( "reset", ctypes.c_short ),
+	( "pad", ( ctypes.c_short * 3 ) ),
+	( "effector_weights", ctypes.POINTER(EffectorWeights) ),
+])
+
+__freeze_rpythonic_struct( EffectorWeights, [
+])
+
+__freeze_rpythonic_struct( ClothCollSettings, [
+	( "collision_list", ctypes.POINTER(LinkNode) ),
+	( "epsilon", ctypes.c_float ),
+	( "self_friction", ctypes.c_float ),
+	( "friction", ctypes.c_float ),
+	( "selfepsilon", ctypes.c_float ),
+	( "repel_force", ctypes.c_float ),
+	( "distance_repel", ctypes.c_float ),
+	( "flags", ctypes.c_int ),
+	( "self_loop_count", ctypes.c_short ),
+	( "loop_count", ctypes.c_short ),
+	( "group", ctypes.POINTER(Group) ),
+])
+
+__freeze_rpythonic_struct( Cloth, [
+])
+
+__freeze_rpythonic_struct( ClothModifierData, [
+])
+
+__freeze_rpythonic_struct( CollisionModifierData, [
+])
+
+__freeze_rpythonic_struct( CollPair, [
+	( "face1", ctypes.c_uint ),
+	( "face2", ctypes.c_uint ),
+	( "distance", ctypes.c_double ),
+	( "normal", ( ctypes.c_float * 3 ) ),
+	( "vector", ( ctypes.c_float * 3 ) ),
+	( "pa", ( ctypes.c_float * 3 ) ),
+	( "pb", ( ctypes.c_float * 3 ) ),
+	( "flag", ctypes.c_int ),
+	( "time", ctypes.c_float ),
+	( "ap1", ctypes.c_int ),
+	( "ap2", ctypes.c_int ),
+	( "ap3", ctypes.c_int ),
+	( "bp1", ctypes.c_int ),
+	( "bp2", ctypes.c_int ),
+	( "bp3", ctypes.c_int ),
+	( "pointsb", ( ctypes.c_int * 4 ) ),
+])
+
+__freeze_rpythonic_struct( EdgeCollPair, [
+	( "p11", ctypes.c_uint ),
+	( "p12", ctypes.c_uint ),
+	( "p21", ctypes.c_uint ),
+	( "p22", ctypes.c_uint ),
+	( "normal", ( ctypes.c_float * 3 ) ),
+	( "vector", ( ctypes.c_float * 3 ) ),
+	( "time", ctypes.c_float ),
+	( "lastsign", ctypes.c_int ),
+	( "pa", ( ctypes.c_float * 3 ) ),
+	( "pb", ( ctypes.c_float * 3 ) ),
+])
+
+__freeze_rpythonic_struct( FaceCollPair, [
+	( "p11", ctypes.c_uint ),
+	( "p12", ctypes.c_uint ),
+	( "p13", ctypes.c_uint ),
+	( "p21", ctypes.c_uint ),
+	( "normal", ( ctypes.c_float * 3 ) ),
+	( "vector", ( ctypes.c_float * 3 ) ),
+	( "time", ctypes.c_float ),
+	( "lastsign", ctypes.c_int ),
+	( "pa", ( ctypes.c_float * 3 ) ),
+	( "pb", ( ctypes.c_float * 3 ) ),
+])
+
+__freeze_rpythonic_struct( ColliderCache, [
+	( "next", ctypes.POINTER(ColliderCache) ),
+	( "prev", ctypes.POINTER(ColliderCache) ),
+	( "ob", ctypes.POINTER(Object) ),
+	( "collmd", ctypes.POINTER(CollisionModifierData) ),
+])
+
+__freeze_rpythonic_struct( bGPDlayer, [
+])
+
+__freeze_rpythonic_struct( MovieReconstructContext, [
+])
+
+__freeze_rpythonic_struct( MovieTrackingContext, [
+])
+
+__freeze_rpythonic_struct( MovieDistortion, [
+])
+
+__freeze_rpythonic_struct( Camera, [
+])
+
 __freeze_rpythonic_struct( ChannelDriver, [
 ])
 
@@ -9204,9 +9598,6 @@ __freeze_rpythonic_struct( bArmature, [
 ])
 
 __freeze_rpythonic_struct( Bone, [
-])
-
-__freeze_rpythonic_struct( DerivedMesh, [
 ])
 
 __freeze_rpythonic_struct( MeshDeformModifierData, [
@@ -10323,8 +10714,8 @@ __freeze_rpythonic_struct( wmTabletData, [
 ])
 
 __freeze_rpythonic_struct( wmNDOFMotionData, [
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xe67c3cc>
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xe67c84c>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xe8697ec>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xe869c6c>
 	( "dt", ctypes.c_float ),
 	( "progress", ctypes.c_int ),
 ])
@@ -10459,9 +10850,6 @@ __freeze_rpythonic_struct( layer, [
 	( "name", ( ctypes.c_char * 32 ) ),
 ])
 
-__freeze_rpythonic_struct( DMGridData, [
-])
-
 __freeze_rpythonic_struct( GPUVertPointLink, [
 ])
 
@@ -10505,20 +10893,6 @@ __freeze_rpythonic_struct( GPUAttrib, [
 ])
 
 __freeze_rpythonic_struct( GPU_Buffers, [
-])
-
-__freeze_rpythonic_struct( MVert, [
-])
-
-__freeze_rpythonic_struct( MFace, [
-])
-
-__freeze_rpythonic_struct( exception, [
-	( "C_type", ctypes.c_int ),
-	( "name", ctypes.POINTER(ctypes.c_char) ),
-	( "arg1", ctypes.c_double ),
-	( "arg2", ctypes.c_double ),
-	( "retval", ctypes.c_double ),
 ])
 
 __freeze_rpythonic_struct( DualQuat, [
@@ -10703,6 +11077,9 @@ __freeze_rpythonic_struct( plRayCastResult, [
 	( "m_shape", ctypes.POINTER(plCollisionShapeHandle__) ),
 	( "m_positionWorld", ( ctypes.c_float * 3 ) ),
 	( "m_normalWorld", ( ctypes.c_float * 3 ) ),
+])
+
+__freeze_rpythonic_struct( BulletSoftBody, [
 ])
 
 __freeze_rpythonic_struct( Ipo, [
@@ -11353,9 +11730,11 @@ __freeze_rpythonic_struct( uiPopupMenu, [
 ])
 
 ## wrapper functions ##
-IMB_loadiffmem = _rpythonic_function_(		"IMB_loadiffmem", ctypes.POINTER(ImBuf), [
-	("mem",		ctypes.POINTER(ctypes.c_int)),
-	("flags",		ctypes.c_int),] )
+putwchar = _rpythonic_function_(		"putwchar", ctypes.c_uint, [
+	("__wc",		ctypes.c_int),] )
+
+GameObjectSettings_properties_end = _rpythonic_function_(		"GameObjectSettings_properties_end", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
 
 feclearexcept = _rpythonic_function_(		"feclearexcept", ctypes.c_int, [
 	("__excepts",		ctypes.c_int),] )
@@ -11655,6 +12034,11 @@ abort = _rpythonic_function_(		"abort", ctypes.c_void_p, [] )
 
 atexit = _rpythonic_function_(		"atexit", ctypes.c_int, [
 	("__func",		ctypes.c_void_p),] )
+
+fgetws = _rpythonic_function_(		"fgetws", ctypes.POINTER(ctypes.c_int), [
+	("__ws",		ctypes.POINTER(ctypes.c_int)),
+	("__n",		ctypes.c_int),
+	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
 at_quick_exit = _rpythonic_function_(		"at_quick_exit", ctypes.c_int, [
 	("__func",		ctypes.c_void_p),] )
@@ -13358,14 +13742,14 @@ BLI_argsPrintOtherDoc = _rpythonic_function_(		"BLI_argsPrintOtherDoc", ctypes.c
 BLI_argsPrint = _rpythonic_function_(		"BLI_argsPrint", ctypes.c_void_p, [
 	("ba",		ctypes.POINTER(bArgs)),] )
 
+BLI_argsArgv = _rpythonic_function_(		"BLI_argsArgv", ctypes.POINTER(ctypes.POINTER(ctypes.c_char)), [
+	("ba",		ctypes.POINTER(bArgs)),] )
+
 clone = _rpythonic_function_(		"clone", ctypes.c_int, [
 	("__fn",		ctypes.c_void_p),
 	("__child_stack",		ctypes.POINTER(ctypes.c_void_p)),
 	("__flags",		ctypes.c_int),
 	("__arg",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-BLI_argsArgv = _rpythonic_function_(		"BLI_argsArgv", ctypes.POINTER(ctypes.POINTER(ctypes.c_char)), [
-	("ba",		ctypes.POINTER(bArgs)),] )
 
 unshare = _rpythonic_function_(		"unshare", ctypes.c_int, [
 	("__flags",		ctypes.c_int),] )
@@ -15812,14 +16196,6 @@ putwc = _rpythonic_function_(		"putwc", ctypes.c_uint, [
 	("__wc",		ctypes.c_int),
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
-putwchar = _rpythonic_function_(		"putwchar", ctypes.c_uint, [
-	("__wc",		ctypes.c_int),] )
-
-fgetws = _rpythonic_function_(		"fgetws", ctypes.POINTER(ctypes.c_int), [
-	("__ws",		ctypes.POINTER(ctypes.c_int)),
-	("__n",		ctypes.c_int),
-	("__stream",		ctypes.POINTER(_IO_FILE)),] )
-
 fputws = _rpythonic_function_(		"fputws", ctypes.c_int, [
 	("__ws",		ctypes.POINTER(ctypes.c_int)),
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
@@ -17860,6 +18236,2169 @@ BKE_image_buf_fill_checker_color = _rpythonic_function_(		"BKE_image_buf_fill_ch
 	("height",		ctypes.c_int),
 	("width",		ctypes.c_int),] )
 
+CustomData_copy = _rpythonic_function_(		"CustomData_copy", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("mask",		ctypes.c_uint),
+	("alloctype",		ctypes.c_int),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_merge = _rpythonic_function_(		"CustomData_merge", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("mask",		ctypes.c_uint),
+	("alloctype",		ctypes.c_int),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_free = _rpythonic_function_(		"CustomData_free", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_free_temporary = _rpythonic_function_(		"CustomData_free_temporary", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_add_layer = _rpythonic_function_(		"CustomData_add_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("alloctype",		ctypes.c_int),
+	("layer",		ctypes.POINTER(ctypes.c_void_p)),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_add_layer_named = _rpythonic_function_(		"CustomData_add_layer_named", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("alloctype",		ctypes.c_int),
+	("layer",		ctypes.POINTER(ctypes.c_void_p)),
+	("totelem",		ctypes.c_int),
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+CustomData_free_layer = _rpythonic_function_(		"CustomData_free_layer", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("totelem",		ctypes.c_int),
+	("index",		ctypes.c_int),] )
+
+CustomData_free_layer_active = _rpythonic_function_(		"CustomData_free_layer_active", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_free_layers = _rpythonic_function_(		"CustomData_free_layers", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_has_layer = _rpythonic_function_(		"CustomData_has_layer", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_number_of_layers = _rpythonic_function_(		"CustomData_number_of_layers", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_duplicate_referenced_layer = _rpythonic_function_(		"CustomData_duplicate_referenced_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_duplicate_referenced_layer_named = _rpythonic_function_(		"CustomData_duplicate_referenced_layer_named", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("name",		ctypes.POINTER(ctypes.c_char)),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_set_only_copy = _rpythonic_function_(		"CustomData_set_only_copy", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("mask",		ctypes.c_uint),] )
+
+CustomData_copy_data = _rpythonic_function_(		"CustomData_copy_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("source_index",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+CustomData_em_copy_data = _rpythonic_function_(		"CustomData_em_copy_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("src_block",		ctypes.POINTER(ctypes.c_void_p)),
+	("dest_block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_bmesh_copy_data = _rpythonic_function_(		"CustomData_bmesh_copy_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("src_block",		ctypes.POINTER(ctypes.c_void_p)),
+	("dest_block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_em_validate_data = _rpythonic_function_(		"CustomData_em_validate_data", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("sub_elements",		ctypes.c_int),] )
+
+CustomData_free_elem = _rpythonic_function_(		"CustomData_free_elem", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+CustomData_interp = _rpythonic_function_(		"CustomData_interp", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("src_indices",		ctypes.POINTER(ctypes.c_int)),
+	("weights",		ctypes.POINTER(ctypes.c_float)),
+	("sub_weights",		ctypes.POINTER(ctypes.c_float)),
+	("count",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),] )
+
+CustomData_em_interp = _rpythonic_function_(		"CustomData_em_interp", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("src_blocks",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),
+	("weights",		ctypes.POINTER(ctypes.c_float)),
+	("sub_weights",		ctypes.POINTER(ctypes.c_float)),
+	("count",		ctypes.c_int),
+	("dest_block",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_bmesh_interp = _rpythonic_function_(		"CustomData_bmesh_interp", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("src_blocks",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),
+	("weights",		ctypes.POINTER(ctypes.c_float)),
+	("sub_weights",		ctypes.POINTER(ctypes.c_float)),
+	("count",		ctypes.c_int),
+	("dest_block",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_swap = _rpythonic_function_(		"CustomData_swap", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),
+	("corner_indices",		ctypes.POINTER(ctypes.c_int)),] )
+
+CustomData_get = _rpythonic_function_(		"CustomData_get", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_em_get = _rpythonic_function_(		"CustomData_em_get", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_em_get_n = _rpythonic_function_(		"CustomData_em_get_n", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_bmesh_get = _rpythonic_function_(		"CustomData_bmesh_get", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_bmesh_get_n = _rpythonic_function_(		"CustomData_bmesh_get_n", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_get_layer = _rpythonic_function_(		"CustomData_get_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_layer_n = _rpythonic_function_(		"CustomData_get_layer_n", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_get_layer_named = _rpythonic_function_(		"CustomData_get_layer_named", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+CustomData_get_layer_index = _rpythonic_function_(		"CustomData_get_layer_index", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_named_layer_index = _rpythonic_function_(		"CustomData_get_named_layer_index", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+CustomData_get_active_layer_index = _rpythonic_function_(		"CustomData_get_active_layer_index", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_render_layer_index = _rpythonic_function_(		"CustomData_get_render_layer_index", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_clone_layer_index = _rpythonic_function_(		"CustomData_get_clone_layer_index", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_stencil_layer_index = _rpythonic_function_(		"CustomData_get_stencil_layer_index", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_active_layer = _rpythonic_function_(		"CustomData_get_active_layer", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_render_layer = _rpythonic_function_(		"CustomData_get_render_layer", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_clone_layer = _rpythonic_function_(		"CustomData_get_clone_layer", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_get_stencil_layer = _rpythonic_function_(		"CustomData_get_stencil_layer", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_set = _rpythonic_function_(		"CustomData_set", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),
+	("source",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_em_set = _rpythonic_function_(		"CustomData_em_set", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),
+	("source",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_em_set_n = _rpythonic_function_(		"CustomData_em_set_n", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),
+	("source",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_bmesh_set = _rpythonic_function_(		"CustomData_bmesh_set", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),
+	("source",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_bmesh_set_n = _rpythonic_function_(		"CustomData_bmesh_set_n", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),
+	("source",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_set_layer = _rpythonic_function_(		"CustomData_set_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("ptr",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_set_layer_n = _rpythonic_function_(		"CustomData_set_layer_n", ctypes.POINTER(ctypes.c_void_p), [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),
+	("ptr",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+CustomData_set_layer_active = _rpythonic_function_(		"CustomData_set_layer_active", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_render = _rpythonic_function_(		"CustomData_set_layer_render", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_clone = _rpythonic_function_(		"CustomData_set_layer_clone", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_stencil = _rpythonic_function_(		"CustomData_set_layer_stencil", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_active_index = _rpythonic_function_(		"CustomData_set_layer_active_index", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_render_index = _rpythonic_function_(		"CustomData_set_layer_render_index", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_clone_index = _rpythonic_function_(		"CustomData_set_layer_clone_index", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_stencil_index = _rpythonic_function_(		"CustomData_set_layer_stencil_index", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("n",		ctypes.c_int),] )
+
+CustomData_set_layer_flag = _rpythonic_function_(		"CustomData_set_layer_flag", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("flag",		ctypes.c_int),] )
+
+CustomData_em_set_default = _rpythonic_function_(		"CustomData_em_set_default", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_em_free_block = _rpythonic_function_(		"CustomData_em_free_block", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_bmesh_set_default = _rpythonic_function_(		"CustomData_bmesh_set_default", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_bmesh_free_block = _rpythonic_function_(		"CustomData_bmesh_free_block", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_to_em_block = _rpythonic_function_(		"CustomData_to_em_block", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),
+	("block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_from_em_block = _rpythonic_function_(		"CustomData_from_em_block", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("block",		ctypes.POINTER(ctypes.c_void_p)),
+	("index",		ctypes.c_int),] )
+
+CustomData_to_bmesh_block = _rpythonic_function_(		"CustomData_to_bmesh_block", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("src_index",		ctypes.c_int),
+	("dest_block",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),] )
+
+CustomData_from_bmesh_block = _rpythonic_function_(		"CustomData_from_bmesh_block", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(CustomData)),
+	("dest",		ctypes.POINTER(CustomData)),
+	("src_block",		ctypes.POINTER(ctypes.c_void_p)),
+	("dest_index",		ctypes.c_int),] )
+
+CustomData_file_write_info = _rpythonic_function_(		"CustomData_file_write_info", ctypes.c_void_p, [
+	("C_type",		ctypes.c_int),
+	("structname",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
+	("structnum",		ctypes.POINTER(ctypes.c_int)),] )
+
+CustomData_sizeof = _rpythonic_function_(		"CustomData_sizeof", ctypes.c_int, [
+	("C_type",		ctypes.c_int),] )
+
+CustomData_layertype_name = _rpythonic_function_(		"CustomData_layertype_name", ctypes.POINTER(ctypes.c_char), [
+	("C_type",		ctypes.c_int),] )
+
+CustomData_set_layer_unique_name = _rpythonic_function_(		"CustomData_set_layer_unique_name", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),] )
+
+CustomData_validate_layer_name = _rpythonic_function_(		"CustomData_validate_layer_name", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),
+	("name",		ctypes.POINTER(ctypes.c_char)),
+	("outname",		ctypes.POINTER(ctypes.c_char)),] )
+
+CustomData_verify_versions = _rpythonic_function_(		"CustomData_verify_versions", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("index",		ctypes.c_int),] )
+
+CustomData_to_bmeshpoly = _rpythonic_function_(		"CustomData_to_bmeshpoly", ctypes.c_void_p, [
+	("fdata",		ctypes.POINTER(CustomData)),
+	("pdata",		ctypes.POINTER(CustomData)),
+	("ldata",		ctypes.POINTER(CustomData)),] )
+
+CustomData_from_bmeshpoly = _rpythonic_function_(		"CustomData_from_bmeshpoly", ctypes.c_void_p, [
+	("fdata",		ctypes.POINTER(CustomData)),
+	("pdata",		ctypes.POINTER(CustomData)),
+	("ldata",		ctypes.POINTER(CustomData)),
+	("total",		ctypes.c_int),] )
+
+CustomData_bmesh_init_pool = _rpythonic_function_(		"CustomData_bmesh_init_pool", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("allocsize",		ctypes.c_int),] )
+
+CustomData_external_add = _rpythonic_function_(		"CustomData_external_add", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_id",		ctypes.POINTER(ID)),
+	("C_type",		ctypes.c_int),
+	("totelem",		ctypes.c_int),
+	("filename",		ctypes.POINTER(ctypes.c_char)),] )
+
+CustomData_external_remove = _rpythonic_function_(		"CustomData_external_remove", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_id",		ctypes.POINTER(ID)),
+	("C_type",		ctypes.c_int),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_external_test = _rpythonic_function_(		"CustomData_external_test", ctypes.c_int, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_type",		ctypes.c_int),] )
+
+CustomData_external_write = _rpythonic_function_(		"CustomData_external_write", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_id",		ctypes.POINTER(ID)),
+	("mask",		ctypes.c_uint),
+	("totelem",		ctypes.c_int),
+	("free",		ctypes.c_int),] )
+
+CustomData_external_read = _rpythonic_function_(		"CustomData_external_read", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_id",		ctypes.POINTER(ID)),
+	("mask",		ctypes.c_uint),
+	("totelem",		ctypes.c_int),] )
+
+CustomData_external_reload = _rpythonic_function_(		"CustomData_external_reload", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(CustomData)),
+	("C_id",		ctypes.POINTER(ID)),
+	("mask",		ctypes.c_uint),
+	("totelem",		ctypes.c_int),] )
+
+BVHTree_NearestPointCallback = _rpythonic_function_(		"BVHTree_NearestPointCallback", ctypes.c_void_p, [
+	("userdata",		ctypes.POINTER(ctypes.c_void_p)),
+	("index",		ctypes.c_int),
+	("co",		ctypes.POINTER(ctypes.c_float)),
+	("nearest",		ctypes.POINTER(BVHTreeNearest)),] )
+
+BVHTree_RayCastCallback = _rpythonic_function_(		"BVHTree_RayCastCallback", ctypes.c_void_p, [
+	("userdata",		ctypes.POINTER(ctypes.c_void_p)),
+	("index",		ctypes.c_int),
+	("ray",		ctypes.POINTER(BVHTreeRay)),
+	("hit",		ctypes.POINTER(BVHTreeRayHit)),] )
+
+BVHTree_RangeQuery = _rpythonic_function_(		"BVHTree_RangeQuery", ctypes.c_void_p, [
+	("userdata",		ctypes.POINTER(ctypes.c_void_p)),
+	("index",		ctypes.c_int),
+	("squared_dist",		ctypes.c_float),] )
+
+BLI_bvhtree_new = _rpythonic_function_(		"BLI_bvhtree_new", ctypes.POINTER(BVHTree), [
+	("maxsize",		ctypes.c_int),
+	("epsilon",		ctypes.c_float),
+	("tree_type",		ctypes.c_char),
+	("axis",		ctypes.c_char),] )
+
+BLI_bvhtree_free = _rpythonic_function_(		"BLI_bvhtree_free", ctypes.c_void_p, [
+	("tree",		ctypes.POINTER(BVHTree)),] )
+
+BLI_bvhtree_insert = _rpythonic_function_(		"BLI_bvhtree_insert", ctypes.c_int, [
+	("tree",		ctypes.POINTER(BVHTree)),
+	("index",		ctypes.c_int),
+	("co",		ctypes.POINTER(ctypes.c_float)),
+	("numpoints",		ctypes.c_int),] )
+
+BLI_bvhtree_balance = _rpythonic_function_(		"BLI_bvhtree_balance", ctypes.c_void_p, [
+	("tree",		ctypes.POINTER(BVHTree)),] )
+
+BLI_bvhtree_update_node = _rpythonic_function_(		"BLI_bvhtree_update_node", ctypes.c_int, [
+	("tree",		ctypes.POINTER(BVHTree)),
+	("index",		ctypes.c_int),
+	("co",		ctypes.POINTER(ctypes.c_float)),
+	("co_moving",		ctypes.POINTER(ctypes.c_float)),
+	("numpoints",		ctypes.c_int),] )
+
+BLI_bvhtree_update_tree = _rpythonic_function_(		"BLI_bvhtree_update_tree", ctypes.c_void_p, [
+	("tree",		ctypes.POINTER(BVHTree)),] )
+
+BLI_bvhtree_overlap = _rpythonic_function_(		"BLI_bvhtree_overlap", ctypes.POINTER(BVHTreeOverlap), [
+	("tree1",		ctypes.POINTER(BVHTree)),
+	("tree2",		ctypes.POINTER(BVHTree)),
+	("result",		ctypes.POINTER(ctypes.c_uint)),] )
+
+BLI_bvhtree_getepsilon = _rpythonic_function_(		"BLI_bvhtree_getepsilon", ctypes.c_float, [
+	("tree",		ctypes.POINTER(BVHTree)),] )
+
+BLI_bvhtree_find_nearest = _rpythonic_function_(		"BLI_bvhtree_find_nearest", ctypes.c_int, [
+	("tree",		ctypes.POINTER(BVHTree)),
+	("co",		( ctypes.c_float * 3 )),
+	("nearest",		ctypes.POINTER(BVHTreeNearest)),
+	("callback",		ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),ctypes.c_int,ctypes.POINTER(ctypes.c_float),ctypes.POINTER(BVHTreeNearest),)),
+	("userdata",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+BLI_bvhtree_ray_cast = _rpythonic_function_(		"BLI_bvhtree_ray_cast", ctypes.c_int, [
+	("tree",		ctypes.POINTER(BVHTree)),
+	("co",		( ctypes.c_float * 3 )),
+	("dir",		ctypes.POINTER(ctypes.c_float)),
+	("radius",		ctypes.c_float),
+	("hit",		ctypes.POINTER(BVHTreeRayHit)),
+	("callback",		ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),ctypes.c_int,ctypes.POINTER(BVHTreeRay),ctypes.POINTER(BVHTreeRayHit),)),
+	("userdata",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+BLI_bvhtree_bb_raycast = _rpythonic_function_(		"BLI_bvhtree_bb_raycast", ctypes.c_float, [
+	("bv",		ctypes.POINTER(ctypes.c_float)),
+	("light_start",		( ctypes.c_float * 3 )),
+	("light_end",		( ctypes.c_float * 3 )),
+	("pos",		( ctypes.c_float * 3 )),] )
+
+BLI_bvhtree_range_query = _rpythonic_function_(		"BLI_bvhtree_range_query", ctypes.c_int, [
+	("tree",		ctypes.POINTER(BVHTree)),
+	("co",		( ctypes.c_float * 3 )),
+	("radius",		ctypes.c_float),
+	("callback",		ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),ctypes.c_int,ctypes.c_float,)),
+	("userdata",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+bvhtree_from_mesh_verts = _rpythonic_function_(		"bvhtree_from_mesh_verts", ctypes.POINTER(BVHTree), [
+	("data",		ctypes.POINTER(BVHTreeFromMesh)),
+	("mesh",		ctypes.POINTER(DerivedMesh)),
+	("epsilon",		ctypes.c_float),
+	("tree_type",		ctypes.c_int),
+	("axis",		ctypes.c_int),] )
+
+bvhtree_from_mesh_faces = _rpythonic_function_(		"bvhtree_from_mesh_faces", ctypes.POINTER(BVHTree), [
+	("data",		ctypes.POINTER(BVHTreeFromMesh)),
+	("mesh",		ctypes.POINTER(DerivedMesh)),
+	("epsilon",		ctypes.c_float),
+	("tree_type",		ctypes.c_int),
+	("axis",		ctypes.c_int),] )
+
+bvhtree_from_mesh_edges = _rpythonic_function_(		"bvhtree_from_mesh_edges", ctypes.POINTER(BVHTree), [
+	("data",		ctypes.POINTER(BVHTreeFromMesh)),
+	("mesh",		ctypes.POINTER(DerivedMesh)),
+	("epsilon",		ctypes.c_float),
+	("tree_type",		ctypes.c_int),
+	("axis",		ctypes.c_int),] )
+
+free_bvhtree_from_mesh = _rpythonic_function_(		"free_bvhtree_from_mesh", ctypes.c_void_p, [
+	("data",		ctypes.POINTER(BVHTreeFromMesh)),] )
+
+bvhtree_ray_tri_intersection = _rpythonic_function_(		"bvhtree_ray_tri_intersection", ctypes.c_float, [
+	("ray",		ctypes.POINTER(BVHTreeRay)),
+	("m_dist",		ctypes.c_float),
+	("v0",		( ctypes.c_float * 3 )),
+	("v1",		( ctypes.c_float * 3 )),
+	("v2",		( ctypes.c_float * 3 )),] )
+
+nearest_point_in_tri_surface = _rpythonic_function_(		"nearest_point_in_tri_surface", ctypes.c_float, [
+	("v0",		( ctypes.c_float * 3 )),
+	("v1",		( ctypes.c_float * 3 )),
+	("v2",		( ctypes.c_float * 3 )),
+	("p",		( ctypes.c_float * 3 )),
+	("v",		ctypes.POINTER(ctypes.c_int)),
+	("e",		ctypes.POINTER(ctypes.c_int)),
+	("nearest",		( ctypes.c_float * 3 )),] )
+
+bvhcache_find = _rpythonic_function_(		"bvhcache_find", ctypes.POINTER(BVHTree), [
+	("cache",		ctypes.POINTER(ctypes.POINTER(LinkNode))),
+	("C_type",		ctypes.c_int),] )
+
+bvhcache_insert = _rpythonic_function_(		"bvhcache_insert", ctypes.c_void_p, [
+	("cache",		ctypes.POINTER(ctypes.POINTER(LinkNode))),
+	("tree",		ctypes.POINTER(BVHTree)),
+	("C_type",		ctypes.c_int),] )
+
+bvhcache_init = _rpythonic_function_(		"bvhcache_init", ctypes.c_void_p, [
+	("cache",		ctypes.POINTER(ctypes.POINTER(LinkNode))),] )
+
+bvhcache_free = _rpythonic_function_(		"bvhcache_free", ctypes.c_void_p, [
+	("cache",		ctypes.POINTER(ctypes.POINTER(LinkNode))),] )
+
+getNumVerts = _rpythonic_function_(		"getNumVerts", ctypes.c_int, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getNumFaces = _rpythonic_function_(		"getNumFaces", ctypes.c_int, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getNumEdges = _rpythonic_function_(		"getNumEdges", ctypes.c_int, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getVert = _rpythonic_function_(		"getVert", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("vert_r",		ctypes.POINTER(MVert)),] )
+
+getEdge = _rpythonic_function_(		"getEdge", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("edge_r",		ctypes.POINTER(MEdge)),] )
+
+getFace = _rpythonic_function_(		"getFace", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("face_r",		ctypes.POINTER(MFace)),] )
+
+getVertArray = _rpythonic_function_(		"getVertArray", ctypes.POINTER(MVert), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getEdgeArray = _rpythonic_function_(		"getEdgeArray", ctypes.POINTER(MEdge), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getFaceArray = _rpythonic_function_(		"getFaceArray", ctypes.POINTER(MFace), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+copyVertArray = _rpythonic_function_(		"copyVertArray", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("vert_r",		ctypes.POINTER(MVert)),] )
+
+copyEdgeArray = _rpythonic_function_(		"copyEdgeArray", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("edge_r",		ctypes.POINTER(MEdge)),] )
+
+copyFaceArray = _rpythonic_function_(		"copyFaceArray", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("face_r",		ctypes.POINTER(MFace)),] )
+
+dupVertArray = _rpythonic_function_(		"dupVertArray", ctypes.POINTER(MVert), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+dupEdgeArray = _rpythonic_function_(		"dupEdgeArray", ctypes.POINTER(MEdge), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+dupFaceArray = _rpythonic_function_(		"dupFaceArray", ctypes.POINTER(MFace), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getVertData = _rpythonic_function_(		"getVertData", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+getEdgeData = _rpythonic_function_(		"getEdgeData", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+getFaceData = _rpythonic_function_(		"getFaceData", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+getVertDataArray = _rpythonic_function_(		"getVertDataArray", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),] )
+
+getEdgeDataArray = _rpythonic_function_(		"getEdgeDataArray", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),] )
+
+getFaceDataArray = _rpythonic_function_(		"getFaceDataArray", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),] )
+
+getNumGrids = _rpythonic_function_(		"getNumGrids", ctypes.c_int, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getGridSize = _rpythonic_function_(		"getGridSize", ctypes.c_int, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getGridData = _rpythonic_function_(		"getGridData", ctypes.POINTER(ctypes.POINTER(DMGridData)), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getGridAdjacency = _rpythonic_function_(		"getGridAdjacency", ctypes.POINTER(DMGridAdjacency), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getGridOffset = _rpythonic_function_(		"getGridOffset", ctypes.POINTER(ctypes.c_int), [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+foreachMappedVert = _rpythonic_function_(		"foreachMappedVert", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("func",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+foreachMappedEdge = _rpythonic_function_(		"foreachMappedEdge", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("func",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+foreachMappedFaceCenter = _rpythonic_function_(		"foreachMappedFaceCenter", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("func",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+getMinMax = _rpythonic_function_(		"getMinMax", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("min_r",		( ctypes.c_float * 3 )),
+	("max_r",		( ctypes.c_float * 3 )),] )
+
+getVertCo = _rpythonic_function_(		"getVertCo", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("co_r",		( ctypes.c_float * 3 )),] )
+
+getVertCos = _rpythonic_function_(		"getVertCos", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("cos_r",		ctypes.POINTER(ctypes.c_float)),] )
+
+getVertNo = _rpythonic_function_(		"getVertNo", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("no_r",		( ctypes.c_float * 3 )),] )
+
+getFaceMap = _rpythonic_function_(		"getFaceMap", ctypes.POINTER(ListBase), [
+	("ob",		ctypes.POINTER(Object)),
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+getPBVH = _rpythonic_function_(		"getPBVH", ctypes.POINTER(PBVH), [
+	("ob",		ctypes.POINTER(Object)),
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+drawVerts = _rpythonic_function_(		"drawVerts", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+drawUVEdges = _rpythonic_function_(		"drawUVEdges", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+drawEdges = _rpythonic_function_(		"drawEdges", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("drawLooseEdges",		ctypes.c_int),
+	("drawAllEdges",		ctypes.c_int),] )
+
+drawLooseEdges = _rpythonic_function_(		"drawLooseEdges", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+drawFacesSolid = _rpythonic_function_(		"drawFacesSolid", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("partial_redraw_planes",		ctypes.POINTER(ctypes.c_float)),
+	("fast",		ctypes.c_int),
+	("setMaterial",		ctypes.c_void_p),] )
+
+setMaterial = _rpythonic_function_(		"setMaterial", ctypes.c_int, [
+	("none",		ctypes.c_int),
+	("attribs",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+drawFacesColored = _rpythonic_function_(		"drawFacesColored", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("useTwoSided",		ctypes.c_int),
+	("col1",		ctypes.POINTER(ctypes.c_ubyte)),
+	("col2",		ctypes.POINTER(ctypes.c_ubyte)),] )
+
+drawFacesTex = _rpythonic_function_(		"drawFacesTex", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setDrawOptions",		ctypes.c_void_p),
+	("compareDrawOptions",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+setDrawOptions = _rpythonic_function_(		"setDrawOptions", ctypes.c_int, [
+	("tface",		ctypes.POINTER(MTFace)),
+	("has_mcol",		ctypes.c_int),
+	("matnr",		ctypes.c_int),] )
+
+compareDrawOptions = _rpythonic_function_(		"compareDrawOptions", ctypes.c_int, [
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),
+	("cur_index",		ctypes.c_int),
+	("next_index",		ctypes.c_int),] )
+
+drawFacesGLSL = _rpythonic_function_(		"drawFacesGLSL", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setMaterial",		ctypes.c_void_p),] )
+
+drawMappedFaces = _rpythonic_function_(		"drawMappedFaces", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setDrawOptions",		ctypes.c_void_p),
+	("setMaterial",		ctypes.c_void_p),
+	("compareDrawOptions",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),
+	("useColors",		ctypes.c_int),] )
+
+drawMappedFacesTex = _rpythonic_function_(		"drawMappedFacesTex", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setDrawOptions",		ctypes.c_void_p),
+	("compareDrawOptions",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+drawMappedFacesGLSL = _rpythonic_function_(		"drawMappedFacesGLSL", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setMaterial",		ctypes.c_void_p),
+	("setDrawOptions",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+drawMappedEdges = _rpythonic_function_(		"drawMappedEdges", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setDrawOptions",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+drawMappedEdgesInterp = _rpythonic_function_(		"drawMappedEdgesInterp", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setDrawOptions",		ctypes.c_void_p),
+	("setDrawInterpOptions",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+setDrawInterpOptions = _rpythonic_function_(		"setDrawInterpOptions", ctypes.c_void_p, [
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),
+	("index",		ctypes.c_int),
+	("t",		ctypes.c_float),] )
+
+drawMappedFacesMat = _rpythonic_function_(		"drawMappedFacesMat", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("setMaterial",		ctypes.c_void_p),
+	("setFace",		ctypes.c_void_p),
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+setFace = _rpythonic_function_(		"setFace", ctypes.c_int, [
+	("userData",		ctypes.POINTER(ctypes.c_void_p)),
+	("index",		ctypes.c_int),] )
+
+DM_init_funcs = _rpythonic_function_(		"DM_init_funcs", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+release = _rpythonic_function_(		"release", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+DM_init = _rpythonic_function_(		"DM_init", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),
+	("numVerts",		ctypes.c_int),
+	("numEdges",		ctypes.c_int),
+	("numFaces",		ctypes.c_int),] )
+
+DM_from_template = _rpythonic_function_(		"DM_from_template", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),
+	("numVerts",		ctypes.c_int),
+	("numEdges",		ctypes.c_int),
+	("numFaces",		ctypes.c_int),] )
+
+DM_release = _rpythonic_function_(		"DM_release", ctypes.c_int, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+DM_to_mesh = _rpythonic_function_(		"DM_to_mesh", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("me",		ctypes.POINTER(Mesh)),] )
+
+DM_to_meshkey = _rpythonic_function_(		"DM_to_meshkey", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("me",		ctypes.POINTER(Mesh)),
+	("kb",		ctypes.POINTER(KeyBlock)),] )
+
+DM_set_only_copy = _rpythonic_function_(		"DM_set_only_copy", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("mask",		ctypes.c_uint),] )
+
+DM_add_vert_layer = _rpythonic_function_(		"DM_add_vert_layer", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),
+	("alloctype",		ctypes.c_int),
+	("layer",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+DM_add_edge_layer = _rpythonic_function_(		"DM_add_edge_layer", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),
+	("alloctype",		ctypes.c_int),
+	("layer",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+DM_add_face_layer = _rpythonic_function_(		"DM_add_face_layer", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),
+	("alloctype",		ctypes.c_int),
+	("layer",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+DM_get_vert_data = _rpythonic_function_(		"DM_get_vert_data", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+DM_get_edge_data = _rpythonic_function_(		"DM_get_edge_data", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+DM_get_face_data = _rpythonic_function_(		"DM_get_face_data", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),] )
+
+DM_get_vert_data_layer = _rpythonic_function_(		"DM_get_vert_data_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),] )
+
+DM_get_edge_data_layer = _rpythonic_function_(		"DM_get_edge_data_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),] )
+
+DM_get_face_data_layer = _rpythonic_function_(		"DM_get_face_data_layer", ctypes.POINTER(ctypes.c_void_p), [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("C_type",		ctypes.c_int),] )
+
+DM_set_vert_data = _rpythonic_function_(		"DM_set_vert_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),
+	("data",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+DM_set_edge_data = _rpythonic_function_(		"DM_set_edge_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),
+	("data",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+DM_set_face_data = _rpythonic_function_(		"DM_set_face_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("C_type",		ctypes.c_int),
+	("data",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+DM_copy_vert_data = _rpythonic_function_(		"DM_copy_vert_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("dest",		ctypes.POINTER(DerivedMesh)),
+	("source_index",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+DM_copy_edge_data = _rpythonic_function_(		"DM_copy_edge_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("dest",		ctypes.POINTER(DerivedMesh)),
+	("source_index",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+DM_copy_face_data = _rpythonic_function_(		"DM_copy_face_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("dest",		ctypes.POINTER(DerivedMesh)),
+	("source_index",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+DM_free_vert_data = _rpythonic_function_(		"DM_free_vert_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+DM_free_edge_data = _rpythonic_function_(		"DM_free_edge_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+DM_free_face_data = _rpythonic_function_(		"DM_free_face_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("count",		ctypes.c_int),] )
+
+DM_interp_vert_data = _rpythonic_function_(		"DM_interp_vert_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("dest",		ctypes.POINTER(DerivedMesh)),
+	("src_indices",		ctypes.POINTER(ctypes.c_int)),
+	("weights",		ctypes.POINTER(ctypes.c_float)),
+	("count",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),] )
+
+DM_interp_edge_data = _rpythonic_function_(		"DM_interp_edge_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("dest",		ctypes.POINTER(DerivedMesh)),
+	("src_indices",		ctypes.POINTER(ctypes.c_int)),
+	("weights",		ctypes.POINTER(ctypes.c_float)),
+	("vert_weights",		ctypes.POINTER(( ctypes.c_float * 2 ))),
+	("count",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),] )
+
+DM_interp_face_data = _rpythonic_function_(		"DM_interp_face_data", ctypes.c_void_p, [
+	("source",		ctypes.POINTER(DerivedMesh)),
+	("dest",		ctypes.POINTER(DerivedMesh)),
+	("src_indices",		ctypes.POINTER(ctypes.c_int)),
+	("weights",		ctypes.POINTER(ctypes.c_float)),
+	("vert_weights",		ctypes.POINTER(( ctypes.c_float * 4 ))),
+	("count",		ctypes.c_int),
+	("dest_index",		ctypes.c_int),] )
+
+DM_swap_face_data = _rpythonic_function_(		"DM_swap_face_data", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("index",		ctypes.c_int),
+	("corner_indices",		ctypes.POINTER(ctypes.c_int)),] )
+
+vDM_ColorBand_store = _rpythonic_function_(		"vDM_ColorBand_store", ctypes.c_void_p, [
+	("coba",		ctypes.POINTER(ColorBand)),] )
+
+mesh_get_mapped_verts_nors = _rpythonic_function_(		"mesh_get_mapped_verts_nors", ctypes.POINTER(ctypes.c_float), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),] )
+
+mesh_get_derived_final = _rpythonic_function_(		"mesh_get_derived_final", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_get_derived_deform = _rpythonic_function_(		"mesh_get_derived_deform", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_create_derived_for_modifier = _rpythonic_function_(		"mesh_create_derived_for_modifier", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("md",		ctypes.POINTER(ModifierData)),] )
+
+mesh_create_derived_render = _rpythonic_function_(		"mesh_create_derived_render", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_create_derived_index_render = _rpythonic_function_(		"mesh_create_derived_index_render", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("dataMask",		ctypes.c_uint),
+	("index",		ctypes.c_int),] )
+
+mesh_create_derived = _rpythonic_function_(		"mesh_create_derived", ctypes.POINTER(DerivedMesh), [
+	("me",		ctypes.POINTER(Mesh)),
+	("ob",		ctypes.POINTER(Object)),
+	("vertCos",		ctypes.POINTER(ctypes.c_float)),] )
+
+mesh_create_derived_view = _rpythonic_function_(		"mesh_create_derived_view", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_create_derived_no_deform = _rpythonic_function_(		"mesh_create_derived_no_deform", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("vertCos",		ctypes.POINTER(ctypes.c_float)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_create_derived_no_deform_render = _rpythonic_function_(		"mesh_create_derived_no_deform_render", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("vertCos",		ctypes.POINTER(ctypes.c_float)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_create_derived_no_virtual = _rpythonic_function_(		"mesh_create_derived_no_virtual", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("vertCos",		ctypes.POINTER(ctypes.c_float)),
+	("dataMask",		ctypes.c_uint),] )
+
+mesh_create_derived_physics = _rpythonic_function_(		"mesh_create_derived_physics", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("vertCos",		ctypes.POINTER(ctypes.c_float)),
+	("dataMask",		ctypes.c_uint),] )
+
+editmesh_get_derived = _rpythonic_function_(		"editmesh_get_derived", ctypes.POINTER(DerivedMesh), [
+	("em",		ctypes.POINTER(EditMesh)),
+	("vertexCos",		ctypes.POINTER(ctypes.c_float)),] )
+
+editmesh_get_derived_base = _rpythonic_function_(		"editmesh_get_derived_base", ctypes.POINTER(DerivedMesh), [
+	("Object",		ctypes.POINTER(Object)),
+	("em",		ctypes.POINTER(EditMesh)),] )
+
+editmesh_get_derived_cage = _rpythonic_function_(		"editmesh_get_derived_cage", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("Object",		ctypes.POINTER(Object)),
+	("em",		ctypes.POINTER(EditMesh)),
+	("dataMask",		ctypes.c_uint),] )
+
+editmesh_get_derived_cage_and_final = _rpythonic_function_(		"editmesh_get_derived_cage_and_final", ctypes.POINTER(DerivedMesh), [
+	("scene",		ctypes.POINTER(Scene)),
+	("Object",		ctypes.POINTER(Object)),
+	("em",		ctypes.POINTER(EditMesh)),
+	("final_r",		ctypes.POINTER(ctypes.POINTER(DerivedMesh))),
+	("dataMask",		ctypes.c_uint),] )
+
+editmesh_get_vertex_cos = _rpythonic_function_(		"editmesh_get_vertex_cos", ctypes.POINTER(ctypes.c_float), [
+	("em",		ctypes.POINTER(EditMesh)),
+	("numVerts_r",		ctypes.POINTER(ctypes.c_int)),] )
+
+editmesh_modifier_is_enabled = _rpythonic_function_(		"editmesh_modifier_is_enabled", ctypes.c_int, [
+	("scene",		ctypes.POINTER(Scene)),
+	("md",		ctypes.POINTER(ModifierData)),
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+makeDerivedMesh = _rpythonic_function_(		"makeDerivedMesh", ctypes.c_void_p, [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("em",		ctypes.POINTER(EditMesh)),
+	("dataMask",		ctypes.c_uint),] )
+
+editmesh_get_first_deform_matrices = _rpythonic_function_(		"editmesh_get_first_deform_matrices", ctypes.c_int, [
+	("Scene",		ctypes.POINTER(Scene)),
+	("Object",		ctypes.POINTER(Object)),
+	("em",		ctypes.POINTER(EditMesh)),
+	("deformmats",		ctypes.POINTER(ctypes.POINTER(ctypes.c_float))),
+	("deformcos",		ctypes.POINTER(ctypes.POINTER(ctypes.c_float))),] )
+
+sculpt_get_deform_matrices = _rpythonic_function_(		"sculpt_get_deform_matrices", ctypes.c_int, [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("deformmats",		ctypes.POINTER(ctypes.POINTER(ctypes.c_float))),
+	("deformcos",		ctypes.POINTER(ctypes.POINTER(ctypes.c_float))),] )
+
+weight_to_rgb = _rpythonic_function_(		"weight_to_rgb", ctypes.c_void_p, [
+	("r_rgb",		( ctypes.c_float * 3 )),
+	("weight",		ctypes.c_float),] )
+
+DM_vertex_attributes_from_gpu = _rpythonic_function_(		"DM_vertex_attributes_from_gpu", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),
+	("gattribs",		ctypes.POINTER(GPUVertexAttribs)),
+	("attribs",		ctypes.POINTER(DMVertexAttribs)),] )
+
+DM_add_tangent_layer = _rpythonic_function_(		"DM_add_tangent_layer", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+DM_calc_auto_bump_scale = _rpythonic_function_(		"DM_calc_auto_bump_scale", ctypes.c_void_p, [
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+DM_set_object_boundbox = _rpythonic_function_(		"DM_set_object_boundbox", ctypes.c_void_p, [
+	("ob",		ctypes.POINTER(Object)),
+	("dm",		ctypes.POINTER(DerivedMesh)),] )
+
+acos = _rpythonic_function_(		"acos", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+asin = _rpythonic_function_(		"asin", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+atan = _rpythonic_function_(		"atan", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+atan2 = _rpythonic_function_(		"atan2", ctypes.c_double, [
+	("__y",		ctypes.c_double),
+	("__x",		ctypes.c_double),] )
+
+cos = _rpythonic_function_(		"cos", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+sin = _rpythonic_function_(		"sin", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+tan = _rpythonic_function_(		"tan", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+cosh = _rpythonic_function_(		"cosh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+sinh = _rpythonic_function_(		"sinh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+tanh = _rpythonic_function_(		"tanh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+sincos = _rpythonic_function_(		"sincos", ctypes.c_void_p, [
+	("__x",		ctypes.c_double),
+	("__sinx",		ctypes.POINTER(ctypes.c_double)),
+	("__cosx",		ctypes.POINTER(ctypes.c_double)),] )
+
+acosh = _rpythonic_function_(		"acosh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+asinh = _rpythonic_function_(		"asinh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+atanh = _rpythonic_function_(		"atanh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+exp = _rpythonic_function_(		"exp", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+frexp = _rpythonic_function_(		"frexp", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__exponent",		ctypes.POINTER(ctypes.c_int)),] )
+
+ldexp = _rpythonic_function_(		"ldexp", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__exponent",		ctypes.c_int),] )
+
+log = _rpythonic_function_(		"log", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+log10 = _rpythonic_function_(		"log10", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+modf = _rpythonic_function_(		"modf", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__iptr",		ctypes.POINTER(ctypes.c_double)),] )
+
+exp10 = _rpythonic_function_(		"exp10", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+pow10 = _rpythonic_function_(		"pow10", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+expm1 = _rpythonic_function_(		"expm1", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+log1p = _rpythonic_function_(		"log1p", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+logb = _rpythonic_function_(		"logb", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+exp2 = _rpythonic_function_(		"exp2", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+log2 = _rpythonic_function_(		"log2", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+pow = _rpythonic_function_(		"pow", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+sqrt = _rpythonic_function_(		"sqrt", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+hypot = _rpythonic_function_(		"hypot", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+cbrt = _rpythonic_function_(		"cbrt", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+ceil = _rpythonic_function_(		"ceil", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+fabs = _rpythonic_function_(		"fabs", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+floor = _rpythonic_function_(		"floor", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+fmod = _rpythonic_function_(		"fmod", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+isinf = _rpythonic_function_(		"isinf", ctypes.c_int, [
+	("__value",		ctypes.c_double),] )
+
+finite = _rpythonic_function_(		"finite", ctypes.c_int, [
+	("__value",		ctypes.c_double),] )
+
+drem = _rpythonic_function_(		"drem", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+significand = _rpythonic_function_(		"significand", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+copysign = _rpythonic_function_(		"copysign", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+nan = _rpythonic_function_(		"nan", ctypes.c_double, [
+	("__tagb",		ctypes.POINTER(ctypes.c_char)),] )
+
+isnan = _rpythonic_function_(		"isnan", ctypes.c_int, [
+	("__value",		ctypes.c_double),] )
+
+j0 = _rpythonic_function_(		"j0", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+j1 = _rpythonic_function_(		"j1", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+jn = _rpythonic_function_(		"jn", ctypes.c_double, [
+	("none",		ctypes.c_int),
+	("none",		ctypes.c_double),] )
+
+y0 = _rpythonic_function_(		"y0", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+y1 = _rpythonic_function_(		"y1", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+yn = _rpythonic_function_(		"yn", ctypes.c_double, [
+	("none",		ctypes.c_int),
+	("none",		ctypes.c_double),] )
+
+erf = _rpythonic_function_(		"erf", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+erfc = _rpythonic_function_(		"erfc", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+lgamma = _rpythonic_function_(		"lgamma", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+tgamma = _rpythonic_function_(		"tgamma", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+gamma = _rpythonic_function_(		"gamma", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+lgamma_r = _rpythonic_function_(		"lgamma_r", ctypes.c_double, [
+	("none",		ctypes.c_double),
+	("__signgamp",		ctypes.POINTER(ctypes.c_int)),] )
+
+rint = _rpythonic_function_(		"rint", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+nextafter = _rpythonic_function_(		"nextafter", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+nexttoward = _rpythonic_function_(		"nexttoward", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+remainder = _rpythonic_function_(		"remainder", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+scalbn = _rpythonic_function_(		"scalbn", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_int),] )
+
+ilogb = _rpythonic_function_(		"ilogb", ctypes.c_int, [
+	("__x",		ctypes.c_double),] )
+
+scalbln = _rpythonic_function_(		"scalbln", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_int64),] )
+
+nearbyint = _rpythonic_function_(		"nearbyint", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+round = _rpythonic_function_(		"round", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+trunc = _rpythonic_function_(		"trunc", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+remquo = _rpythonic_function_(		"remquo", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),
+	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
+
+lrint = _rpythonic_function_(		"lrint", ctypes.c_int64, [
+	("__x",		ctypes.c_double),] )
+
+llrint = _rpythonic_function_(		"llrint", ctypes.c_longlong, [
+	("__x",		ctypes.c_double),] )
+
+lround = _rpythonic_function_(		"lround", ctypes.c_int64, [
+	("__x",		ctypes.c_double),] )
+
+llround = _rpythonic_function_(		"llround", ctypes.c_longlong, [
+	("__x",		ctypes.c_double),] )
+
+fdim = _rpythonic_function_(		"fdim", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+fmax = _rpythonic_function_(		"fmax", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+fmin = _rpythonic_function_(		"fmin", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+fma = _rpythonic_function_(		"fma", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),
+	("__z",		ctypes.c_double),] )
+
+scalb = _rpythonic_function_(		"scalb", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_double),] )
+
+acosf = _rpythonic_function_(		"acosf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+asinf = _rpythonic_function_(		"asinf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+atanf = _rpythonic_function_(		"atanf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+atan2f = _rpythonic_function_(		"atan2f", ctypes.c_float, [
+	("__y",		ctypes.c_float),
+	("__x",		ctypes.c_float),] )
+
+cosf = _rpythonic_function_(		"cosf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+sinf = _rpythonic_function_(		"sinf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+tanf = _rpythonic_function_(		"tanf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+coshf = _rpythonic_function_(		"coshf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+sinhf = _rpythonic_function_(		"sinhf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+tanhf = _rpythonic_function_(		"tanhf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+sincosf = _rpythonic_function_(		"sincosf", ctypes.c_void_p, [
+	("__x",		ctypes.c_float),
+	("__sinx",		ctypes.POINTER(ctypes.c_float)),
+	("__cosx",		ctypes.POINTER(ctypes.c_float)),] )
+
+acoshf = _rpythonic_function_(		"acoshf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+asinhf = _rpythonic_function_(		"asinhf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+atanhf = _rpythonic_function_(		"atanhf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+expf = _rpythonic_function_(		"expf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+frexpf = _rpythonic_function_(		"frexpf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__exponent",		ctypes.POINTER(ctypes.c_int)),] )
+
+ldexpf = _rpythonic_function_(		"ldexpf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__exponent",		ctypes.c_int),] )
+
+logf = _rpythonic_function_(		"logf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+log10f = _rpythonic_function_(		"log10f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+modff = _rpythonic_function_(		"modff", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__iptr",		ctypes.POINTER(ctypes.c_float)),] )
+
+exp10f = _rpythonic_function_(		"exp10f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+pow10f = _rpythonic_function_(		"pow10f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+expm1f = _rpythonic_function_(		"expm1f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+log1pf = _rpythonic_function_(		"log1pf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+logbf = _rpythonic_function_(		"logbf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+exp2f = _rpythonic_function_(		"exp2f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+log2f = _rpythonic_function_(		"log2f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+powf = _rpythonic_function_(		"powf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+sqrtf = _rpythonic_function_(		"sqrtf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+hypotf = _rpythonic_function_(		"hypotf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+cbrtf = _rpythonic_function_(		"cbrtf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+ceilf = _rpythonic_function_(		"ceilf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+fabsf = _rpythonic_function_(		"fabsf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+floorf = _rpythonic_function_(		"floorf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+fmodf = _rpythonic_function_(		"fmodf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+isinff = _rpythonic_function_(		"isinff", ctypes.c_int, [
+	("__value",		ctypes.c_float),] )
+
+finitef = _rpythonic_function_(		"finitef", ctypes.c_int, [
+	("__value",		ctypes.c_float),] )
+
+dremf = _rpythonic_function_(		"dremf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+significandf = _rpythonic_function_(		"significandf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+copysignf = _rpythonic_function_(		"copysignf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+nanf = _rpythonic_function_(		"nanf", ctypes.c_float, [
+	("__tagb",		ctypes.POINTER(ctypes.c_char)),] )
+
+isnanf = _rpythonic_function_(		"isnanf", ctypes.c_int, [
+	("__value",		ctypes.c_float),] )
+
+j0f = _rpythonic_function_(		"j0f", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+j1f = _rpythonic_function_(		"j1f", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+jnf = _rpythonic_function_(		"jnf", ctypes.c_float, [
+	("none",		ctypes.c_int),
+	("none",		ctypes.c_float),] )
+
+y0f = _rpythonic_function_(		"y0f", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+y1f = _rpythonic_function_(		"y1f", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+ynf = _rpythonic_function_(		"ynf", ctypes.c_float, [
+	("none",		ctypes.c_int),
+	("none",		ctypes.c_float),] )
+
+erff = _rpythonic_function_(		"erff", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+erfcf = _rpythonic_function_(		"erfcf", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+lgammaf = _rpythonic_function_(		"lgammaf", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+tgammaf = _rpythonic_function_(		"tgammaf", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+gammaf = _rpythonic_function_(		"gammaf", ctypes.c_float, [
+	("none",		ctypes.c_float),] )
+
+lgammaf_r = _rpythonic_function_(		"lgammaf_r", ctypes.c_float, [
+	("none",		ctypes.c_float),
+	("__signgamp",		ctypes.POINTER(ctypes.c_int)),] )
+
+rintf = _rpythonic_function_(		"rintf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+nextafterf = _rpythonic_function_(		"nextafterf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+nexttowardf = _rpythonic_function_(		"nexttowardf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_double),] )
+
+remainderf = _rpythonic_function_(		"remainderf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+scalbnf = _rpythonic_function_(		"scalbnf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__n",		ctypes.c_int),] )
+
+ilogbf = _rpythonic_function_(		"ilogbf", ctypes.c_int, [
+	("__x",		ctypes.c_float),] )
+
+scalblnf = _rpythonic_function_(		"scalblnf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__n",		ctypes.c_int64),] )
+
+nearbyintf = _rpythonic_function_(		"nearbyintf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+roundf = _rpythonic_function_(		"roundf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+truncf = _rpythonic_function_(		"truncf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
+
+remquof = _rpythonic_function_(		"remquof", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),
+	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
+
+lrintf = _rpythonic_function_(		"lrintf", ctypes.c_int64, [
+	("__x",		ctypes.c_float),] )
+
+llrintf = _rpythonic_function_(		"llrintf", ctypes.c_longlong, [
+	("__x",		ctypes.c_float),] )
+
+lroundf = _rpythonic_function_(		"lroundf", ctypes.c_int64, [
+	("__x",		ctypes.c_float),] )
+
+llroundf = _rpythonic_function_(		"llroundf", ctypes.c_longlong, [
+	("__x",		ctypes.c_float),] )
+
+fdimf = _rpythonic_function_(		"fdimf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+fmaxf = _rpythonic_function_(		"fmaxf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+fminf = _rpythonic_function_(		"fminf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
+
+fmaf = _rpythonic_function_(		"fmaf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),
+	("__z",		ctypes.c_float),] )
+
+scalbf = _rpythonic_function_(		"scalbf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__n",		ctypes.c_float),] )
+
+acosl = _rpythonic_function_(		"acosl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+asinl = _rpythonic_function_(		"asinl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+atanl = _rpythonic_function_(		"atanl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+atan2l = _rpythonic_function_(		"atan2l", ctypes.c_double, [
+	("__y",		ctypes.c_double),
+	("__x",		ctypes.c_double),] )
+
+cosl = _rpythonic_function_(		"cosl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+sinl = _rpythonic_function_(		"sinl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+tanl = _rpythonic_function_(		"tanl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+coshl = _rpythonic_function_(		"coshl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+sinhl = _rpythonic_function_(		"sinhl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+tanhl = _rpythonic_function_(		"tanhl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+sincosl = _rpythonic_function_(		"sincosl", ctypes.c_void_p, [
+	("__x",		ctypes.c_double),
+	("__sinx",		ctypes.POINTER(ctypes.c_double)),
+	("__cosx",		ctypes.POINTER(ctypes.c_double)),] )
+
+acoshl = _rpythonic_function_(		"acoshl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+asinhl = _rpythonic_function_(		"asinhl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+atanhl = _rpythonic_function_(		"atanhl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+expl = _rpythonic_function_(		"expl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+frexpl = _rpythonic_function_(		"frexpl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__exponent",		ctypes.POINTER(ctypes.c_int)),] )
+
+ldexpl = _rpythonic_function_(		"ldexpl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__exponent",		ctypes.c_int),] )
+
+logl = _rpythonic_function_(		"logl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+log10l = _rpythonic_function_(		"log10l", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+modfl = _rpythonic_function_(		"modfl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__iptr",		ctypes.POINTER(ctypes.c_double)),] )
+
+exp10l = _rpythonic_function_(		"exp10l", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+pow10l = _rpythonic_function_(		"pow10l", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+expm1l = _rpythonic_function_(		"expm1l", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+log1pl = _rpythonic_function_(		"log1pl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+logbl = _rpythonic_function_(		"logbl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+exp2l = _rpythonic_function_(		"exp2l", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+log2l = _rpythonic_function_(		"log2l", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+powl = _rpythonic_function_(		"powl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+sqrtl = _rpythonic_function_(		"sqrtl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+hypotl = _rpythonic_function_(		"hypotl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+cbrtl = _rpythonic_function_(		"cbrtl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+ceill = _rpythonic_function_(		"ceill", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+fabsl = _rpythonic_function_(		"fabsl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+floorl = _rpythonic_function_(		"floorl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+fmodl = _rpythonic_function_(		"fmodl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+isinfl = _rpythonic_function_(		"isinfl", ctypes.c_int, [
+	("__value",		ctypes.c_double),] )
+
+finitel = _rpythonic_function_(		"finitel", ctypes.c_int, [
+	("__value",		ctypes.c_double),] )
+
+dreml = _rpythonic_function_(		"dreml", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+significandl = _rpythonic_function_(		"significandl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+copysignl = _rpythonic_function_(		"copysignl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+nanl = _rpythonic_function_(		"nanl", ctypes.c_double, [
+	("__tagb",		ctypes.POINTER(ctypes.c_char)),] )
+
+isnanl = _rpythonic_function_(		"isnanl", ctypes.c_int, [
+	("__value",		ctypes.c_double),] )
+
+j0l = _rpythonic_function_(		"j0l", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+j1l = _rpythonic_function_(		"j1l", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+jnl = _rpythonic_function_(		"jnl", ctypes.c_double, [
+	("none",		ctypes.c_int),
+	("none",		ctypes.c_double),] )
+
+y0l = _rpythonic_function_(		"y0l", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+y1l = _rpythonic_function_(		"y1l", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+ynl = _rpythonic_function_(		"ynl", ctypes.c_double, [
+	("none",		ctypes.c_int),
+	("none",		ctypes.c_double),] )
+
+erfl = _rpythonic_function_(		"erfl", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+erfcl = _rpythonic_function_(		"erfcl", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+lgammal = _rpythonic_function_(		"lgammal", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+tgammal = _rpythonic_function_(		"tgammal", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+gammal = _rpythonic_function_(		"gammal", ctypes.c_double, [
+	("none",		ctypes.c_double),] )
+
+lgammal_r = _rpythonic_function_(		"lgammal_r", ctypes.c_double, [
+	("none",		ctypes.c_double),
+	("__signgamp",		ctypes.POINTER(ctypes.c_int)),] )
+
+rintl = _rpythonic_function_(		"rintl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+nextafterl = _rpythonic_function_(		"nextafterl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+nexttowardl = _rpythonic_function_(		"nexttowardl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+remainderl = _rpythonic_function_(		"remainderl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+scalbnl = _rpythonic_function_(		"scalbnl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_int),] )
+
+ilogbl = _rpythonic_function_(		"ilogbl", ctypes.c_int, [
+	("__x",		ctypes.c_double),] )
+
+scalblnl = _rpythonic_function_(		"scalblnl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_int64),] )
+
+nearbyintl = _rpythonic_function_(		"nearbyintl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+roundl = _rpythonic_function_(		"roundl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+truncl = _rpythonic_function_(		"truncl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+remquol = _rpythonic_function_(		"remquol", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),
+	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
+
+lrintl = _rpythonic_function_(		"lrintl", ctypes.c_int64, [
+	("__x",		ctypes.c_double),] )
+
+llrintl = _rpythonic_function_(		"llrintl", ctypes.c_longlong, [
+	("__x",		ctypes.c_double),] )
+
+lroundl = _rpythonic_function_(		"lroundl", ctypes.c_int64, [
+	("__x",		ctypes.c_double),] )
+
+llroundl = _rpythonic_function_(		"llroundl", ctypes.c_longlong, [
+	("__x",		ctypes.c_double),] )
+
+fdiml = _rpythonic_function_(		"fdiml", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+fmaxl = _rpythonic_function_(		"fmaxl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+fminl = _rpythonic_function_(		"fminl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),] )
+
+fmal = _rpythonic_function_(		"fmal", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),
+	("__z",		ctypes.c_double),] )
+
+scalbl = _rpythonic_function_(		"scalbl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_double),] )
+
+matherr = _rpythonic_function_(		"matherr", ctypes.c_int, [
+	("__exc",		ctypes.POINTER(exception)),] )
+
+bvhtree_build_from_mvert = _rpythonic_function_(		"bvhtree_build_from_mvert", ctypes.POINTER(BVHTree), [
+	("mfaces",		ctypes.POINTER(MFace)),
+	("numfaces",		ctypes.c_uint),
+	("x",		ctypes.POINTER(MVert)),
+	("numverts",		ctypes.c_uint),
+	("epsilon",		ctypes.c_float),] )
+
+bvhtree_update_from_mvert = _rpythonic_function_(		"bvhtree_update_from_mvert", ctypes.c_void_p, [
+	("bvhtree",		ctypes.POINTER(BVHTree)),
+	("faces",		ctypes.POINTER(MFace)),
+	("numfaces",		ctypes.c_int),
+	("x",		ctypes.POINTER(MVert)),
+	("xnew",		ctypes.POINTER(MVert)),
+	("numverts",		ctypes.c_int),
+	("moving",		ctypes.c_int),] )
+
+BLI_linklist_append_fast = _rpythonic_function_(		"BLI_linklist_append_fast", ctypes.POINTER(LinkNode), [
+	("listp",		ctypes.POINTER(ctypes.POINTER(LinkNode))),
+	("ptr",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+collision_move_object = _rpythonic_function_(		"collision_move_object", ctypes.c_void_p, [
+	("collmd",		ctypes.POINTER(CollisionModifierData)),
+	("step",		ctypes.c_float),
+	("prevstep",		ctypes.c_float),] )
+
+collisions_compute_barycentric = _rpythonic_function_(		"collisions_compute_barycentric", ctypes.c_void_p, [
+	("pv",		( ctypes.c_float * 3 )),
+	("p1",		( ctypes.c_float * 3 )),
+	("p2",		( ctypes.c_float * 3 )),
+	("p3",		( ctypes.c_float * 3 )),
+	("w1",		ctypes.POINTER(ctypes.c_float)),
+	("w2",		ctypes.POINTER(ctypes.c_float)),
+	("w3",		ctypes.POINTER(ctypes.c_float)),] )
+
+interpolateOnTriangle = _rpythonic_function_(		"interpolateOnTriangle", ctypes.c_void_p, [
+	("to",		( ctypes.c_float * 3 )),
+	("v1",		( ctypes.c_float * 3 )),
+	("v2",		( ctypes.c_float * 3 )),
+	("v3",		( ctypes.c_float * 3 )),
+	("w1",		ctypes.c_double),
+	("w2",		ctypes.c_double),
+	("w3",		ctypes.c_double),] )
+
+get_collisionobjects = _rpythonic_function_(		"get_collisionobjects", ctypes.POINTER(ctypes.POINTER(Object)), [
+	("scene",		ctypes.POINTER(Scene)),
+	("C_self",		ctypes.POINTER(Object)),
+	("group",		ctypes.POINTER(Group)),
+	("numcollobj",		ctypes.POINTER(ctypes.c_uint)),] )
+
+get_collider_cache = _rpythonic_function_(		"get_collider_cache", ctypes.POINTER(ListBase), [
+	("scene",		ctypes.POINTER(Scene)),
+	("C_self",		ctypes.POINTER(Object)),
+	("group",		ctypes.POINTER(Group)),] )
+
+free_collider_cache = _rpythonic_function_(		"free_collider_cache", ctypes.c_void_p, [
+	("colliders",		ctypes.POINTER(ctypes.POINTER(ListBase))),] )
+
+BKE_tracking_init_settings = _rpythonic_function_(		"BKE_tracking_init_settings", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),] )
+
+BKE_tracking_clamp_track = _rpythonic_function_(		"BKE_tracking_clamp_track", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("event",		ctypes.c_int),] )
+
+BKE_tracking_track_flag = _rpythonic_function_(		"BKE_tracking_track_flag", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("area",		ctypes.c_int),
+	("flag",		ctypes.c_int),
+	("clear",		ctypes.c_int),] )
+
+BKE_tracking_add_track = _rpythonic_function_(		"BKE_tracking_add_track", ctypes.POINTER(MovieTrackingTrack), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("x",		ctypes.c_float),
+	("y",		ctypes.c_float),
+	("framenr",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+BKE_tracking_insert_marker = _rpythonic_function_(		"BKE_tracking_insert_marker", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("marker",		ctypes.POINTER(MovieTrackingMarker)),] )
+
+BKE_tracking_delete_marker = _rpythonic_function_(		"BKE_tracking_delete_marker", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("framenr",		ctypes.c_int),] )
+
+BKE_tracking_get_marker = _rpythonic_function_(		"BKE_tracking_get_marker", ctypes.POINTER(MovieTrackingMarker), [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("framenr",		ctypes.c_int),] )
+
+BKE_tracking_ensure_marker = _rpythonic_function_(		"BKE_tracking_ensure_marker", ctypes.POINTER(MovieTrackingMarker), [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("framenr",		ctypes.c_int),] )
+
+BKE_tracking_exact_marker = _rpythonic_function_(		"BKE_tracking_exact_marker", ctypes.POINTER(MovieTrackingMarker), [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("framenr",		ctypes.c_int),] )
+
+BKE_tracking_has_marker = _rpythonic_function_(		"BKE_tracking_has_marker", ctypes.c_int, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("framenr",		ctypes.c_int),] )
+
+BKE_tracking_free_track = _rpythonic_function_(		"BKE_tracking_free_track", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),] )
+
+BKE_tracking_clear_path = _rpythonic_function_(		"BKE_tracking_clear_path", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("ref_frame",		ctypes.c_int),
+	("action",		ctypes.c_int),] )
+
+BKE_tracking_test_join_tracks = _rpythonic_function_(		"BKE_tracking_test_join_tracks", ctypes.c_int, [
+	("dst_track",		ctypes.POINTER(MovieTrackingTrack)),
+	("src_track",		ctypes.POINTER(MovieTrackingTrack)),] )
+
+BKE_tracking_join_tracks = _rpythonic_function_(		"BKE_tracking_join_tracks", ctypes.c_void_p, [
+	("dst_track",		ctypes.POINTER(MovieTrackingTrack)),
+	("src_track",		ctypes.POINTER(MovieTrackingTrack)),] )
+
+BKE_tracking_free = _rpythonic_function_(		"BKE_tracking_free", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),] )
+
+BKE_tracking_get_pattern_imbuf = _rpythonic_function_(		"BKE_tracking_get_pattern_imbuf", ctypes.POINTER(ImBuf), [
+	("ibuf",		ctypes.POINTER(ImBuf)),
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("marker",		ctypes.POINTER(MovieTrackingMarker)),
+	("margin",		ctypes.c_int),
+	("anchored",		ctypes.c_int),
+	("pos",		( ctypes.c_float * 2 )),
+	("origin",		( ctypes.c_int * 2 )),] )
+
+BKE_tracking_get_search_imbuf = _rpythonic_function_(		"BKE_tracking_get_search_imbuf", ctypes.POINTER(ImBuf), [
+	("ibuf",		ctypes.POINTER(ImBuf)),
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("marker",		ctypes.POINTER(MovieTrackingMarker)),
+	("margin",		ctypes.c_int),
+	("anchored",		ctypes.c_int),
+	("pos",		( ctypes.c_float * 2 )),
+	("origin",		( ctypes.c_int * 2 )),] )
+
+BKE_track_unique_name = _rpythonic_function_(		"BKE_track_unique_name", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("track",		ctypes.POINTER(MovieTrackingTrack)),] )
+
+BKE_tracking_named_track = _rpythonic_function_(		"BKE_tracking_named_track", ctypes.POINTER(MovieTrackingTrack), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+BKE_tracking_indexed_track = _rpythonic_function_(		"BKE_tracking_indexed_track", ctypes.POINTER(MovieTrackingTrack), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("tracknr",		ctypes.c_int),] )
+
+BKE_tracking_camera_shift = _rpythonic_function_(		"BKE_tracking_camera_shift", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("winx",		ctypes.c_int),
+	("winy",		ctypes.c_int),
+	("shiftx",		ctypes.POINTER(ctypes.c_float)),
+	("shifty",		ctypes.POINTER(ctypes.c_float)),] )
+
+BKE_tracking_camera_to_blender = _rpythonic_function_(		"BKE_tracking_camera_to_blender", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("scene",		ctypes.POINTER(Scene)),
+	("camera",		ctypes.POINTER(Camera)),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+BKE_get_tracking_mat = _rpythonic_function_(		"BKE_get_tracking_mat", ctypes.c_void_p, [
+	("scene",		ctypes.POINTER(Scene)),
+	("ob",		ctypes.POINTER(Object)),
+	("mat",		( ctypes.c_float * 4 )),] )
+
+BKE_tracking_projection_matrix = _rpythonic_function_(		"BKE_tracking_projection_matrix", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("framenr",		ctypes.c_int),
+	("winx",		ctypes.c_int),
+	("winy",		ctypes.c_int),
+	("mat",		( ctypes.c_float * 4 )),] )
+
+BKE_tracking_context_new = _rpythonic_function_(		"BKE_tracking_context_new", ctypes.POINTER(MovieTrackingContext), [
+	("clip",		ctypes.POINTER(MovieClip)),
+	("user",		ctypes.POINTER(MovieClipUser)),
+	("backwards",		ctypes.c_short),
+	("disable_failed",		ctypes.c_short),
+	("sequence",		ctypes.c_short),] )
+
+BKE_tracking_context_free = _rpythonic_function_(		"BKE_tracking_context_free", ctypes.c_void_p, [
+	("context",		ctypes.POINTER(MovieTrackingContext)),] )
+
+BKE_tracking_sync = _rpythonic_function_(		"BKE_tracking_sync", ctypes.c_void_p, [
+	("context",		ctypes.POINTER(MovieTrackingContext)),] )
+
+BKE_tracking_sync_user = _rpythonic_function_(		"BKE_tracking_sync_user", ctypes.c_void_p, [
+	("user",		ctypes.POINTER(MovieClipUser)),
+	("context",		ctypes.POINTER(MovieTrackingContext)),] )
+
+BKE_tracking_next = _rpythonic_function_(		"BKE_tracking_next", ctypes.c_int, [
+	("context",		ctypes.POINTER(MovieTrackingContext)),] )
+
+BKE_tracking_can_reconstruct = _rpythonic_function_(		"BKE_tracking_can_reconstruct", ctypes.c_int, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("error_msg",		ctypes.POINTER(ctypes.c_char)),
+	("error_size",		ctypes.c_int),] )
+
+BKE_tracking_reconstruction_context_new = _rpythonic_function_(		"BKE_tracking_reconstruction_context_new", ctypes.POINTER(MovieReconstructContext), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("keyframe1",		ctypes.c_int),
+	("keyframe2",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+BKE_tracking_reconstruction_context_free = _rpythonic_function_(		"BKE_tracking_reconstruction_context_free", ctypes.c_void_p, [
+	("context",		ctypes.POINTER(MovieReconstructContext)),] )
+
+BKE_tracking_solve_reconstruction = _rpythonic_function_(		"BKE_tracking_solve_reconstruction", ctypes.c_void_p, [
+	("context",		ctypes.POINTER(MovieReconstructContext)),
+	("stop",		ctypes.POINTER(ctypes.c_short)),
+	("do_update",		ctypes.POINTER(ctypes.c_short)),
+	("progress",		ctypes.POINTER(ctypes.c_float)),
+	("stats_message",		ctypes.POINTER(ctypes.c_char)),
+	("message_size",		ctypes.c_int),] )
+
+BKE_tracking_finish_reconstruction = _rpythonic_function_(		"BKE_tracking_finish_reconstruction", ctypes.c_int, [
+	("context",		ctypes.POINTER(MovieReconstructContext)),
+	("tracking",		ctypes.POINTER(MovieTracking)),] )
+
+BKE_tracking_get_reconstructed_camera = _rpythonic_function_(		"BKE_tracking_get_reconstructed_camera", ctypes.POINTER(MovieReconstructedCamera), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("framenr",		ctypes.c_int),] )
+
+BKE_tracking_get_interpolated_camera = _rpythonic_function_(		"BKE_tracking_get_interpolated_camera", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("framenr",		ctypes.c_int),
+	("mat",		( ctypes.c_float * 4 )),] )
+
+BKE_tracking_detect_fast = _rpythonic_function_(		"BKE_tracking_detect_fast", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("imbuf",		ctypes.POINTER(ImBuf)),
+	("framenr",		ctypes.c_int),
+	("margin",		ctypes.c_int),
+	("min_trackness",		ctypes.c_int),
+	("min_distance",		ctypes.c_int),
+	("layer",		ctypes.POINTER(bGPDlayer)),
+	("place_outside_layer",		ctypes.c_int),] )
+
+BKE_tracking_stabilization_data = _rpythonic_function_(		"BKE_tracking_stabilization_data", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("framenr",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),
+	("loc",		( ctypes.c_float * 2 )),
+	("scale",		ctypes.POINTER(ctypes.c_float)),
+	("angle",		ctypes.POINTER(ctypes.c_float)),] )
+
+BKE_tracking_stabilize = _rpythonic_function_(		"BKE_tracking_stabilize", ctypes.POINTER(ImBuf), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("framenr",		ctypes.c_int),
+	("ibuf",		ctypes.POINTER(ImBuf)),
+	("loc",		( ctypes.c_float * 2 )),
+	("scale",		ctypes.POINTER(ctypes.c_float)),
+	("angle",		ctypes.POINTER(ctypes.c_float)),] )
+
+BKE_tracking_stabdata_to_mat4 = _rpythonic_function_(		"BKE_tracking_stabdata_to_mat4", ctypes.c_void_p, [
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),
+	("loc",		( ctypes.c_float * 2 )),
+	("scale",		ctypes.c_float),
+	("angle",		ctypes.c_float),
+	("mat",		( ctypes.c_float * 4 )),] )
+
+BKE_tracking_apply_intrinsics = _rpythonic_function_(		"BKE_tracking_apply_intrinsics", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("co",		( ctypes.c_float * 2 )),
+	("nco",		( ctypes.c_float * 2 )),] )
+
+BKE_tracking_invert_intrinsics = _rpythonic_function_(		"BKE_tracking_invert_intrinsics", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("co",		( ctypes.c_float * 2 )),
+	("nco",		( ctypes.c_float * 2 )),] )
+
+BKE_tracking_distortion_create = _rpythonic_function_(		"BKE_tracking_distortion_create", ctypes.POINTER(MovieDistortion), [] )
+
+BKE_tracking_distortion_copy = _rpythonic_function_(		"BKE_tracking_distortion_copy", ctypes.POINTER(MovieDistortion), [
+	("distortion",		ctypes.POINTER(MovieDistortion)),] )
+
+BKE_tracking_distortion_exec = _rpythonic_function_(		"BKE_tracking_distortion_exec", ctypes.POINTER(ImBuf), [
+	("distortion",		ctypes.POINTER(MovieDistortion)),
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("ibuf",		ctypes.POINTER(ImBuf)),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),
+	("overscan",		ctypes.c_float),
+	("undistort",		ctypes.c_int),] )
+
+BKE_tracking_distortion_destroy = _rpythonic_function_(		"BKE_tracking_distortion_destroy", ctypes.c_void_p, [
+	("distortion",		ctypes.POINTER(MovieDistortion)),] )
+
+BKE_tracking_undistort = _rpythonic_function_(		"BKE_tracking_undistort", ctypes.POINTER(ImBuf), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("ibuf",		ctypes.POINTER(ImBuf)),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),
+	("overscan",		ctypes.c_float),] )
+
+BKE_tracking_distort = _rpythonic_function_(		"BKE_tracking_distort", ctypes.POINTER(ImBuf), [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("ibuf",		ctypes.POINTER(ImBuf)),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),
+	("overscan",		ctypes.c_float),] )
+
+BKE_tracking_select_track = _rpythonic_function_(		"BKE_tracking_select_track", ctypes.c_void_p, [
+	("tracking",		ctypes.POINTER(MovieTracking)),
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("area",		ctypes.c_int),
+	("extend",		ctypes.c_int),] )
+
+BKE_tracking_deselect_track = _rpythonic_function_(		"BKE_tracking_deselect_track", ctypes.c_void_p, [
+	("track",		ctypes.POINTER(MovieTrackingTrack)),
+	("area",		ctypes.c_int),] )
+
 IMB_init = _rpythonic_function_(		"IMB_init", ctypes.c_void_p, [] )
 
 IMB_exit = _rpythonic_function_(		"IMB_exit", ctypes.c_void_p, [] )
@@ -18178,6 +20717,10 @@ bilinear_interpolation_color_wrap = _rpythonic_function_(		"bilinear_interpolati
 	("col_float",		ctypes.POINTER(ctypes.c_float)),
 	("u",		ctypes.c_float),
 	("v",		ctypes.c_float),] )
+
+IMB_loadiffmem = _rpythonic_function_(		"IMB_loadiffmem", ctypes.POINTER(ImBuf), [
+	("mem",		ctypes.POINTER(ctypes.c_int)),
+	("flags",		ctypes.c_int),] )
 
 IMB_loadifffile = _rpythonic_function_(		"IMB_loadifffile", ctypes.POINTER(ImBuf), [
 	("file",		ctypes.c_int),
@@ -21118,756 +23661,6 @@ GPU_draw_buffers = _rpythonic_function_(		"GPU_draw_buffers", ctypes.c_void_p, [
 GPU_free_buffers = _rpythonic_function_(		"GPU_free_buffers", ctypes.c_void_p, [
 	("buffers",		ctypes.POINTER(GPU_Buffers)),] )
 
-acos = _rpythonic_function_(		"acos", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-asin = _rpythonic_function_(		"asin", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-atan = _rpythonic_function_(		"atan", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-atan2 = _rpythonic_function_(		"atan2", ctypes.c_double, [
-	("__y",		ctypes.c_double),
-	("__x",		ctypes.c_double),] )
-
-cos = _rpythonic_function_(		"cos", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sin = _rpythonic_function_(		"sin", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-tan = _rpythonic_function_(		"tan", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-cosh = _rpythonic_function_(		"cosh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sinh = _rpythonic_function_(		"sinh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-tanh = _rpythonic_function_(		"tanh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sincos = _rpythonic_function_(		"sincos", ctypes.c_void_p, [
-	("__x",		ctypes.c_double),
-	("__sinx",		ctypes.POINTER(ctypes.c_double)),
-	("__cosx",		ctypes.POINTER(ctypes.c_double)),] )
-
-acosh = _rpythonic_function_(		"acosh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-asinh = _rpythonic_function_(		"asinh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-atanh = _rpythonic_function_(		"atanh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-exp = _rpythonic_function_(		"exp", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-frexp = _rpythonic_function_(		"frexp", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__exponent",		ctypes.POINTER(ctypes.c_int)),] )
-
-ldexp = _rpythonic_function_(		"ldexp", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__exponent",		ctypes.c_int),] )
-
-log = _rpythonic_function_(		"log", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-log10 = _rpythonic_function_(		"log10", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-modf = _rpythonic_function_(		"modf", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__iptr",		ctypes.POINTER(ctypes.c_double)),] )
-
-exp10 = _rpythonic_function_(		"exp10", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-pow10 = _rpythonic_function_(		"pow10", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-expm1 = _rpythonic_function_(		"expm1", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-log1p = _rpythonic_function_(		"log1p", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-logb = _rpythonic_function_(		"logb", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-exp2 = _rpythonic_function_(		"exp2", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-log2 = _rpythonic_function_(		"log2", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-pow = _rpythonic_function_(		"pow", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-sqrt = _rpythonic_function_(		"sqrt", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-hypot = _rpythonic_function_(		"hypot", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-cbrt = _rpythonic_function_(		"cbrt", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-ceil = _rpythonic_function_(		"ceil", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-fabs = _rpythonic_function_(		"fabs", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-floor = _rpythonic_function_(		"floor", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-fmod = _rpythonic_function_(		"fmod", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-isinf = _rpythonic_function_(		"isinf", ctypes.c_int, [
-	("__value",		ctypes.c_double),] )
-
-finite = _rpythonic_function_(		"finite", ctypes.c_int, [
-	("__value",		ctypes.c_double),] )
-
-drem = _rpythonic_function_(		"drem", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-significand = _rpythonic_function_(		"significand", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-copysign = _rpythonic_function_(		"copysign", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-nan = _rpythonic_function_(		"nan", ctypes.c_double, [
-	("__tagb",		ctypes.POINTER(ctypes.c_char)),] )
-
-isnan = _rpythonic_function_(		"isnan", ctypes.c_int, [
-	("__value",		ctypes.c_double),] )
-
-j0 = _rpythonic_function_(		"j0", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-j1 = _rpythonic_function_(		"j1", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-jn = _rpythonic_function_(		"jn", ctypes.c_double, [
-	("none",		ctypes.c_int),
-	("none",		ctypes.c_double),] )
-
-y0 = _rpythonic_function_(		"y0", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-y1 = _rpythonic_function_(		"y1", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-yn = _rpythonic_function_(		"yn", ctypes.c_double, [
-	("none",		ctypes.c_int),
-	("none",		ctypes.c_double),] )
-
-erf = _rpythonic_function_(		"erf", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-erfc = _rpythonic_function_(		"erfc", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-lgamma = _rpythonic_function_(		"lgamma", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-tgamma = _rpythonic_function_(		"tgamma", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-gamma = _rpythonic_function_(		"gamma", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-lgamma_r = _rpythonic_function_(		"lgamma_r", ctypes.c_double, [
-	("none",		ctypes.c_double),
-	("__signgamp",		ctypes.POINTER(ctypes.c_int)),] )
-
-rint = _rpythonic_function_(		"rint", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-nextafter = _rpythonic_function_(		"nextafter", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-nexttoward = _rpythonic_function_(		"nexttoward", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-remainder = _rpythonic_function_(		"remainder", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-scalbn = _rpythonic_function_(		"scalbn", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_int),] )
-
-ilogb = _rpythonic_function_(		"ilogb", ctypes.c_int, [
-	("__x",		ctypes.c_double),] )
-
-scalbln = _rpythonic_function_(		"scalbln", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_int64),] )
-
-nearbyint = _rpythonic_function_(		"nearbyint", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-round = _rpythonic_function_(		"round", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-trunc = _rpythonic_function_(		"trunc", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-remquo = _rpythonic_function_(		"remquo", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),
-	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
-
-lrint = _rpythonic_function_(		"lrint", ctypes.c_int64, [
-	("__x",		ctypes.c_double),] )
-
-llrint = _rpythonic_function_(		"llrint", ctypes.c_longlong, [
-	("__x",		ctypes.c_double),] )
-
-lround = _rpythonic_function_(		"lround", ctypes.c_int64, [
-	("__x",		ctypes.c_double),] )
-
-llround = _rpythonic_function_(		"llround", ctypes.c_longlong, [
-	("__x",		ctypes.c_double),] )
-
-fdim = _rpythonic_function_(		"fdim", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-fmax = _rpythonic_function_(		"fmax", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-fmin = _rpythonic_function_(		"fmin", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-fma = _rpythonic_function_(		"fma", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),
-	("__z",		ctypes.c_double),] )
-
-scalb = _rpythonic_function_(		"scalb", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_double),] )
-
-acosf = _rpythonic_function_(		"acosf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-asinf = _rpythonic_function_(		"asinf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-atanf = _rpythonic_function_(		"atanf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-atan2f = _rpythonic_function_(		"atan2f", ctypes.c_float, [
-	("__y",		ctypes.c_float),
-	("__x",		ctypes.c_float),] )
-
-cosf = _rpythonic_function_(		"cosf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-sinf = _rpythonic_function_(		"sinf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-tanf = _rpythonic_function_(		"tanf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-coshf = _rpythonic_function_(		"coshf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-sinhf = _rpythonic_function_(		"sinhf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-tanhf = _rpythonic_function_(		"tanhf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-sincosf = _rpythonic_function_(		"sincosf", ctypes.c_void_p, [
-	("__x",		ctypes.c_float),
-	("__sinx",		ctypes.POINTER(ctypes.c_float)),
-	("__cosx",		ctypes.POINTER(ctypes.c_float)),] )
-
-acoshf = _rpythonic_function_(		"acoshf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-asinhf = _rpythonic_function_(		"asinhf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-atanhf = _rpythonic_function_(		"atanhf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-expf = _rpythonic_function_(		"expf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-frexpf = _rpythonic_function_(		"frexpf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__exponent",		ctypes.POINTER(ctypes.c_int)),] )
-
-ldexpf = _rpythonic_function_(		"ldexpf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__exponent",		ctypes.c_int),] )
-
-logf = _rpythonic_function_(		"logf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-log10f = _rpythonic_function_(		"log10f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-modff = _rpythonic_function_(		"modff", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__iptr",		ctypes.POINTER(ctypes.c_float)),] )
-
-exp10f = _rpythonic_function_(		"exp10f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-pow10f = _rpythonic_function_(		"pow10f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-expm1f = _rpythonic_function_(		"expm1f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-log1pf = _rpythonic_function_(		"log1pf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-logbf = _rpythonic_function_(		"logbf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-exp2f = _rpythonic_function_(		"exp2f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-log2f = _rpythonic_function_(		"log2f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-powf = _rpythonic_function_(		"powf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-sqrtf = _rpythonic_function_(		"sqrtf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-hypotf = _rpythonic_function_(		"hypotf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-cbrtf = _rpythonic_function_(		"cbrtf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-ceilf = _rpythonic_function_(		"ceilf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-fabsf = _rpythonic_function_(		"fabsf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-floorf = _rpythonic_function_(		"floorf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-fmodf = _rpythonic_function_(		"fmodf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-isinff = _rpythonic_function_(		"isinff", ctypes.c_int, [
-	("__value",		ctypes.c_float),] )
-
-finitef = _rpythonic_function_(		"finitef", ctypes.c_int, [
-	("__value",		ctypes.c_float),] )
-
-dremf = _rpythonic_function_(		"dremf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-significandf = _rpythonic_function_(		"significandf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-copysignf = _rpythonic_function_(		"copysignf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-nanf = _rpythonic_function_(		"nanf", ctypes.c_float, [
-	("__tagb",		ctypes.POINTER(ctypes.c_char)),] )
-
-isnanf = _rpythonic_function_(		"isnanf", ctypes.c_int, [
-	("__value",		ctypes.c_float),] )
-
-j0f = _rpythonic_function_(		"j0f", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-j1f = _rpythonic_function_(		"j1f", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-jnf = _rpythonic_function_(		"jnf", ctypes.c_float, [
-	("none",		ctypes.c_int),
-	("none",		ctypes.c_float),] )
-
-y0f = _rpythonic_function_(		"y0f", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-y1f = _rpythonic_function_(		"y1f", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-ynf = _rpythonic_function_(		"ynf", ctypes.c_float, [
-	("none",		ctypes.c_int),
-	("none",		ctypes.c_float),] )
-
-erff = _rpythonic_function_(		"erff", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-erfcf = _rpythonic_function_(		"erfcf", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-lgammaf = _rpythonic_function_(		"lgammaf", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-tgammaf = _rpythonic_function_(		"tgammaf", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-gammaf = _rpythonic_function_(		"gammaf", ctypes.c_float, [
-	("none",		ctypes.c_float),] )
-
-lgammaf_r = _rpythonic_function_(		"lgammaf_r", ctypes.c_float, [
-	("none",		ctypes.c_float),
-	("__signgamp",		ctypes.POINTER(ctypes.c_int)),] )
-
-rintf = _rpythonic_function_(		"rintf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-nextafterf = _rpythonic_function_(		"nextafterf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-nexttowardf = _rpythonic_function_(		"nexttowardf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_double),] )
-
-remainderf = _rpythonic_function_(		"remainderf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-scalbnf = _rpythonic_function_(		"scalbnf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__n",		ctypes.c_int),] )
-
-ilogbf = _rpythonic_function_(		"ilogbf", ctypes.c_int, [
-	("__x",		ctypes.c_float),] )
-
-scalblnf = _rpythonic_function_(		"scalblnf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__n",		ctypes.c_int64),] )
-
-nearbyintf = _rpythonic_function_(		"nearbyintf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-roundf = _rpythonic_function_(		"roundf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-truncf = _rpythonic_function_(		"truncf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-remquof = _rpythonic_function_(		"remquof", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),
-	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
-
-lrintf = _rpythonic_function_(		"lrintf", ctypes.c_int64, [
-	("__x",		ctypes.c_float),] )
-
-llrintf = _rpythonic_function_(		"llrintf", ctypes.c_longlong, [
-	("__x",		ctypes.c_float),] )
-
-lroundf = _rpythonic_function_(		"lroundf", ctypes.c_int64, [
-	("__x",		ctypes.c_float),] )
-
-llroundf = _rpythonic_function_(		"llroundf", ctypes.c_longlong, [
-	("__x",		ctypes.c_float),] )
-
-fdimf = _rpythonic_function_(		"fdimf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-fmaxf = _rpythonic_function_(		"fmaxf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-fminf = _rpythonic_function_(		"fminf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-fmaf = _rpythonic_function_(		"fmaf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),
-	("__z",		ctypes.c_float),] )
-
-scalbf = _rpythonic_function_(		"scalbf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__n",		ctypes.c_float),] )
-
-acosl = _rpythonic_function_(		"acosl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-asinl = _rpythonic_function_(		"asinl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-atanl = _rpythonic_function_(		"atanl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-atan2l = _rpythonic_function_(		"atan2l", ctypes.c_double, [
-	("__y",		ctypes.c_double),
-	("__x",		ctypes.c_double),] )
-
-cosl = _rpythonic_function_(		"cosl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sinl = _rpythonic_function_(		"sinl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-tanl = _rpythonic_function_(		"tanl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-coshl = _rpythonic_function_(		"coshl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sinhl = _rpythonic_function_(		"sinhl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-tanhl = _rpythonic_function_(		"tanhl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sincosl = _rpythonic_function_(		"sincosl", ctypes.c_void_p, [
-	("__x",		ctypes.c_double),
-	("__sinx",		ctypes.POINTER(ctypes.c_double)),
-	("__cosx",		ctypes.POINTER(ctypes.c_double)),] )
-
-acoshl = _rpythonic_function_(		"acoshl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-asinhl = _rpythonic_function_(		"asinhl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-atanhl = _rpythonic_function_(		"atanhl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-expl = _rpythonic_function_(		"expl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-frexpl = _rpythonic_function_(		"frexpl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__exponent",		ctypes.POINTER(ctypes.c_int)),] )
-
-ldexpl = _rpythonic_function_(		"ldexpl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__exponent",		ctypes.c_int),] )
-
-logl = _rpythonic_function_(		"logl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-log10l = _rpythonic_function_(		"log10l", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-modfl = _rpythonic_function_(		"modfl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__iptr",		ctypes.POINTER(ctypes.c_double)),] )
-
-exp10l = _rpythonic_function_(		"exp10l", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-pow10l = _rpythonic_function_(		"pow10l", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-expm1l = _rpythonic_function_(		"expm1l", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-log1pl = _rpythonic_function_(		"log1pl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-logbl = _rpythonic_function_(		"logbl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-exp2l = _rpythonic_function_(		"exp2l", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-log2l = _rpythonic_function_(		"log2l", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-powl = _rpythonic_function_(		"powl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-sqrtl = _rpythonic_function_(		"sqrtl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-hypotl = _rpythonic_function_(		"hypotl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-cbrtl = _rpythonic_function_(		"cbrtl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-ceill = _rpythonic_function_(		"ceill", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-fabsl = _rpythonic_function_(		"fabsl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-floorl = _rpythonic_function_(		"floorl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-fmodl = _rpythonic_function_(		"fmodl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-isinfl = _rpythonic_function_(		"isinfl", ctypes.c_int, [
-	("__value",		ctypes.c_double),] )
-
-finitel = _rpythonic_function_(		"finitel", ctypes.c_int, [
-	("__value",		ctypes.c_double),] )
-
-dreml = _rpythonic_function_(		"dreml", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-significandl = _rpythonic_function_(		"significandl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-copysignl = _rpythonic_function_(		"copysignl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-nanl = _rpythonic_function_(		"nanl", ctypes.c_double, [
-	("__tagb",		ctypes.POINTER(ctypes.c_char)),] )
-
-isnanl = _rpythonic_function_(		"isnanl", ctypes.c_int, [
-	("__value",		ctypes.c_double),] )
-
-j0l = _rpythonic_function_(		"j0l", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-j1l = _rpythonic_function_(		"j1l", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-jnl = _rpythonic_function_(		"jnl", ctypes.c_double, [
-	("none",		ctypes.c_int),
-	("none",		ctypes.c_double),] )
-
-y0l = _rpythonic_function_(		"y0l", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-y1l = _rpythonic_function_(		"y1l", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-ynl = _rpythonic_function_(		"ynl", ctypes.c_double, [
-	("none",		ctypes.c_int),
-	("none",		ctypes.c_double),] )
-
-erfl = _rpythonic_function_(		"erfl", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-erfcl = _rpythonic_function_(		"erfcl", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-lgammal = _rpythonic_function_(		"lgammal", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-tgammal = _rpythonic_function_(		"tgammal", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-gammal = _rpythonic_function_(		"gammal", ctypes.c_double, [
-	("none",		ctypes.c_double),] )
-
-lgammal_r = _rpythonic_function_(		"lgammal_r", ctypes.c_double, [
-	("none",		ctypes.c_double),
-	("__signgamp",		ctypes.POINTER(ctypes.c_int)),] )
-
-rintl = _rpythonic_function_(		"rintl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-nextafterl = _rpythonic_function_(		"nextafterl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-nexttowardl = _rpythonic_function_(		"nexttowardl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-remainderl = _rpythonic_function_(		"remainderl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-scalbnl = _rpythonic_function_(		"scalbnl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_int),] )
-
-ilogbl = _rpythonic_function_(		"ilogbl", ctypes.c_int, [
-	("__x",		ctypes.c_double),] )
-
-scalblnl = _rpythonic_function_(		"scalblnl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_int64),] )
-
-nearbyintl = _rpythonic_function_(		"nearbyintl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-roundl = _rpythonic_function_(		"roundl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-truncl = _rpythonic_function_(		"truncl", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-remquol = _rpythonic_function_(		"remquol", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),
-	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
-
-lrintl = _rpythonic_function_(		"lrintl", ctypes.c_int64, [
-	("__x",		ctypes.c_double),] )
-
-llrintl = _rpythonic_function_(		"llrintl", ctypes.c_longlong, [
-	("__x",		ctypes.c_double),] )
-
-lroundl = _rpythonic_function_(		"lroundl", ctypes.c_int64, [
-	("__x",		ctypes.c_double),] )
-
-llroundl = _rpythonic_function_(		"llroundl", ctypes.c_longlong, [
-	("__x",		ctypes.c_double),] )
-
-fdiml = _rpythonic_function_(		"fdiml", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-fmaxl = _rpythonic_function_(		"fmaxl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-fminl = _rpythonic_function_(		"fminl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
-
-fmal = _rpythonic_function_(		"fmal", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),
-	("__z",		ctypes.c_double),] )
-
-scalbl = _rpythonic_function_(		"scalbl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_double),] )
-
-matherr = _rpythonic_function_(		"matherr", ctypes.c_int, [
-	("__exc",		ctypes.POINTER(exception)),] )
-
 double_round = _rpythonic_function_(		"double_round", ctypes.c_double, [
 	("x",		ctypes.c_double),
 	("ndigits",		ctypes.c_int),] )
@@ -24135,6 +25928,11 @@ plNearestPoints = _rpythonic_function_(		"plNearestPoints", ctypes.c_double, [
 	("pa",		ctypes.POINTER(ctypes.c_float)),
 	("pb",		ctypes.POINTER(ctypes.c_float)),
 	("normal",		( ctypes.c_float * 3 )),] )
+
+bsbNew = _rpythonic_function_(		"bsbNew", ctypes.POINTER(BulletSoftBody), [] )
+
+bsbFree = _rpythonic_function_(		"bsbFree", ctypes.c_void_p, [
+	("sb",		ctypes.POINTER(BulletSoftBody)),] )
 
 Action_fcurves_begin = _rpythonic_function_(		"Action_fcurves_begin", ctypes.c_void_p, [
 	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
@@ -27211,6 +29009,400 @@ Curve_materials_next = _rpythonic_function_(		"Curve_materials_next", ctypes.c_v
 Curve_materials_end = _rpythonic_function_(		"Curve_materials_end", ctypes.c_void_p, [
 	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
 
+KeyingSetInfo_rna_type_get = _rpythonic_function_(		"KeyingSetInfo_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetInfo_bl_label_get = _rpythonic_function_(		"KeyingSetInfo_bl_label_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+KeyingSetInfo_bl_label_length = _rpythonic_function_(		"KeyingSetInfo_bl_label_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetInfo_bl_options_get = _rpythonic_function_(		"KeyingSetInfo_bl_options_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetInfo_bl_idname_get = _rpythonic_function_(		"KeyingSetInfo_bl_idname_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+KeyingSetInfo_bl_idname_length = _rpythonic_function_(		"KeyingSetInfo_bl_idname_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_rna_type_get = _rpythonic_function_(		"KeyingSetPath_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_data_path_get = _rpythonic_function_(		"KeyingSetPath_data_path_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+KeyingSetPath_data_path_length = _rpythonic_function_(		"KeyingSetPath_data_path_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_use_entire_array_get = _rpythonic_function_(		"KeyingSetPath_use_entire_array_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_group_get = _rpythonic_function_(		"KeyingSetPath_group_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+KeyingSetPath_group_length = _rpythonic_function_(		"KeyingSetPath_group_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_group_method_get = _rpythonic_function_(		"KeyingSetPath_group_method_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_id_type_get = _rpythonic_function_(		"KeyingSetPath_id_type_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_id_get = _rpythonic_function_(		"KeyingSetPath_id_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_bl_options_get = _rpythonic_function_(		"KeyingSetPath_bl_options_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPath_array_index_get = _rpythonic_function_(		"KeyingSetPath_array_index_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPaths_rna_type_get = _rpythonic_function_(		"KeyingSetPaths_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPaths_active_get = _rpythonic_function_(		"KeyingSetPaths_active_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetPaths_active_index_get = _rpythonic_function_(		"KeyingSetPaths_active_index_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSets_rna_type_get = _rpythonic_function_(		"KeyingSets_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSets_active_get = _rpythonic_function_(		"KeyingSets_active_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSets_active_index_get = _rpythonic_function_(		"KeyingSets_active_index_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetsAll_rna_type_get = _rpythonic_function_(		"KeyingSetsAll_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetsAll_active_get = _rpythonic_function_(		"KeyingSetsAll_active_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KeyingSetsAll_active_index_get = _rpythonic_function_(		"KeyingSetsAll_active_index_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_reference_axis_get = _rpythonic_function_(		"KinematicConstraint_reference_axis_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_chain_count_get = _rpythonic_function_(		"KinematicConstraint_chain_count_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_distance_get = _rpythonic_function_(		"KinematicConstraint_distance_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_ik_type_get = _rpythonic_function_(		"KinematicConstraint_ik_type_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_iterations_get = _rpythonic_function_(		"KinematicConstraint_iterations_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_limit_mode_get = _rpythonic_function_(		"KinematicConstraint_limit_mode_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_lock_location_x_get = _rpythonic_function_(		"KinematicConstraint_lock_location_x_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_lock_rotation_x_get = _rpythonic_function_(		"KinematicConstraint_lock_rotation_x_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_lock_location_y_get = _rpythonic_function_(		"KinematicConstraint_lock_location_y_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_lock_rotation_y_get = _rpythonic_function_(		"KinematicConstraint_lock_rotation_y_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_lock_location_z_get = _rpythonic_function_(		"KinematicConstraint_lock_location_z_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_lock_rotation_z_get = _rpythonic_function_(		"KinematicConstraint_lock_rotation_z_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_orient_weight_get = _rpythonic_function_(		"KinematicConstraint_orient_weight_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_pole_angle_get = _rpythonic_function_(		"KinematicConstraint_pole_angle_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_pole_subtarget_get = _rpythonic_function_(		"KinematicConstraint_pole_subtarget_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+KinematicConstraint_pole_subtarget_length = _rpythonic_function_(		"KinematicConstraint_pole_subtarget_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_pole_target_get = _rpythonic_function_(		"KinematicConstraint_pole_target_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_use_location_get = _rpythonic_function_(		"KinematicConstraint_use_location_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_use_rotation_get = _rpythonic_function_(		"KinematicConstraint_use_rotation_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_use_stretch_get = _rpythonic_function_(		"KinematicConstraint_use_stretch_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_subtarget_get = _rpythonic_function_(		"KinematicConstraint_subtarget_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+KinematicConstraint_subtarget_length = _rpythonic_function_(		"KinematicConstraint_subtarget_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_target_get = _rpythonic_function_(		"KinematicConstraint_target_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_use_target_get = _rpythonic_function_(		"KinematicConstraint_use_target_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_use_tail_get = _rpythonic_function_(		"KinematicConstraint_use_tail_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+KinematicConstraint_weight_get = _rpythonic_function_(		"KinematicConstraint_weight_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_active_texture_get = _rpythonic_function_(		"Lamp_active_texture_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_active_texture_index_get = _rpythonic_function_(		"Lamp_active_texture_index_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_animation_data_get = _rpythonic_function_(		"Lamp_animation_data_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_color_get = _rpythonic_function_(		"Lamp_color_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("values",		( ctypes.c_float * 3 )),] )
+
+Lamp_use_diffuse_get = _rpythonic_function_(		"Lamp_use_diffuse_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_distance_get = _rpythonic_function_(		"Lamp_distance_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_energy_get = _rpythonic_function_(		"Lamp_energy_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_use_own_layer_get = _rpythonic_function_(		"Lamp_use_own_layer_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_use_negative_get = _rpythonic_function_(		"Lamp_use_negative_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_use_specular_get = _rpythonic_function_(		"Lamp_use_specular_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_texture_slots_begin = _rpythonic_function_(		"Lamp_texture_slots_begin", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lamp_texture_slots_next = _rpythonic_function_(		"Lamp_texture_slots_next", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
+
+Lamp_texture_slots_end = _rpythonic_function_(		"Lamp_texture_slots_end", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
+
+Lamp_type_get = _rpythonic_function_(		"Lamp_type_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_rna_type_get = _rpythonic_function_(		"LampSkySettings_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_use_atmosphere_get = _rpythonic_function_(		"LampSkySettings_use_atmosphere_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_atmosphere_distance_factor_get = _rpythonic_function_(		"LampSkySettings_atmosphere_distance_factor_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_atmosphere_extinction_get = _rpythonic_function_(		"LampSkySettings_atmosphere_extinction_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_atmosphere_inscattering_get = _rpythonic_function_(		"LampSkySettings_atmosphere_inscattering_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_atmosphere_turbidity_get = _rpythonic_function_(		"LampSkySettings_atmosphere_turbidity_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_backscattered_light_get = _rpythonic_function_(		"LampSkySettings_backscattered_light_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_horizon_brightness_get = _rpythonic_function_(		"LampSkySettings_horizon_brightness_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_spread_get = _rpythonic_function_(		"LampSkySettings_spread_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_use_sky_get = _rpythonic_function_(		"LampSkySettings_use_sky_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sky_blend_get = _rpythonic_function_(		"LampSkySettings_sky_blend_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sky_blend_type_get = _rpythonic_function_(		"LampSkySettings_sky_blend_type_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sky_color_space_get = _rpythonic_function_(		"LampSkySettings_sky_color_space_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sky_exposure_get = _rpythonic_function_(		"LampSkySettings_sky_exposure_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sun_brightness_get = _rpythonic_function_(		"LampSkySettings_sun_brightness_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sun_intensity_get = _rpythonic_function_(		"LampSkySettings_sun_intensity_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampSkySettings_sun_size_get = _rpythonic_function_(		"LampSkySettings_sun_size_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlot_use_map_color_get = _rpythonic_function_(		"LampTextureSlot_use_map_color_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlot_color_factor_get = _rpythonic_function_(		"LampTextureSlot_color_factor_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlot_object_get = _rpythonic_function_(		"LampTextureSlot_object_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlot_use_map_shadow_get = _rpythonic_function_(		"LampTextureSlot_use_map_shadow_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlot_shadow_factor_get = _rpythonic_function_(		"LampTextureSlot_shadow_factor_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlot_texture_coords_get = _rpythonic_function_(		"LampTextureSlot_texture_coords_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LampTextureSlots_rna_type_get = _rpythonic_function_(		"LampTextureSlots_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_animation_data_get = _rpythonic_function_(		"Lattice_animation_data_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_interpolation_type_u_get = _rpythonic_function_(		"Lattice_interpolation_type_u_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_interpolation_type_v_get = _rpythonic_function_(		"Lattice_interpolation_type_v_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_interpolation_type_w_get = _rpythonic_function_(		"Lattice_interpolation_type_w_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_use_outside_get = _rpythonic_function_(		"Lattice_use_outside_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_points_begin = _rpythonic_function_(		"Lattice_points_begin", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_points_next = _rpythonic_function_(		"Lattice_points_next", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
+
+Lattice_points_end = _rpythonic_function_(		"Lattice_points_end", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
+
+Lattice_shape_keys_get = _rpythonic_function_(		"Lattice_shape_keys_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_points_u_get = _rpythonic_function_(		"Lattice_points_u_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_points_v_get = _rpythonic_function_(		"Lattice_points_v_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_vertex_group_get = _rpythonic_function_(		"Lattice_vertex_group_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+Lattice_vertex_group_length = _rpythonic_function_(		"Lattice_vertex_group_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Lattice_points_w_get = _rpythonic_function_(		"Lattice_points_w_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LatticeModifier_object_get = _rpythonic_function_(		"LatticeModifier_object_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LatticeModifier_vertex_group_get = _rpythonic_function_(		"LatticeModifier_vertex_group_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+LatticeModifier_vertex_group_length = _rpythonic_function_(		"LatticeModifier_vertex_group_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LatticePoint_rna_type_get = _rpythonic_function_(		"LatticePoint_rna_type_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LatticePoint_co_deform_get = _rpythonic_function_(		"LatticePoint_co_deform_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("values",		( ctypes.c_float * 3 )),] )
+
+LatticePoint_groups_begin = _rpythonic_function_(		"LatticePoint_groups_begin", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LatticePoint_groups_next = _rpythonic_function_(		"LatticePoint_groups_next", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
+
+LatticePoint_groups_end = _rpythonic_function_(		"LatticePoint_groups_end", ctypes.c_void_p, [
+	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
+
+LatticePoint_co_get = _rpythonic_function_(		"LatticePoint_co_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("values",		( ctypes.c_float * 3 )),] )
+
+Library_filepath_get = _rpythonic_function_(		"Library_filepath_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+Library_filepath_length = _rpythonic_function_(		"Library_filepath_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+Library_parent_get = _rpythonic_function_(		"Library_parent_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitDistanceConstraint_distance_get = _rpythonic_function_(		"LimitDistanceConstraint_distance_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitDistanceConstraint_use_transform_limit_get = _rpythonic_function_(		"LimitDistanceConstraint_use_transform_limit_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitDistanceConstraint_head_tail_get = _rpythonic_function_(		"LimitDistanceConstraint_head_tail_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitDistanceConstraint_limit_mode_get = _rpythonic_function_(		"LimitDistanceConstraint_limit_mode_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitDistanceConstraint_subtarget_get = _rpythonic_function_(		"LimitDistanceConstraint_subtarget_get", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(PointerRNA)),
+	("value",		ctypes.POINTER(ctypes.c_char)),] )
+
+LimitDistanceConstraint_subtarget_length = _rpythonic_function_(		"LimitDistanceConstraint_subtarget_length", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitDistanceConstraint_target_get = _rpythonic_function_(		"LimitDistanceConstraint_target_get", PointerRNA, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitLocationConstraint_use_transform_limit_get = _rpythonic_function_(		"LimitLocationConstraint_use_transform_limit_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitLocationConstraint_use_max_x_get = _rpythonic_function_(		"LimitLocationConstraint_use_max_x_get", ctypes.c_int, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
+LimitLocationConstraint_max_x_get = _rpythonic_function_(		"LimitLocationConstraint_max_x_get", ctypes.c_float, [
+	("ptr",		ctypes.POINTER(PointerRNA)),] )
+
 Curve_offset_get = _rpythonic_function_(		"Curve_offset_get", ctypes.c_float, [
 	("ptr",		ctypes.POINTER(PointerRNA)),] )
 
@@ -29011,9 +31203,6 @@ GameObjectSettings_properties_begin = _rpythonic_function_(		"GameObjectSettings
 GameObjectSettings_properties_next = _rpythonic_function_(		"GameObjectSettings_properties_next", ctypes.c_void_p, [
 	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
 
-GameObjectSettings_properties_end = _rpythonic_function_(		"GameObjectSettings_properties_end", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
 GameObjectSettings_radius_get = _rpythonic_function_(		"GameObjectSettings_radius_get", ctypes.c_float, [
 	("ptr",		ctypes.POINTER(PointerRNA)),] )
 
@@ -29971,400 +32160,6 @@ KeyingSet_paths_end = _rpythonic_function_(		"KeyingSet_paths_end", ctypes.c_voi
 	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
 
 KeyingSet_type_info_get = _rpythonic_function_(		"KeyingSet_type_info_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetInfo_rna_type_get = _rpythonic_function_(		"KeyingSetInfo_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetInfo_bl_label_get = _rpythonic_function_(		"KeyingSetInfo_bl_label_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-KeyingSetInfo_bl_label_length = _rpythonic_function_(		"KeyingSetInfo_bl_label_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetInfo_bl_options_get = _rpythonic_function_(		"KeyingSetInfo_bl_options_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetInfo_bl_idname_get = _rpythonic_function_(		"KeyingSetInfo_bl_idname_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-KeyingSetInfo_bl_idname_length = _rpythonic_function_(		"KeyingSetInfo_bl_idname_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_rna_type_get = _rpythonic_function_(		"KeyingSetPath_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_data_path_get = _rpythonic_function_(		"KeyingSetPath_data_path_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-KeyingSetPath_data_path_length = _rpythonic_function_(		"KeyingSetPath_data_path_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_use_entire_array_get = _rpythonic_function_(		"KeyingSetPath_use_entire_array_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_group_get = _rpythonic_function_(		"KeyingSetPath_group_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-KeyingSetPath_group_length = _rpythonic_function_(		"KeyingSetPath_group_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_group_method_get = _rpythonic_function_(		"KeyingSetPath_group_method_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_id_type_get = _rpythonic_function_(		"KeyingSetPath_id_type_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_id_get = _rpythonic_function_(		"KeyingSetPath_id_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_bl_options_get = _rpythonic_function_(		"KeyingSetPath_bl_options_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPath_array_index_get = _rpythonic_function_(		"KeyingSetPath_array_index_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPaths_rna_type_get = _rpythonic_function_(		"KeyingSetPaths_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPaths_active_get = _rpythonic_function_(		"KeyingSetPaths_active_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetPaths_active_index_get = _rpythonic_function_(		"KeyingSetPaths_active_index_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSets_rna_type_get = _rpythonic_function_(		"KeyingSets_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSets_active_get = _rpythonic_function_(		"KeyingSets_active_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSets_active_index_get = _rpythonic_function_(		"KeyingSets_active_index_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetsAll_rna_type_get = _rpythonic_function_(		"KeyingSetsAll_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetsAll_active_get = _rpythonic_function_(		"KeyingSetsAll_active_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KeyingSetsAll_active_index_get = _rpythonic_function_(		"KeyingSetsAll_active_index_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_reference_axis_get = _rpythonic_function_(		"KinematicConstraint_reference_axis_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_chain_count_get = _rpythonic_function_(		"KinematicConstraint_chain_count_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_distance_get = _rpythonic_function_(		"KinematicConstraint_distance_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_ik_type_get = _rpythonic_function_(		"KinematicConstraint_ik_type_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_iterations_get = _rpythonic_function_(		"KinematicConstraint_iterations_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_limit_mode_get = _rpythonic_function_(		"KinematicConstraint_limit_mode_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_lock_location_x_get = _rpythonic_function_(		"KinematicConstraint_lock_location_x_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_lock_rotation_x_get = _rpythonic_function_(		"KinematicConstraint_lock_rotation_x_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_lock_location_y_get = _rpythonic_function_(		"KinematicConstraint_lock_location_y_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_lock_rotation_y_get = _rpythonic_function_(		"KinematicConstraint_lock_rotation_y_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_lock_location_z_get = _rpythonic_function_(		"KinematicConstraint_lock_location_z_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_lock_rotation_z_get = _rpythonic_function_(		"KinematicConstraint_lock_rotation_z_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_orient_weight_get = _rpythonic_function_(		"KinematicConstraint_orient_weight_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_pole_angle_get = _rpythonic_function_(		"KinematicConstraint_pole_angle_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_pole_subtarget_get = _rpythonic_function_(		"KinematicConstraint_pole_subtarget_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-KinematicConstraint_pole_subtarget_length = _rpythonic_function_(		"KinematicConstraint_pole_subtarget_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_pole_target_get = _rpythonic_function_(		"KinematicConstraint_pole_target_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_use_location_get = _rpythonic_function_(		"KinematicConstraint_use_location_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_use_rotation_get = _rpythonic_function_(		"KinematicConstraint_use_rotation_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_use_stretch_get = _rpythonic_function_(		"KinematicConstraint_use_stretch_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_subtarget_get = _rpythonic_function_(		"KinematicConstraint_subtarget_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-KinematicConstraint_subtarget_length = _rpythonic_function_(		"KinematicConstraint_subtarget_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_target_get = _rpythonic_function_(		"KinematicConstraint_target_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_use_target_get = _rpythonic_function_(		"KinematicConstraint_use_target_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_use_tail_get = _rpythonic_function_(		"KinematicConstraint_use_tail_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-KinematicConstraint_weight_get = _rpythonic_function_(		"KinematicConstraint_weight_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_active_texture_get = _rpythonic_function_(		"Lamp_active_texture_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_active_texture_index_get = _rpythonic_function_(		"Lamp_active_texture_index_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_animation_data_get = _rpythonic_function_(		"Lamp_animation_data_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_color_get = _rpythonic_function_(		"Lamp_color_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("values",		( ctypes.c_float * 3 )),] )
-
-Lamp_use_diffuse_get = _rpythonic_function_(		"Lamp_use_diffuse_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_distance_get = _rpythonic_function_(		"Lamp_distance_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_energy_get = _rpythonic_function_(		"Lamp_energy_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_use_own_layer_get = _rpythonic_function_(		"Lamp_use_own_layer_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_use_negative_get = _rpythonic_function_(		"Lamp_use_negative_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_use_specular_get = _rpythonic_function_(		"Lamp_use_specular_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_texture_slots_begin = _rpythonic_function_(		"Lamp_texture_slots_begin", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lamp_texture_slots_next = _rpythonic_function_(		"Lamp_texture_slots_next", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
-Lamp_texture_slots_end = _rpythonic_function_(		"Lamp_texture_slots_end", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
-Lamp_type_get = _rpythonic_function_(		"Lamp_type_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_rna_type_get = _rpythonic_function_(		"LampSkySettings_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_use_atmosphere_get = _rpythonic_function_(		"LampSkySettings_use_atmosphere_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_atmosphere_distance_factor_get = _rpythonic_function_(		"LampSkySettings_atmosphere_distance_factor_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_atmosphere_extinction_get = _rpythonic_function_(		"LampSkySettings_atmosphere_extinction_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_atmosphere_inscattering_get = _rpythonic_function_(		"LampSkySettings_atmosphere_inscattering_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_atmosphere_turbidity_get = _rpythonic_function_(		"LampSkySettings_atmosphere_turbidity_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_backscattered_light_get = _rpythonic_function_(		"LampSkySettings_backscattered_light_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_horizon_brightness_get = _rpythonic_function_(		"LampSkySettings_horizon_brightness_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_spread_get = _rpythonic_function_(		"LampSkySettings_spread_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_use_sky_get = _rpythonic_function_(		"LampSkySettings_use_sky_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sky_blend_get = _rpythonic_function_(		"LampSkySettings_sky_blend_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sky_blend_type_get = _rpythonic_function_(		"LampSkySettings_sky_blend_type_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sky_color_space_get = _rpythonic_function_(		"LampSkySettings_sky_color_space_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sky_exposure_get = _rpythonic_function_(		"LampSkySettings_sky_exposure_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sun_brightness_get = _rpythonic_function_(		"LampSkySettings_sun_brightness_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sun_intensity_get = _rpythonic_function_(		"LampSkySettings_sun_intensity_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampSkySettings_sun_size_get = _rpythonic_function_(		"LampSkySettings_sun_size_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlot_use_map_color_get = _rpythonic_function_(		"LampTextureSlot_use_map_color_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlot_color_factor_get = _rpythonic_function_(		"LampTextureSlot_color_factor_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlot_object_get = _rpythonic_function_(		"LampTextureSlot_object_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlot_use_map_shadow_get = _rpythonic_function_(		"LampTextureSlot_use_map_shadow_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlot_shadow_factor_get = _rpythonic_function_(		"LampTextureSlot_shadow_factor_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlot_texture_coords_get = _rpythonic_function_(		"LampTextureSlot_texture_coords_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LampTextureSlots_rna_type_get = _rpythonic_function_(		"LampTextureSlots_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_animation_data_get = _rpythonic_function_(		"Lattice_animation_data_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_interpolation_type_u_get = _rpythonic_function_(		"Lattice_interpolation_type_u_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_interpolation_type_v_get = _rpythonic_function_(		"Lattice_interpolation_type_v_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_interpolation_type_w_get = _rpythonic_function_(		"Lattice_interpolation_type_w_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_use_outside_get = _rpythonic_function_(		"Lattice_use_outside_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_points_begin = _rpythonic_function_(		"Lattice_points_begin", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_points_next = _rpythonic_function_(		"Lattice_points_next", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
-Lattice_points_end = _rpythonic_function_(		"Lattice_points_end", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
-Lattice_shape_keys_get = _rpythonic_function_(		"Lattice_shape_keys_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_points_u_get = _rpythonic_function_(		"Lattice_points_u_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_points_v_get = _rpythonic_function_(		"Lattice_points_v_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_vertex_group_get = _rpythonic_function_(		"Lattice_vertex_group_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-Lattice_vertex_group_length = _rpythonic_function_(		"Lattice_vertex_group_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Lattice_points_w_get = _rpythonic_function_(		"Lattice_points_w_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LatticeModifier_object_get = _rpythonic_function_(		"LatticeModifier_object_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LatticeModifier_vertex_group_get = _rpythonic_function_(		"LatticeModifier_vertex_group_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-LatticeModifier_vertex_group_length = _rpythonic_function_(		"LatticeModifier_vertex_group_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LatticePoint_rna_type_get = _rpythonic_function_(		"LatticePoint_rna_type_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LatticePoint_co_deform_get = _rpythonic_function_(		"LatticePoint_co_deform_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("values",		( ctypes.c_float * 3 )),] )
-
-LatticePoint_groups_begin = _rpythonic_function_(		"LatticePoint_groups_begin", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LatticePoint_groups_next = _rpythonic_function_(		"LatticePoint_groups_next", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
-LatticePoint_groups_end = _rpythonic_function_(		"LatticePoint_groups_end", ctypes.c_void_p, [
-	("iter",		ctypes.POINTER(CollectionPropertyIterator)),] )
-
-LatticePoint_co_get = _rpythonic_function_(		"LatticePoint_co_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("values",		( ctypes.c_float * 3 )),] )
-
-Library_filepath_get = _rpythonic_function_(		"Library_filepath_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-Library_filepath_length = _rpythonic_function_(		"Library_filepath_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-Library_parent_get = _rpythonic_function_(		"Library_parent_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitDistanceConstraint_distance_get = _rpythonic_function_(		"LimitDistanceConstraint_distance_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitDistanceConstraint_use_transform_limit_get = _rpythonic_function_(		"LimitDistanceConstraint_use_transform_limit_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitDistanceConstraint_head_tail_get = _rpythonic_function_(		"LimitDistanceConstraint_head_tail_get", ctypes.c_float, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitDistanceConstraint_limit_mode_get = _rpythonic_function_(		"LimitDistanceConstraint_limit_mode_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitDistanceConstraint_subtarget_get = _rpythonic_function_(		"LimitDistanceConstraint_subtarget_get", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(PointerRNA)),
-	("value",		ctypes.POINTER(ctypes.c_char)),] )
-
-LimitDistanceConstraint_subtarget_length = _rpythonic_function_(		"LimitDistanceConstraint_subtarget_length", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitDistanceConstraint_target_get = _rpythonic_function_(		"LimitDistanceConstraint_target_get", PointerRNA, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitLocationConstraint_use_transform_limit_get = _rpythonic_function_(		"LimitLocationConstraint_use_transform_limit_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitLocationConstraint_use_max_x_get = _rpythonic_function_(		"LimitLocationConstraint_use_max_x_get", ctypes.c_int, [
-	("ptr",		ctypes.POINTER(PointerRNA)),] )
-
-LimitLocationConstraint_max_x_get = _rpythonic_function_(		"LimitLocationConstraint_max_x_get", ctypes.c_float, [
 	("ptr",		ctypes.POINTER(PointerRNA)),] )
 
 LimitLocationConstraint_use_max_y_get = _rpythonic_function_(		"LimitLocationConstraint_use_max_y_get", ctypes.c_int, [
@@ -44832,6 +46627,15 @@ UI_editsource_enable_check = _rpythonic_function_(		"UI_editsource_enable_check"
 
 UI_editsource_active_but_test = _rpythonic_function_(		"UI_editsource_active_but_test", ctypes.c_void_p, [
 	("but",		ctypes.POINTER(uiBut)),] )
+
+collada_import = _rpythonic_function_(		"collada_import", ctypes.c_int, [
+	("C",		ctypes.POINTER(bContext)),
+	("filepath",		ctypes.POINTER(ctypes.c_char)),] )
+
+collada_export = _rpythonic_function_(		"collada_export", ctypes.c_int, [
+	("sce",		ctypes.POINTER(Scene)),
+	("filepath",		ctypes.POINTER(ctypes.c_char)),
+	("selected",		ctypes.c_int),] )
 
 
 _rpythonic_convert_structs_to_objects()
