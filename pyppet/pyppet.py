@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3b'
+VERSION = '1.9.3c'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -65,11 +65,432 @@ import Physics
 import icons
 
 import bpy, mathutils
+from bpy.props import *
 
 gtk.init()
 sdl.Init( sdl.SDL_INIT_JOYSTICK )
 
 ENGINE = Physics.ENGINE		# physics engine singleton
+
+
+################# Server ################
+import wsgiref
+import wsgiref.simple_server
+import io, socket, select, pickle, urllib
+import urllib.request
+
+
+STREAM_BUFFER_SIZE = 2048
+
+def _create_stream_proto():
+	proto = {}
+	tags = 'ID NAME POSITION ROTATION SCALE DATA SELECTED TYPE MESH LAMP CAMERA SPEAKER ANIMATIONS DISTANCE ENERGY VOLUME MUTE LOD'.split()
+	for i,tag in enumerate( tags ): proto[ tag ] = chr(i)		# up to 256
+	return proto
+STREAM_PROTO = _create_stream_proto()
+globals().update( STREAM_PROTO )
+
+
+def get_object_url(ob):
+	if not ob.remote_path: url = 'http://%s/objects/%s' %(ob.remote_server,ob.name)
+	elif ob.remote_path.startswith('/'): url = 'http://%s%s' %(ob.remote_server, ob.remote_path)
+	else: url = 'http://%s/%s' %(ob.remote_server, ob.remote_path)
+	return url
+
+
+def sort_objects_by_type( objects, types=['MESH','ARMATURE','CAMERA','LAMP','EMPTY','CURVE'] ):
+	r = {}
+	for type in types: r[type]=[]
+	for ob in objects:
+		if ob.type in r: r[ob.type].append( ob )
+	return r
+
+def save_selection():
+	r = {}
+	for ob in Pyppet.context.scene.objects: r[ ob.name ] = ob.select
+	return r
+def restore_selection( state ):
+	for name in state:
+		Pyppet.context.scene.objects[ name ].select = state[name]
+
+def dump_collada( name, center=False ):
+	state = save_selection()
+	for ob in Pyppet.context.scene.objects: ob.select = False
+	ob = bpy.data.objects[ name ]
+	ob.select = True
+	loc = ob.location
+	if center: ob.location = (0,0,0)
+	bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
+	if center: ob.location = loc
+	restore_selection( state )
+	return open('/tmp/dump.dae','rb').read()
+
+
+#####################
+class WebServer( object ):
+	def close(self): self.httpd.close()
+
+	def init_webserver(self, port=8080, timeout=0.01):
+		self.httpd_port = port
+		self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+		self.httpd.timeout = timeout
+		self.glge = None
+		path = os.path.join(SCRIPT_DIR, 'glge-compiled-min.js')
+		if os.path.isfile( path ):
+			print('found GLGE')
+			self.glge = open( path, 'rb' ).read()
+		else:
+			print('missing GLGE')
+
+	def get_header(self, title='bpyengine', glge=False):
+		header = [ '<!DOCTYPE html><html><head><title>%s</title>' %title ]
+		if glge and self.glge:
+			header.append( '<script type="text/javascript" src="/glge-compiled-min.js"></script>' )
+		header.append( '''<style>
+body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; color: #666; font-size: 0.8em}
+#container{ margin:auto; width: 640px; padding: 10px; background-color: #fff; border-radius: 5px; -webkit-box-shadow: 5px 5px 2px #444; }</style>''' )
+		header.append( '</head><body>' )
+		return '\n'.join( header )
+
+	def glge_document( self, objects, info='' ):
+		doc = []
+		doc.append( '<div id="container"><canvas id="canvas" width="640" height="320"></canvas>' )
+
+		if not info:
+			ob = objects[0]
+			info = ['<h3>%s</h3>' %ob.name]
+			info.append( '<h4>location: %s</h4>' %ob.location )
+			if ob.type=='MESH' and ob.data.materials:
+				info.append( '<h4>materials:</h4><ul>' )
+				for m in ob.data.materials:
+					if m: info.append( '<li>%s</li>' %m.name )
+				info.append( '</ul>' )
+			info = ''.join( info )
+		doc.append( '<div id="info">%s</div></div>' %info )
+
+		doc.append( '<script id="glge_document" type="text/xml"><glge>' )
+		doc.append( '<animation_vector id="spin" frames="200"><animation_curve channel="RotY"><linear_point x="1" y="0" /><linear_point x="200" y="6.282" /></animation_curve></animation_vector>' )
+
+		#x,y,z = location_average( objects )
+		#doc.append( '<camera id="maincamera" loc_x="%s" loc_y="%s" loc_z="%s"  rot_x="-0.3"  />' %(x,y+3,z+10) )
+		doc.append( '<camera id="maincamera" loc_z="10" loc_y="3"  rot_x="-0.3"  />' )
+
+		doc.append( '<scene id="mainscene" camera="#maincamera" ambient_color="#666" fog_type="FOG_NONE">' )
+		doc.append( '<light id="light1" loc_x="0" loc_y="15" loc_z="10" rot_x="-1.3"  attenuation_constant="0.6" type="L_POINT" />' )
+		doc.append( '<light id="light2" loc_x="20" loc_y="-15" loc_z="5" rot_x="1.3"  attenuation_constant="0.75" type="L_POINT" />' )
+
+		for ob in objects:
+			doc.append( '<collada document="/objects/%s.dae?center" animation="#spin" scale="1.5" />' %ob.name )
+
+		doc.append( '</scene></script>' )
+
+		doc.append( '''<script  type="text/javascript">
+var canvas = document.getElementById( 'canvas' )
+var renderer = new GLGE.Renderer( canvas );
+var XMLdoc = new GLGE.Document();
+XMLdoc.onLoad = function(){
+	var scene = XMLdoc.getElement( "mainscene" );
+	renderer.setScene( scene );
+	renderer.render();
+	setInterval(function(){ renderer.render(); }, 15);
+}
+XMLdoc.parseScript("glge_document");
+</script>''' )
+
+		return '\n'.join( doc )
+
+	def httpd_reply( self, env, start_response ):	# main entry point for http server
+		agent = env['HTTP_USER_AGENT']		# browser type
+		if agent == 'Python-urllib/3.2': return self.httpd_reply_peer( env, start_response )
+		else: return self.httpd_reply_browser( env, start_response )
+
+	def httpd_reply_browser(self, env, start_response ):
+		path = env['PATH_INFO']
+		host = env['HTTP_HOST']
+		client = env['REMOTE_ADDR']
+		arg = env['QUERY_STRING']
+
+		#if path=='/favicon.ico': pass
+		print('httpd reply browser', path)
+		f = io.StringIO()
+
+		if path=='/':
+			start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
+			f.write( self.get_header() )
+
+			if self.clients:
+				f.write('<h2>Streaming Clients</h2><ul>')
+				for a in self.clients: f.write('<li><a href="http://%s">%s</a></li>' %(a,a))
+				f.write('</ul>')
+			#if self.servers:
+			#	f.write('<h2>Streaming Servers</h2><ul>')
+			#	for a in self.servers: f.write('<li>%s</li>' %a)
+			#	f.write('</ul>')
+
+			f.write('<hr/>')
+			a = sort_objects_by_type( Pyppet.context.scene.objects )
+			for type in a:
+				if not a[type]: continue
+				f.write('<h3>%s</h3>'%type)
+				f.write('<ul>')
+				for ob in a[type]:
+					if ob.use_remote:
+						f.write('<li><a href="/objects/%s"><i>%s</i></a></li>' %(ob.name,ob.name))
+					else:
+						f.write('<li><a href="/objects/%s">%s</a></li>' %(ob.name,ob.name))
+				f.write('</ul>')
+
+		elif path.startswith('/objects/'):
+			name = path.split('/')[-1]
+			if name.endswith('.dae'):
+				start_response('200 OK', [('Content-Type','text/xml; charset=utf-8')])
+				name = name[ : -4 ]
+				if arg == 'center':
+					return [ dump_collada(name,center=True) ]
+				else:
+					return [ dump_collada(name) ]
+
+			elif self.glge:
+				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
+				f.write( self.get_header(glge=True) )
+
+				ob = bpy.data.objects[ name ]
+				f.write( self.glge_document( [ob] ) )
+
+			else:	# simple fallback
+				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
+				f.write( self.get_header() )
+				ob = bpy.data.objects[ name ]
+				f.write('<h4>NAME: %s</h4>'%name)
+				f.write('<h4>TYPE: %s</h4>'%ob.type)
+				vec = ob.matrix_world.to_translation()
+				f.write('<h4>LOCATION: %s</h4>'%vec)
+				f.write('<h5>Downloads:</h5>')
+
+		elif path == '/glge-compiled-min.js' and self.glge:
+			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8')])
+			return [ self.glge ]
+
+		else:
+			start_response('200 OK', [('Content-Type','text/plain; charset=utf-8')])
+
+		return [f.getvalue().encode('utf-8')]
+
+
+
+
+class Server( WebServer ):
+	def __init__(self, host='localhost'):
+		self.host = host
+		self.init_webserver()
+		self.clients = {}
+
+	def enable_streaming( self, client ):
+		n = len(self.clients)
+		port = self.httpd_port + 100 + n
+		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   # UDP
+		sock.connect( (self.host,port) )		# connect means server mode
+		self.clients[ client ] = {
+			'objects':{}, 
+			'socket': sock,
+			'port': port,
+		}
+
+
+	def httpd_reply_peer(self, env, start_response ):
+		path = env['PATH_INFO']
+		print('peer requesting...', path)
+		host = env['HTTP_HOST']
+		client = env['REMOTE_ADDR']
+		start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
+		arg = env['QUERY_STRING']
+
+		if path.startswith('/objects/'):
+			name = path.split('/')[-1]
+			if arg == 'streaming-on':
+				if client not in self.clients: self.enable_streaming( client )
+				self.clients[ client ]['objects'][ name ] = True
+				a = '%s:%s' %(self.host, self.clients[client]['port'])
+				return [ a.encode('utf-8') ]
+			elif arg == 'streaming-off':
+				self.clients[ client ]['objects'][ name ] = False
+				return [ b'ok' ]
+			else:
+				return [ dump_collada(name) ]
+		else: assert 0
+
+
+	def pickle( self, o ):
+		b = pickle.dumps( o, protocol=2 ) #protocol2 is python2 compatible
+		#print( 'streaming bytes', len(b) )
+		n = len( b ); d = STREAM_BUFFER_SIZE - n -4
+		if n > STREAM_BUFFER_SIZE:
+			print( 'ERROR: STREAM OVERFLOW:', n )
+			return
+		padding = b'#' * d
+		if n < 10: header = '000%s' %n
+		elif n < 100: header = '00%s' %n
+		elif n < 1000: header = '0%s' %n
+		else: header = '%s' %n
+		header = bytes( header, 'utf-8' )
+		assert len(header) == 4
+		w = header + b + padding
+		assert len(w) == STREAM_BUFFER_SIZE
+		return w
+
+
+	def pack( self, objects ):
+		# 153 bytes per object + n bytes for animation names and weights
+		i = 0; msg = []
+		for ob in objects:
+			if ob.type not in ('MESH','LAMP','SPEAKER'): continue
+			loc, rot, scl = ob.matrix_world.decompose()
+			loc = loc.to_tuple()
+			x,y,z = rot.to_euler(); rot = (x,y,z)
+			scl = scl.to_tuple()
+
+			d = {
+				NAME : ob.name,
+				POSITION : loc,
+				ROTATION : rot,
+				SCALE : scl,
+				TYPE : STREAM_PROTO[ob.type]
+			}
+			msg.append( d )
+
+			if ob.type == 'MESH': pass
+			elif ob.type == 'LAMP':
+				d[ ENERGY ] = ob.data.energy
+				d[ DISTANCE ] = ob.data.distance
+			elif ob.type == 'SPEAKER':
+				d[ VOLUME ] = ob.data.volume
+				d[ MUTE ] = ob.data.muted
+
+			if i >= 10: break	# max is 13 objects to stay under 2048 bytes
+		return msg
+
+
+	def update(self, context):
+		## first do http ##
+		self.httpd.handle_request()
+		self.write_streams()
+
+	def write_streams(self):	# to clients (peers)
+		for client in self.clients:
+			sock = self.clients[client]['socket']
+			poll = select.select( [], [sock], [], 0.01 )
+			if not poll[1]: continue
+			obs = [ bpy.data.objects[n] for n in self.clients[client]['objects'] ]
+			bin = self.pickle( self.pack(obs) )
+			try: sock.sendall( bin )
+			except:
+				print('SERVER: send data error')
+
+
+
+
+
+class Client( object ):
+	SERVERS = {}
+	def __init__(self):
+		self.servers = Client.SERVERS
+
+	def update(self, context):	# from servers (peers)
+		for host in self.servers:
+			sock = self.servers[host]['socket']
+			poll = select.select( [ sock ], [], [], 0.01 )
+			if not poll[0]: continue
+
+			data = sock.recv( STREAM_BUFFER_SIZE )
+			assert len(data) == STREAM_BUFFER_SIZE
+			if not data:
+				print( 'server crashed?' )
+				continue
+
+			header = data[ : 4]
+			s = data[ 4 : int(header)+4 ]
+			objects = pickle.loads( s )
+			self.clientside_sync( objects )
+
+
+	def clientside_sync( self, objects ):
+		for pak in objects:
+			name = pak[ NAME ]
+			ob = bpy.data.objects[ name ]
+			ob.location = pak[ POSITION ]
+			ob.rotation_euler = pak[ ROTATION ]
+			ob.scale = pak[ SCALE ]
+
+			if ob.type=='LAMP':
+				ob.data.energy = pak[ ENERGY ]
+				ob.data.distance = pak[ DISTANCE ]
+
+	@classmethod
+	def enable_streaming_clientside( self, host ):
+		print('enabling streaming clientside', host)
+		name,port = host.split(':')
+		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		sock.bind( (name, int(port)) )	# bind is connect as client
+		self.SERVERS[ host ] = {
+			'socket':sock,
+			'objects':{},
+		}
+
+	@classmethod
+	def toggle_remote_sync(self, ob, con):
+		url = get_object_url( ob )
+		if ob.use_remote_sync:
+			ob.lock_location = [True]*3
+			ob.lock_scale = [True]*3
+			ob.lock_rotation = [True]*3
+			url += '?streaming-on'
+			f = urllib.request.urlopen( url )
+			host = f.read().decode()
+			if host not in self.SERVERS: self.enable_streaming_clientside( host )
+			name,port = host.split(':')
+			self.SERVERS[ host ]['objects'][ob.name] = True
+		else:
+			ob.lock_location = [False]*3
+			ob.lock_scale = [False]*3
+			ob.lock_rotation = [False]*3
+			url += '?streaming-off'
+			f = urllib.request.urlopen( url )
+			data = f.read()
+
+
+bpy.types.Object.use_remote_sync = BoolProperty(
+	name='enable live connect', 
+	description='enables automatic sync', 
+	default=False,
+	update=lambda a,b: Client.toggle_remote_sync(a,b)
+)
+
+bpy.types.Object.use_remote = BoolProperty( name='enable remote object', description='enables remote object', default=False)
+
+bpy.types.Object.remote_path = StringProperty( name='remote path', description='remote path (optional)', maxlen=128, default='' )
+
+bpy.types.Object.remote_server = StringProperty( name='remote server', description='remote server', maxlen=64, default='localhost:8080' )
+
+bpy.types.Object.remote_format = EnumProperty(
+    items=[
+            ('blend', 'blend', 'BLENDER'),
+            ('collada', 'collada', 'COLLADA'),
+    ],
+    name='remote file format', 
+    description='remote file format', 
+    default='collada'
+)
+
+bpy.types.Object.remote_merge_type = EnumProperty(
+    items=[
+            ('object', 'object', 'OBJECT'),
+            ('group', 'group', 'GROUP'),
+    ],
+    name='remote merge type', 
+    description='remote merge type', 
+    default='object'
+)
+
 
 
 class ContextCopy(object):
@@ -318,8 +739,9 @@ class SimpleSlider(object):
 		self.widget.add( self.modal )
 		self.modal.show_all()
 
-##############################
 
+
+##############################
 class AudioThread(object):
 	lock = threading._allocate_lock()		# not required
 
@@ -358,6 +780,8 @@ class AudioThread(object):
 		#dev = al.GetContextsDevice(ctx)
 		al.DestroyContext( self.context )
 		if self.output: al.CloseDevice( self.output )
+
+
 
 ##############################
 class Speaker(object):
@@ -815,7 +1239,8 @@ class Audio(object):
 				print('new max raw', h)
 
 			mult = 1.0 / self.max_raw
-			if self.max_raw > 1.0: self.max_raw *= 0.99
+			#if self.max_raw > 1.0: self.max_raw *= 0.99	# TODO better normalizer
+
 			#self.raw_bands = [ power*mult for power in raw ]	# drivers fail if pointer is lost
 			#for i,power in enumerate( self.raw_bands ):
 			for i,power in enumerate( raw ):
@@ -1515,7 +1940,7 @@ class AbstractArmature(object):
 	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None):
 		self.created = True
 		arm = bpy.data.objects[ self.name ]
-		arm.pyppet_model = self.__class__.__name__
+		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
 		Pyppet.popup.refresh()
 
@@ -1730,7 +2155,7 @@ class Biped( AbstractArmature ):
 		print('making biped...')
 
 		self.solver_objects = []
-
+		self.smooth_motion_rate = 0.0
 		self.prev_heading = .0
 		self.primary_heading = 0.0
 		self.stance = 0.1
@@ -1894,9 +2319,13 @@ class Biped( AbstractArmature ):
 		elif x > 2: sideways = 'LEFT'
 
 		moving = None
-		motion_rate = abs( y )
-		if y < -0.5: moving = 'FORWARD'
-		elif y > 0.5: moving = 'BACKWARD'
+		#motion_rate = abs( y )
+		delta = y - self.smooth_motion_rate
+		self.smooth_motion_rate += delta*0.1
+		motion_rate = abs( self.smooth_motion_rate )
+		print('mrate', motion_rate)
+		if self.smooth_motion_rate < -0.2: moving = 'FORWARD'
+		elif self.smooth_motion_rate > 0.2: moving = 'BACKWARD'
 
 		loc,rot,scl = self.pelvis.shadow.matrix_world.decompose()
 		euler = rot.to_euler()
@@ -1908,8 +2337,17 @@ class Biped( AbstractArmature ):
 		falling = current_pelvis_height < self.pelvis.rest_height * (1.0-self.standing_height_threshold)
 
 		hx,hy,hz = self.head.get_location()
-		x = (x+hx)/2.0
-		y = (y+hy)/2.0
+		#x = (x+hx)/2.0
+		#y = (y+hy)/2.0
+		dx = hx - x
+		dy = hy - y
+		if moving == 'FORWARD':
+			x += dx * 1.1
+			y += dy * 1.1
+		elif moving == 'BACKWARD':
+			x += dx * 0.1
+			y += dy * 0.1
+
 		ob = self.pelvis.shadow
 		ob.location = (x,y,-0.5)
 		loc,rot,scale = ob.matrix_world.decompose()
@@ -2183,6 +2621,9 @@ class App( PyppetAPI ):
 		self.bheight = 480
 		self.lock = threading._allocate_lock()
 
+		self.server = Server()
+		self.client = Client()
+
 		self.audio = AudioThread()
 		self.audio.start()
 
@@ -2419,9 +2860,8 @@ class App( PyppetAPI ):
 			if True:
 				Blender.iterate(C)
 				if not self.active: break
-
-
 				#print('mainloop', self.context, self.context.scene)	# THIS TRICK WORKS!
+				#bpy.context = self.context	#  this wont work
 
 				win = Blender.Window( self.context.window )
 				# grabcursor on click and drag (view3d only)
@@ -2469,6 +2909,9 @@ class App( PyppetAPI ):
 				for mod in models:
 					mod.update( self.context )
 
+			self.server.update( self.context )
+			self.client.update( self.context )
+
 			#if self.recording:
 			#	print('recording...')
 			#	bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
@@ -2486,11 +2929,17 @@ class App( PyppetAPI ):
 			#root.pack_start( gtk.Label(ob.name), expand=False )
 
 			if ob.type == 'ARMATURE':
-				b = gtk.ToggleButton( icons.POSE )
+				b = gtk.ToggleButton( icons.MODE )
 				b.set_tooltip_text('toggle pose mode')
 				root.pack_start( b, expand=False )
 				b.set_active( self.context.mode=='POSE' )
 				b.connect('toggled', self.toggle_pose_mode)
+
+				if ob.name not in self.entities:
+					biped = self.GetBiped( ob )
+					b = gtk.Button( icons.BIPED )
+					root.pack_start( b, expand=False )
+					b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
 
 			else:
 				b = gtk.ToggleButton( icons.BODY )
@@ -3217,9 +3666,7 @@ class WiimotesWidget(object):
 			note.show_all()
 
 
-
-
-
+#####################################
 if __name__ == '__main__':
 
 	## TODO deprecate wnck-helper hack ##
