@@ -180,7 +180,7 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 		doc.append( '<script id="glge_document" type="text/xml">' )
 		doc.append( '<glge>' )
 
-		doc.append( '<animation_vector id="spin" frames="200"><animation_curve channel="RotY"><linear_point x="1" y="0" /><linear_point x="200" y="6.282" /></animation_curve></animation_vector>' )
+		#doc.append( '<animation_vector id="spin" frames="200"><animation_curve channel="RotY"><linear_point x="1" y="0" /><linear_point x="200" y="6.282" /></animation_curve></animation_vector>' )
 
 		#x,y,z = location_average( objects )
 		#doc.append( '<camera id="maincamera" loc_x="%s" loc_y="%s" loc_z="%s"  rot_x="-0.3"  />' %(x,y+3,z+10) )
@@ -191,7 +191,8 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 		doc.append( '<light id="light2" loc_x="20" loc_y="-15" loc_z="5" rot_x="1.3"  attenuation_constant="0.75" type="L_POINT" />' )
 
 		for ob in objects:
-			doc.append( '<collada document="/objects/%s.dae?center" animation="#spin" scale="1.5" />' %ob.name )
+			#doc.append( '<collada document="/objects/%s.dae?center" animation="#spin" scale="1.5" />' %ob.name )
+			doc.append( '<collada document="/objects/%s.dae?center" scale="1.0" />' %ob.name )
 
 		doc.append( '</scene>' )
 		doc.append( '</glge>' )
