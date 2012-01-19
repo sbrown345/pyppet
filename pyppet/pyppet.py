@@ -116,8 +116,12 @@ def restore_selection( state ):
 def dump_collada( name, center=False ):
 	state = save_selection()
 	for ob in Pyppet.context.scene.objects: ob.select = False
+
 	ob = bpy.data.objects[ name ]
 	ob.select = True
+	arm = ob.find_armature()
+	if arm: arm.select = True
+
 	loc = ob.location
 	if center: ob.location = (0,0,0)
 	#bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
@@ -131,6 +135,8 @@ def dump_collada( name, center=False ):
 
 #####################
 class WebServer( object ):
+	CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
+
 	def close(self): self.httpd.close()
 
 	def init_webserver(self, port=8080, timeout=0.01):
@@ -171,7 +177,9 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 			info = ''.join( info )
 		doc.append( '<div id="info">%s</div></div>' %info )
 
-		doc.append( '<script id="glge_document" type="text/xml"><glge>' )
+		doc.append( '<script id="glge_document" type="text/xml">' )
+		doc.append( '<glge>' )
+
 		doc.append( '<animation_vector id="spin" frames="200"><animation_curve channel="RotY"><linear_point x="1" y="0" /><linear_point x="200" y="6.282" /></animation_curve></animation_vector>' )
 
 		#x,y,z = location_average( objects )
@@ -185,20 +193,12 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 		for ob in objects:
 			doc.append( '<collada document="/objects/%s.dae?center" animation="#spin" scale="1.5" />' %ob.name )
 
-		doc.append( '</scene></script>' )
+		doc.append( '</scene>' )
+		doc.append( '</glge>' )
+		doc.append( '</script>' )
 
-		doc.append( '''<script  type="text/javascript">
-var canvas = document.getElementById( 'canvas' )
-var renderer = new GLGE.Renderer( canvas );
-var XMLdoc = new GLGE.Document();
-XMLdoc.onLoad = function(){
-	var scene = XMLdoc.getElement( "mainscene" );
-	renderer.setScene( scene );
-	renderer.render();
-	setInterval(function(){ renderer.render(); }, 15);
-}
-XMLdoc.parseScript("glge_document");
-</script>''' )
+		doc.append( '<script  type="text/javascript">%s' %self.CLIENT_SCRIPT )
+		doc.append( '</script>' )
 
 		return '\n'.join( doc )
 
