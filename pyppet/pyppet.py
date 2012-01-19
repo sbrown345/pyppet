@@ -198,7 +198,8 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 		doc.append( '</glge>' )
 		doc.append( '</script>' )
 
-		doc.append( '<script  type="text/javascript">%s' %self.CLIENT_SCRIPT )
+		self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
+		doc.append( '<script type="text/javascript">%s' %self.CLIENT_SCRIPT )
 		doc.append( '</script>' )
 
 		return '\n'.join( doc )
