@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan5, 2012
+# Jan20, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3c'
+VERSION = '1.9.3d'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -143,66 +143,33 @@ class WebServer( object ):
 		self.httpd_port = port
 		self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
 		self.httpd.timeout = timeout
-		self.glge = None
-		path = os.path.join(SCRIPT_DIR, 'glge-compiled-min.js')
-		if os.path.isfile( path ):
-			print('found GLGE')
-			self.glge = open( path, 'rb' ).read()
-		else:
-			print('missing GLGE')
+		self.THREE = None
+		path = os.path.join(SCRIPT_DIR, 'Three.js')
+		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
+		else: print('missing Three.js')
 
-	def get_header(self, title='bpyengine', glge=False):
-		header = [ '<!DOCTYPE html><html><head><title>%s</title>' %title ]
-		if glge and self.glge:
-			header.append( '<script type="text/javascript" src="/glge-compiled-min.js"></script>' )
-		header.append( '''<style>
+	def get_header(self, title='pyppet', webgl=False):
+		h = [
+			'<!DOCTYPE html><html lang="en">',
+			'<head><title>%s</title>' %title,
+			'<meta charset="utf-8">',
+			'<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">',
+		]
+
+		h.append( '''<style>
 body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; color: #666; font-size: 0.8em}
 #container{ margin:auto; width: 640px; padding: 10px; background-color: #fff; border-radius: 5px; -webkit-box-shadow: 5px 5px 2px #444; }</style>''' )
-		header.append( '</head><body>' )
-		return '\n'.join( header )
 
-	def glge_document( self, objects, info='' ):
-		doc = []
-		doc.append( '<div id="container"><canvas id="canvas" width="640" height="320"></canvas>' )
+		h.append( '</head><body>' )
 
-		if not info:
-			ob = objects[0]
-			info = ['<h3>%s</h3>' %ob.name]
-			info.append( '<h4>location: %s</h4>' %ob.location )
-			if ob.type=='MESH' and ob.data.materials:
-				info.append( '<h4>materials:</h4><ul>' )
-				for m in ob.data.materials:
-					if m: info.append( '<li>%s</li>' %m.name )
-				info.append( '</ul>' )
-			info = ''.join( info )
-		doc.append( '<div id="info">%s</div></div>' %info )
+		if webgl and self.THREE:
+			h.append( '<script type="text/javascript" src="/Three.js"></script>' )
+			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
+			h.append( '<script type="text/javascript">%s' %self.CLIENT_SCRIPT )
+			h.append( '</script>' )
 
-		doc.append( '<script id="glge_document" type="text/xml">' )
-		doc.append( '<glge>' )
 
-		#doc.append( '<animation_vector id="spin" frames="200"><animation_curve channel="RotY"><linear_point x="1" y="0" /><linear_point x="200" y="6.282" /></animation_curve></animation_vector>' )
-
-		#x,y,z = location_average( objects )
-		#doc.append( '<camera id="maincamera" loc_x="%s" loc_y="%s" loc_z="%s"  rot_x="-0.3"  />' %(x,y+3,z+10) )
-		doc.append( '<camera id="maincamera" loc_z="10" loc_y="3"  rot_x="-0.3"  />' )
-
-		doc.append( '<scene id="mainscene" camera="#maincamera" ambient_color="#666" fog_type="FOG_NONE">' )
-		doc.append( '<light id="light1" loc_x="0" loc_y="15" loc_z="10" rot_x="-1.3"  attenuation_constant="0.6" type="L_POINT" />' )
-		doc.append( '<light id="light2" loc_x="20" loc_y="-15" loc_z="5" rot_x="1.3"  attenuation_constant="0.75" type="L_POINT" />' )
-
-		for ob in objects:
-			#doc.append( '<collada document="/objects/%s.dae?center" animation="#spin" scale="1.5" />' %ob.name )
-			doc.append( '<collada document="/objects/%s.dae?center" scale="1.0" />' %ob.name )
-
-		doc.append( '</scene>' )
-		doc.append( '</glge>' )
-		doc.append( '</script>' )
-
-		self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
-		doc.append( '<script type="text/javascript">%s' %self.CLIENT_SCRIPT )
-		doc.append( '</script>' )
-
-		return '\n'.join( doc )
+		return '\n'.join( h )
 
 	def httpd_reply( self, env, start_response ):	# main entry point for http server
 		agent = env['HTTP_USER_AGENT']		# browser type
@@ -255,12 +222,9 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 				else:
 					return [ dump_collada(name) ]
 
-			elif self.glge:
+			elif self.THREE:
 				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
-				f.write( self.get_header(glge=True) )
-
-				ob = bpy.data.objects[ name ]
-				f.write( self.glge_document( [ob] ) )
+				f.write( self.get_header(webgl=True) )
 
 			else:	# simple fallback
 				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
@@ -270,11 +234,10 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 				f.write('<h4>TYPE: %s</h4>'%ob.type)
 				vec = ob.matrix_world.to_translation()
 				f.write('<h4>LOCATION: %s</h4>'%vec)
-				f.write('<h5>Downloads:</h5>')
 
-		elif path == '/glge-compiled-min.js' and self.glge:
+		elif path == '/Three.js' and self.THREE:
 			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8')])
-			return [ self.glge ]
+			return [ self.THREE ]
 
 		else:
 			start_response('200 OK', [('Content-Type','text/plain; charset=utf-8')])
