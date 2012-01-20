@@ -14,6 +14,7 @@ function setup() {
 	var points = [];
 	var act = get_action(a);
 	var bones = get_bone_names(a);
+
 	for (n in bones) {
 		name = bones[ n ];
 		var anim = new GLGE.AnimationVector();
@@ -22,12 +23,16 @@ function setup() {
 			slot = TRANSFORM_SLOTS[ n ];
 			var curve = new GLGE.AnimationCurve();
 			curve.setChannel( slot );
-			point=new GLGE.LinearPoint();
-			point.setX(1);
-			point.setY(12.0);
-			curve.addPoint( point );
+
+			for (var i=0;i<4;i++) {
+				point=new GLGE.LinearPoint();
+				point.setX(1);
+				point.setY(i*10);
+				points.push( point );
+				curve.addPoint( point );
+			}
+
 			anim.addAnimationCurve( curve );
-			points.push( point );
 		}
 		var chan = new GLGE.ActionChannel();
 		chan.setTarget( name );
