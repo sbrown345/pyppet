@@ -137,33 +137,54 @@ def dump_collada( name, center=False ):
 #####################
 class WebSocketServer( websocket.WebSocketServer ):
 	buffer_size = 8096
+	client = None
 
-	def new_client(self):
-		cqueue = []
-		c_pend = 0
-		cpartial = ""
-		rlist = [self.client]
+	def start(self):
+		print('--starting websocket server thread--')
+		threading._start_new_thread(
+			self.loop, ()
+		)
 
+	def loop(self):
+		lsock = self.socket(self.listen_host, self.listen_port)
 		while True:
-			wlist = []
+			time.sleep(0.1)
+			try:
+				self.poll()
+				ready = select.select([lsock], [], [], 1)[0]
+				if lsock in ready: startsock, address = lsock.accept()
+				else: continue
+			except Exception: continue
+			self.top_new_client(startsock, address)	# calls new_client()
 
-			if cqueue or c_pend: wlist.append(self.client)
-			ins, outs, excepts = select.select(rlist, wlist, [], 1)
-			if excepts: raise Exception("Socket exception")
+	def new_client(self): print('new client', self.client)
+	def update( self, context ):
+		if not self.client: return
+		cqueue = [b'hello world']
 
-			if self.client in outs:
-				# Send queued target data to the client
-				c_pend = self.send_frames(cqueue)
-				cqueue = []
+		rlist = [self.client]
+		wlist = [self.client]
 
-			if self.client in ins:
-				# Receive client data, decode it, and send it back
-				frames, closed = self.recv_frames()
-				cqueue.extend(["You said: " + f for f in frames])
+		ins, outs, excepts = select.select(rlist, wlist, [], 1)
+		if excepts: raise Exception("Socket exception")
 
-				if closed:
-					self.send_close()
-					raise self.EClose(closed)
+		if self.client in outs:
+			# Send queued target data to the client
+			pending = self.send_frames(cqueue)
+			if pending: print('failed to send', pending)
+		elif not outs:
+			print('client not ready to read....')
+
+		if self.client in ins:
+			# Receive client data, decode it, and send it back
+			frames, closed = self.recv_frames()
+			print('got from client', frames)
+			if closed:
+				print('CLOSING CLIENT')
+				try: self.send_close()
+				except: pass
+				self.client = None
+				raise self.EClose(closed)
 
 
 
@@ -190,10 +211,10 @@ class WebServer( object ):
 			'<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">',
 		]
 
-		h.append( '<script src="javascripts/websockify/util.js"></script>' )
-		h.append( '<script src="javascripts/websockify/webutil.js"></script>' )
-		h.append( '<script src="javascripts/websockify/base64.js"></script>' )
-		h.append( '<script src="javascripts/websockify/websock.js"></script> ' )
+		h.append( '<script src="/javascripts/websockify/util.js"></script>' )
+		h.append( '<script src="/javascripts/websockify/webutil.js"></script>' )
+		h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
+		h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
 
 		h.append( '''<style>
 body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; color: #666; font-size: 0.8em}
@@ -273,9 +294,11 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 				vec = ob.matrix_world.to_translation()
 				f.write('<h4>LOCATION: %s</h4>'%vec)
 
-		elif path == '/Three.js' and self.THREE:
+		elif path.startswith('/javascripts/'):
 			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8')])
-			return [ self.THREE ]
+			abspath = os.path.join( SCRIPT_DIR, path[1:] )
+			data = open( abspath, 'rb' ).read()
+			return [ data ]
 
 		else:
 			start_response('200 OK', [('Content-Type','text/plain; charset=utf-8')])
@@ -2629,6 +2652,8 @@ class App( PyppetAPI ):
 
 		self.server = Server()
 		self.client = Client()
+		self.websocket_server = WebSocketServer( listen_port=8081 )
+		self.websocket_server.start()
 
 		self.audio = AudioThread()
 		self.audio.start()
@@ -2917,6 +2942,7 @@ class App( PyppetAPI ):
 
 			self.server.update( self.context )
 			self.client.update( self.context )
+			self.websocket_server.update( self.context )
 
 			#if self.recording:
 			#	print('recording...')

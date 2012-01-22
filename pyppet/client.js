@@ -1,4 +1,27 @@
+ws = new Websock();
+ws.open( 'ws://localhost:8081' );
+var tmp = null;
 
+function on_message(e) {
+	var str = ws.rQshiftStr();
+	tmp = str;
+}
+
+ws.on('message', on_message);
+
+function on_open(e) {
+	console.log(">> WebSockets.onopen");
+}
+ws.on('open', on_open);
+
+function on_close(e) {
+	console.log(">> WebSockets.oncloseXXX");
+}
+ws.on('close', on_close);
+
+
+
+//////////////////////////////////////////////////////////////////////
 var container;
 
 var camera, scene, renderer, objects;
