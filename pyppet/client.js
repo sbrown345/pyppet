@@ -96,6 +96,8 @@ function init() {
 	renderer.shadowMapSoft = true;
 
 
+	setInterval( update, 100 );
+
 }
 
 
@@ -117,4 +119,11 @@ function render() {
 	renderer.render( scene, camera );
 
 }
+
+
+function update() {
+
+}
+
+
 

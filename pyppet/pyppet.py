@@ -79,6 +79,7 @@ import wsgiref.simple_server
 import io, socket, select, pickle, urllib
 import urllib.request
 
+import websocket
 
 STREAM_BUFFER_SIZE = 2048
 
@@ -134,6 +135,39 @@ def dump_collada( name, center=False ):
 
 
 #####################
+class WebSocketServer( websocket.WebSocketServer ):
+	buffer_size = 8096
+
+	def new_client(self):
+		cqueue = []
+		c_pend = 0
+		cpartial = ""
+		rlist = [self.client]
+
+		while True:
+			wlist = []
+
+			if cqueue or c_pend: wlist.append(self.client)
+			ins, outs, excepts = select.select(rlist, wlist, [], 1)
+			if excepts: raise Exception("Socket exception")
+
+			if self.client in outs:
+				# Send queued target data to the client
+				c_pend = self.send_frames(cqueue)
+				cqueue = []
+
+			if self.client in ins:
+				# Receive client data, decode it, and send it back
+				frames, closed = self.recv_frames()
+				cqueue.extend(["You said: " + f for f in frames])
+
+				if closed:
+					self.send_close()
+					raise self.EClose(closed)
+
+
+
+#####################
 class WebServer( object ):
 	CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 
@@ -144,9 +178,9 @@ class WebServer( object ):
 		self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
 		self.httpd.timeout = timeout
 		self.THREE = None
-		path = os.path.join(SCRIPT_DIR, 'Three.js')
+		path = os.path.join(SCRIPT_DIR, 'javascripts/Three.js')
 		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
-		else: print('missing Three.js')
+		else: print('missing ./javascripts/Three.js')
 
 	def get_header(self, title='pyppet', webgl=False):
 		h = [
@@ -156,6 +190,11 @@ class WebServer( object ):
 			'<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">',
 		]
 
+		h.append( '<script src="javascripts/websockify/util.js"></script>' )
+		h.append( '<script src="javascripts/websockify/webutil.js"></script>' )
+		h.append( '<script src="javascripts/websockify/base64.js"></script>' )
+		h.append( '<script src="javascripts/websockify/websock.js"></script> ' )
+
 		h.append( '''<style>
 body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; color: #666; font-size: 0.8em}
 #container{ margin:auto; width: 640px; padding: 10px; background-color: #fff; border-radius: 5px; -webkit-box-shadow: 5px 5px 2px #444; }</style>''' )
@@ -163,11 +202,10 @@ body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; c
 		h.append( '</head><body>' )
 
 		if webgl and self.THREE:
-			h.append( '<script type="text/javascript" src="/Three.js"></script>' )
+			h.append( '<script type="text/javascript" src="/javascripts/Three.js"></script>' )
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 			h.append( '<script type="text/javascript">%s' %self.CLIENT_SCRIPT )
 			h.append( '</script>' )
-
 
 		return '\n'.join( h )
 
