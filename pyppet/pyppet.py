@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan20, 2012
+# Jan22, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3d'
+VERSION = '1.9.3e'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -219,7 +219,7 @@ class WebServer( object ):
 			'<!DOCTYPE html><html lang="en">',
 			'<head><title>%s</title>' %title,
 			'<meta charset="utf-8">',
-			'<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">',
+			'<meta name="viewport" content="width=device-width, user-scalable=yes, minimum-scale=1.0, maximum-scale=1.0">',
 		]
 
 		h.append( '<script src="/javascripts/websockify/util.js"></script>' )
@@ -227,9 +227,10 @@ class WebServer( object ):
 		h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
 		h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
 
-		h.append( '''<style>
-body{margin:auto; background-color: #888; padding-top: 50px; font-family:sans; color: #666; font-size: 0.8em}
-#container{ margin:auto; width: 640px; padding: 10px; background-color: #fff; border-radius: 5px; -webkit-box-shadow: 5px 5px 2px #444; }</style>''' )
+		h.append( '<style>' )
+		h.append( 'body{margin:auto; background-color: #888; padding-top: 2px; font-family:sans; color: #666; font-size: 0.8em}' )
+		h.append( '#container{ margin:auto; padding: 4px; background-color: #fff; }' )
+		h.append( '</style>' )
 
 		h.append( '</head><body>' )
 

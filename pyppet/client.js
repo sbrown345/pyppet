@@ -10,7 +10,7 @@ function on_collada_ready( collada ) {
 	//skin = collada.skins[0]
 	//Objects[ skin.name ] = collada;
 	mesh = collada.scene.children[0];
-	Objects[ mesh.name ] = collada;
+	Objects[ mesh.name ] = mesh;
 
 	scene.add( collada.scene );
 	dae = collada.scene;
@@ -24,16 +24,16 @@ function on_message(e) {
 		console.log( '>> loading new collada' );
 		Objects[ ob.name ] = null;
 		var loader = new THREE.ColladaLoader();
-		loader.options.convertUpAxis = true;
+		//loader.options.convertUpAxis = true;
 		loader.load( '/objects/'+ob.name+'.dae', on_collada_ready );
 
 	}
 	else if (ob.name in Objects) {
 		if ( Objects[ob.name] ) {
-			o = Objects[ ob.name ];
-			o.scene.position.x = ob.pos[0];
-			o.scene.position.y = ob.pos[1];
-			o.scene.position.z = ob.pos[2];
+			m = Objects[ ob.name ];
+			m.position.x = ob.pos[0];
+			m.position.y = ob.pos[1];
+			m.position.z = ob.pos[2];
 		}
 	}
 }
@@ -48,7 +48,7 @@ function on_open(e) {
 ws.on('open', on_open);
 
 function on_close(e) {
-	console.log(">> WebSockets.oncloseXXX");
+	console.log(">> WebSockets.onclose");
 }
 ws.on('close', on_close);
 
@@ -73,6 +73,7 @@ function init() {
 	// camera //
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
 	camera.position.set( 20, 20, 3 );
+	camera.up.set( 0, 0, 1 );
 	scene.add( camera );
 
 	// Grid //
@@ -80,10 +81,10 @@ function init() {
 	geometry = new THREE.Geometry(),
 	floor = -0.04, step = 1, size = 14;
 	for ( var i = 0; i <= size / step * 2; i ++ ) {
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - size, floor, i * step - size ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3(   size, floor, i * step - size ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size, floor, -size ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size, floor,  size ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - size, i * step - size, floor ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3(   size, i * step - size, floor ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size, -size, floor ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size,  size, floor ) ) );
 
 	}
 	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
@@ -134,9 +135,6 @@ function init() {
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
 
-
-	//setInterval( update, 100 );
-
 }
 
 
@@ -145,12 +143,30 @@ function animate() {
 	render();
 }
 
+var _prev_width = window.innerWidth;
+var _prev_height = window.innerHeight;
+function resize_view() {
+	if (window.innerWidth != _prev_width) || ( window.innerHeight != _prev_height) {
+		_prev_width = window.innerWidth;
+		_prev_height = window.innerHeight;
+		renderer.setSize( window.innerWidth, window.innerHeight );
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		console.log(">> resize view");
+	}
+
+}
+
 function render() {
 	var timer = Date.now() * 0.0005;
 
+	resize_view();
+
 	camera.position.x = Math.cos( timer ) * 10;
-	camera.position.y = 2;
-	camera.position.z = Math.sin( timer ) * 10;
+	//camera.position.y = 2;
+	//camera.position.z = Math.sin( timer ) * 10;
+	camera.position.y = Math.sin( timer ) * 10;
+	camera.position.z = 2;
 
 	camera.lookAt( scene.position );
 	renderer.render( scene, camera );
