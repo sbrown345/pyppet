@@ -80,6 +80,7 @@ import io, socket, select, pickle, urllib
 import urllib.request
 
 import websocket
+import json
 
 STREAM_BUFFER_SIZE = 2048
 
@@ -141,13 +142,14 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	def start(self):
 		print('--starting websocket server thread--')
+		self.active = True
 		threading._start_new_thread(
 			self.loop, ()
 		)
 
 	def loop(self):
 		lsock = self.socket(self.listen_host, self.listen_port)
-		while True:
+		while self.active:
 			time.sleep(0.1)
 			try:
 				self.poll()
@@ -159,8 +161,16 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	def new_client(self): print('new client', self.client)
 	def update( self, context ):
-		if not self.client: return
-		cqueue = [b'hello world']
+		if not self.client or not context.active_object: return
+		ob = context.active_object
+		jdata = json.dumps(
+			{
+				'name': ob.name,
+				'pos': ob.location.to_tuple(),
+			}
+		)
+
+		cqueue = [ jdata.encode('utf-8') ]
 
 		rlist = [self.client]
 		wlist = [self.client]
@@ -181,10 +191,11 @@ class WebSocketServer( websocket.WebSocketServer ):
 			print('got from client', frames)
 			if closed:
 				print('CLOSING CLIENT')
-				try: self.send_close()
+				try:
+					self.send_close()
+					raise self.EClose(closed)
 				except: pass
 				self.client = None
-				raise self.EClose(closed)
 
 
 

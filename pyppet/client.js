@@ -2,10 +2,43 @@ ws = new Websock();
 ws.open( 'ws://localhost:8081' );
 var tmp = null;
 
-function on_message(e) {
-	var str = ws.rQshiftStr();
-	tmp = str;
+var Objects = {};
+
+function on_collada_ready( collada ) {
+	console.log( '>> collada loaded' );
+	tmp = collada;
+	//skin = collada.skins[0]
+	//Objects[ skin.name ] = collada;
+	mesh = collada.scene.children[0];
+	Objects[ mesh.name ] = collada;
+
+	scene.add( collada.scene );
+	dae = collada.scene;
 }
+
+function on_message(e) {
+	var data = ws.rQshiftStr();
+	var ob = JSON.parse( data );
+
+	if (ob.name in Objects == false) {
+		console.log( '>> loading new collada' );
+		Objects[ ob.name ] = null;
+		var loader = new THREE.ColladaLoader();
+		loader.options.convertUpAxis = true;
+		loader.load( '/objects/'+ob.name+'.dae', on_collada_ready );
+
+	}
+	else if (ob.name in Objects) {
+		if ( Objects[ob.name] ) {
+			o = Objects[ ob.name ];
+			o.scene.position.x = ob.pos[0];
+			o.scene.position.y = ob.pos[1];
+			o.scene.position.z = ob.pos[2];
+		}
+	}
+}
+
+
 
 ws.on('message', on_message);
 
@@ -23,30 +56,13 @@ ws.on('close', on_close);
 
 //////////////////////////////////////////////////////////////////////
 var container;
-
-var camera, scene, renderer, objects;
-
+var camera, scene, renderer;
 var spotLight, pointLight, ambientLight;
-
 var dae, skin;
-
-var loader = new THREE.ColladaLoader();
-loader.options.convertUpAxis = true;
-loader.load( '/objects/Cube.dae', function colladaReady( collada ) {
-
-	dae = collada.scene;
-	skin = collada.skins[ 0 ];
-
-	//dae.scale.x = dae.scale.y = dae.scale.z = 0.00001;
-	//dae.updateMatrix();
-
-	init();
-	animate();
-
-} );
 
 
 function init() {
+	console.log(">> THREE init");
 
 	container = document.createElement( 'div' );
 	document.body.appendChild( container );
@@ -75,7 +91,7 @@ function init() {
 
 
 	// Add the COLLADA //
-	scene.add( dae );
+	//scene.add( dae );
 
 
 	// LIGHTS //
@@ -119,7 +135,7 @@ function init() {
 	renderer.shadowMapSoft = true;
 
 
-	setInterval( update, 100 );
+	//setInterval( update, 100 );
 
 }
 
@@ -130,7 +146,6 @@ function animate() {
 }
 
 function render() {
-
 	var timer = Date.now() * 0.0005;
 
 	camera.position.x = Math.cos( timer ) * 10;
@@ -138,15 +153,11 @@ function render() {
 	camera.position.z = Math.sin( timer ) * 10;
 
 	camera.lookAt( scene.position );
-
 	renderer.render( scene, camera );
 
 }
 
 
-function update() {
-
-}
-
-
+init();
+animate();
 
