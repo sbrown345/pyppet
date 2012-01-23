@@ -11,6 +11,9 @@ function on_collada_ready( collada ) {
 	//Objects[ skin.name ] = collada;
 	mesh = collada.scene.children[0];
 	mesh.useQuaternion = false;
+	mesh.castShadow = true;
+	mesh.receiveShadow = true;
+
 	Objects[ mesh.name ] = mesh;
 
 	scene.add( collada.scene );
@@ -22,29 +25,30 @@ function on_collada_ready( collada ) {
 function on_message(e) {
 	var data = ws.rQshiftStr();
 	var ob = JSON.parse( data );
+	name = ob.name.replace('.', '_');
 
-	if (ob.name in Objects == false) {
+	if (name in Objects == false) {
 		console.log( '>> loading new collada' );
-		Objects[ ob.name ] = null;
+		Objects[ name ] = null;
 		var loader = new THREE.ColladaLoader();
 		loader.options.convertUpAxis = true;
 		loader.load( '/objects/'+ob.name+'.dae', on_collada_ready );
 
 	}
-	else if (ob.name in Objects) {
-		if ( Objects[ob.name] ) {
-			m = Objects[ ob.name ];
+	else if (name in Objects) {
+		if ( Objects[name] ) {
+			m = Objects[ name ];
 			m.position.x = ob.pos[0];
-			m.position.y = -ob.pos[2];
-			m.position.z = ob.pos[1];
+			m.position.y = ob.pos[2];
+			m.position.z = -ob.pos[1];
 
 			m.scale.x = ob.scl[0];
 			m.scale.y = ob.scl[2];
 			m.scale.z = ob.scl[1];
 
 			m.rotation.x = ob.rot[0];
-			m.rotation.y = -ob.rot[2];
-			m.rotation.z = ob.rot[1];
+			m.rotation.y = ob.rot[2];
+			m.rotation.z = -ob.rot[1];
 
 		}
 	}
@@ -89,7 +93,7 @@ function init() {
 	scene.add( camera );
 
 	controls = new THREE.FirstPersonControls( camera );
-	controls.lookSpeed = 0.05;
+	controls.lookSpeed = 0.075;
 	controls.movementSpeed = 10;
 	controls.noFly = false;
 	controls.lookVertical = true;
@@ -139,13 +143,15 @@ function init() {
 	scene.add( pointLight3 );
 
 	spotLight = new THREE.SpotLight( 0xaaaaaa );
-	spotLight.position.set( 1000, 500, 1000 );
+	spotLight.position.set( 0, 500, 10 );
+	spotLight.target.position.set( 0, 0, 0 );
 	spotLight.castShadow = true;
-	spotLight.shadowCameraNear = 500;
+	spotLight.shadowCameraNear = 480;
+	spotLight.shadowCameraFar = camera.far;
 	spotLight.shadowCameraFov = 70;
 	spotLight.shadowBias = 0.001;
-	spotLight.shadowMapWidth = 1024;
-	spotLight.shadowMapHeight = 1024;
+	spotLight.shadowMapWidth = 2048;
+	spotLight.shadowMapHeight = 2048;
 	scene.add( spotLight );
 
 
