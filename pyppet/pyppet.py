@@ -171,9 +171,16 @@ class WebSocketServer( websocket.WebSocketServer ):
 		x,y,z = rot.to_euler(); rot = (x,y,z)
 		scl = scl.to_tuple()
 
+		data = ob.to_mesh( context.scene, True, "PREVIEW")
 		N = len( ob.data.vertices )
 		verts = [ 0.0 for i in range(N*3) ]
-		ob.data.vertices.foreach_get( 'co', verts )
+		data.vertices.foreach_get( 'co', verts )
+
+		subsurf = 0
+		for mod in ob.modifiers:
+			if mod.type == 'SUBSURF':
+				subsurf = mod.levels		# mod.render_levels
+				break
 
 		jdata = json.dumps(
 			{
@@ -182,6 +189,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				'rot' : rot,
 				'scl' : scl,
 				'verts': verts,
+				'subsurf': subsurf,
 			}
 		)
 		cqueue = [ jdata.encode('utf-8') ]

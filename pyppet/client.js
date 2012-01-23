@@ -11,31 +11,6 @@ var tmp = null;
 
 var Objects = {};
 
-function on_collada_ready( collada ) {
-	console.log( '>> collada loaded' );
-	tmp = collada;
-	//skin = collada.skins[0]
-	//Objects[ skin.name ] = collada;
-	mesh = collada.scene.children[0];
-	mesh.useQuaternion = false;
-	mesh.castShadow = true;
-	mesh.receiveShadow = true;
-	mesh.geometry.dynamic = true;		// required
-
-	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
-
-	//var modifier = new THREE.SubdivisionModifier( 2 );
-	//smooth = THREE.GeometryUtils.clone( geometry );
-	//modifier.modify( mesh.geometry );
-
-	Objects[ mesh.name ] = mesh;
-
-	scene.add( collada.scene );
-	dae = collada.scene;
-
-	camera.lookAt( mesh.position );
-}
-
 function on_message(e) {
 	var data = ws.rQshiftStr();
 	var ob = JSON.parse( data );
@@ -73,11 +48,43 @@ function on_message(e) {
 				vidx++;
 			}
 			m.geometry_base.__dirtyVertices = true;
+			m.geometry_base.__tmpVertices = undefined;
 
+			m.geometry_base.computeCentroids();
+			m.geometry_base.computeFaceNormals();
+			m.geometry_base.computeVertexNormals();
+
+			m.dirty_modifiers = true;
+			m.subsurf = ob.subsurf;
 		}
 	}
 }
 
+
+
+function on_collada_ready( collada ) {
+	console.log( '>> collada loaded' );
+	tmp = collada;
+	//skin = collada.skins[0]
+	//Objects[ skin.name ] = collada;
+	mesh = collada.scene.children[0];
+	mesh.useQuaternion = false;
+	mesh.castShadow = true;
+	mesh.receiveShadow = true;
+	mesh.geometry.dynamic = true;		// required
+	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
+
+	//var modifier = new THREE.SubdivisionModifier( 2 );
+	//smooth = THREE.GeometryUtils.clone( geometry );
+	//modifier.modify( mesh.geometry );
+
+	Objects[ mesh.name ] = mesh;
+
+	scene.add( collada.scene );
+	dae = collada.scene;
+
+	camera.lookAt( mesh.position );
+}
 
 
 ws.on('message', on_message);
@@ -295,10 +302,16 @@ function render() {
 	for (n in Objects) {
 		var mesh = Objects[ n ];
 		dbug = mesh;
-		if (mesh) {
-			console.log('>> rebuilding subsurf');
-			var modifier = new THREE.SubdivisionModifier( 1 );
+		if (mesh && mesh.dirty_modifiers) {
+			console.log( mesh.subsurf );
+
+			mesh.dirty_modifiers = false;
+			var modifier = new THREE.SubdivisionModifier( 1 ); //mesh.subsurf );
 			var smooth = THREE.GeometryUtils.clone( mesh.geometry_base );
+			//smooth.mergeVertices();		// BAD //
+			//smooth.computeFaceNormals();
+			//smooth.computeVertexNormals();
+
 			modifier.modify( smooth );
 			//mesh.geometry = smooth;	// this won't work //
 			mesh.geometry.vertices = smooth.vertices;
