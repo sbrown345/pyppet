@@ -10,10 +10,13 @@ function on_collada_ready( collada ) {
 	//skin = collada.skins[0]
 	//Objects[ skin.name ] = collada;
 	mesh = collada.scene.children[0];
+	mesh.useQuaternion = false;
 	Objects[ mesh.name ] = mesh;
 
 	scene.add( collada.scene );
 	dae = collada.scene;
+
+	camera.lookAt( mesh.position );
 }
 
 function on_message(e) {
@@ -24,7 +27,7 @@ function on_message(e) {
 		console.log( '>> loading new collada' );
 		Objects[ ob.name ] = null;
 		var loader = new THREE.ColladaLoader();
-		//loader.options.convertUpAxis = true;
+		loader.options.convertUpAxis = true;
 		loader.load( '/objects/'+ob.name+'.dae', on_collada_ready );
 
 	}
@@ -32,8 +35,17 @@ function on_message(e) {
 		if ( Objects[ob.name] ) {
 			m = Objects[ ob.name ];
 			m.position.x = ob.pos[0];
-			m.position.y = ob.pos[1];
-			m.position.z = ob.pos[2];
+			m.position.y = -ob.pos[2];
+			m.position.z = ob.pos[1];
+
+			m.scale.x = ob.scl[0];
+			m.scale.y = ob.scl[2];
+			m.scale.z = ob.scl[1];
+
+			m.rotation.x = ob.rot[0];
+			m.rotation.y = -ob.rot[2];
+			m.rotation.z = ob.rot[1];
+
 		}
 	}
 }
@@ -59,7 +71,7 @@ var container;
 var camera, scene, renderer;
 var spotLight, pointLight, ambientLight;
 var dae, skin;
-
+var controls;
 
 function init() {
 	console.log(">> THREE init");
@@ -71,20 +83,31 @@ function init() {
 	scene = new THREE.Scene();
 
 	// camera //
-	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-	camera.position.set( 20, 20, 3 );
-	camera.up.set( 0, 0, 1 );
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 1, 2000 );
+	camera.position.set( 0, 4, 10 );
+	//camera.up.set( 0, 0, 1 );
 	scene.add( camera );
+
+	controls = new THREE.FirstPersonControls( camera );
+	controls.lookSpeed = 0.05;
+	controls.movementSpeed = 10;
+	controls.noFly = false;
+	controls.lookVertical = true;
+	//controls.constrainVertical = true;
+	controls.verticalMin = 0.0;
+	controls.verticalMax = 2.0;
+	//controls.lon = -110;
+
 
 	// Grid //
 	var line_material = new THREE.LineBasicMaterial( { color: 0xcccccc, opacity: 0.2 } ),
 	geometry = new THREE.Geometry(),
 	floor = -0.04, step = 1, size = 14;
 	for ( var i = 0; i <= size / step * 2; i ++ ) {
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - size, i * step - size, floor ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3(   size, i * step - size, floor ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size, -size, floor ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size,  size, floor ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - size, floor, i * step - size ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3(   size, floor, i * step - size ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size, floor, -size ) ) );
+		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size,  floor, size ) ) );
 
 	}
 	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
@@ -128,7 +151,7 @@ function init() {
 
 	// renderer //
 	renderer = new THREE.WebGLRenderer( { maxLights: 8 } );
-	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
 	renderer.gammaInput = true;
 	renderer.gammaOutput = true;
@@ -146,29 +169,51 @@ function animate() {
 var _prev_width = window.innerWidth;
 var _prev_height = window.innerHeight;
 function resize_view() {
-	if (window.innerWidth != _prev_width) || ( window.innerHeight != _prev_height) {
+	if (window.innerWidth != _prev_width || window.innerHeight != _prev_height) {
 		_prev_width = window.innerWidth;
 		_prev_height = window.innerHeight;
-		renderer.setSize( window.innerWidth, window.innerHeight );
-		camera.aspect = window.innerWidth / window.innerHeight;
+		renderer.setSize( window.innerWidth, window.innerHeight-10 );
+		camera.aspect = window.innerWidth / (window.innerHeight-10);
 		camera.updateProjectionMatrix();
 		console.log(">> resize view");
 	}
 
 }
 
+var use_camera_controls = true;
+function on_key_up(event) {
+	//console.log( event.keyCode );
+	switch( event.keyCode ) {
+
+		case 32: 		/* space */
+			use_camera_controls = !use_camera_controls;
+			break;
+
+	}
+
+}
+window.addEventListener( 'keyup', on_key_up, false );
+
+
+var clock = new THREE.Clock();
+
 function render() {
 	var timer = Date.now() * 0.0005;
 
 	resize_view();
 
+	var delta = clock.getDelta();
+	if ( use_camera_controls ) {
+		controls.update( delta );
+	}
+
+/*
 	camera.position.x = Math.cos( timer ) * 10;
-	//camera.position.y = 2;
-	//camera.position.z = Math.sin( timer ) * 10;
 	camera.position.y = Math.sin( timer ) * 10;
 	camera.position.z = 2;
-
 	camera.lookAt( scene.position );
+*/
+
 	renderer.render( scene, camera );
 
 }

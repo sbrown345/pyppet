@@ -163,10 +163,18 @@ class WebSocketServer( websocket.WebSocketServer ):
 	def update( self, context ):
 		if not self.client or not context.active_object: return
 		ob = context.active_object
+
+		loc, rot, scl = ob.matrix_world.decompose()
+		loc = loc.to_tuple()
+		x,y,z = rot.to_euler(); rot = (x,y,z)
+		scl = scl.to_tuple()
+
 		jdata = json.dumps(
 			{
 				'name': ob.name,
-				'pos': ob.location.to_tuple(),
+				'pos': loc,
+				'rot' : rot,
+				'scl' : scl,
 			}
 		)
 
@@ -180,8 +188,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		if self.client in outs:
 			# Send queued target data to the client
-			pending = self.send_frames(cqueue)
-			if pending: print('failed to send', pending)
+			try:
+				pending = self.send_frames(cqueue)
+				if pending: print('failed to send', pending)
+			except:
+				self.client = None
+
 		elif not outs:
 			print('client not ready to read....')
 
