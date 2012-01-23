@@ -1,3 +1,10 @@
+var wire_material = new THREE.MeshLambertMaterial( { color: 0xffffff, wireframe: true } );
+
+var SCREEN_WIDTH = window.innerWidth;
+var SCREEN_HEIGHT = window.innerHeight - 10;
+
+var composer, effectFXAA, hblur, vblur;
+
 ws = new Websock();
 ws.open( 'ws://localhost:8081' );
 var tmp = null;
@@ -13,6 +20,13 @@ function on_collada_ready( collada ) {
 	mesh.useQuaternion = false;
 	mesh.castShadow = true;
 	mesh.receiveShadow = true;
+	mesh.geometry.dynamic = true;		// required
+
+	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
+
+	//var modifier = new THREE.SubdivisionModifier( 2 );
+	//smooth = THREE.GeometryUtils.clone( geometry );
+	//modifier.modify( mesh.geometry );
 
 	Objects[ mesh.name ] = mesh;
 
@@ -49,6 +63,16 @@ function on_message(e) {
 			m.rotation.x = ob.rot[0];
 			m.rotation.y = ob.rot[2];
 			m.rotation.z = -ob.rot[1];
+
+			var vidx = 0;
+			for (var i=0; i<ob.verts.length-3; i += 3) {
+				var v = m.geometry_base.vertices[ vidx ].position;
+				v.x = ob.verts[ i ];
+				v.y = ob.verts[ i+2 ];
+				v.z = -ob.verts[ i+1 ];
+				vidx++;
+			}
+			m.geometry_base.__dirtyVertices = true;
 
 		}
 	}
@@ -163,6 +187,50 @@ function init() {
 	renderer.gammaOutput = true;
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
+	renderer.shadowMapAutoUpdate = false;
+	renderer.setClearColor( {r:0.4,g:0.4,b:0.4}, 1.0 )
+
+	renderer.physicallyBasedShading = true;
+	// COMPOSER
+
+	renderer.autoClear = false;
+
+	renderTargetParameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBufer: false };
+	renderTarget = new THREE.WebGLRenderTarget( SCREEN_WIDTH, SCREEN_HEIGHT, renderTargetParameters );
+
+	effectFXAA = new THREE.ShaderPass( THREE.ShaderExtras[ "fxaa" ] );
+	var effectVignette = new THREE.ShaderPass( THREE.ShaderExtras[ "vignette" ] );
+
+	hblur = new THREE.ShaderPass( THREE.ShaderExtras[ "horizontalTiltShift" ] );
+	vblur = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
+
+	var bluriness = 4;
+
+	hblur.uniforms[ 'h' ].value = bluriness / SCREEN_WIDTH;
+	vblur.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
+
+	hblur.uniforms[ 'r' ].value = vblur.uniforms[ 'r' ].value = 0.5;
+
+	effectFXAA.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
+
+	composer = new THREE.EffectComposer( renderer, renderTarget );
+
+	var renderModel = new THREE.RenderPass( scene, camera );
+
+	effectVignette.renderToScreen = true;
+	vblur.renderToScreen = true;
+
+	composer = new THREE.EffectComposer( renderer, renderTarget );
+
+	composer.addPass( renderModel );
+
+	composer.addPass( effectFXAA );
+
+	composer.addPass( hblur );
+	composer.addPass( vblur );
+
+	//composer.addPass( effectVignette );
+
 
 }
 
@@ -202,6 +270,7 @@ window.addEventListener( 'keyup', on_key_up, false );
 
 
 var clock = new THREE.Clock();
+var dbug = null;
 
 function render() {
 	var timer = Date.now() * 0.0005;
@@ -220,7 +289,46 @@ function render() {
 	camera.lookAt( scene.position );
 */
 
-	renderer.render( scene, camera );
+	//renderer.render( scene, camera );
+
+	// subdiv modifier //
+	for (n in Objects) {
+		var mesh = Objects[ n ];
+		dbug = mesh;
+		if (mesh) {
+			console.log('>> rebuilding subsurf');
+			var modifier = new THREE.SubdivisionModifier( 1 );
+			var smooth = THREE.GeometryUtils.clone( mesh.geometry_base );
+			modifier.modify( smooth );
+			//mesh.geometry = smooth;	// this won't work //
+			mesh.geometry.vertices = smooth.vertices;
+			mesh.geometry.faces = smooth.faces;
+			mesh.geometry.faceUvs = smooth.faceUvs;
+			mesh.geometry.faceVertexUvs = smooth.faceVertexUvs;
+			mesh.geometry.__dirtyVertices = true;
+		}
+	}
+
+
+	// render shadow map
+	renderer.autoUpdateObjects = false;
+	renderer.initWebGLObjects( scene );
+	renderer.updateShadowMap( scene, camera );
+
+	// render cube map
+/*
+	mesh.visible = false;
+	renderer.autoClear = true;
+	cubeCamera.updatePosition( mesh.position );
+	cubeCamera.updateCubeMap( renderer, scene );
+	renderer.autoClear = false;
+	mesh.visible = true;
+*/
+
+	// render scene
+	renderer.autoUpdateObjects = true;
+	composer.render( 0.1 );
+
 
 }
 

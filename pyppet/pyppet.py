@@ -162,6 +162,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 	def new_client(self): print('new client', self.client)
 	def update( self, context ):
 		if not self.client or not context.active_object: return
+		if context.active_object.type != 'MESH': return
+
 		ob = context.active_object
 
 		loc, rot, scl = ob.matrix_world.decompose()
@@ -169,15 +171,19 @@ class WebSocketServer( websocket.WebSocketServer ):
 		x,y,z = rot.to_euler(); rot = (x,y,z)
 		scl = scl.to_tuple()
 
+		N = len( ob.data.vertices )
+		verts = [ 0.0 for i in range(N*3) ]
+		ob.data.vertices.foreach_get( 'co', verts )
+
 		jdata = json.dumps(
 			{
 				'name': ob.name,
 				'pos': loc,
 				'rot' : rot,
 				'scl' : scl,
+				'verts': verts,
 			}
 		)
-
 		cqueue = [ jdata.encode('utf-8') ]
 
 		rlist = [self.client]
@@ -248,6 +254,16 @@ class WebServer( object ):
 
 		if webgl and self.THREE:
 			h.append( '<script type="text/javascript" src="/javascripts/Three.js"></script>' )
+
+			h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
+
+			h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
+			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass'.split():
+				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
+
+
+
+			########################################################################
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 			h.append( '<script type="text/javascript">%s' %self.CLIENT_SCRIPT )
 			h.append( '</script>' )

@@ -1,0 +1,33 @@
+Vintage Dreams Waves v 2.0 for Creative Labs' AWE Soundcards
+(EMU Soundfont 2 Format)
+
+Copyright (c) Ian Wilson, 1996  (Updated January 1998)
+
+
+This soundfont was originally to be released for commercial purposes in 1996,
+but has been available since then as freeware. It has been updated to include
+more and improved sounds, as well as an extra TR808 drum kit, with sound
+improvements overall.
+
+There are currently 128 Instrument patches, as well as 8 drum kits. The kits
+emulated in this soundfont are as follows :
+
+Roland TR808
+Roland TR909
+Roland CR-78
+dnaloR TR-101         (Imaginary Roland :-)  )
+Analog                (Lots of Depeche, Yazoo stuff here)
+Electronic            (Small cheesy kit)
+Kraftwerk             (Small set of blippy drums)
+Roland TR808 Kit 2    (MUCH Improved Snares and Hi-Hats)
+
+
+Any feedback, contact Ian Wilson
+
+aztec1@bellatlantic.net    (home)
+iwilson@butlerintl.com     (work)
+
+
+( The SoundFont was downloaded from HammerSound, http://www.pvv.org/~thammer/HammerSound/ )
+
+
