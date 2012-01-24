@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan22, 2012
+# Jan24, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3e'
+VERSION = '1.9.3f'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -171,9 +171,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 		ob = context.active_object
 
 		color = None
+		specular = None
 		if ob.data.materials:
-			r,g,b = ob.data.materials[0].diffuse_color
+			mat = ob.data.materials[0]
+			r,g,b = mat.diffuse_color
 			color = (r,g,b)
+			specular = mat.specular_hardness
 
 		loc, rot, scl = ob.matrix_world.decompose()
 		loc = loc.to_tuple()
@@ -215,6 +218,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				'verts': verts,
 				'subsurf': subsurf,
 				'color': color,
+				'specular': specular,
 			}
 		)
 		rawbytes = data.encode('utf-8')
@@ -303,7 +307,7 @@ class WebServer( object ):
 			h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
 
 			h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
-			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass'.split():
+			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
 				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
 
 

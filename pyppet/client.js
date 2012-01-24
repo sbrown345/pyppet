@@ -1,4 +1,4 @@
-var WIRE_MATERIAL = new THREE.MeshLambertMaterial( { color: 0x000000, wireframe: true, wireframeLinewidth:4 } );
+var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: true, wireframeLinewidth:4 });
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
@@ -49,6 +49,7 @@ function on_message(e) {
 			m._material.color.g = ob.color[1];
 			m._material.color.b = ob.color[2];
 		}
+		m._material.shininess = ob.specular;
 
 		m.dirty_modifiers = true;
 		m.subsurf = ob.subsurf;
@@ -89,8 +90,35 @@ function on_collada_ready( collada ) {
 	mesh.receiveShadow = true;
 	mesh.geometry.dynamic = true;		// required
 	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
-	mesh._material = mesh.material;
+	//mesh._material = mesh.material;
 	mesh.material = WIRE_MATERIAL;
+
+/*
+	// upgrade material to normal map shader //
+	var shader = THREE.ShaderUtils.lib[ "normal" ];
+	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+	uniforms[ "enableAO" ].value = false;
+	uniforms[ "enableDiffuse" ].value = true;
+	uniforms[ "enableSpecular" ].value = true;
+	uniforms[ "enableReflection" ].value = false;
+
+	var parameters = { 
+		fragmentShader: shader.fragmentShader, 
+		vertexShader: shader.vertexShader, 
+		uniforms: uniforms, 
+		lights: true, fog: false 
+	};
+	var material = new THREE.ShaderMaterial( parameters );
+	material.color = uniforms['uDiffuseColor'].value;
+	mesh._material = material;
+*/
+
+	// upgrade to phong per-pixel material //
+	var material = new THREE.MeshPhongMaterial( {perPixel:true} );
+	mesh._material = material;
+
+
 
 /*	## over allocation is not the trick ##
 	var modifier = new THREE.SubdivisionModifier( 2 );
@@ -153,7 +181,7 @@ function init() {
 
 
 	// Grid //
-	var line_material = new THREE.LineBasicMaterial( { color: 0xcccccc, opacity: 0.2 } ),
+	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
 	geometry = new THREE.Geometry(),
 	floor = -0.04, step = 1, size = 14;
 	for ( var i = 0; i <= size / step * 2; i ++ ) {
@@ -217,7 +245,7 @@ function init() {
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
 	renderer.shadowMapAutoUpdate = false;
-	renderer.setClearColor( {r:0.4,g:0.4,b:0.4}, 1.0 )
+	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
 
 	renderer.physicallyBasedShading = true;
 	// COMPOSER
@@ -233,7 +261,7 @@ function init() {
 	hblur = new THREE.ShaderPass( THREE.ShaderExtras[ "horizontalTiltShift" ] );
 	vblur = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
 
-	var bluriness = 4;
+	var bluriness = 3;
 
 	hblur.uniforms[ 'h' ].value = bluriness / SCREEN_WIDTH;
 	vblur.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
@@ -246,20 +274,33 @@ function init() {
 
 	var renderModel = new THREE.RenderPass( scene, camera );
 
-	effectVignette.renderToScreen = true;
+	//effectVignette.renderToScreen = true;
 	vblur.renderToScreen = true;
 
 	composer = new THREE.EffectComposer( renderer, renderTarget );
 
 	composer.addPass( renderModel );
 
+	var effectBloom = new THREE.BloomPass( 1.1 );
 
 	composer.addPass( effectFXAA );
+
+	composer.addPass( effectVignette );		// compatible if not renderToScreen
+
+	composer.addPass( effectBloom );
+
+	var effectFilm = new THREE.FilmPass( 0.35, 0.025, 648, false );
+	composer.addPass( effectFilm );
+
+	//var effectFilmBW = new THREE.FilmPass( 0.35, 0.5, 2048, true );
+	var effectDotScreen = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 0.8 );
+	//composer.addPass( effectDotScreen );
+
 
 	composer.addPass( hblur );
 	composer.addPass( vblur );
 
-	//composer.addPass( effectVignette );		// shade edges of screen - not compatible with fake DOF
+
 
 
 
