@@ -1,4 +1,4 @@
-var wire_material = new THREE.MeshLambertMaterial( { color: 0xffffff, wireframe: true } );
+var WIRE_MATERIAL = new THREE.MeshLambertMaterial( { color: 0x000000, wireframe: true } );
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
@@ -14,9 +14,47 @@ var Objects = {};
 function on_message(e) {
 	var data = ws.rQshiftStr();
 	var ob = JSON.parse( data );
-	name = ob.name.replace('.', '_');
+	var name = ob.name.replace('.', '_');
 
-	if (name in Objects == false) {
+	if (name in Objects && Objects[name]) {
+		m = Objects[ name ];
+		m.position.x = ob.pos[0];
+		m.position.y = ob.pos[2];
+		m.position.z = -ob.pos[1];
+
+		m.scale.x = ob.scl[0];
+		m.scale.y = ob.scl[2];
+		m.scale.z = ob.scl[1];
+
+		m.rotation.x = ob.rot[0];
+		m.rotation.y = ob.rot[2];
+		m.rotation.z = -ob.rot[1];
+
+		var vidx = 0;
+		for (var i=0; i<ob.verts.length-3; i += 3) {
+			var v = m.geometry_base.vertices[ vidx ].position;
+			v.x = ob.verts[ i ];
+			v.y = ob.verts[ i+2 ];
+			v.z = -ob.verts[ i+1 ];
+			vidx++;
+		}
+		//m.geometry_base.__dirtyVertices = true;
+		//m.geometry_base.__tmpVertices = undefined;
+		m.geometry_base.computeCentroids();
+		//m.geometry_base.computeFaceNormals();
+		//m.geometry_base.computeVertexNormals();
+
+		if (ob.color) {
+			m._material.color.r = ob.color[0];
+			m._material.color.g = ob.color[1];
+			m._material.color.b = ob.color[2];
+		}
+
+		m.dirty_modifiers = true;
+		m.subsurf = ob.subsurf;
+	}
+
+	else if (name in Objects == false) {
 		console.log( '>> loading new collada' );
 		Objects[ name ] = null;
 		var loader = new THREE.ColladaLoader();
@@ -24,43 +62,21 @@ function on_message(e) {
 		loader.load( '/objects/'+ob.name+'.dae', on_collada_ready );
 
 	}
-	else if (name in Objects) {
-		if ( Objects[name] ) {
-			m = Objects[ name ];
-			m.position.x = ob.pos[0];
-			m.position.y = ob.pos[2];
-			m.position.z = -ob.pos[1];
 
-			m.scale.x = ob.scl[0];
-			m.scale.y = ob.scl[2];
-			m.scale.z = ob.scl[1];
-
-			m.rotation.x = ob.rot[0];
-			m.rotation.y = ob.rot[2];
-			m.rotation.z = -ob.rot[1];
-
-			var vidx = 0;
-			for (var i=0; i<ob.verts.length-3; i += 3) {
-				var v = m.geometry_base.vertices[ vidx ].position;
-				v.x = ob.verts[ i ];
-				v.y = ob.verts[ i+2 ];
-				v.z = -ob.verts[ i+1 ];
-				vidx++;
-			}
-			m.geometry_base.__dirtyVertices = true;
-			m.geometry_base.__tmpVertices = undefined;
-
-			m.geometry_base.computeCentroids();
-			m.geometry_base.computeFaceNormals();
-			m.geometry_base.computeVertexNormals();
-
-			m.dirty_modifiers = true;
-			m.subsurf = ob.subsurf;
-		}
-	}
 }
 
-
+function debug_geo( geo ) {
+	var used = {};
+	for (var i=0; i<geo.faces.length; i++) {
+		face = geo.faces[i];
+		used[face.a]=true;
+		used[face.b]=true;
+		used[face.c]=true;
+		used[face.d]=true;
+	}
+	console.log( used );
+	return used;
+} 
 
 function on_collada_ready( collada ) {
 	console.log( '>> collada loaded' );
@@ -73,11 +89,13 @@ function on_collada_ready( collada ) {
 	mesh.receiveShadow = true;
 	mesh.geometry.dynamic = true;		// required
 	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
+	mesh._material = mesh.material;
+	mesh.material = WIRE_MATERIAL;
 
-	//var modifier = new THREE.SubdivisionModifier( 2 );
-	//smooth = THREE.GeometryUtils.clone( geometry );
-	//modifier.modify( mesh.geometry );
-
+/*	## over allocation is not the trick ##
+	var modifier = new THREE.SubdivisionModifier( 2 );
+	modifier.modify( mesh.geometry );
+*/
 	Objects[ mesh.name ] = mesh;
 
 	scene.add( collada.scene );
@@ -243,6 +261,65 @@ function init() {
 
 
 function animate() {
+	// subdiv modifier //
+	for (n in Objects) {
+		var mesh = Objects[ n ];
+		dbug = mesh;
+		if (mesh && mesh.dirty_modifiers) {
+			console.log( mesh.subsurf );
+			mesh.dirty_modifiers = false;
+
+			// update hull //
+			mesh.geometry.vertices = mesh.geometry_base.vertices;
+			mesh.geometry.__dirtyVertices = true;
+
+
+			var modifier = new THREE.SubdivisionModifier( mesh.subsurf );
+			var geo = THREE.GeometryUtils.clone( mesh.geometry_base );
+
+			geo.mergeVertices();		// BAD?  required? //
+
+			modifier.modify( geo );
+			if ( mesh.children.length ) {
+				mesh.remove( mesh.children[0] );
+			}
+
+			var hack = new THREE.Object3D();
+			hack.add( new THREE.Mesh(geo, mesh._material) );
+			mesh.add( hack );
+
+
+/* not working!!
+			geo.geometryGroups = undefined;
+			geo.geometryGroupsList = [];
+			mesh.geometry = geo;
+			geo.__dirtyVertices = true;
+			geo.__dirtyMorphTargets = true;
+			geo.__dirtyElements = true;
+			geo.__dirtyUvs = true;
+			geo.__dirtyNormals = true;
+			geo.__dirtyTangents = true;
+			geo.__dirtyColors = true;
+*/
+
+			//mesh.geometry.geometryGroups = undefined;		// no help
+			//mesh.geometry.geometryGroupsList = undefined;	// crashes
+
+/*		######## this updates the mesh, but only shows faces < base length ########
+			mesh.geometry.vertices = geo.vertices;
+			mesh.geometry.faces = geo.faces;
+			//mesh.geometry.faceUvs = geo.faceUvs;
+			//mesh.geometry.faceVertexUvs = geo.faceVertexUvs;
+			mesh.geometry.__dirtyVertices = true;
+			mesh.geometry.__dirtyElements = true;
+			mesh.geometry.__dirtyNormals = true;
+			mesh.geometry.__dirtyColors = true;
+			mesh.geometry.__dirtyTangents = true;
+*/
+
+		}
+	}
+
 	requestAnimationFrame( animate );
 	render();
 }
@@ -298,29 +375,7 @@ function render() {
 
 	//renderer.render( scene, camera );
 
-	// subdiv modifier //
-	for (n in Objects) {
-		var mesh = Objects[ n ];
-		dbug = mesh;
-		if (mesh && mesh.dirty_modifiers) {
-			console.log( mesh.subsurf );
-
-			mesh.dirty_modifiers = false;
-			var modifier = new THREE.SubdivisionModifier( 1 ); //mesh.subsurf );
-			var smooth = THREE.GeometryUtils.clone( mesh.geometry_base );
-			//smooth.mergeVertices();		// BAD //
-			//smooth.computeFaceNormals();
-			//smooth.computeVertexNormals();
-
-			modifier.modify( smooth );
-			//mesh.geometry = smooth;	// this won't work //
-			mesh.geometry.vertices = smooth.vertices;
-			mesh.geometry.faces = smooth.faces;
-			mesh.geometry.faceUvs = smooth.faceUvs;
-			mesh.geometry.faceVertexUvs = smooth.faceVertexUvs;
-			mesh.geometry.__dirtyVertices = true;
-		}
-	}
+	// update subdiv was here
 
 
 	// render shadow map

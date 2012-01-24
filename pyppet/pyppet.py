@@ -121,8 +121,9 @@ def dump_collada( name, center=False ):
 
 	ob = bpy.data.objects[ name ]
 	ob.select = True
-	arm = ob.find_armature()
-	if arm: arm.select = True
+
+	#arm = ob.find_armature()		# armatures not working in Three.js ?
+	#if arm: arm.select = True
 
 	loc = ob.location
 	if center: ob.location = (0,0,0)
@@ -166,15 +167,34 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		ob = context.active_object
 
+		color = None
+		if ob.data.materials:
+			r,g,b = ob.data.materials[0].diffuse_color
+			color = (r,g,b)
+
 		loc, rot, scl = ob.matrix_world.decompose()
 		loc = loc.to_tuple()
 		x,y,z = rot.to_euler(); rot = (x,y,z)
 		scl = scl.to_tuple()
 
+		mods = []
+		for mod in ob.modifiers:
+			if mod.type in ('SUBSURF',) and mod.show_viewport:
+				mods.append( mod )
+		for mod in mods: mod.show_viewport = False
 		data = ob.to_mesh( context.scene, True, "PREVIEW")
+		for mod in mods: mod.show_viewport = True
+
 		N = len( ob.data.vertices )
+		if N != len( data.vertices ):
+			print('vertex count error - some modifier changed vertex count',ob)
+			return
+
 		verts = [ 0.0 for i in range(N*3) ]
 		data.vertices.foreach_get( 'co', verts )
+
+		bpy.data.meshes.remove( data )
+
 
 		subsurf = 0
 		for mod in ob.modifiers:
@@ -190,6 +210,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				'scl' : scl,
 				'verts': verts,
 				'subsurf': subsurf,
+				'color': color,
 			}
 		)
 		cqueue = [ jdata.encode('utf-8') ]
@@ -2898,8 +2919,8 @@ class App( PyppetAPI ):
 		print(win)
 		#win.set_title('stolen window')
 		#self.socket.show_all()
-		self.bwidth = win.get_width() - 40
-		self.bheight = win.get_height() - 140
+		self.bwidth = win.get_width() - 500
+		self.bheight = win.get_height() - 340
 		self.socket.set_size_request( self.bwidth, self.bheight )
 		#Blender.window_expand()
 		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
