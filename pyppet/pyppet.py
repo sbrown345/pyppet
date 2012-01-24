@@ -161,6 +161,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 			self.top_new_client(startsock, address)	# calls new_client()
 
 	def new_client(self): print('new client', self.client)
+
+	_bps_start = None
+	_bps = 0
 	def update( self, context ):
 		if not self.client or not context.active_object: return
 		if context.active_object.type != 'MESH': return
@@ -192,9 +195,10 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		verts = [ 0.0 for i in range(N*3) ]
 		data.vertices.foreach_get( 'co', verts )
-
 		bpy.data.meshes.remove( data )
 
+		## optimize ##
+		verts = [ round(a,3) for a in verts ]
 
 		subsurf = 0
 		for mod in ob.modifiers:
@@ -202,7 +206,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				subsurf = mod.levels		# mod.render_levels
 				break
 
-		jdata = json.dumps(
+		data = json.dumps(
 			{
 				'name': ob.name,
 				'pos': loc,
@@ -213,7 +217,19 @@ class WebSocketServer( websocket.WebSocketServer ):
 				'color': color,
 			}
 		)
-		cqueue = [ jdata.encode('utf-8') ]
+		rawbytes = data.encode('utf-8')
+		cqueue = [ rawbytes ]
+
+		self._bps += len( rawbytes )
+		now = time.time()
+		if self._bps_start is None or now-self._bps_start > 1.0:
+			#print('kilobytes per second', self._bps/1024)
+			self._bps_start = now
+			self._bps = 0
+			## monkey uncompressed head about 520KB per second ##
+			## monkey head with optimize round(4) is 380KB per second ##
+			## monkey head with optimize round(3) is 350KB per second ##
+
 
 		rlist = [self.client]
 		wlist = [self.client]
@@ -261,7 +277,7 @@ class WebServer( object ):
 		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
 		else: print('missing ./javascripts/Three.js')
 
-	def get_header(self, title='pyppet', webgl=False):
+	def get_header(self, title='Pyppet WebGL', webgl=False):
 		h = [
 			'<!DOCTYPE html><html lang="en">',
 			'<head><title>%s</title>' %title,
@@ -1073,11 +1089,7 @@ class SynthChannel(object):
 			if i == 60:
 				row = gtk.HBox()
 				keyboard.pack_start( row, expand=False )
-
-			#b = gtk.ToggleButton(' ')
-			#b.connect('toggled', self.toggle_key, i)
-			#row.pack_start( b, expand=False )
-			b = ToggleButton(' ')
+			b = ToggleButton('')
 			b.connect( self, path='keys', index=i, cast=float )
 			row.pack_start( b.widget, expand=False )
 
@@ -2919,7 +2931,7 @@ class App( PyppetAPI ):
 		print(win)
 		#win.set_title('stolen window')
 		#self.socket.show_all()
-		self.bwidth = win.get_width() - 500
+		self.bwidth = win.get_width() - 420
 		self.bheight = win.get_height() - 340
 		self.socket.set_size_request( self.bwidth, self.bheight )
 		#Blender.window_expand()

@@ -1,4 +1,4 @@
-var WIRE_MATERIAL = new THREE.MeshLambertMaterial( { color: 0x000000, wireframe: true } );
+var WIRE_MATERIAL = new THREE.MeshLambertMaterial( { color: 0x000000, wireframe: true, wireframeLinewidth:4 } );
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
@@ -31,7 +31,7 @@ function on_message(e) {
 		m.rotation.z = -ob.rot[1];
 
 		var vidx = 0;
-		for (var i=0; i<ob.verts.length-3; i += 3) {
+		for (var i=0; i <= ob.verts.length-3; i += 3) {
 			var v = m.geometry_base.vertices[ vidx ].position;
 			v.x = ob.verts[ i ];
 			v.y = ob.verts[ i+2 ];
@@ -136,7 +136,7 @@ function init() {
 	scene = new THREE.Scene();
 
 	// camera //
-	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 1, 2000 );
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
 	camera.position.set( 0, 4, 10 );
 	//camera.up.set( 0, 0, 1 );
 	scene.add( camera );
@@ -175,6 +175,7 @@ function init() {
 	ambientLight = new THREE.AmbientLight( 0x111111 );
 	scene.add( ambientLight );
 
+/*
 	pointLight = new THREE.PointLight( 0xff0000 );
 	pointLight.position.z = 10000;
 	pointLight.distance = 4000;
@@ -190,17 +191,20 @@ function init() {
 	pointLight3.position.z = 1000;
 	pointLight3.distance = 2000;
 	scene.add( pointLight3 );
+*/
 
-	spotLight = new THREE.SpotLight( 0xaaaaaa );
+	var sunIntensity = 1.0;
+	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
 	spotLight.position.set( 0, 500, 10 );
 	spotLight.target.position.set( 0, 0, 0 );
 	spotLight.castShadow = true;
 	spotLight.shadowCameraNear = 480;
 	spotLight.shadowCameraFar = camera.far;
-	spotLight.shadowCameraFov = 70;
+	spotLight.shadowCameraFov = 30;
 	spotLight.shadowBias = 0.001;
 	spotLight.shadowMapWidth = 2048;
 	spotLight.shadowMapHeight = 2048;
+	spotLight.shadowDarkness = 0.3 * sunIntensity;
 	scene.add( spotLight );
 
 
@@ -249,12 +253,14 @@ function init() {
 
 	composer.addPass( renderModel );
 
+
 	composer.addPass( effectFXAA );
 
 	composer.addPass( hblur );
 	composer.addPass( vblur );
 
-	//composer.addPass( effectVignette );
+	//composer.addPass( effectVignette );		// shade edges of screen - not compatible with fake DOF
+
 
 
 }
@@ -280,12 +286,11 @@ function animate() {
 			geo.mergeVertices();		// BAD?  required? //
 
 			modifier.modify( geo );
-			if ( mesh.children.length ) {
-				mesh.remove( mesh.children[0] );
-			}
 
-			var hack = new THREE.Object3D();
-			hack.add( new THREE.Mesh(geo, mesh._material) );
+			if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
+			var hack = new THREE.Mesh(geo, mesh._material)
+			hack.castShadow = true;
+			hack.receiveShadow = true;
 			mesh.add( hack );
 
 
