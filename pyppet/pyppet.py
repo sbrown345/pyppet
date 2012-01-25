@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan24, 2012
+# Jan26, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3f'
+VERSION = '1.9.3g'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -82,6 +82,9 @@ import urllib.request
 import websocket
 import json
 
+
+BG_COLOR = gtk.GdkColor(0,50000,50000,50000)
+
 STREAM_BUFFER_SIZE = 2048
 
 def _create_stream_proto():
@@ -136,12 +139,17 @@ def dump_collada( name, center=False ):
 	return open('/tmp/dump.dae','rb').read()
 
 class FX(object):
-	def __init__( self, name, **kw ):
+	def __init__( self, name, enabled, **kw ):
 		self.name = name
-		self.enabled = True
+		self.enabled = enabled
 		self.uniforms = list(kw.keys())
 		for name in kw:
 			setattr(self, name, kw[name])
+
+	def get_uniforms(self):
+		r = {}
+		for name in self.uniforms: r[name]=getattr(self,name)
+		return r
 
 	def get_widget(self):
 		b = gtk.CheckButton(self.name)
@@ -151,24 +159,23 @@ class FX(object):
 
 class WebGL(object):
 	def __init__(self):
-		for tag in 'fxaa ssao dots vignette bloom glowing_dots blur_horizontal blur_vertical noise film'.split():
-			setattr(self, tag, FX(tag))
-
-	def get_effects(self):
-		r = {}
-		for name in dir(self):
-			if name.startswith('_'): continue
-			attr = getattr(self,name)
-			if isinstance(attr, FX): r[name] = attr
-		return r
+		self.effects = []
+		self.effects.append( FX('fxaa', True) )
+		self.effects.append( FX('ssao', False) )
+		self.effects.append( FX('dots', False) )
+		self.effects.append( FX('vignette', True, darkness=1.0) )
+		self.effects.append( FX('bloom', True, opacity=1.1) )
+		self.effects.append( FX('glowing_dots', False) )
+		self.effects.append( FX('blur_horizontal', True) )
+		self.effects.append( FX('blur_vertical', True) )
+		self.effects.append( FX('noise', False) )
+		self.effects.append( FX('film', False) )
 
 
 	def get_fx_widget(self):
 		root = gtk.VBox()
 		root.set_border_width(3)
-		effects = self.get_effects()
-		for name in effects:
-			fx = effects[ name ]
+		for fx in self.effects:
 			root.pack_start( fx.get_widget(), expand=False )
 
 		return root
@@ -206,10 +213,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 	def update( self, context ):
 		if not self.client: return
 		msg = { 'meshes':{}, 'lights':{}, 'FX':{} }
-		effects = self.webGL.get_effects()
-		for name in effects:
-			fx = effects[name]
-			msg['FX'][name]=fx.enabled
+
+		for fx in  self.webGL.effects:
+			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
 
 		for ob in context.scene.objects:
 			if ob.type in ('MESH','LAMP'):
@@ -2943,7 +2949,7 @@ class App( PyppetAPI ):
 
 	def create_ui(self, context):
 		win = gtk.Window()
-		win.modify_bg( gtk.STATE_NORMAL, gtk.GdkColor(0,50000,50000,50000) )
+		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_size_request( 640, 480 )
 		win.set_title( 'Pyppet '+VERSION )
 		self.root = root = gtk.VBox()
@@ -2953,6 +2959,8 @@ class App( PyppetAPI ):
 		root.pack_start( split )
 
 		note = gtk.Notebook()
+		#note.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+
 		widget = self.websocket_server.webGL.get_fx_widget()
 		note.append_page( widget, gtk.Label( icons.FX ) )
 		note.append_page( gtk.Label('x'), gtk.Label( icons.MODE ) )

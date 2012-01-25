@@ -18,7 +18,15 @@ function on_message(e) {
 	dbugmsg = msg;
 
 	for (var name in msg['FX']) {
-		FX[name].enabled = msg['FX'][name];
+		var fx = FX[ name ];
+		fx.enabled = msg['FX'][name][0];
+		var uniforms = msg['FX'][name][1];
+		if (fx.uniforms) {
+			for (var n in uniforms) { fx.uniforms[ n ] = uniforms[ n ]; }
+		}
+		else {	// BloomPass
+			for (var n in uniforms) { fx.screenUniforms[ n ] = uniforms[ n ]; }
+		}
 	}
 
 	for (var name in msg['meshes']) {
@@ -340,6 +348,11 @@ function setupFX( renderer, scene, camera ) {
 
 	//					noise intensity, scanline intensity, scanlines, greyscale
 	FX['film'] = fx = new THREE.FilmPass( 100.0, 0.1, SCREEN_HEIGHT / 3, false );
+	//fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
+	composer.addPass( fx );
+
+	FX['dummy'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "screen" ] );	// ShaderPass copies uniforms
+	fx.uniforms['opacity'].value = 1.0;	// ensure nothing happens
 	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
 	composer.addPass( fx );
 
