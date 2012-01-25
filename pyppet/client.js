@@ -16,7 +16,12 @@ function on_message(e) {
 	var data = ws.rQshiftStr();
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
-	for ( var name in msg['meshes'] ) {
+
+	for (var name in msg['FX']) {
+		FX[name].enabled = msg['FX'][name];
+	}
+
+	for (var name in msg['meshes']) {
 		var ob = msg['meshes'][ name ];
 		var raw_name = name;
 		name = name.replace('.', '_');
@@ -175,6 +180,7 @@ function init() {
 
 	// scene //
 	scene = new THREE.Scene();
+	scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
 
 	// camera //
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
@@ -295,18 +301,24 @@ function setupFX( renderer, scene, camera ) {
 	fx.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
 	composer.addPass( fx );
 
+	FX['ssao'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "ssao" ] );
+	composer.addPass( fx );
+
+
+	FX['dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 1.8 );	// center, angle, size
+	composer.addPass( fx );
+
+
 	FX['vignette'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "vignette" ] );
 	composer.addPass( fx );
 
 	FX['bloom'] = fx = new THREE.BloomPass( 1.1 );
 	composer.addPass( fx );
 
-	FX['film'] = fx = new THREE.FilmPass( 0.35, 0.025, 648, false );
-	composer.addPass( fx );
-	//var effectFilmBW = new THREE.FilmPass( 0.35, 0.5, 2048, true );
 
-	FX['dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 0.8 );
+	FX['glowing_dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.01, 0.23 );
 	composer.addPass( fx );
+
 
 	// fake DOF //
 	var bluriness = 3;
@@ -318,9 +330,19 @@ function setupFX( renderer, scene, camera ) {
 	FX['blur_vertical'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
 	fx.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
 	fx.uniforms[ 'r' ].value = 0.5;
+	composer.addPass( fx );
 
+	//					noise intensity, scanline intensity, scanlines, greyscale
+	FX['noise'] = fx = new THREE.FilmPass( 0.01, 0.5, SCREEN_HEIGHT / 1.5, false );
 	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
 	composer.addPass( fx );
+
+
+	//					noise intensity, scanline intensity, scanlines, greyscale
+	FX['film'] = fx = new THREE.FilmPass( 100.0, 0.1, SCREEN_HEIGHT / 3, false );
+	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
+	composer.addPass( fx );
+
 
 	return composer;
 }

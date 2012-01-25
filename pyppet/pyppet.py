@@ -135,11 +135,50 @@ def dump_collada( name, center=False ):
 	restore_selection( state )
 	return open('/tmp/dump.dae','rb').read()
 
+class FX(object):
+	def __init__( self, name, **kw ):
+		self.name = name
+		self.enabled = True
+		self.uniforms = list(kw.keys())
+		for name in kw:
+			setattr(self, name, kw[name])
+
+	def get_widget(self):
+		b = gtk.CheckButton(self.name)
+		b.set_active(self.enabled)
+		b.connect('toggled', lambda b: setattr(self,'enabled',b.get_active()) )
+		return b
+
+class WebGL(object):
+	def __init__(self):
+		for tag in 'fxaa ssao dots vignette bloom glowing_dots blur_horizontal blur_vertical noise film'.split():
+			setattr(self, tag, FX(tag))
+
+	def get_effects(self):
+		r = {}
+		for name in dir(self):
+			if name.startswith('_'): continue
+			attr = getattr(self,name)
+			if isinstance(attr, FX): r[name] = attr
+		return r
+
+
+	def get_fx_widget(self):
+		root = gtk.VBox()
+		root.set_border_width(3)
+		effects = self.get_effects()
+		for name in effects:
+			fx = effects[ name ]
+			root.pack_start( fx.get_widget(), expand=False )
+
+		return root
 
 #####################
 class WebSocketServer( websocket.WebSocketServer ):
 	buffer_size = 8096
 	client = None
+
+	webGL = WebGL()
 
 	def start(self):
 		print('--starting websocket server thread--')
@@ -166,7 +205,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 	_bps = 0
 	def update( self, context ):
 		if not self.client: return
-		msg = { 'meshes':{}, 'lights':{} }
+		msg = { 'meshes':{}, 'lights':{}, 'FX':{} }
+		effects = self.webGL.get_effects()
+		for name in effects:
+			fx = effects[name]
+			msg['FX'][name]=fx.enabled
+
 		for ob in context.scene.objects:
 			if ob.type in ('MESH','LAMP'):
 				loc, rot, scl = ob.matrix_world.decompose()
@@ -2855,15 +2899,7 @@ class App( PyppetAPI ):
 		self.context.scene.frame_start = self._start_frame_adjustment.get_value()
 		self.context.scene.frame_end = self._end_frame_adjustment.get_value()
 
-
-
-	def create_ui(self, context):
-		win = gtk.Window()
-		win.set_size_request( 640, 480 )
-		win.set_title( 'Pyppet '+VERSION )
-		self.root = root = gtk.VBox()
-		win.add( root )
-
+	def create_header_ui(self, root):
 		self.header = gtk.HBox()
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
@@ -2904,9 +2940,35 @@ class App( PyppetAPI ):
 
 		self.header.pack_start( self.get_playback_widget() )
 
-		self.body = gtk.HBox(); root.pack_start( self.body )
+
+	def create_ui(self, context):
+		win = gtk.Window()
+		win.modify_bg( gtk.STATE_NORMAL, gtk.GdkColor(0,50000,50000,50000) )
+		win.set_size_request( 640, 480 )
+		win.set_title( 'Pyppet '+VERSION )
+		self.root = root = gtk.VBox()
+		win.add( root )
+
+		split = gtk.HBox()
+		root.pack_start( split )
+
+		note = gtk.Notebook()
+		widget = self.websocket_server.webGL.get_fx_widget()
+		note.append_page( widget, gtk.Label( icons.FX ) )
+		note.append_page( gtk.Label('x'), gtk.Label( icons.MODE ) )
+		split.pack_start( note, expand=False )
+
+		bsplit = gtk.VBox()
+		split.pack_start( bsplit, expand=True )
+
+		self.create_header_ui( bsplit )
+
+		self.body = gtk.HBox()
+		bsplit.pack_start( self.body )
+
 		self.canvas = gtk.Fixed()
 		self.body.pack_start( self.canvas, expand=False )
+
 
 		self.socket = gtk.Socket()
 		#self.socket.set_size_request( 640, 480 )
