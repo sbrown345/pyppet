@@ -165,62 +165,71 @@ class WebSocketServer( websocket.WebSocketServer ):
 	_bps_start = None
 	_bps = 0
 	def update( self, context ):
-		if not self.client or not context.active_object: return
-		if context.active_object.type != 'MESH': return
+		if not self.client: return
+		msg = { 'meshes':{}, 'lights':{} }
+		for ob in context.scene.objects:
+			if ob.type in ('MESH','LAMP'):
+				loc, rot, scl = ob.matrix_world.decompose()
+				loc = loc.to_tuple()
+				x,y,z = rot.to_euler(); rot = (x,y,z)
+				scl = scl.to_tuple()
 
-		ob = context.active_object
+				pak = { 'pos':loc, 'rot':rot, 'scl':scl }
 
-		color = None
-		specular = None
-		if ob.data.materials:
-			mat = ob.data.materials[0]
-			r,g,b = mat.diffuse_color
-			color = (r,g,b)
-			specular = mat.specular_hardness
+				if ob.type == 'LAMP':
+					msg[ 'lights' ][ ob.name ] = pak
 
-		loc, rot, scl = ob.matrix_world.decompose()
-		loc = loc.to_tuple()
-		x,y,z = rot.to_euler(); rot = (x,y,z)
-		scl = scl.to_tuple()
+				elif ob.type == 'MESH':
+					msg[ 'meshes' ][ ob.name ] = pak
+					color = None
+					specular = None
+					if ob.data.materials:
+						mat = ob.data.materials[0]
+						r,g,b = mat.diffuse_color
+						color = (r,g,b)
+						specular = mat.specular_hardness
 
-		mods = []
-		for mod in ob.modifiers:
-			if mod.type in ('SUBSURF',) and mod.show_viewport:
-				mods.append( mod )
-		for mod in mods: mod.show_viewport = False
-		data = ob.to_mesh( context.scene, True, "PREVIEW")
-		for mod in mods: mod.show_viewport = True
+					pak['color'] = color
+					pak['spec'] = specular
 
-		N = len( ob.data.vertices )
-		if N != len( data.vertices ):
-			print('vertex count error - some modifier changed vertex count',ob)
-			return
 
-		verts = [ 0.0 for i in range(N*3) ]
-		data.vertices.foreach_get( 'co', verts )
-		bpy.data.meshes.remove( data )
+		## only stream mesh data of active-selected ##
+		if context.active_object and context.active_object.type == 'MESH':
+			ob = context.active_object
+			pak = msg[ 'meshes' ][ ob.name ]
+			pak[ 'selected' ] = True
 
-		## optimize ##
-		verts = [ round(a,3) for a in verts ]
+			mods = []
+			for mod in ob.modifiers:
+				if mod.type in ('SUBSURF',) and mod.show_viewport:
+					mods.append( mod )
+			for mod in mods: mod.show_viewport = False
+			data = ob.to_mesh( context.scene, True, "PREVIEW")
+			for mod in mods: mod.show_viewport = True
 
-		subsurf = 0
-		for mod in ob.modifiers:
-			if mod.type == 'SUBSURF':
-				subsurf = mod.levels		# mod.render_levels
-				break
+			N = len( ob.data.vertices )
+			if N != len( data.vertices ):
+				print('vertex count error - some modifier changed vertex count',ob)
+				return
 
-		data = json.dumps(
-			{
-				'name': ob.name,
-				'pos': loc,
-				'rot' : rot,
-				'scl' : scl,
-				'verts': verts,
-				'subsurf': subsurf,
-				'color': color,
-				'specular': specular,
-			}
-		)
+			verts = [ 0.0 for i in range(N*3) ]
+			data.vertices.foreach_get( 'co', verts )
+			bpy.data.meshes.remove( data )
+			verts = [ round(a,3) for a in verts ]	# optimize!
+
+			subsurf = 0
+			for mod in ob.modifiers:
+				if mod.type == 'SUBSURF':
+					subsurf = mod.levels		# mod.render_levels
+					break
+
+			pak[ 'verts' ] = verts
+			pak[ 'subsurf' ] = subsurf
+
+
+
+		## dump to json ##
+		data = json.dumps( msg )
 		rawbytes = data.encode('utf-8')
 		cqueue = [ rawbytes ]
 
@@ -235,6 +244,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 			## monkey head with optimize round(3) is 350KB per second ##
 
 
+
+		## send the data ##
 		rlist = [self.client]
 		wlist = [self.client]
 

@@ -12,61 +12,70 @@ ws.open( 'ws://localhost:8081' );
 var tmp = null;
 
 var Objects = {};
-
+var dbugmsg = null;
 function on_message(e) {
 	var data = ws.rQshiftStr();
-	var ob = JSON.parse( data );
-	var name = ob.name.replace('.', '_');
+	var msg = JSON.parse( data );
+	dbugmsg = msg;
+	for ( var name in msg['meshes'] ) {
+		var ob = msg['meshes'][ name ];
+		var raw_name = name;
+		name = name.replace('.', '_');
 
-	if (name in Objects && Objects[name]) {
-		m = Objects[ name ];
-		SELECTED = m;
+		if (name in Objects && Objects[name]) {
+			m = Objects[ name ];
+			if (ob.selected) { SELECTED = m; }
 
-		m.position.x = ob.pos[0];
-		m.position.y = ob.pos[2];
-		m.position.z = -ob.pos[1];
+			m.position.x = ob.pos[0];
+			m.position.y = ob.pos[2];
+			m.position.z = -ob.pos[1];
 
-		m.scale.x = ob.scl[0];
-		m.scale.y = ob.scl[2];
-		m.scale.z = ob.scl[1];
+			m.scale.x = ob.scl[0];
+			m.scale.y = ob.scl[2];
+			m.scale.z = ob.scl[1];
 
-		m.rotation.x = ob.rot[0];
-		m.rotation.y = ob.rot[2];
-		m.rotation.z = -ob.rot[1];
+			m.rotation.x = ob.rot[0];
+			m.rotation.y = ob.rot[2];
+			m.rotation.z = -ob.rot[1];
 
-		if (ob.color) {
-			m._material.color.r = ob.color[0];
-			m._material.color.g = ob.color[1];
-			m._material.color.b = ob.color[2];
-		}
-		m._material.shininess = ob.specular;
+			if (ob.color) {
+				m._material.color.r = ob.color[0];
+				m._material.color.g = ob.color[1];
+				m._material.color.b = ob.color[2];
+			}
+			m._material.shininess = ob.spec;
 
-		if (ob.verts) {
-			m.dirty_modifiers = true;
-			m.subsurf = ob.subsurf;
-			m.geometry_base.computeCentroids();
-			//m.geometry_base.computeFaceNormals();
-			//m.geometry_base.computeVertexNormals();
-			var vidx=0;
-			for (var i=0; i <= ob.verts.length-3; i += 3) {
-				var v = m.geometry_base.vertices[ vidx ].position;
-				v.x = ob.verts[ i ];
-				v.y = ob.verts[ i+2 ];
-				v.z = -ob.verts[ i+1 ];
-				vidx++;
+			if (ob.verts) {
+				m.dirty_modifiers = true;
+				m.subsurf = ob.subsurf;
+				m.geometry_base.computeCentroids();
+				//m.geometry_base.computeFaceNormals();
+				//m.geometry_base.computeVertexNormals();
+				var vidx=0;
+				for (var i=0; i <= ob.verts.length-3; i += 3) {
+					var v = m.geometry_base.vertices[ vidx ].position;
+					v.x = ob.verts[ i ];
+					v.y = ob.verts[ i+2 ];
+					v.z = -ob.verts[ i+1 ];
+					vidx++;
+				}
 			}
 		}
+		else if (name in Objects == false) {
+			console.log( '>> loading new collada' );
+			Objects[ name ] = null;
+			var loader = new THREE.ColladaLoader();
+			loader.options.convertUpAxis = true;
+			loader.load( '/objects/'+raw_name+'.dae', on_collada_ready );
 
-	}
+		}
 
-	else if (name in Objects == false) {
-		console.log( '>> loading new collada' );
-		Objects[ name ] = null;
-		var loader = new THREE.ColladaLoader();
-		loader.options.convertUpAxis = true;
-		loader.load( '/objects/'+ob.name+'.dae', on_collada_ready );
 
-	}
+
+
+	}	// end meshes
+
+
 
 }
 
