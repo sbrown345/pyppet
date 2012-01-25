@@ -1,3 +1,5 @@
+var SELECTED = null;
+
 var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: true, wireframeLinewidth:4 });
 
 var SCREEN_WIDTH = window.innerWidth;
@@ -18,6 +20,8 @@ function on_message(e) {
 
 	if (name in Objects && Objects[name]) {
 		m = Objects[ name ];
+		SELECTED = m;
+
 		m.position.x = ob.pos[0];
 		m.position.y = ob.pos[2];
 		m.position.z = -ob.pos[1];
@@ -30,20 +34,6 @@ function on_message(e) {
 		m.rotation.y = ob.rot[2];
 		m.rotation.z = -ob.rot[1];
 
-		var vidx = 0;
-		for (var i=0; i <= ob.verts.length-3; i += 3) {
-			var v = m.geometry_base.vertices[ vidx ].position;
-			v.x = ob.verts[ i ];
-			v.y = ob.verts[ i+2 ];
-			v.z = -ob.verts[ i+1 ];
-			vidx++;
-		}
-		//m.geometry_base.__dirtyVertices = true;
-		//m.geometry_base.__tmpVertices = undefined;
-		m.geometry_base.computeCentroids();
-		//m.geometry_base.computeFaceNormals();
-		//m.geometry_base.computeVertexNormals();
-
 		if (ob.color) {
 			m._material.color.r = ob.color[0];
 			m._material.color.g = ob.color[1];
@@ -51,8 +41,22 @@ function on_message(e) {
 		}
 		m._material.shininess = ob.specular;
 
-		m.dirty_modifiers = true;
-		m.subsurf = ob.subsurf;
+		if (ob.verts) {
+			m.dirty_modifiers = true;
+			m.subsurf = ob.subsurf;
+			m.geometry_base.computeCentroids();
+			//m.geometry_base.computeFaceNormals();
+			//m.geometry_base.computeVertexNormals();
+			var vidx=0;
+			for (var i=0; i <= ob.verts.length-3; i += 3) {
+				var v = m.geometry_base.vertices[ vidx ].position;
+				v.x = ob.verts[ i ];
+				v.y = ob.verts[ i+2 ];
+				v.z = -ob.verts[ i+1 ];
+				vidx++;
+			}
+		}
+
 	}
 
 	else if (name in Objects == false) {
@@ -312,63 +316,67 @@ function animate() {
 	for (n in Objects) {
 		var mesh = Objects[ n ];
 		dbug = mesh;
-		if (mesh && mesh.dirty_modifiers) {
-			console.log( mesh.subsurf );
-			mesh.dirty_modifiers = false;
+		if (mesh) {
+			if (mesh === SELECTED) { mesh.visible=true; }	// show hull
+			else { mesh.visible=false; }	// hide hull
 
-			// update hull //
-			mesh.geometry.vertices = mesh.geometry_base.vertices;
-			mesh.geometry.__dirtyVertices = true;
+			if (mesh.dirty_modifiers) {
+				console.log( mesh.subsurf );
+				mesh.dirty_modifiers = false;
 
+				// update hull //
+				mesh.geometry.vertices = mesh.geometry_base.vertices;
+				mesh.geometry.__dirtyVertices = true;
 
-			var modifier = new THREE.SubdivisionModifier( mesh.subsurf );
-			var geo = THREE.GeometryUtils.clone( mesh.geometry_base );
+				var modifier = new THREE.SubdivisionModifier( mesh.subsurf );
+				var geo = THREE.GeometryUtils.clone( mesh.geometry_base );
 
-			geo.mergeVertices();		// BAD?  required? //
+				geo.mergeVertices();		// BAD?  required? //
 
-			modifier.modify( geo );
+				modifier.modify( geo );
 
-			if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
-			var hack = new THREE.Mesh(geo, mesh._material)
-			hack.castShadow = true;
-			hack.receiveShadow = true;
-			mesh.add( hack );
-
-
-/* not working!!
-			geo.geometryGroups = undefined;
-			geo.geometryGroupsList = [];
-			mesh.geometry = geo;
-			geo.__dirtyVertices = true;
-			geo.__dirtyMorphTargets = true;
-			geo.__dirtyElements = true;
-			geo.__dirtyUvs = true;
-			geo.__dirtyNormals = true;
-			geo.__dirtyTangents = true;
-			geo.__dirtyColors = true;
-*/
-
-			//mesh.geometry.geometryGroups = undefined;		// no help
-			//mesh.geometry.geometryGroupsList = undefined;	// crashes
-
-/*		######## this updates the mesh, but only shows faces < base length ########
-			mesh.geometry.vertices = geo.vertices;
-			mesh.geometry.faces = geo.faces;
-			//mesh.geometry.faceUvs = geo.faceUvs;
-			//mesh.geometry.faceVertexUvs = geo.faceVertexUvs;
-			mesh.geometry.__dirtyVertices = true;
-			mesh.geometry.__dirtyElements = true;
-			mesh.geometry.__dirtyNormals = true;
-			mesh.geometry.__dirtyColors = true;
-			mesh.geometry.__dirtyTangents = true;
-*/
-
+				if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
+				var hack = new THREE.Mesh(geo, mesh._material)
+				hack.castShadow = true;
+				hack.receiveShadow = true;
+				mesh.add( hack );
+			}
 		}
 	}
 
 	requestAnimationFrame( animate );
 	render();
 }
+
+
+/* not working!!
+geo.geometryGroups = undefined;
+geo.geometryGroupsList = [];
+mesh.geometry = geo;
+geo.__dirtyVertices = true;
+geo.__dirtyMorphTargets = true;
+geo.__dirtyElements = true;
+geo.__dirtyUvs = true;
+geo.__dirtyNormals = true;
+geo.__dirtyTangents = true;
+geo.__dirtyColors = true;
+*/
+
+//mesh.geometry.geometryGroups = undefined;		// no help
+//mesh.geometry.geometryGroupsList = undefined;	// crashes
+
+/* ######## this updates the mesh, but only shows faces < base length ########
+mesh.geometry.vertices = geo.vertices;
+mesh.geometry.faces = geo.faces;
+//mesh.geometry.faceUvs = geo.faceUvs;
+//mesh.geometry.faceVertexUvs = geo.faceVertexUvs;
+mesh.geometry.__dirtyVertices = true;
+mesh.geometry.__dirtyElements = true;
+mesh.geometry.__dirtyNormals = true;
+mesh.geometry.__dirtyColors = true;
+mesh.geometry.__dirtyTangents = true;
+*/
+
 
 var _prev_width = window.innerWidth;
 var _prev_height = window.innerHeight;
