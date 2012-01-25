@@ -5,7 +5,6 @@ var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
 
-var composer, effectFXAA, hblur, vblur;
 
 ws = new Websock();
 ws.open( 'ws://localhost:8081' );
@@ -167,6 +166,7 @@ var spotLight, pointLight, ambientLight;
 var dae, skin;
 var controls;
 
+
 function init() {
 	console.log(">> THREE init");
 
@@ -261,63 +261,70 @@ function init() {
 	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
 
 	renderer.physicallyBasedShading = true;
-	// COMPOSER
 
+	// COMPOSER
+	setupFX( renderer, scene, camera );
+}
+
+
+var FX = {};
+var composer;
+
+function setupFX( renderer, scene, camera ) {
+	var fx;
 	renderer.autoClear = false;
 
-	renderTargetParameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBufer: false };
-	renderTarget = new THREE.WebGLRenderTarget( SCREEN_WIDTH, SCREEN_HEIGHT, renderTargetParameters );
-
-	effectFXAA = new THREE.ShaderPass( THREE.ShaderExtras[ "fxaa" ] );
-	var effectVignette = new THREE.ShaderPass( THREE.ShaderExtras[ "vignette" ] );
-
-	hblur = new THREE.ShaderPass( THREE.ShaderExtras[ "horizontalTiltShift" ] );
-	vblur = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
-
-	var bluriness = 3;
-
-	hblur.uniforms[ 'h' ].value = bluriness / SCREEN_WIDTH;
-	vblur.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
-
-	hblur.uniforms[ 'r' ].value = vblur.uniforms[ 'r' ].value = 0.5;
-
-	effectFXAA.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
+	renderTargetParameters = {
+		minFilter: THREE.LinearFilter, 
+		magFilter: THREE.LinearFilter, 
+		format: THREE.RGBFormat, 
+		stencilBufer: false,
+	};
+	renderTarget = new THREE.WebGLRenderTarget( 
+		SCREEN_WIDTH, SCREEN_HEIGHT, 
+		renderTargetParameters 
+	);
 
 	composer = new THREE.EffectComposer( renderer, renderTarget );
 
 	var renderModel = new THREE.RenderPass( scene, camera );
-
-	//effectVignette.renderToScreen = true;
-	vblur.renderToScreen = true;
-
-	composer = new THREE.EffectComposer( renderer, renderTarget );
-
 	composer.addPass( renderModel );
 
-	var effectBloom = new THREE.BloomPass( 1.1 );
 
-	composer.addPass( effectFXAA );
+	FX['fxaa'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "fxaa" ] );
+	fx.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
+	composer.addPass( fx );
 
-	composer.addPass( effectVignette );		// compatible if not renderToScreen
+	FX['vignette'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "vignette" ] );
+	composer.addPass( fx );
 
-	composer.addPass( effectBloom );
+	FX['bloom'] = fx = new THREE.BloomPass( 1.1 );
+	composer.addPass( fx );
 
-	var effectFilm = new THREE.FilmPass( 0.35, 0.025, 648, false );
-	composer.addPass( effectFilm );
-
+	FX['film'] = fx = new THREE.FilmPass( 0.35, 0.025, 648, false );
+	composer.addPass( fx );
 	//var effectFilmBW = new THREE.FilmPass( 0.35, 0.5, 2048, true );
-	var effectDotScreen = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 0.8 );
-	//composer.addPass( effectDotScreen );
 
+	FX['dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 0.8 );
+	composer.addPass( fx );
 
-	composer.addPass( hblur );
-	composer.addPass( vblur );
+	// fake DOF //
+	var bluriness = 3;
+	FX['blur_horizontal'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "horizontalTiltShift" ] );
+	fx.uniforms[ 'h' ].value = bluriness / SCREEN_WIDTH;
+	fx.uniforms[ 'r' ].value = 0.5;
+	composer.addPass( fx );
 
+	FX['blur_vertical'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
+	fx.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
+	fx.uniforms[ 'r' ].value = 0.5;
 
+	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
+	composer.addPass( fx );
 
-
-
+	return composer;
 }
+
 
 
 function animate() {
