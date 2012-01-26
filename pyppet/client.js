@@ -22,10 +22,10 @@ function on_message(e) {
 		fx.enabled = msg['FX'][name][0];
 		var uniforms = msg['FX'][name][1];
 		if (fx.uniforms) {
-			for (var n in uniforms) { fx.uniforms[ n ] = uniforms[ n ]; }
+			for (var n in uniforms) { fx.uniforms[ n ].value = uniforms[ n ]; }
 		}
 		else {	// BloomPass
-			for (var n in uniforms) { fx.screenUniforms[ n ] = uniforms[ n ]; }
+			for (var n in uniforms) { fx.screenUniforms[ n ].value = uniforms[ n ]; }
 		}
 	}
 
@@ -340,17 +340,17 @@ function setupFX( renderer, scene, camera ) {
 	fx.uniforms[ 'r' ].value = 0.5;
 	composer.addPass( fx );
 
-	//					noise intensity, scanline intensity, scanlines, greyscale
+	//			noise intensity, scanline intensity, scanlines, greyscale
 	FX['noise'] = fx = new THREE.FilmPass( 0.01, 0.5, SCREEN_HEIGHT / 1.5, false );
-	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
 	composer.addPass( fx );
 
 
-	//					noise intensity, scanline intensity, scanlines, greyscale
-	FX['film'] = fx = new THREE.FilmPass( 100.0, 0.1, SCREEN_HEIGHT / 3, false );
-	//fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
+	//			noise intensity, scanline intensity, scanlines, greyscale
+	FX['film'] = fx = new THREE.FilmPass( 10.0, 0.1, SCREEN_HEIGHT / 3, false );
 	composer.addPass( fx );
 
+
+	////////////////////////////////////// dummy //////////////////////////////////
 	FX['dummy'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "screen" ] );	// ShaderPass copies uniforms
 	fx.uniforms['opacity'].value = 1.0;	// ensure nothing happens
 	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?

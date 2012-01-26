@@ -121,22 +121,20 @@ def restore_selection( state ):
 def dump_collada( name, center=False ):
 	state = save_selection()
 	for ob in Pyppet.context.scene.objects: ob.select = False
-
 	ob = bpy.data.objects[ name ]
 	ob.select = True
-
 	#arm = ob.find_armature()		# armatures not working in Three.js ?
 	#if arm: arm.select = True
-
 	loc = ob.location
 	if center: ob.location = (0,0,0)
 	#bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
 	S = Blender.Scene( Pyppet.context.scene )
-	#print(S, dir(S))
-	S.collada_export( '/tmp/dump.dae', True )
+	S.collada_export( '/tmp/dump.dae', True )	# using ctypes collada_export avoids polling issue
 	if center: ob.location = loc
 	restore_selection( state )
 	return open('/tmp/dump.dae','rb').read()
+#####################################
+
 
 class FX(object):
 	def __init__( self, name, enabled, **kw ):
@@ -152,32 +150,42 @@ class FX(object):
 		return r
 
 	def get_widget(self):
-		b = gtk.CheckButton(self.name)
-		b.set_active(self.enabled)
-		b.connect('toggled', lambda b: setattr(self,'enabled',b.get_active()) )
-		return b
+		root = gtk.VBox()
+		#b = gtk.CheckButton(self.name)
+		#root.pack_start( b, expand=False )
+		#b.set_active(self.enabled)
+		#b.connect('toggled', lambda b: setattr(self,'enabled',b.get_active()) )
+
+		b = CheckButton(self.name)
+		b.connect( self, path='enabled' )
+		root.pack_start( b.widget, expand=False )
+
+
+		for name in self.uniforms:
+			slider = SimpleSlider( self, name=name, title='', max=10.0, driveable=True )
+			root.pack_start( slider.widget, expand=False )
+
+		return root
 
 class WebGL(object):
 	def __init__(self):
 		self.effects = []
 		self.effects.append( FX('fxaa', True) )
 		self.effects.append( FX('ssao', False) )
-		self.effects.append( FX('dots', False) )
+		self.effects.append( FX('dots', False, scale=1.8) )
 		self.effects.append( FX('vignette', True, darkness=1.0) )
 		self.effects.append( FX('bloom', True, opacity=1.1) )
-		self.effects.append( FX('glowing_dots', False) )
-		self.effects.append( FX('blur_horizontal', True) )
-		self.effects.append( FX('blur_vertical', True) )
-		self.effects.append( FX('noise', False) )
-		self.effects.append( FX('film', False) )
+		self.effects.append( FX('glowing_dots', False, scale=0.23) )
+		self.effects.append( FX('blur_horizontal', True, r=0.5) )
+		self.effects.append( FX('blur_vertical', True, r=0.5) )
+		self.effects.append( FX('noise', False, nIntensity=0.01, sIntensity=0.5) )
+		self.effects.append( FX('film', False, nIntensity=10.0, sIntensity=0.1) )
 
 
 	def get_fx_widget(self):
 		root = gtk.VBox()
 		root.set_border_width(3)
-		for fx in self.effects:
-			root.pack_start( fx.get_widget(), expand=False )
-
+		for fx in self.effects: root.pack_start( fx.get_widget(), expand=False )
 		return root
 
 #####################
@@ -827,13 +835,18 @@ class Slider(object):
 		return row
 
 class ToggleButton(object):
+	_type = 'toggle'
 	def __init__(self, name=None, driveable=True):
 		self.name = name
 
 		self.widget = gtk.Frame()
 		self.box = gtk.HBox(); self.widget.add( self.box )
 
-		self.button = gtk.ToggleButton( self.name )
+		if self._type == 'toggle':
+			self.button = gtk.ToggleButton( self.name )
+		elif self._type == 'check':
+			self.button = gtk.CheckButton( self.name )
+
 		self.box.pack_start( self.button, expand=False )
 
 		self.button.connect('button-press-event', self.on_click )
@@ -850,6 +863,9 @@ class ToggleButton(object):
 			win = ToolWindow( title=self.driver.name, x=int(event.x_root), y=int(event.y_root), width=240, child=widget )
 			win.window.show_all()
 
+	def cb( self, button ):
+		setattr( self.target, self.target_path, self.cast(button.get_active()) )
+
 	def cb_by_index( self, button ):
 		vec = getattr( self.target, self.target_path )
 		vec[ self.target_index ] = self.cast( button.get_active() )
@@ -859,7 +875,11 @@ class ToggleButton(object):
 		self.target_path = path
 		self.target_index = index
 		self.cast = cast
-		self.button.connect('toggled', self.cb_by_index)
+		if index is not None:
+			self.button.connect('toggled', self.cb_by_index)
+		else:
+			self.button.connect('toggled', self.cb)
+
 
 	def drop_driver(self, wid, context, x, y, time):
 		output = DND.object
@@ -868,10 +888,13 @@ class ToggleButton(object):
 		self.button.set_label( '%s%s' %(icons.DRIVER,self.name.strip()))
 
 
+class CheckButton( ToggleButton ):
+	_type = 'check'
+
 
 class SimpleSlider(object):
 	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False):
-		if title: self.title = title
+		if title is not None: self.title = title
 		else: self.title = name.replace('_',' ')
 
 		if len(self.title) < 20:
@@ -2987,7 +3010,7 @@ class App( PyppetAPI ):
 
 		####################################
 		self.footer = gtk.Frame()
-		self.root.pack_start( self.footer, expand=False )
+		bsplit.pack_start( self.footer, expand=False )
 		w = self.audio.synth.channels[0].get_widget()
 		self.footer.add( w )
 
@@ -3016,8 +3039,8 @@ class App( PyppetAPI ):
 		print(win)
 		#win.set_title('stolen window')
 		#self.socket.show_all()
-		self.bwidth = win.get_width() - 420
-		self.bheight = win.get_height() - 340
+		self.bwidth = 1100	#win.get_width() - 420
+		self.bheight = 540	#win.get_height() - 340
 		self.socket.set_size_request( self.bwidth, self.bheight )
 		#Blender.window_expand()
 		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
