@@ -229,13 +229,24 @@ class WebSocketServer( websocket.WebSocketServer ):
 			if ob.type in ('MESH','LAMP'):
 				loc, rot, scl = ob.matrix_world.decompose()
 				loc = loc.to_tuple()
-				x,y,z = rot.to_euler(); rot = (x,y,z)
 				scl = scl.to_tuple()
 
+				#x,y,z = rot.to_euler(); rot = (x,y,z)
+				#rot = (rot.w, rot.x, rot.y, rot.z)
+				M = mathutils.Matrix().to_3x3()
+				M.rotate( ob.matrix_world )
+				rot = [ round(x,5) for x in M.to_euler('XYZ') ]
+
 				pak = { 'pos':loc, 'rot':rot, 'scl':scl }
+				#mat = []
+				#for row in ob.matrix_world: mat += [ round(a,4) for a in row ]
+				#pak['mat'] = mat
 
 				if ob.type == 'LAMP':
 					msg[ 'lights' ][ ob.name ] = pak
+					pak['energy'] = ob.data.energy
+					pak['color'] = [ round(a,3) for a in ob.data.color ]
+					pak['dist'] = ob.data.distance
 
 				elif ob.type == 'MESH':
 					msg[ 'meshes' ][ ob.name ] = pak
@@ -935,7 +946,7 @@ class SimpleSlider(object):
 		else:
 			driver = output.bind( 'YYY', target=target, path=path, min=-2, max=2 )
 
-		self.widget.set_label( '%s	(%s%s)' %(self.title, icons.DRIVER, driver.name) )
+		self.widget.set_tooltip_text( '%s (%s%s)' %(self.title, icons.DRIVER, driver.name) )
 		self.widget.remove( self.modal )
 		self.modal = driver.get_widget( title='', expander=False )
 		self.widget.add( self.modal )
@@ -3040,7 +3051,7 @@ class App( PyppetAPI ):
 		#win.set_title('stolen window')
 		#self.socket.show_all()
 		self.bwidth = 1100	#win.get_width() - 420
-		self.bheight = 540	#win.get_height() - 340
+		self.bheight = 580	#win.get_height() - 340
 		self.socket.set_size_request( self.bwidth, self.bheight )
 		#Blender.window_expand()
 		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
@@ -3631,9 +3642,12 @@ class Driver(object):
 
 	def get_widget(self, title=None, extra=None, expander=True):
 		if title is None: title = self.name
-		if expander: ex = gtk.Expander( title ); ex.set_expanded(True)
-		else: ex = gtk.Frame( title )
-		ex.set_border_width(4)
+		if expander:
+			ex = gtk.Expander( title ); ex.set_expanded(True)
+			ex.set_border_width(4)
+		else:
+			ex = gtk.Frame()
+
 		root = gtk.HBox(); ex.add( root )
 
 		frame = gtk.Frame(); root.pack_start(frame, expand=False)

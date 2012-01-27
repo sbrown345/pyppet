@@ -11,6 +11,8 @@ ws.open( 'ws://localhost:8081' );
 var tmp = null;
 
 var Objects = {};
+var LIGHTS = {};
+
 var dbugmsg = null;
 function on_message(e) {
 	var data = ws.rQshiftStr();
@@ -29,6 +31,29 @@ function on_message(e) {
 		}
 	}
 
+	for (var name in msg['lights']) {
+		var light;
+		var ob = msg['lights'][ name ];
+		name = name.replace('.', '_');
+
+		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
+			console.log('>> new light');
+			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
+			scene.add( light );
+		}
+		light = LIGHTS[ name ];
+		light.color.r = ob.color[0];
+		light.color.g = ob.color[1];
+		light.color.b = ob.color[2];
+		light.distance = ob.dist;
+		light.intensity = ob.energy;
+
+		light.position.x = ob.pos[0];
+		light.position.y = ob.pos[2];
+		light.position.z = -ob.pos[1];
+
+	}
+
 	for (var name in msg['meshes']) {
 		var ob = msg['meshes'][ name ];
 		var raw_name = name;
@@ -37,6 +62,31 @@ function on_message(e) {
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
 			if (ob.selected) { SELECTED = m; }
+
+			/*
+			var mat = new THREE.Matrix4(
+				ob.mat[0],
+				ob.mat[1],
+				ob.mat[2],
+				ob.mat[3],
+				ob.mat[4],
+				ob.mat[5],
+				ob.mat[6],
+				ob.mat[7],
+				ob.mat[8],
+				ob.mat[9],
+				ob.mat[10],
+				ob.mat[11],
+				ob.mat[12],
+				ob.mat[13],
+				ob.mat[14],
+				ob.mat[15]
+			);
+			var props = mat.decompose( m.position, m.quaternion, m.scale );
+			*/
+			//m.position = props[ 0 ];
+			//m.quaternion = props[ 1 ];
+			//m.scale = props[ 2 ];
 
 			m.position.x = ob.pos[0];
 			m.position.y = ob.pos[2];
@@ -49,6 +99,12 @@ function on_message(e) {
 			m.rotation.x = ob.rot[0];
 			m.rotation.y = ob.rot[2];
 			m.rotation.z = -ob.rot[1];
+			/*
+			m.quaternion.w = ob.rot[0];
+			m.quaternion.x = ob.rot[1];
+			m.quaternion.y = ob.rot[2];
+			m.quaternion.z = ob.rot[3];
+			*/
 
 			if (ob.color) {
 				m._material.color.r = ob.color[0];
@@ -110,7 +166,9 @@ function on_collada_ready( collada ) {
 	//skin = collada.skins[0]
 	//Objects[ skin.name ] = collada;
 	mesh = collada.scene.children[0];
+
 	mesh.useQuaternion = false;
+
 	mesh.castShadow = true;
 	mesh.receiveShadow = true;
 	mesh.geometry.dynamic = true;		// required
@@ -177,7 +235,7 @@ var container;
 var camera, scene, renderer;
 var spotLight, pointLight, ambientLight;
 var dae, skin;
-var controls;
+var CONTROLS = {};
 
 
 function init() {
@@ -196,7 +254,7 @@ function init() {
 	//camera.up.set( 0, 0, 1 );
 	scene.add( camera );
 
-	controls = new THREE.FirstPersonControls( camera );
+	var controls = new THREE.FirstPersonControls( camera );
 	controls.lookSpeed = 0.075;
 	controls.movementSpeed = 10;
 	controls.noFly = false;
@@ -205,6 +263,7 @@ function init() {
 	controls.verticalMin = 0.0;
 	controls.verticalMax = 2.0;
 	//controls.lon = -110;
+	CONTROLS[ 'FirstPerson' ] = controls;
 
 
 	// Grid //
@@ -468,7 +527,7 @@ function render() {
 
 	var delta = clock.getDelta();
 	if ( use_camera_controls ) {
-		controls.update( delta );
+		CONTROLS['FirstPerson'].update( delta );
 	}
 
 /*
