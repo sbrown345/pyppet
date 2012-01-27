@@ -565,6 +565,21 @@ function render() {
 // merge TrackballControls.js and RollControls.js into single Controller //
 
 MyController = function ( object, domElement ) {
+	this.MODE = 'TRACK'		// TRACK, FREE, 
+
+	this.set_mode = function( mode ) {
+		this.MODE = mode;
+		if (this.MODE=='FREE') { this.object.matrixAutoUpdate = false; }
+		else { this.object.matrixAutoUpdate = true; }
+	};
+	this.update = function(delta) {
+		if (this.MODE=='TRACK') { this.update_TRACK(); }
+		else if (this.MODE=='FREE') { this.update_FREE(delta); }
+	};
+
+
+
+
 	/**	THREE.TrackballControls
 	 * @author Eberhard Graether / http://egraether.com/
 	 */
@@ -625,8 +640,25 @@ MyController = function ( object, domElement ) {
 	var windowHalfY = window.innerHeight / 2;
 
 
-
 	// methods
+	this.update_TRACK = function() {
+		_eye.copy( _this.object.position ).subSelf( this.target );
+		if ( !_this.noRotate ) {
+			_this.rotateCamera();
+		}
+		if ( !_this.noZoom ) {
+			_this.zoomCamera();
+		}
+		if ( !_this.noPan ) {
+			_this.panCamera();
+		}
+		_this.object.position.add( _this.target, _eye );
+		_this.checkDistances();
+		_this.object.lookAt( _this.target );
+
+	};
+
+
 
 	this.getMouseOnScreen = function( clientX, clientY ) {
 		return new THREE.Vector2(
@@ -715,27 +747,19 @@ MyController = function ( object, domElement ) {
 		}
 	};
 
-	this.update = function() {
-		_eye.copy( _this.object.position ).subSelf( this.target );
-		if ( !_this.noRotate ) {
-			_this.rotateCamera();
-		}
-		if ( !_this.noZoom ) {
-			_this.zoomCamera();
-		}
-		if ( !_this.noPan ) {
-			_this.panCamera();
-		}
-		_this.object.position.add( _this.target, _eye );
-		_this.checkDistances();
-		_this.object.lookAt( _this.target );
-
-	};
 
 
 	// listeners
-	function keydown( event ) {
+	this.keydown = function( event ) {
 		if ( ! _this.enabled ) return;
+		console.log('keydown');
+		console.log( event.keyCode );
+
+		if (event.keyCode == 49) { _this.set_mode('TRACK'); }		// 1 key
+		else if (event.keyCode == 50) { _this.set_mode('FREE'); }	// 2 key
+		else if (event.keyCode == 51) { _this.set_mode('SPIN'); }	// 3 key
+
+		///////////////////// TRACK ///////////////////
 		if ( _state !== STATE.NONE ) {
 			return;
 		} else if ( event.keyCode === _this.keys[ STATE.ROTATE ] && !_this.noRotate ) {
@@ -748,35 +772,80 @@ MyController = function ( object, domElement ) {
 		if ( _state !== STATE.NONE ) {
 			_keyPressed = true;
 		}
-	};
-
-	function keyup( event ) {
-		if ( ! _this.enabled ) return;
-		if ( _state !== STATE.NONE ) {
-			_state = STATE.NONE;
+		//////////////////// FREE ////////////////////////
+		switch( event.keyCode ) {
+			case 38: /*up*/
+			case 87: /*W*/ forwardSpeed = 1; break;
+			case 37: /*left*/
+			case 65: /*A*/ sideSpeed = -1; break;
+			case 40: /*down*/
+			case 83: /*S*/ forwardSpeed = -1; break;
+			case 39: /*right*/
+			case 68: /*D*/ sideSpeed = 1; break;
+			case 81: /*Q*/ doRoll = true; rollDirection = 1; break;
+			case 69: /*E*/ doRoll = true; rollDirection = -1; break;
+			case 82: /*R*/ upSpeed = 1; break;
+			case 70: /*F*/ upSpeed = -1; break;
 		}
 	};
 
-	function mousedown( event ) {
-		if ( ! _this.enabled ) return;
 
+	this.keyup = function( event ) {
+		if ( ! _this.enabled ) return;
+		if ( _state !== STATE.NONE ) { _state = STATE.NONE; }		/////////// TRACK //////////
+		////////////// FREE ///////////////
+		switch( event.keyCode ) {
+			case 38: /*up*/
+			case 87: /*W*/ forwardSpeed = 0; break;
+			case 37: /*left*/
+			case 65: /*A*/ sideSpeed = 0; break;
+			case 40: /*down*/
+			case 83: /*S*/ forwardSpeed = 0; break;
+			case 39: /*right*/
+			case 68: /*D*/ sideSpeed = 0; break;
+			case 81: /*Q*/ doRoll = false; break;
+			case 69: /*E*/ doRoll = false; break;
+			case 82: /*R*/ upSpeed = 0; break;
+			case 70: /*F*/ upSpeed = 0; break;
+		}
+	};
+
+
+	this.mousedown = function( event ) {
+		console.log('>> mouse down');
+		if ( ! _this.enabled ) return;
 		event.preventDefault();
 		event.stopPropagation();
+		if (_this.MODE=='TRACK') { _this.mousedown_TRACK(event); }
+		else if (_this.MODE=='FREE') { _this.mousedown_FREE(event); }
+	};
 
+	this.mousedown_TRACK = function( event ) {
 		if ( _state === STATE.NONE ) {
 			_state = event.button;
 			if ( _state === STATE.ROTATE && !_this.noRotate ) {
 				_rotateStart = _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
 			} else if ( _state === STATE.ZOOM && !_this.noZoom ) {
 				_zoomStart = _zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
-			} else if ( !this.noPan ) {
+			} else if ( ! _this.noPan ) {
 				_panStart = _panEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
 			}
 		}
 	};
+	this.mousedown_FREE = function( event ) {
+		switch ( event.button ) {
+			case 0: forwardSpeed = 1; break;
+			case 2: forwardSpeed = -1; break;
+		}
+	};
 
-	function mousemove( event ) {
+
+	this.mousemove = function( event ) {
 		if ( ! _this.enabled ) return;
+		////////////////// FREE ///////////////////
+		mouseX = ( event.clientX - windowHalfX ) / window.innerWidth;
+		mouseY = ( event.clientY - windowHalfY ) / window.innerHeight;
+		///////////////// TRACK ///////////////////////////////
 		if ( _keyPressed ) {
 			_rotateStart = _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
 			_zoomStart = _zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
@@ -792,25 +861,32 @@ MyController = function ( object, domElement ) {
 		} else if ( _state === STATE.PAN && !_this.noPan ) {
 			_panEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
 		}
-
 	};
 
-	function mouseup( event ) {
+
+	this.mouseup = function( event ) {
 		if ( ! _this.enabled ) return;
 		event.preventDefault();
 		event.stopPropagation();
-		_state = STATE.NONE;
+		if (_this.MODE=='TRACK') { _state = STATE.NONE; }
+		else if (_this.MODE=='FREE') {
+			switch ( event.button ) {
+				case 0: forwardSpeed = 0; break;
+				case 2: forwardSpeed = 0; break;
+			}
+		}
 	};
 
 
 	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+	this.domElement.addEventListener( 'mousemove', this.mousemove, false );
+	this.domElement.addEventListener( 'mousedown', this.mousedown, false );
+	this.domElement.addEventListener( 'mouseup', this.mouseup, false );
+	window.addEventListener( 'keydown', this.keydown, false );
+	window.addEventListener( 'keyup', this.keyup, false );
 
-	this.domElement.addEventListener( 'mousemove', mousemove, false );
-	this.domElement.addEventListener( 'mousedown', mousedown, false );
-	this.domElement.addEventListener( 'mouseup', mouseup, false );
 
-	window.addEventListener( 'keydown', keydown, false );
-	window.addEventListener( 'keyup', keyup, false );
+
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////	THREE.RollControls	//////////////////////////////////////////////
@@ -819,9 +895,7 @@ MyController = function ( object, domElement ) {
 	 * @author alteredq / http://alteredqualia.com/
 	 */
 
-
-	// custom update
-	this.updateRollControls = function ( delta ) {
+	this.update_FREE = function ( delta ) {
 
 		if ( this.mouseLook ) {
 			var actualLookSpeed = delta * this.lookSpeed;
@@ -877,29 +951,24 @@ MyController = function ( object, domElement ) {
 		this.object.matrix.n14 = this.object.position.x;
 		this.object.matrix.n24 = this.object.position.y;
 		this.object.matrix.n34 = this.object.position.z;
-
-
 	};
 
 	this.translateX = function ( distance ) {
 		this.object.position.x += this.object.matrix.n11 * distance;
 		this.object.position.y += this.object.matrix.n21 * distance;
 		this.object.position.z += this.object.matrix.n31 * distance;
-
 	};
 
 	this.translateY = function ( distance ) {
 		this.object.position.x += this.object.matrix.n12 * distance;
 		this.object.position.y += this.object.matrix.n22 * distance;
 		this.object.position.z += this.object.matrix.n32 * distance;
-
 	};
 
 	this.translateZ = function ( distance ) {
 		this.object.position.x -= this.object.matrix.n13 * distance;
 		this.object.position.y -= this.object.matrix.n23 * distance;
 		this.object.position.z -= this.object.matrix.n33 * distance;
-
 	};
 
 
@@ -909,7 +978,6 @@ MyController = function ( object, domElement ) {
 		xTemp.multiplyScalar( amount );
 		this.forward.subSelf( xTemp );
 		this.forward.normalize();
-
 	};
 
 	this.rotateVertically = function ( amount ) {
@@ -918,86 +986,8 @@ MyController = function ( object, domElement ) {
 		yTemp.multiplyScalar( amount );
 		this.forward.addSelf( yTemp );
 		this.forward.normalize();
-
 	};
 
-	function onKeyDown( event ) {
-
-		switch( event.keyCode ) {
-
-			case 38: /*up*/
-			case 87: /*W*/ forwardSpeed = 1; break;
-
-			case 37: /*left*/
-			case 65: /*A*/ sideSpeed = -1; break;
-
-			case 40: /*down*/
-			case 83: /*S*/ forwardSpeed = -1; break;
-
-			case 39: /*right*/
-			case 68: /*D*/ sideSpeed = 1; break;
-
-			case 81: /*Q*/ doRoll = true; rollDirection = 1; break;
-			case 69: /*E*/ doRoll = true; rollDirection = -1; break;
-
-			case 82: /*R*/ upSpeed = 1; break;
-			case 70: /*F*/ upSpeed = -1; break;
-
-		}
-
-	};
-
-	function onKeyUp( event ) {
-
-		switch( event.keyCode ) {
-
-			case 38: /*up*/
-			case 87: /*W*/ forwardSpeed = 0; break;
-
-			case 37: /*left*/
-			case 65: /*A*/ sideSpeed = 0; break;
-
-			case 40: /*down*/
-			case 83: /*S*/ forwardSpeed = 0; break;
-
-			case 39: /*right*/
-			case 68: /*D*/ sideSpeed = 0; break;
-
-			case 81: /*Q*/ doRoll = false; break;
-			case 69: /*E*/ doRoll = false; break;
-
-			case 82: /*R*/ upSpeed = 0; break;
-			case 70: /*F*/ upSpeed = 0; break;
-
-		}
-
-	};
-
-	function onMouseMove( event ) {
-		mouseX = ( event.clientX - windowHalfX ) / window.innerWidth;
-		mouseY = ( event.clientY - windowHalfY ) / window.innerHeight;
-
-	};
-
-	function onMouseDown ( event ) {
-		event.preventDefault();
-		event.stopPropagation();
-
-		switch ( event.button ) {
-			case 0: forwardSpeed = 1; break;
-			case 2: forwardSpeed = -1; break;
-		}
-
-	};
-
-	function onMouseUp ( event ) {
-		event.preventDefault();
-		event.stopPropagation();
-		switch ( event.button ) {
-			case 0: forwardSpeed = 0; break;
-			case 2: forwardSpeed = 0; break;
-		}
-	};
 
 /*
 	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
