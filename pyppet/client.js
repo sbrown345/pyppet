@@ -138,12 +138,7 @@ function on_message(e) {
 
 		}
 
-
-
-
 	}	// end meshes
-
-
 
 }
 
@@ -235,8 +230,7 @@ var container;
 var camera, scene, renderer;
 var spotLight, pointLight, ambientLight;
 var dae, skin;
-var CONTROLS = {};
-
+var CONTROLLER;
 
 function init() {
 	console.log(">> THREE init");
@@ -254,7 +248,8 @@ function init() {
 	//camera.up.set( 0, 0, 1 );
 	scene.add( camera );
 
-	var controls = new THREE.FirstPersonControls( camera );
+	CONTROLLER = new MyController( camera );
+/*
 	controls.lookSpeed = 0.075;
 	controls.movementSpeed = 10;
 	controls.noFly = false;
@@ -264,7 +259,7 @@ function init() {
 	controls.verticalMax = 2.0;
 	//controls.lon = -110;
 	CONTROLS[ 'FirstPerson' ] = controls;
-
+*/
 
 	// Grid //
 	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
@@ -527,7 +522,7 @@ function render() {
 
 	var delta = clock.getDelta();
 	if ( use_camera_controls ) {
-		CONTROLS['FirstPerson'].update( delta );
+		CONTROLLER.update( delta );
 	}
 
 /*
@@ -565,6 +560,467 @@ function render() {
 }
 
 
+
+//////////////////////////////////////////////////// Camera Controls ////////////////////////////////////////////////
+// merge TrackballControls.js and RollControls.js into single Controller //
+
+MyController = function ( object, domElement ) {
+	/**	THREE.TrackballControls
+	 * @author Eberhard Graether / http://egraether.com/
+	 */
+
+	var _this = this,
+	STATE = { NONE : -1, ROTATE : 0, ZOOM : 1, PAN : 2 };
+
+	this.object = object;
+	this.domElement = ( domElement !== undefined ) ? domElement : document;
+
+	// API
+	this.enabled = true;
+	this.screen = { width: window.innerWidth, height: window.innerHeight, offsetLeft: 0, offsetTop: 0 };
+	this.radius = ( this.screen.width + this.screen.height ) / 4;
+	this.rotateSpeed = 1.0;
+	this.zoomSpeed = 1.2;
+	this.panSpeed = 0.3;
+	this.noRotate = false;
+	this.noZoom = false;
+	this.noPan = false;
+	this.staticMoving = false;
+	this.dynamicDampingFactor = 0.2;
+	this.minDistance = 0;
+	this.maxDistance = Infinity;
+	this.keys = [ 65 /*A*/, 83 /*S*/, 68 /*D*/ ];
+	// internals
+	this.target = new THREE.Vector3( 0, 0, 0 );
+	var _keyPressed = false,
+	_state = STATE.NONE,
+	_eye = new THREE.Vector3(),
+	_rotateStart = new THREE.Vector3(),
+	_rotateEnd = new THREE.Vector3(),
+	_zoomStart = new THREE.Vector2(),
+	_zoomEnd = new THREE.Vector2(),
+	_panStart = new THREE.Vector2(),
+	_panEnd = new THREE.Vector2();
+
+
+	//////////////////////////// RollControls API //////////////////////////
+	this.mouseLook = true;
+	this.autoForward = false;
+	this.lookSpeed = 1;
+	this.movementSpeed = 1;
+	this.rollSpeed = 1;
+	this.constrainVertical = [ -0.9, 0.9 ];
+	// disable default target object behavior
+//	this.object.matrixAutoUpdate = false;
+	// internals
+	this.forward = new THREE.Vector3( 0, 0, 1 );
+	this.roll = 0;
+	var xTemp = new THREE.Vector3();
+	var yTemp = new THREE.Vector3();
+	var zTemp = new THREE.Vector3();
+	var rollMatrix = new THREE.Matrix4();
+	var doRoll = false, rollDirection = 1, forwardSpeed = 0, sideSpeed = 0, upSpeed = 0;
+	var mouseX = 0, mouseY = 0;
+	var windowHalfX = window.innerWidth / 2;
+	var windowHalfY = window.innerHeight / 2;
+
+
+
+	// methods
+
+	this.getMouseOnScreen = function( clientX, clientY ) {
+		return new THREE.Vector2(
+			( clientX - _this.screen.offsetLeft ) / _this.radius * 0.5,
+			( clientY - _this.screen.offsetTop ) / _this.radius * 0.5
+		);
+	};
+
+	this.getMouseProjectionOnBall = function( clientX, clientY ) {
+		var mouseOnBall = new THREE.Vector3(
+			( clientX - _this.screen.width * 0.5 - _this.screen.offsetLeft ) / _this.radius,
+			( _this.screen.height * 0.5 + _this.screen.offsetTop - clientY ) / _this.radius,
+			0.0
+		);
+		var length = mouseOnBall.length();
+		if ( length > 1.0 ) {
+			mouseOnBall.normalize();
+		} else {
+			mouseOnBall.z = Math.sqrt( 1.0 - length * length );
+		}
+		_eye.copy( _this.object.position ).subSelf( _this.target );
+		var projection = _this.object.up.clone().setLength( mouseOnBall.y );
+		projection.addSelf( _this.object.up.clone().crossSelf( _eye ).setLength( mouseOnBall.x ) );
+		projection.addSelf( _eye.setLength( mouseOnBall.z ) );
+		return projection;
+
+	};
+
+	this.rotateCamera = function() {
+		var angle = Math.acos( _rotateStart.dot( _rotateEnd ) / _rotateStart.length() / _rotateEnd.length() );
+
+		if ( angle ) {
+			var axis = ( new THREE.Vector3() ).cross( _rotateStart, _rotateEnd ).normalize(),
+			quaternion = new THREE.Quaternion();
+			angle *= _this.rotateSpeed;
+			quaternion.setFromAxisAngle( axis, -angle );
+			quaternion.multiplyVector3( _eye );
+			quaternion.multiplyVector3( _this.object.up );
+			quaternion.multiplyVector3( _rotateEnd );
+
+			if ( _this.staticMoving ) {
+				_rotateStart = _rotateEnd;
+			} else {
+				quaternion.setFromAxisAngle( axis, angle * ( _this.dynamicDampingFactor - 1.0 ) );
+				quaternion.multiplyVector3( _rotateStart );
+			}
+		}
+	};
+
+	this.zoomCamera = function() {
+		var factor = 1.0 + ( _zoomEnd.y - _zoomStart.y ) * _this.zoomSpeed;
+		if ( factor !== 1.0 && factor > 0.0 ) {
+			_eye.multiplyScalar( factor );
+			if ( _this.staticMoving ) {
+				_zoomStart = _zoomEnd;
+			} else {
+				_zoomStart.y += ( _zoomEnd.y - _zoomStart.y ) * this.dynamicDampingFactor;
+			}
+		}
+	};
+
+	this.panCamera = function() {
+		var mouseChange = _panEnd.clone().subSelf( _panStart );
+		if ( mouseChange.lengthSq() ) {
+			mouseChange.multiplyScalar( _eye.length() * _this.panSpeed );
+			var pan = _eye.clone().crossSelf( _this.object.up ).setLength( mouseChange.x );
+			pan.addSelf( _this.object.up.clone().setLength( mouseChange.y ) );
+			_this.object.position.addSelf( pan );
+			_this.target.addSelf( pan );
+			if ( _this.staticMoving ) {
+				_panStart = _panEnd;
+			} else {
+				_panStart.addSelf( mouseChange.sub( _panEnd, _panStart ).multiplyScalar( _this.dynamicDampingFactor ) );
+			}
+		}
+	};
+
+	this.checkDistances = function() {
+		if ( !_this.noZoom || !_this.noPan ) {
+			if ( _this.object.position.lengthSq() > _this.maxDistance * _this.maxDistance ) {
+				_this.object.position.setLength( _this.maxDistance );
+			}
+			if ( _eye.lengthSq() < _this.minDistance * _this.minDistance ) {
+				_this.object.position.add( _this.target, _eye.setLength( _this.minDistance ) );
+			}
+		}
+	};
+
+	this.update = function() {
+		_eye.copy( _this.object.position ).subSelf( this.target );
+		if ( !_this.noRotate ) {
+			_this.rotateCamera();
+		}
+		if ( !_this.noZoom ) {
+			_this.zoomCamera();
+		}
+		if ( !_this.noPan ) {
+			_this.panCamera();
+		}
+		_this.object.position.add( _this.target, _eye );
+		_this.checkDistances();
+		_this.object.lookAt( _this.target );
+
+	};
+
+
+	// listeners
+	function keydown( event ) {
+		if ( ! _this.enabled ) return;
+		if ( _state !== STATE.NONE ) {
+			return;
+		} else if ( event.keyCode === _this.keys[ STATE.ROTATE ] && !_this.noRotate ) {
+			_state = STATE.ROTATE;
+		} else if ( event.keyCode === _this.keys[ STATE.ZOOM ] && !_this.noZoom ) {
+			_state = STATE.ZOOM;
+		} else if ( event.keyCode === _this.keys[ STATE.PAN ] && !_this.noPan ) {
+			_state = STATE.PAN;
+		}
+		if ( _state !== STATE.NONE ) {
+			_keyPressed = true;
+		}
+	};
+
+	function keyup( event ) {
+		if ( ! _this.enabled ) return;
+		if ( _state !== STATE.NONE ) {
+			_state = STATE.NONE;
+		}
+	};
+
+	function mousedown( event ) {
+		if ( ! _this.enabled ) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		if ( _state === STATE.NONE ) {
+			_state = event.button;
+			if ( _state === STATE.ROTATE && !_this.noRotate ) {
+				_rotateStart = _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
+			} else if ( _state === STATE.ZOOM && !_this.noZoom ) {
+				_zoomStart = _zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
+			} else if ( !this.noPan ) {
+				_panStart = _panEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
+			}
+		}
+	};
+
+	function mousemove( event ) {
+		if ( ! _this.enabled ) return;
+		if ( _keyPressed ) {
+			_rotateStart = _rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
+			_zoomStart = _zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
+			_panStart = _panEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
+			_keyPressed = false;
+		}
+		if ( _state === STATE.NONE ) {
+			return;
+		} else if ( _state === STATE.ROTATE && !_this.noRotate ) {
+			_rotateEnd = _this.getMouseProjectionOnBall( event.clientX, event.clientY );
+		} else if ( _state === STATE.ZOOM && !_this.noZoom ) {
+			_zoomEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
+		} else if ( _state === STATE.PAN && !_this.noPan ) {
+			_panEnd = _this.getMouseOnScreen( event.clientX, event.clientY );
+		}
+
+	};
+
+	function mouseup( event ) {
+		if ( ! _this.enabled ) return;
+		event.preventDefault();
+		event.stopPropagation();
+		_state = STATE.NONE;
+	};
+
+
+	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+
+	this.domElement.addEventListener( 'mousemove', mousemove, false );
+	this.domElement.addEventListener( 'mousedown', mousedown, false );
+	this.domElement.addEventListener( 'mouseup', mouseup, false );
+
+	window.addEventListener( 'keydown', keydown, false );
+	window.addEventListener( 'keyup', keyup, false );
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////	THREE.RollControls	//////////////////////////////////////////////
+	/**
+	 * @author mikael emtinger / http://gomo.se/
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+
+	// custom update
+	this.updateRollControls = function ( delta ) {
+
+		if ( this.mouseLook ) {
+			var actualLookSpeed = delta * this.lookSpeed;
+			this.rotateHorizontally( actualLookSpeed * mouseX );
+			this.rotateVertically( actualLookSpeed * mouseY );
+
+		}
+
+		var actualSpeed = delta * this.movementSpeed;
+		var forwardOrAuto = ( forwardSpeed > 0 || ( this.autoForward && ! ( forwardSpeed < 0 ) ) ) ? 1 : forwardSpeed;
+
+		this.object.translateZ( -actualSpeed * forwardOrAuto );
+		this.object.translateX( actualSpeed * sideSpeed );
+		this.object.translateY( actualSpeed * upSpeed );
+
+		if( doRoll ) {
+			this.roll += this.rollSpeed * delta * rollDirection;
+		}
+
+		// cap forward up / down
+
+		if( this.forward.y > this.constrainVertical[ 1 ] ) {
+			this.forward.y = this.constrainVertical[ 1 ];
+			this.forward.normalize();
+
+		} else if( this.forward.y < this.constrainVertical[ 0 ] ) {
+			this.forward.y = this.constrainVertical[ 0 ];
+			this.forward.normalize();
+
+		}
+
+
+		// construct unrolled camera matrix
+		zTemp.copy( this.forward );
+		yTemp.set( 0, 1, 0 );
+		xTemp.cross( yTemp, zTemp ).normalize();
+		yTemp.cross( zTemp, xTemp ).normalize();
+
+		this.object.matrix.n11 = xTemp.x; this.object.matrix.n12 = yTemp.x; this.object.matrix.n13 = zTemp.x;
+		this.object.matrix.n21 = xTemp.y; this.object.matrix.n22 = yTemp.y; this.object.matrix.n23 = zTemp.y;
+		this.object.matrix.n31 = xTemp.z; this.object.matrix.n32 = yTemp.z; this.object.matrix.n33 = zTemp.z;
+
+		// calculate roll matrix
+		rollMatrix.identity();
+		rollMatrix.n11 = Math.cos( this.roll ); rollMatrix.n12 = -Math.sin( this.roll );
+		rollMatrix.n21 = Math.sin( this.roll ); rollMatrix.n22 =  Math.cos( this.roll );
+
+		// multiply camera with roll
+		this.object.matrix.multiplySelf( rollMatrix );
+		this.object.matrixWorldNeedsUpdate = true;
+
+		// set position
+		this.object.matrix.n14 = this.object.position.x;
+		this.object.matrix.n24 = this.object.position.y;
+		this.object.matrix.n34 = this.object.position.z;
+
+
+	};
+
+	this.translateX = function ( distance ) {
+		this.object.position.x += this.object.matrix.n11 * distance;
+		this.object.position.y += this.object.matrix.n21 * distance;
+		this.object.position.z += this.object.matrix.n31 * distance;
+
+	};
+
+	this.translateY = function ( distance ) {
+		this.object.position.x += this.object.matrix.n12 * distance;
+		this.object.position.y += this.object.matrix.n22 * distance;
+		this.object.position.z += this.object.matrix.n32 * distance;
+
+	};
+
+	this.translateZ = function ( distance ) {
+		this.object.position.x -= this.object.matrix.n13 * distance;
+		this.object.position.y -= this.object.matrix.n23 * distance;
+		this.object.position.z -= this.object.matrix.n33 * distance;
+
+	};
+
+
+	this.rotateHorizontally = function ( amount ) {
+		// please note that the amount is NOT degrees, but a scale value
+		xTemp.set( this.object.matrix.n11, this.object.matrix.n21, this.object.matrix.n31 );
+		xTemp.multiplyScalar( amount );
+		this.forward.subSelf( xTemp );
+		this.forward.normalize();
+
+	};
+
+	this.rotateVertically = function ( amount ) {
+		// please note that the amount is NOT degrees, but a scale value
+		yTemp.set( this.object.matrix.n12, this.object.matrix.n22, this.object.matrix.n32 );
+		yTemp.multiplyScalar( amount );
+		this.forward.addSelf( yTemp );
+		this.forward.normalize();
+
+	};
+
+	function onKeyDown( event ) {
+
+		switch( event.keyCode ) {
+
+			case 38: /*up*/
+			case 87: /*W*/ forwardSpeed = 1; break;
+
+			case 37: /*left*/
+			case 65: /*A*/ sideSpeed = -1; break;
+
+			case 40: /*down*/
+			case 83: /*S*/ forwardSpeed = -1; break;
+
+			case 39: /*right*/
+			case 68: /*D*/ sideSpeed = 1; break;
+
+			case 81: /*Q*/ doRoll = true; rollDirection = 1; break;
+			case 69: /*E*/ doRoll = true; rollDirection = -1; break;
+
+			case 82: /*R*/ upSpeed = 1; break;
+			case 70: /*F*/ upSpeed = -1; break;
+
+		}
+
+	};
+
+	function onKeyUp( event ) {
+
+		switch( event.keyCode ) {
+
+			case 38: /*up*/
+			case 87: /*W*/ forwardSpeed = 0; break;
+
+			case 37: /*left*/
+			case 65: /*A*/ sideSpeed = 0; break;
+
+			case 40: /*down*/
+			case 83: /*S*/ forwardSpeed = 0; break;
+
+			case 39: /*right*/
+			case 68: /*D*/ sideSpeed = 0; break;
+
+			case 81: /*Q*/ doRoll = false; break;
+			case 69: /*E*/ doRoll = false; break;
+
+			case 82: /*R*/ upSpeed = 0; break;
+			case 70: /*F*/ upSpeed = 0; break;
+
+		}
+
+	};
+
+	function onMouseMove( event ) {
+		mouseX = ( event.clientX - windowHalfX ) / window.innerWidth;
+		mouseY = ( event.clientY - windowHalfY ) / window.innerHeight;
+
+	};
+
+	function onMouseDown ( event ) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		switch ( event.button ) {
+			case 0: forwardSpeed = 1; break;
+			case 2: forwardSpeed = -1; break;
+		}
+
+	};
+
+	function onMouseUp ( event ) {
+		event.preventDefault();
+		event.stopPropagation();
+		switch ( event.button ) {
+			case 0: forwardSpeed = 0; break;
+			case 2: forwardSpeed = 0; break;
+		}
+	};
+
+/*
+	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
+
+	this.domElement.addEventListener( 'mousemove', onMouseMove, false );
+	this.domElement.addEventListener( 'mousedown', onMouseDown, false );
+	this.domElement.addEventListener( 'mouseup', onMouseUp, false );
+	this.domElement.addEventListener( 'keydown', onKeyDown, false );
+	this.domElement.addEventListener( 'keyup', onKeyUp, false );
+*/
+
+};
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////// init and run ///////////////////
 init();
 animate();
 

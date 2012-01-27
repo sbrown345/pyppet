@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan26, 2012
+# Jan27, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3g'
+VERSION = '1.9.3h'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -887,8 +887,13 @@ class ToggleButton(object):
 		self.target_index = index
 		self.cast = cast
 		if index is not None:
+			value = getattr(self.target,self.target_path)[index]
+			#print('target index value', value)
+			self.button.set_active( bool(value) )
 			self.button.connect('toggled', self.cb_by_index)
 		else:
+			value = getattr(self.target,self.target_path)
+			self.button.set_active( bool(value) )
 			self.button.connect('toggled', self.cb)
 
 
