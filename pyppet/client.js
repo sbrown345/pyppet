@@ -565,20 +565,36 @@ function render() {
 // merge TrackballControls.js and RollControls.js into single Controller //
 
 MyController = function ( object, domElement ) {
-	this.MODE = 'TRACK'		// TRACK, FREE, 
+	this.MODE = 'TRACK'		// TRACK, FREE, SPIN
 
 	this.set_mode = function( mode ) {
 		this.MODE = mode;
 		if (this.MODE=='FREE') { this.object.matrixAutoUpdate = false; }
 		else { this.object.matrixAutoUpdate = true; }
+		if (this.MODE=='SPIN') {
+			distance=this.object.position.length();
+			console.log(distance);
+		}
 	};
 	this.update = function(delta) {
 		if (this.MODE=='TRACK') { this.update_TRACK(); }
 		else if (this.MODE=='FREE') { this.update_FREE(delta); }
+		else if (this.MODE=='SPIN') {
+			var camera = this.object;
+			var timer = Date.now() * 0.0005;
+			var x = raw_mouseX * 0.0025;
+			var y = raw_mouseY * 0.1;
+			camera.position.x = Math.cos( timer+x ) * distance;
+			camera.position.z = Math.sin( timer+x ) * distance;
+			//camera.position.x += ( x - camera.position.x ) * 0.01;
+			camera.position.y += ( - y - camera.position.y ) * 0.01;
+			camera.lookAt( this.target );
+		}
 	};
 
-
-
+	// SPIN //
+	var raw_mouseX = 0, raw_mouseY = 0;
+	var distance = 10.0;
 
 	/**	THREE.TrackballControls
 	 * @author Eberhard Graether / http://egraether.com/
@@ -842,6 +858,10 @@ MyController = function ( object, domElement ) {
 
 	this.mousemove = function( event ) {
 		if ( ! _this.enabled ) return;
+		////////////////// SPIN ///////////////////
+		raw_mouseX = ( event.clientX - windowHalfX );
+		raw_mouseY = ( event.clientY - windowHalfY );
+
 		////////////////// FREE ///////////////////
 		mouseX = ( event.clientX - windowHalfX ) / window.innerWidth;
 		mouseY = ( event.clientY - windowHalfY ) / window.innerHeight;
