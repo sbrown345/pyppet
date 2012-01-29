@@ -172,7 +172,7 @@ class WebGL(object):
 	def __init__(self):
 		self.effects = []
 		self.effects.append( FX('fxaa', True) )
-		self.effects.append( FX('ssao', False) )
+		#self.effects.append( FX('ssao', False) )
 		self.effects.append( FX('dots', False, scale=1.8) )
 		self.effects.append( FX('vignette', True, darkness=1.0) )
 		self.effects.append( FX('bloom', True, opacity=1.1) )
@@ -3199,19 +3199,19 @@ class App( PyppetAPI ):
 				b.set_tooltip_text('toggle body physics')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_body )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_body',b.get_active()), ob)
+				b.connect('toggled', self.toggle_body)
 
 				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle collision')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_collision',b.get_active()), ob)
+				b.connect('toggled', self.toggle_collision)
 
 				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle gravity')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_gravity )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_gravity',b.get_active()), ob)
+				b.connect('toggled', self.toggle_gravity)
 
 			root.show_all()
 
@@ -3220,6 +3220,13 @@ class App( PyppetAPI ):
 			bpy.ops.object.mode_set( mode='POSE' )
 		else:
 			bpy.ops.object.mode_set( mode='OBJECT' )
+
+	def toggle_gravity(self, b):
+		for ob in self.context.selected_objects: ob.ode_use_gravity = b.get_active()
+	def toggle_collision(self, b):
+		for ob in self.context.selected_objects: ob.ode_use_collision = b.get_active()
+	def toggle_body(self, b):
+		for ob in self.context.selected_objects: ob.ode_use_body = b.get_active()
 
 
 ######## Pyppet Singleton #########
