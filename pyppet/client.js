@@ -19,6 +19,11 @@ function on_message(e) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
+	if (msg.camera.rand) {
+		if (CONTROLLER.MODE != 'RANDOM') { CONTROLLER.set_mode('RANDOM'); }
+		CONTROLLER.randomize = true;
+	}
+
 	for (var name in msg['FX']) {
 		var fx = FX[ name ];
 		fx.enabled = msg['FX'][name][0];
@@ -571,30 +576,46 @@ MyController = function ( object, domElement ) {
 		this.MODE = mode;
 		if (this.MODE=='FREE') { this.object.matrixAutoUpdate = false; }
 		else { this.object.matrixAutoUpdate = true; }
-		if (this.MODE=='SPIN') {
-			distance=this.object.position.length();
-			console.log(distance);
-		}
+		distance=this.object.position.length();
 	};
 	this.update = function(delta) {
+		var camera = this.object;
+
 		if (this.MODE=='TRACK') { this.update_TRACK(); }
 		else if (this.MODE=='FREE') { this.update_FREE(delta); }
 		else if (this.MODE=='SPIN') {
-			var camera = this.object;
-			var timer = Date.now() * 0.0005;
-			var x = raw_mouseX * 0.0025;
+			//var timer = Date.now() * 0.0005;
+			//var x = Math.abs(raw_mouseX * 0.001) + 1.0;
+			var x = raw_mouseX * 0.1;
 			var y = raw_mouseY * 0.1;
-			camera.position.x = Math.cos( timer+x ) * distance;
-			camera.position.z = Math.sin( timer+x ) * distance;
-			//camera.position.x += ( x - camera.position.x ) * 0.01;
+			//camera.position.x = Math.cos( timer ) * distance * x;
+			//camera.position.z = Math.sin( timer ) * distance * x;
+			camera.position.x += ( x - camera.position.x ) * 0.01;
 			camera.position.y += ( - y - camera.position.y ) * 0.01;
 			camera.lookAt( this.target );
+		}
+		else if (this.MODE=='RANDOM') {
+			if ( this.randomize ) {
+				this.randomize = false;
+				var a = Math.random() * 3;
+				var d = (Math.random() * 3) + 0.5
+				camera.position.x = Math.cos( a ) * distance * d;
+				camera.position.z = Math.sin( a ) * distance * d;
+				camera.position.y = (Math.random()-0.25) * 4;
+				var t = this.target.clone();
+				t.x += (Math.random()-0.5) * (Math.random()*10);
+				t.y += (Math.random()-0.25)  * (Math.random()*4);
+				t.z += (Math.random()-0.5) * (Math.random()*10);
+				camera.lookAt( t );
+				camera.rotation.z = Math.random()-0.5;
+			}
 		}
 	};
 
 	// SPIN //
 	var raw_mouseX = 0, raw_mouseY = 0;
 	var distance = 10.0;
+	this.randomize = false;
 
 	/**	THREE.TrackballControls
 	 * @author Eberhard Graether / http://egraether.com/
@@ -771,9 +792,10 @@ MyController = function ( object, domElement ) {
 		console.log('keydown');
 		console.log( event.keyCode );
 
-		if (event.keyCode == 49) { _this.set_mode('TRACK'); }		// 1 key
-		else if (event.keyCode == 50) { _this.set_mode('FREE'); }	// 2 key
-		else if (event.keyCode == 51) { _this.set_mode('SPIN'); }	// 3 key
+		if (event.keyCode == 49) { _this.set_mode('TRACK'); }			// 1 key
+		else if (event.keyCode == 50) { _this.set_mode('FREE'); }		// 2 key
+		else if (event.keyCode == 51) { _this.set_mode('SPIN'); }		// 3 key
+		else if (event.keyCode == 52) { _this.set_mode('RANDOM'); }	// 4 key
 
 		///////////////////// TRACK ///////////////////
 		if ( _state !== STATE.NONE ) {
@@ -834,6 +856,7 @@ MyController = function ( object, domElement ) {
 		event.stopPropagation();
 		if (_this.MODE=='TRACK') { _this.mousedown_TRACK(event); }
 		else if (_this.MODE=='FREE') { _this.mousedown_FREE(event); }
+		randomize = true;
 	};
 
 	this.mousedown_TRACK = function( event ) {

@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan27, 2012
+# Jan29, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -84,6 +84,7 @@ import json
 
 
 BG_COLOR = gtk.GdkColor(0,50000,50000,50000)
+BG_COLOR_DARK = gtk.GdkColor(0,40000,40000,40000)
 
 STREAM_BUFFER_SIZE = 2048
 
@@ -220,7 +221,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 	_bps = 0
 	def update( self, context ):
 		if not self.client: return
-		msg = { 'meshes':{}, 'lights':{}, 'FX':{} }
+		msg = { 
+			'meshes':{}, 
+			'lights':{}, 
+			'FX':{},
+			'camera': {'rand':Pyppet.randomize_camera},
+		}
 
 		for fx in  self.webGL.effects:
 			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
@@ -847,10 +853,11 @@ class Slider(object):
 
 class ToggleButton(object):
 	_type = 'toggle'
-	def __init__(self, name=None, driveable=True):
+	def __init__(self, name=None, driveable=True, tooltip=None):
 		self.name = name
 
 		self.widget = gtk.Frame()
+		if tooltip: self.widget.set_tooltip_text( tooltip )
 		self.box = gtk.HBox(); self.widget.add( self.box )
 
 		if self._type == 'toggle':
@@ -1541,18 +1548,18 @@ class Microphone( Audio ):
 	def get_widget(self):
 		frame = gtk.Frame()
 		root = gtk.HBox(); frame.add( root )
-		b = gtk.ToggleButton( icons.MICROPHONE )
+		b = gtk.ToggleButton( icons.MICROPHONE ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_tooltip_text( 'toggle microphone' )
 		b.connect('toggled', self.toggle_capture)
 		root.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.SINE_WAVE )
+		b = gtk.ToggleButton( icons.SINE_WAVE ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_tooltip_text( 'toggle spectral analysis' )
 		b.set_active( self.analysis )
 		b.connect('toggled', lambda b,s: setattr(s,'analysis',b.get_active()), self)
 		root.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.SPEAKER )
+		b = gtk.ToggleButton( icons.SPEAKER ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_tooltip_text( 'toggle speaker output' )
 		b.set_active( self.streaming )
 		b.connect('toggled', lambda b,s: setattr(s,'streaming',b.get_active()), self)
@@ -2843,6 +2850,8 @@ class App( PyppetAPI ):
 		self.audio = AudioThread()
 		self.audio.start()
 
+		self.randomize_camera = False
+
 		self.context = ContextCopy( bpy.context )
 		for area in bpy.context.screen.areas:		#bpy.context.window.screen.areas:
 			if area.type == 'PROPERTIES':
@@ -2950,11 +2959,11 @@ class App( PyppetAPI ):
 		root.pack_start(self.header, expand=False)
 
 		self.popup = Popup()
-		b = gtk.ToggleButton( icons.POPUP )
+		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled',self.popup.toggle_popup)
 		self.header.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.OVERLAY )
+		b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled',self.toggle_overlays)
 		self.header.pack_start( b, expand=False )
 
@@ -2964,12 +2973,11 @@ class App( PyppetAPI ):
 		s.connect('button-press-event', self.cb_toggle_physics )
 		s.set_tooltip_text( 'toggle physics' )
 		self.header.pack_start( s, expand=False )
-		b = gtk.ToggleButton( icons.PLAY_PHYSICS )
+		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
 		self.header.pack_start( b, expand=False )
 
 		self.header.pack_start( gtk.Label() )
-
 
 		widget = self.audio.microphone.get_widget()
 		self.header.pack_start( widget, expand=False )
@@ -2998,13 +3006,21 @@ class App( PyppetAPI ):
 		root.pack_start( split )
 
 		note = gtk.Notebook()
-		#note.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		note.set_border_width( 2 )
+		#for i in range(7):
+		#	#note.modify_bg( gtk.STATE_NORMAL, BG_COLOR_DARK )
+		#	note.modify_bg( i, BG_COLOR_DARK )
+		split.pack_start( note, expand=False )
 
 		widget = self.websocket_server.webGL.get_fx_widget()
 		note.append_page( widget, gtk.Label( icons.FX ) )
-		note.append_page( gtk.Label('x'), gtk.Label( icons.MODE ) )
-		split.pack_start( note, expand=False )
+		page = gtk.VBox()
+		b = CheckButton( 'randomize', tooltip='toggle randomize camera (webclient)' )
+		b.connect( self, path='randomize_camera' )
+		page.pack_start( b.widget, expand=False )
+		note.append_page(page, gtk.Label( icons.CAMERA) )
 
+		###############################
 		bsplit = gtk.VBox()
 		split.pack_start( bsplit, expand=True )
 
@@ -3166,7 +3182,7 @@ class App( PyppetAPI ):
 			#root.pack_start( gtk.Label(ob.name), expand=False )
 
 			if ob.type == 'ARMATURE':
-				b = gtk.ToggleButton( icons.MODE )
+				b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle pose mode')
 				root.pack_start( b, expand=False )
 				b.set_active( self.context.mode=='POSE' )
@@ -3174,24 +3190,24 @@ class App( PyppetAPI ):
 
 				if ob.name not in self.entities:
 					biped = self.GetBiped( ob )
-					b = gtk.Button( icons.BIPED )
+					b = gtk.Button( icons.BIPED ); b.set_relief( gtk.RELIEF_NONE )
 					root.pack_start( b, expand=False )
 					b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
 
 			else:
-				b = gtk.ToggleButton( icons.BODY )
+				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle body physics')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_body )
 				b.connect('toggled', lambda b,o: setattr(o,'ode_use_body',b.get_active()), ob)
 
-				b = gtk.ToggleButton( icons.COLLISION )
+				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle collision')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_collision )
 				b.connect('toggled', lambda b,o: setattr(o,'ode_use_collision',b.get_active()), ob)
 
-				b = gtk.ToggleButton( icons.GRAVITY )
+				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle gravity')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_gravity )
