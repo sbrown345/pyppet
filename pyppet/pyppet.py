@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan29, 2012
+# Jan30, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3h'
+VERSION = '1.9.3i'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -225,7 +225,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 			'meshes':{}, 
 			'lights':{}, 
 			'FX':{},
-			'camera': {'rand':Pyppet.randomize_camera},
+			'camera': {
+				'rand':Pyppet.camera_randomize,
+				'focus':Pyppet.camera_focus,
+				'aperture':Pyppet.camera_aperture,
+				'maxblur':Pyppet.camera_maxblur,
+			},
 		}
 
 		for fx in  self.webGL.effects:
@@ -400,7 +405,9 @@ class WebServer( object ):
 
 			########################################################################
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
-			h.append( '<script type="text/javascript">%s' %self.CLIENT_SCRIPT )
+			h.append( '<script type="text/javascript">' )
+			h.append( 'var HOST = "%s";' %socket.gethostbyname(socket.gethostname()) )
+			h.append( self.CLIENT_SCRIPT )
 			h.append( '</script>' )
 
 		return '\n'.join( h )
@@ -416,11 +423,24 @@ class WebServer( object ):
 		client = env['REMOTE_ADDR']
 		arg = env['QUERY_STRING']
 
-		#if path=='/favicon.ico': pass
-		print('httpd reply browser', path)
-		f = io.StringIO()
+		relpath = os.path.join( SCRIPT_DIR, path[1:] )
 
-		if path=='/':
+		if path=='/favicon.ico':
+			start_response('200 OK', [('Content-Length','0')])
+			return []
+		elif path == '/':
+			if self.THREE:
+				f = io.StringIO()
+				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
+				f.write( self.get_header(webgl=True) )
+				return [f.getvalue().encode('utf-8')]
+
+			else:
+				print('ERROR: Three.js is missing!')
+
+		elif path=='/index':
+			f = io.StringIO()
+
 			start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
 			f.write( self.get_header() )
 
@@ -446,6 +466,9 @@ class WebServer( object ):
 						f.write('<li><a href="/objects/%s">%s</a></li>' %(ob.name,ob.name))
 				f.write('</ul>')
 
+			return [f.getvalue().encode('utf-8')]
+
+
 		elif path.startswith('/objects/'):
 			name = path.split('/')[-1]
 			if name.endswith('.dae'):
@@ -455,30 +478,23 @@ class WebServer( object ):
 					return [ dump_collada(name,center=True) ]
 				else:
 					return [ dump_collada(name) ]
+			else:
+				print('WARNING: unknown request', path)
 
-			elif self.THREE:
-				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
-				f.write( self.get_header(webgl=True) )
-
-			else:	# simple fallback
-				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
-				f.write( self.get_header() )
-				ob = bpy.data.objects[ name ]
-				f.write('<h4>NAME: %s</h4>'%name)
-				f.write('<h4>TYPE: %s</h4>'%ob.type)
-				vec = ob.matrix_world.to_translation()
-				f.write('<h4>LOCATION: %s</h4>'%vec)
 
 		elif path.startswith('/javascripts/'):
 			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8')])
-			abspath = os.path.join( SCRIPT_DIR, path[1:] )
-			data = open( abspath, 'rb' ).read()
+			data = open( relpath, 'rb' ).read()
+			return [ data ]
+
+		elif path.startswith('/textures/'):
+			data = open( relpath, 'rb' ).read()
+			start_response('200 OK', [('Content-Length',str(len(data)))])
+
 			return [ data ]
 
 		else:
-			start_response('200 OK', [('Content-Type','text/plain; charset=utf-8')])
-
-		return [f.getvalue().encode('utf-8')]
+			print( 'SERVER ERROR: invalid path', path )
 
 
 
@@ -1359,7 +1375,9 @@ class Audio(object):
 		self.beats_buttons = []
 		self.beats_threshold = 2.0
 
-		self.max_raw = 0.1
+		#self.max_raw = 0.1
+		self.normalize = 1.0
+
 		self.raw_adjustments = [ gtk.Adjustment( value=0, lower=0, upper=1 ) for i in range(n) ]
 		self.norm_adjustments = [ gtk.Adjustment( value=0, lower=0, upper=1 ) for i in range(n) ]
 		self.adjustments = [ gtk.Adjustment( value=0, lower=0, upper=1 ) for i in range(n) ]
@@ -1373,6 +1391,10 @@ class Audio(object):
 		ex = gtk.Expander('Spectral Analysis'); ex.set_expanded(True)
 		root.pack_start( ex, expand=False )
 		box = gtk.VBox(); ex.add( box )
+
+		slider = SimpleSlider( self, name='normalize', value=self.normalize, min=0.5, max=5 )
+		box.pack_start( slider.widget, expand=False )
+
 
 		slider = SimpleSlider( self, name='beats_threshold', value=self.beats_threshold, min=0.5, max=5 )
 		box.pack_start( slider.widget, expand=False )
@@ -1454,16 +1476,12 @@ class Audio(object):
 					bar = []
 
 
-			h = max(raw)
-			if h > self.max_raw:
-				self.max_raw = h
-				print('new max raw', h)
-
-			mult = 1.0 / self.max_raw
+			#h = max(raw)
+			#if h > self.max_raw: self.max_raw = h; print('new max raw', h)
+			#mult = 1.0 / self.max_raw
 			#if self.max_raw > 1.0: self.max_raw *= 0.99	# TODO better normalizer
+			mult = 1.0 / (self.normalize * 100000)		# values range from 200,000 to 2M
 
-			#self.raw_bands = [ power*mult for power in raw ]	# drivers fail if pointer is lost
-			#for i,power in enumerate( self.raw_bands ):
 			for i,power in enumerate( raw ):
 				power *= mult
 				self.raw_bands[ i ] = power
@@ -2850,7 +2868,10 @@ class App( PyppetAPI ):
 		self.audio = AudioThread()
 		self.audio.start()
 
-		self.randomize_camera = False
+		self.camera_randomize = False
+		self.camera_focus = 1.5
+		self.camera_aperture = 0.15
+		self.camera_maxblur = 1.0
 
 		self.context = ContextCopy( bpy.context )
 		for area in bpy.context.screen.areas:		#bpy.context.window.screen.areas:
@@ -2996,6 +3017,7 @@ class App( PyppetAPI ):
 
 	def create_ui(self, context):
 		win = gtk.Window()
+		#win.set_opacity( 0.5 )
 		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_size_request( 640, 480 )
 		win.set_title( 'Pyppet '+VERSION )
@@ -3015,9 +3037,20 @@ class App( PyppetAPI ):
 		widget = self.websocket_server.webGL.get_fx_widget()
 		note.append_page( widget, gtk.Label( icons.FX ) )
 		page = gtk.VBox()
-		b = CheckButton( 'randomize', tooltip='toggle randomize camera (webclient)' )
-		b.connect( self, path='randomize_camera' )
+
+		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
+		b.connect( self, path='camera_randomize' )
 		page.pack_start( b.widget, expand=False )
+
+
+		for name in 'camera_focus camera_aperture camera_maxblur'.split():
+			page.pack_start( gtk.Label(name.split('_')[-1]), expand=False )
+			if name == 'camera_aperture':
+				slider = SimpleSlider( self, name=name, title='', max=0.2, driveable=True )
+			else:
+				slider = SimpleSlider( self, name=name, title='', max=3.0, driveable=True )
+			page.pack_start( slider.widget, expand=False )
+
 		note.append_page(page, gtk.Label( icons.CAMERA) )
 
 		###############################
@@ -3027,9 +3060,11 @@ class App( PyppetAPI ):
 		self.create_header_ui( bsplit )
 
 		self.body = gtk.HBox()
+
 		bsplit.pack_start( self.body )
 
 		self.canvas = gtk.Fixed()
+
 		self.body.pack_start( self.canvas, expand=False )
 
 

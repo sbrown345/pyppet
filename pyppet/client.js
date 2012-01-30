@@ -7,8 +7,14 @@ var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
 ws = new Websock();
-ws.open( 'ws://localhost:8081' );
+ws.open( 'ws://' + HOST + ':8081' );
 var tmp = null;
+
+
+var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
+var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
+
 
 var Objects = {};
 var LIGHTS = {};
@@ -23,6 +29,9 @@ function on_message(e) {
 		if (CONTROLLER.MODE != 'RANDOM') { CONTROLLER.set_mode('RANDOM'); }
 		CONTROLLER.randomize = true;
 	}
+	postprocessing.bokeh_uniforms[ "focus" ].value = msg.camera.focus;
+	postprocessing.bokeh_uniforms[ "aperture" ].value = msg.camera.aperture;
+	postprocessing.bokeh_uniforms[ "maxblur" ].value = msg.camera.maxblur;
 
 	for (var name in msg['FX']) {
 		var fx = FX[ name ];
@@ -45,6 +54,24 @@ function on_message(e) {
 			console.log('>> new light');
 			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
 			scene.add( light );
+
+			var lensFlare = new THREE.LensFlare( textureFlare0, 700, 0.0, THREE.AdditiveBlending, light.color );
+
+			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+
+			lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare3, 120, 0.9, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
+
+			//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
+			lensFlare.position = light.position;
+
+			scene.add( lensFlare );
+
+
 		}
 		light = LIGHTS[ name ];
 		light.color.r = ob.color[0];
@@ -323,21 +350,73 @@ function init() {
 
 
 	// renderer //
-	renderer = new THREE.WebGLRenderer( { maxLights: 8 } );
+	renderer = new THREE.WebGLRenderer( { maxLights: 8, antialias: false } );
 	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
+
 	renderer.gammaInput = true;
 	renderer.gammaOutput = true;
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
 	renderer.shadowMapAutoUpdate = false;
 	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
+	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
-	renderer.physicallyBasedShading = true;
-
-	// COMPOSER
 	setupFX( renderer, scene, camera );
+	setupDOF( renderer );
 }
+
+
+var DEPTH_MATERIAL;
+var postprocessing = { enabled  : true };
+
+function setupDOF( renderer ) {
+	DEPTH_MATERIAL = new THREE.MeshDepthMaterial();
+
+	renderer.sortObjects = false;
+	renderer.autoClear = false;
+
+	postprocessing.scene = new THREE.Scene();
+
+	postprocessing.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2,  window.innerHeight / 2, window.innerHeight / - 2, -10000, 10000 );
+	postprocessing.camera.position.z = 100;
+
+	postprocessing.scene.add( postprocessing.camera );
+
+	var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
+	postprocessing.rtTextureDepth = new THREE.WebGLRenderTarget( 
+		SCREEN_WIDTH, 
+		SCREEN_HEIGHT,
+		pars 
+	);
+	postprocessing.rtTextureColor = new THREE.WebGLRenderTarget( 
+		SCREEN_WIDTH, 
+		SCREEN_HEIGHT,
+		pars 
+	);
+
+	var bokeh_shader = THREE.ShaderExtras[ "bokeh" ];
+
+	postprocessing.bokeh_uniforms = THREE.UniformsUtils.clone( bokeh_shader.uniforms );
+
+	postprocessing.bokeh_uniforms[ "tColor" ].texture = postprocessing.rtTextureColor;
+	postprocessing.bokeh_uniforms[ "tDepth" ].texture = postprocessing.rtTextureDepth;
+	postprocessing.bokeh_uniforms[ "focus" ].value = 2.1;
+	postprocessing.bokeh_uniforms[ "aspect" ].value = SCREEN_WIDTH / SCREEN_HEIGHT;
+
+	postprocessing.materialBokeh = new THREE.ShaderMaterial( {
+		uniforms: postprocessing.bokeh_uniforms,
+		vertexShader: bokeh_shader.vertexShader,
+		fragmentShader: bokeh_shader.fragmentShader
+
+	} );
+
+	postprocessing.quad = new THREE.Mesh( new THREE.PlaneGeometry( window.innerWidth, window.innerHeight ), postprocessing.materialBokeh );
+	postprocessing.quad.position.z = - 500;
+	postprocessing.scene.add( postprocessing.quad );
+}
+
+
 
 
 var FX = {};
@@ -499,22 +578,8 @@ function resize_view() {
 		camera.updateProjectionMatrix();
 		console.log(">> resize view");
 	}
-
 }
 
-var use_camera_controls = true;
-function on_key_up(event) {
-	//console.log( event.keyCode );
-	switch( event.keyCode ) {
-
-		case 32: 		/* space */
-			use_camera_controls = !use_camera_controls;
-			break;
-
-	}
-
-}
-window.addEventListener( 'keyup', on_key_up, false );
 
 
 var clock = new THREE.Clock();
@@ -522,33 +587,18 @@ var dbug = null;
 
 function render() {
 	var timer = Date.now() * 0.0005;
-
 	resize_view();
-
 	var delta = clock.getDelta();
-	if ( use_camera_controls ) {
-		CONTROLLER.update( delta );
-	}
-
-/*
-	camera.position.x = Math.cos( timer ) * 10;
-	camera.position.y = Math.sin( timer ) * 10;
-	camera.position.z = 2;
-	camera.lookAt( scene.position );
-*/
-
-	//renderer.render( scene, camera );
-
-	// update subdiv was here
-
+	CONTROLLER.update( delta );
 
 	// render shadow map
-	renderer.autoUpdateObjects = false;
+	//renderer.autoUpdateObjects = false;
 	renderer.initWebGLObjects( scene );
 	renderer.updateShadowMap( scene, camera );
 
-	// render cube map
+
 /*
+	// render cube map
 	mesh.visible = false;
 	renderer.autoClear = true;
 	cubeCamera.updatePosition( mesh.position );
@@ -557,10 +607,27 @@ function render() {
 	mesh.visible = true;
 */
 
+
 	// render scene
+	scene.overrideMaterial = DEPTH_MATERIAL;
 	renderer.autoUpdateObjects = true;
 	composer.render( 0.1 );
+/*
+	renderer.clear();
 
+	// Render scene into texture
+
+	scene.overrideMaterial = null;
+	renderer.render( scene, camera, postprocessing.rtTextureColor, true );
+
+	// Render depth into texture
+
+	scene.overrideMaterial = DEPTH_MATERIAL;
+	renderer.render( scene, camera, postprocessing.rtTextureDepth, true );
+
+	// Render bokeh composite
+	renderer.render( postprocessing.scene, postprocessing.camera );
+*/
 
 }
 
