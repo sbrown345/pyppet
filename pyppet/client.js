@@ -1,3 +1,5 @@
+var DEBUG = false;
+
 var SELECTED = null;
 
 var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: true, wireframeLinewidth:4 });
@@ -26,25 +28,6 @@ function on_message(e) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
-	if (msg.camera.rand) {
-		if (CONTROLLER.MODE != 'RANDOM') { CONTROLLER.set_mode('RANDOM'); }
-		CONTROLLER.randomize = true;
-	}
-	postprocessing.bokeh_uniforms[ "focus" ].value = msg.camera.focus;
-	postprocessing.bokeh_uniforms[ "aperture" ].value = msg.camera.aperture;
-	postprocessing.bokeh_uniforms[ "maxblur" ].value = msg.camera.maxblur;
-
-	for (var name in msg['FX']) {
-		var fx = FX[ name ];
-		fx.enabled = msg['FX'][name][0];
-		var uniforms = msg['FX'][name][1];
-		if (fx.uniforms) {
-			for (var n in uniforms) { fx.uniforms[ n ].value = uniforms[ n ]; }
-		}
-		else {	// BloomPass
-			for (var n in uniforms) { fx.screenUniforms[ n ].value = uniforms[ n ]; }
-		}
-	}
 
 	for (var name in msg['lights']) {
 		var light;
@@ -62,12 +45,16 @@ function on_message(e) {
 			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
 			scene.add( light );
 
+			var flareColor = new THREE.Color( 0xffffff );
+			flareColor.copy( light.color );
+			THREE.ColorUtils.adjustHSV( flareColor, 0, -0.5, 0.5 );
+
 			var lensFlare = new THREE.LensFlare( 
 				textureFlare0, 
 				700, 		// size in pixels (-1 use texture width)
 				0.0, 		// distance (0-1) from light source (0=at light source)
 				THREE.AdditiveBlending, 
-				light.color 
+				flareColor
 			);
 
 			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
@@ -184,6 +171,31 @@ function on_message(e) {
 		}
 
 	}	// end meshes
+
+	///////////////////////////////////////////////////
+	if (DEBUG==true) { return; }
+	///////////////////////////////////////////////////
+
+	if (msg.camera.rand) {
+		if (CONTROLLER.MODE != 'RANDOM') { CONTROLLER.set_mode('RANDOM'); }
+		CONTROLLER.randomize = true;
+	}
+	postprocessing.bokeh_uniforms[ "focus" ].value = msg.camera.focus;
+	postprocessing.bokeh_uniforms[ "aperture" ].value = msg.camera.aperture;
+	postprocessing.bokeh_uniforms[ "maxblur" ].value = msg.camera.maxblur;
+
+	for (var name in msg['FX']) {
+		var fx = FX[ name ];
+		fx.enabled = msg['FX'][name][0];
+		var uniforms = msg['FX'][name][1];
+		if (fx.uniforms) {
+			for (var n in uniforms) { fx.uniforms[ n ].value = uniforms[ n ]; }
+		}
+		else {	// BloomPass
+			for (var n in uniforms) { fx.screenUniforms[ n ].value = uniforms[ n ]; }
+		}
+	}
+
 
 }
 
@@ -337,12 +349,14 @@ function init() {
 	renderer.gammaOutput = true;
 	renderer.shadowMapEnabled = true;
 	renderer.shadowMapSoft = true;
-	renderer.shadowMapAutoUpdate = false;
+	//renderer.shadowMapAutoUpdate = false;		// EVIL!
 	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
-	setupFX( renderer, scene, camera );
-	setupDOF( renderer );
+	if (DEBUG==false) {
+		setupFX( renderer, scene, camera );
+		setupDOF( renderer );
+	}
 }
 
 
@@ -403,13 +417,13 @@ var composer;
 
 function setupFX( renderer, scene, camera ) {
 	var fx;
-	renderer.autoClear = false;
+	//renderer.autoClear = false;
 
 	renderTargetParameters = {
 		minFilter: THREE.LinearFilter, 
 		magFilter: THREE.LinearFilter, 
-		format: THREE.RGBFormat, 
-		stencilBufer: false,
+		format: THREE.RGBAFormat, 
+		stencilBufer: true,
 	};
 	renderTarget = new THREE.WebGLRenderTarget( 
 		SCREEN_WIDTH, SCREEN_HEIGHT, 
@@ -420,6 +434,7 @@ function setupFX( renderer, scene, camera ) {
 
 	var renderModel = new THREE.RenderPass( scene, camera );
 	composer.addPass( renderModel );
+	FX['BASE'] = renderModel;
 
 
 	FX['fxaa'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "fxaa" ] );
@@ -515,7 +530,8 @@ function animate() {
 	}
 
 	requestAnimationFrame( animate );
-	render();
+	if (DEBUG==true) { render_debug(); }
+	else { render(); }
 }
 
 
@@ -566,6 +582,12 @@ function resize_view() {
 var clock = new THREE.Clock();
 var dbug = null;
 
+function render_debug() {
+	var delta = clock.getDelta();
+	CONTROLLER.update( delta );
+	renderer.render( scene, camera );
+}
+
 function render() {
 	var timer = Date.now() * 0.0005;
 	resize_view();
@@ -575,7 +597,7 @@ function render() {
 	// render shadow map
 	//renderer.autoUpdateObjects = false;
 	renderer.initWebGLObjects( scene );
-	renderer.updateShadowMap( scene, camera );
+	//renderer.updateShadowMap( scene, camera );
 
 
 /*
@@ -590,7 +612,7 @@ function render() {
 
 
 	// render scene
-	scene.overrideMaterial = DEPTH_MATERIAL;
+	//scene.overrideMaterial = DEPTH_MATERIAL;
 	renderer.autoUpdateObjects = true;
 	composer.render( 0.1 );
 /*
