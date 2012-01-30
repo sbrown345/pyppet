@@ -11,9 +11,6 @@ ws.open( 'ws://' + HOST + ':8081' );
 var tmp = null;
 
 
-var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
-var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
-var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
 
 
 var Objects = {};
@@ -52,10 +49,22 @@ function on_message(e) {
 
 		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
 			console.log('>> new light');
+
+			var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+			var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
+			var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
+
+
 			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
 			scene.add( light );
 
-			var lensFlare = new THREE.LensFlare( textureFlare0, 700, 0.0, THREE.AdditiveBlending, light.color );
+			var lensFlare = new THREE.LensFlare( 
+				textureFlare0, 
+				700, 		// size in pixels (-1 use texture width)
+				0.0, 		// distance (0-1) from light source (0=at light source)
+				THREE.AdditiveBlending, 
+				light.color 
+			);
 
 			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
 			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
@@ -236,10 +245,12 @@ function on_collada_ready( collada ) {
 */
 	Objects[ mesh.name ] = mesh;
 
-	scene.add( collada.scene );
-	dae = collada.scene;
+	mesh.dirty_modifiers = true;
+	scene.add( mesh );
 
-	camera.lookAt( mesh.position );
+	//scene.add( collada.scene );
+	//dae = collada.scene;
+	//camera.lookAt( mesh.position );
 }
 
 
@@ -272,7 +283,7 @@ function init() {
 
 	// scene //
 	scene = new THREE.Scene();
-	scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
+	//scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
 
 	// camera //
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
@@ -510,14 +521,16 @@ function animate() {
 			else { mesh.visible=false; }	// hide hull
 
 			if (mesh.dirty_modifiers) {
-				console.log( mesh.subsurf );
 				mesh.dirty_modifiers = false;
+
+				var subsurf = 0;
+				if ( mesh.subsurf ) { subsurf=mesh.subsurf; }
 
 				// update hull //
 				mesh.geometry.vertices = mesh.geometry_base.vertices;
 				mesh.geometry.__dirtyVertices = true;
 
-				var modifier = new THREE.SubdivisionModifier( mesh.subsurf );
+				var modifier = new THREE.SubdivisionModifier( subsurf );
 				var geo = THREE.GeometryUtils.clone( mesh.geometry_base );
 
 				geo.mergeVertices();		// BAD?  required? //
