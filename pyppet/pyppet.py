@@ -470,6 +470,7 @@ class WebServer( object ):
 
 
 		elif path.startswith('/objects/'):
+			url = path[ 9 : ]
 			name = path.split('/')[-1]
 			if name.endswith('.dae'):
 				start_response('200 OK', [('Content-Type','text/xml; charset=utf-8')])
@@ -478,6 +479,12 @@ class WebServer( object ):
 					return [ dump_collada(name,center=True) ]
 				else:
 					return [ dump_collada(name) ]
+
+			elif os.path.isfile( url ):
+				data = open( url, 'rb' ).read()
+				start_response('200 OK', [('Content-Length',str(len(data)))])
+				return [ data ]
+
 			else:
 				print('WARNING: unknown request', path)
 
@@ -490,7 +497,6 @@ class WebServer( object ):
 		elif path.startswith('/textures/'):
 			data = open( relpath, 'rb' ).read()
 			start_response('200 OK', [('Content-Length',str(len(data)))])
-
 			return [ data ]
 
 		else:

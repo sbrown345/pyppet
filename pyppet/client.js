@@ -10,7 +10,11 @@ ws = new Websock();
 ws.open( 'ws://' + HOST + ':8081' );
 var tmp = null;
 
-
+var dbugtex = null;
+function debug_texture( image ) {
+	console.log( image );
+	dbugtex = image;
+}
 
 
 var Objects = {};
@@ -50,7 +54,7 @@ function on_message(e) {
 		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
 			console.log('>> new light');
 
-			var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+			var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png", undefined, debug_texture );
 			var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
 			var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
 
@@ -209,7 +213,7 @@ function on_collada_ready( collada ) {
 	mesh.receiveShadow = true;
 	mesh.geometry.dynamic = true;		// required
 	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
-	//mesh._material = mesh.material;
+	mesh._material = mesh.material;
 	mesh.material = WIRE_MATERIAL;
 
 /*
@@ -235,7 +239,7 @@ function on_collada_ready( collada ) {
 
 	// upgrade to phong per-pixel material //
 	var material = new THREE.MeshPhongMaterial( {perPixel:true} );
-	mesh._material = material;
+	//mesh._material = material;
 
 
 
@@ -271,8 +275,7 @@ ws.on('close', on_close);
 //////////////////////////////////////////////////////////////////////
 var container;
 var camera, scene, renderer;
-var spotLight, pointLight, ambientLight;
-var dae, skin;
+var spotLight, ambientLight;
 var CONTROLLER;
 
 function init() {
@@ -288,21 +291,9 @@ function init() {
 	// camera //
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
 	camera.position.set( 0, 4, 10 );
-	//camera.up.set( 0, 0, 1 );
 	scene.add( camera );
 
 	CONTROLLER = new MyController( camera );
-/*
-	controls.lookSpeed = 0.075;
-	controls.movementSpeed = 10;
-	controls.noFly = false;
-	controls.lookVertical = true;
-	//controls.constrainVertical = true;
-	controls.verticalMin = 0.0;
-	controls.verticalMax = 2.0;
-	//controls.lon = -110;
-	CONTROLS[ 'FirstPerson' ] = controls;
-*/
 
 	// Grid //
 	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
@@ -318,32 +309,9 @@ function init() {
 	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
 	scene.add( line );
 
-
-	// Add the COLLADA //
-	//scene.add( dae );
-
-
 	// LIGHTS //
 	ambientLight = new THREE.AmbientLight( 0x111111 );
 	scene.add( ambientLight );
-
-/*
-	pointLight = new THREE.PointLight( 0xff0000 );
-	pointLight.position.z = 10000;
-	pointLight.distance = 4000;
-	scene.add( pointLight );
-
-	pointLight2 = new THREE.PointLight( 0xff5500 );
-	pointLight2.position.z = 1000;
-	pointLight2.distance = 2000;
-	scene.add( pointLight2 );
-
-	pointLight3 = new THREE.PointLight( 0x0000ff );
-	pointLight3.position.x = -1000;
-	pointLight3.position.z = 1000;
-	pointLight3.distance = 2000;
-	scene.add( pointLight3 );
-*/
 
 	var sunIntensity = 1.0;
 	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
@@ -384,8 +352,8 @@ var postprocessing = { enabled  : true };
 function setupDOF( renderer ) {
 	DEPTH_MATERIAL = new THREE.MeshDepthMaterial();
 
-	renderer.sortObjects = false;
-	renderer.autoClear = false;
+	//renderer.sortObjects = false;
+	//renderer.autoClear = false;
 
 	postprocessing.scene = new THREE.Scene();
 
