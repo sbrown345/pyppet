@@ -55,7 +55,57 @@ import libblender as blender
 
 STARTUP_BLEND = ''
 
+## from RE_pipeline.h ##
+#define RE_BAKE_LIGHT				0	/* not listed in rna_scene.c -> can't be enabled! */
+#define RE_BAKE_ALL					1
+#define RE_BAKE_AO					2
+#define RE_BAKE_NORMALS				3
+#define RE_BAKE_TEXTURE				4
+#define RE_BAKE_DISPLACEMENT		5
+#define RE_BAKE_SHADOW				6
+#define RE_BAKE_SPEC_COLOR			7
+#define RE_BAKE_SPEC_INTENSITY		8
+#define RE_BAKE_MIRROR_COLOR		9
+#define RE_BAKE_MIRROR_INTENSITY	10
+#define RE_BAKE_ALPHA				11
+#define RE_BAKE_EMIT				12
+
+
+#Object *obedit= CTX_data_edit_object(C);
+#ED_uvedit_assign_image
+
+def bake_image( bo, type=6 ):
+	import bpy
+
+	print('bake_image...', bo)
+	ob = Object( bo )
+	print(ob)
+	re= blender.RE_NewRender("_Bake View_")
+	print('new render', re)
+
+	C = get_context()
+	print('context', C)
+	bmain = blender.CTX_data_main(C)
+	print('main', bmain)
+	scn = Scene( bpy.context.scene )
+	print('scene', scn )
+	layer = 0
+	blender.RE_Database_Baking( re, bmain, scn, layer, type, ob )
+	print('---------- ok to bake -----------')
+	do_update = 0
+	progress = ctypes.pointer( ctypes.c_float() )
+	vdone = blender.RE_bake_shade_all_selected( re, type, ob, do_update, progress )
+	print('vdone',vdone)
+	assert vdone
+	return progress
+
+
 ########################## bpy-to-ctypes API ###########################
+
+def Object( bo ):
+	ptr = ctypes.POINTER(ctypes.c_void_p).from_address( bo.as_pointer() )
+	return blender.Object( pointer=ctypes.pointer(ptr), cast=True )
+
 
 def Image( img ):
 	ptr = ctypes.POINTER(ctypes.c_void_p).from_address( img.as_pointer() )

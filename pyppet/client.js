@@ -18,6 +18,10 @@ function debug_texture( image ) {
 	dbugtex = image;
 }
 
+var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png", undefined, debug_texture );
+var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
+var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
+
 
 var Objects = {};
 var LIGHTS = {};
@@ -37,24 +41,19 @@ function on_message(e) {
 		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
 			console.log('>> new light');
 
-			var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png", undefined, debug_texture );
-			var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
-			var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
-
-
 			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
 			scene.add( light );
 
-			var flareColor = new THREE.Color( 0xffffff );
-			flareColor.copy( light.color );
-			THREE.ColorUtils.adjustHSV( flareColor, 0, -0.5, 0.5 );
+			//var flareColor = new THREE.Color( 0xffffff );
+			//flareColor.copy( light.color );
+			//THREE.ColorUtils.adjustHSV( flareColor, 0, -0.5, 0.5 );
 
 			var lensFlare = new THREE.LensFlare( 
 				textureFlare0, 
 				700, 		// size in pixels (-1 use texture width)
 				0.0, 		// distance (0-1) from light source (0=at light source)
 				THREE.AdditiveBlending, 
-				flareColor
+				light.color
 			);
 
 			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
@@ -68,7 +67,7 @@ function on_message(e) {
 
 			//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
 			lensFlare.position = light.position;
-
+			light.flare = lensFlare;
 			scene.add( lensFlare );
 
 
@@ -417,7 +416,7 @@ var composer;
 
 function setupFX( renderer, scene, camera ) {
 	var fx;
-	//renderer.autoClear = false;
+	renderer.autoClear = false;	// required by bloom FX
 
 	renderTargetParameters = {
 		minFilter: THREE.LinearFilter, 
@@ -485,7 +484,7 @@ function setupFX( renderer, scene, camera ) {
 	////////////////////////////////////// dummy //////////////////////////////////
 	FX['dummy'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "screen" ] );	// ShaderPass copies uniforms
 	fx.uniforms['opacity'].value = 1.0;	// ensure nothing happens
-	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen?
+	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen.
 	composer.addPass( fx );
 
 
@@ -596,7 +595,7 @@ function render() {
 
 	// render shadow map
 	//renderer.autoUpdateObjects = false;
-	renderer.initWebGLObjects( scene );
+	//renderer.initWebGLObjects( scene );
 	//renderer.updateShadowMap( scene, camera );
 
 
@@ -613,7 +612,8 @@ function render() {
 
 	// render scene
 	//scene.overrideMaterial = DEPTH_MATERIAL;
-	renderer.autoUpdateObjects = true;
+	//FX['BASE'].overrideMaterial = DEPTH_MATERIAL;
+	//renderer.autoUpdateObjects = true;
 	composer.render( 0.1 );
 /*
 	renderer.clear();

@@ -2881,6 +2881,7 @@ class App( PyppetAPI ):
 
 		self.context = ContextCopy( bpy.context )
 		for area in bpy.context.screen.areas:		#bpy.context.window.screen.areas:
+			print(area, area.type)
 			if area.type == 'PROPERTIES':
 				#area.width = 240		# readonly
 				pass
@@ -2891,6 +2892,36 @@ class App( PyppetAPI ):
 						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
 						break
 
+		self._handle_IMAGE_EDITOR = None
+		self.request_bake = False
+		self.setup_image_editor_callback( None )
+
+	def setup_image_editor_callback( self, b ):
+		if self._handle_IMAGE_EDITOR: return
+		for area in self.context.screen.areas:
+			if area.type == 'IMAGE_EDITOR':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						print('---------setting up image editor callback---------')
+						print(reg)
+						self._handle_IMAGE_EDITOR = reg.callback_add( self.bake_hack, (reg,), 'POST_PIXEL' )	# PRE_VIEW is invalid here
+						break
+		assert self._handle_IMAGE_EDITOR
+
+	def bake_hack( self, reg ):
+		if self.request_bake:
+			self.request_bake = False
+			bpy.ops.object.mode_set( mode='EDIT' )
+			bpy.ops.image.new( name='baked', width=64, height=64 )
+			self.context.scene.render.bake_type = 'AO'	# NORMALS, SHADOW, DISPLACEMENT, TEXTURE
+			bpy.ops.object.bake_image()
+
+
+
+
+
+
+	####################################################
 	def start_record(self):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
@@ -3253,6 +3284,11 @@ class App( PyppetAPI ):
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_gravity )
 				b.connect('toggled', self.toggle_gravity)
+
+				b = gtk.Button('bake')
+				root.pack_start( b, expand=False )
+				#b.connect('clicked', lambda b,o: Blender.bake_image(o), ob)
+				b.connect('clicked', lambda b,s: setattr(s,'request_bake',True), self)
 
 			root.show_all()
 
