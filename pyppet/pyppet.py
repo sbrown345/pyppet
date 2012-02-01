@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Jan30, 2012
+# Feb1, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3i'
+VERSION = '1.9.3j'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -124,6 +124,10 @@ def dump_collada( name, center=False ):
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
 	ob.select = True
+	materials = [ mat for mat in ob.data.materials ]
+	if materials:
+		ob.data.materials[0] = bpy.data.materials.new(name='tmp')
+
 	#arm = ob.find_armature()		# armatures not working in Three.js ?
 	#if arm: arm.select = True
 	loc = ob.location
@@ -133,6 +137,10 @@ def dump_collada( name, center=False ):
 	S.collada_export( '/tmp/dump.dae', True )	# using ctypes collada_export avoids polling issue
 	if center: ob.location = loc
 	restore_selection( state )
+
+	for i,mat in enumerate(materials):
+		ob.data.materials[i]=mat
+
 	return open('/tmp/dump.dae','rb').read()
 #####################################
 
@@ -175,7 +183,7 @@ class WebGL(object):
 		#self.effects.append( FX('ssao', False) )
 		self.effects.append( FX('dots', False, scale=1.8) )
 		self.effects.append( FX('vignette', True, darkness=1.0) )
-		self.effects.append( FX('bloom', True, opacity=1.1) )
+		self.effects.append( FX('bloom', True, opacity=0.333) )
 		self.effects.append( FX('glowing_dots', False, scale=0.23) )
 		self.effects.append( FX('blur_horizontal', True, r=0.5) )
 		self.effects.append( FX('blur_vertical', True, r=0.5) )
@@ -312,6 +320,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		## dump to json ##
 		data = json.dumps( msg )
+		#print(data)
 		rawbytes = data.encode('utf-8')
 		cqueue = [ rawbytes ]
 
@@ -3172,9 +3181,12 @@ class App( PyppetUI ):
 		self.context.scene.objects.active = ob
 		bpy.ops.object.mode_set( mode='EDIT' )
 		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
+
 		self.context.scene.render.bake_type = type
+		self.context.scene.render.use_bake_selected_to_active = False	# required
+
 		print('preparing to bake')
-		time.sleep(0.1)				# SEGFAULT without this sleep
+		time.sleep(0.25)				# SEGFAULT without this sleep
 		#self.context.scene.update()	# no help!?
 		bpy.ops.object.bake_image()
 		print('bake ok!')

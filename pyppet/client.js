@@ -263,13 +263,15 @@ function on_texture_ready( img ) {
 			ob.shader.uniforms['tNormal'].texture = tex;
 		} else if (type=='TEXTURE') {
 			ob.shader.uniforms['tDiffuse'].texture = tex;
+		} else if (type=='AO') {
+			ob.shader.uniforms['tAO'].texture = tex;
 		} else { console.log(type); }
 
 	}
 
 
 	size *= 2;
-	if (size < 1024) {
+	if (size <= 2048) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
@@ -291,13 +293,13 @@ function create_normal_shader( name ) {
 
 	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, on_texture_ready );
 	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
+	uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
 
-	//uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-COL.jpg" );
 	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-SPEC.jpg" );
 
-	uniforms[ "enableAO" ].value = false;
+	uniforms[ "enableAO" ].value = true;
 	uniforms[ "enableDiffuse" ].value = true;
 	uniforms[ "enableSpecular" ].value = false;
 	uniforms[ "enableReflection" ].value = false;
@@ -392,7 +394,7 @@ function init() {
 
 
 	// renderer //
-	renderer = new THREE.WebGLRenderer( { maxLights: 8, antialias: false } );
+	renderer = new THREE.WebGLRenderer( { maxLights: 8, antialias: true } );
 	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
 
