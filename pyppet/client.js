@@ -1,6 +1,6 @@
-var DEBUG = true;
-var USE_MODIFIERS = false;
-var USE_SHADOWS = false;
+var DEBUG = false;
+var USE_MODIFIERS = true;
+var USE_SHADOWS = true;
 
 
 var SELECTED = null;
@@ -13,7 +13,6 @@ var SCREEN_HEIGHT = window.innerHeight - 10;
 
 ws = new Websock();
 ws.open( 'ws://' + HOST + ':8081' );
-var tmp = null;
 
 var dbugtex = null;
 function debug_texture( image ) {
@@ -141,11 +140,11 @@ function on_message(e) {
 			*/
 			if (USE_MODIFIERS) {
 				if (ob.color && DEBUG==false) {
-					m._material.color.r = ob.color[0];
-					m._material.color.g = ob.color[1];
-					m._material.color.b = ob.color[2];
+					m.shader.color.r = ob.color[0];
+					m.shader.color.g = ob.color[1];
+					m.shader.color.b = ob.color[2];
 				}
-				m._material.shininess = ob.spec;
+				//m._material.shininess = ob.spec;
 			}
 
 			if (ob.verts && USE_MODIFIERS) {
@@ -169,7 +168,10 @@ function on_message(e) {
 			Objects[ name ] = null;
 			var loader = new THREE.ColladaLoader();
 			loader.options.convertUpAxis = true;
-			loader.load( '/objects/'+raw_name+'.dae', on_collada_ready );
+			loader.load(
+				'/objects/'+raw_name+'.dae', 
+				on_collada_ready
+			);
 
 		}
 
@@ -215,14 +217,16 @@ function debug_geo( geo ) {
 	return used;
 } 
 
+var dbugdae = null;
 function on_collada_ready( collada ) {
 	console.log( '>> collada loaded' );
-	tmp = collada;
-	//skin = collada.skins[0]
-	//Objects[ skin.name ] = collada;
+	dbugdae = collada;
 	mesh = collada.scene.children[0];
 	mesh.useQuaternion = false;
+	mesh._material_ = mesh.material;
 	mesh.geometry.computeTangents();		// requires UV's
+
+	mesh.shader = mesh.material = create_normal_shader( mesh.name );
 
 	if (USE_SHADOWS) {
 		mesh.castShadow = true;
@@ -232,61 +236,61 @@ function on_collada_ready( collada ) {
 	if (USE_MODIFIERS) {
 		mesh.geometry.dynamic = true;		// required
 		mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
-		mesh._material = mesh.material;
 		mesh.material = WIRE_MATERIAL;
 	}
 
-	mesh.material = create_normal_shader();
-
-/*
-	// upgrade material to normal map shader //
-	var shader = THREE.ShaderUtils.lib[ "normal" ];
-	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
-	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
-	//uniforms[ "enableAO" ].value = false;
-	uniforms[ "enableDiffuse" ].value = true;
-	//uniforms[ "enableSpecular" ].value = true;
-	//uniforms[ "enableReflection" ].value = false;
-	uniforms[ "wrapRGB" ].value.set( 0.575, 0.5, 0.5 );
-	var parameters = { 
-		fragmentShader: shader.fragmentShader, 
-		vertexShader: shader.vertexShader, 
-		uniforms: uniforms, 
-		lights: true, fog: false 
-	};
-	var material = new THREE.ShaderMaterial( parameters );
-	material.wrapAround = true;
-	material.color = uniforms['uDiffuseColor'].value;
-	mesh._material = material;
-*/
-	// upgrade to phong per-pixel material //
-	//var material = new THREE.MeshPhongMaterial( {perPixel:true} );
-	//mesh._material = material;
-
-
-/*	## over allocation is not the trick ##
-	var modifier = new THREE.SubdivisionModifier( 2 );
-	modifier.modify( mesh.geometry );
-*/
 	Objects[ mesh.name ] = mesh;
-
 	mesh.dirty_modifiers = true;
 	scene.add( mesh );
-
 }
 
 
-function create_normal_shader() {
-	// material parameters
+QUEUE = [];
+function progressive_texture( img ) {
+	var url = img.src.split('?')[0];
+	var args = img.src.split('?')[1];
+	var type = args.split('|')[0];
+	var size = parseInt( args.split('|')[1] );
+	size *= 2;
+	if (size >= 1024) { return; }
 
+	var a = url.split('/');
+	var name = a[ a.length-1 ];
+	name = name.substring( 0, name.length-4 );
+	ob = Objects[ name.replace( '.0', '_0') ];
+
+	QUEUE.push(
+		{
+			shader:ob.shader,
+			type : type,
+			url : '/bake/'+name+'.jpg?'+type+'|'+size
+		}
+	);
+	setTimeout( update_progressive_texture_queue, 1000 );
+}
+
+function update_progressive_texture_queue() {
+	var q = QUEUE.pop();
+	var tex = THREE.ImageUtils.loadTexture( q.url, undefined, progressive_texture );
+
+	if (q.type=='NORMALS') {
+		q.shader.uniforms['tNormal'].texture = tex;
+	} else if (q.type=='TEXTURE') {
+		q.shader.uniforms['tDiffuse'].texture = tex;
+	} else { console.log(q.type); }
+
+}
+
+function create_normal_shader( name ) {
+	// material parameters
+	name = name.replace('_0', '.0');
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
 
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( "/objects//home/brett/Pictures/dolphin-fetus.jpg" );
-	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "/objects//home/brett/Pictures/dolphin-fetus.jpg" );
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, progressive_texture );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, progressive_texture );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
 
@@ -310,6 +314,7 @@ function create_normal_shader() {
 	var material = new THREE.ShaderMaterial( parameters );
 
 	material.wrapAround = true;
+	material.color = uniforms['uDiffuseColor'].value;
 	return material;
 }
 
@@ -567,9 +572,11 @@ function animate() {
 				geo.mergeVertices();		// BAD?  required? //
 
 				modifier.modify( geo );
+				geo.__dirtyTangents = true;
+				geo.computeTangents();		// requires UV's
 
 				if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
-				var hack = new THREE.Mesh(geo, mesh._material)
+				var hack = new THREE.Mesh(geo, mesh.shader)
 				hack.castShadow = true;
 				hack.receiveShadow = true;
 				mesh.add( hack );

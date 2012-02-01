@@ -496,6 +496,14 @@ class WebServer( object ):
 			data = open( relpath, 'rb' ).read()
 			return [ data ]
 
+		elif path.startswith('/bake/'):
+			print( 'PATH', path, arg)
+			name = path.split('/')[-1][ :-4 ]	# strip ".jpg"
+			data = Pyppet.bake_image( name, *arg.split('|') )
+			start_response('200 OK', [('Content-Length',str(len(data)))])
+			return [ data ]
+
+
 		elif path.startswith('/textures/'):
 			data = open( relpath, 'rb' ).read()
 			start_response('200 OK', [('Content-Length',str(len(data)))])
@@ -2816,141 +2824,7 @@ class PyppetAPI(object):
 		self.bipeds = {}
 		self.ropes = {}
 
-
-##########################################################
-class App( PyppetAPI ):
-	def exit(self, arg):
-		self.audio.exit()
-		self.active = False
-		sdl.Quit()
-		print('clean exit')
-
-	def cb_toggle_physics(self,button,event):
-		if button.get_active(): self.toggle_physics(False)	# reversed
-		else: self.toggle_physics(True)
-
-	def toggle_physics(self,switch):
-		if switch:
-			ENGINE.start()
-		else:
-			ENGINE.stop()
-			for e in self.entities.values(): e.reset()
-
-	# bpy.context workaround #
-	def sync_context(self, region):
-		#if self.recording:	# works but objects stick
-		#	print('recording.........')
-		#	bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
-
-		self.context = ContextCopy( bpy.context )
-		self.lock.acquire()
-		while gtk.gtk_events_pending():	# required to make callbacks safe
-			gtk.gtk_main_iteration()
-		self.lock.release()
-
-	def toggle_overlays( self, button ):
-		if button.get_active():
-			for o in self.overlays: o.enable()
-			for com in self.components: com.active = False
-		else:
-			for o in self.overlays: o.disable()
-			for com in self.components: com.active = True
-
-
-	def __init__(self):
-		self.reset_models()
-		self.recording = False
-		self.selected = None
-		self.active = True
-		self.overlays = []
-		self.components = []
-		self.bwidth = 640
-		self.bheight = 480
-		self.lock = threading._allocate_lock()
-
-		self.server = Server()
-		self.client = Client()
-		self.websocket_server = WebSocketServer( listen_port=8081 )
-		self.websocket_server.start()
-
-		self.audio = AudioThread()
-		self.audio.start()
-
-		self.camera_randomize = False
-		self.camera_focus = 1.5
-		self.camera_aperture = 0.15
-		self.camera_maxblur = 1.0
-
-		self.context = ContextCopy( bpy.context )
-		for area in bpy.context.screen.areas:		#bpy.context.window.screen.areas:
-			print(area, area.type)
-			if area.type == 'PROPERTIES':
-				#area.width = 240		# readonly
-				pass
-			elif area.type == 'VIEW_3D':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						## only POST_PIXEL is thread-safe and drag'n'drop safe  (NOT!) ##
-						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
-						break
-
-		self.baker_active = False
-		self.baker_region = None
-		self.baker_queue = []
-		self.setup_image_editor_callback( None )
-
-	def setup_image_editor_callback( self, b ):
-		if self.baker_active: return
-		for area in self.context.screen.areas:
-			if area.type == 'IMAGE_EDITOR':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						print('---------setting up image editor callback---------')
-						self.baker_active = reg.callback_add( self.bake_hack, (reg,), 'POST_PIXEL' )	# PRE_VIEW is invalid here
-						self.baker_region = reg
-						break
-
-	def bake_hack( self, reg ):
-		if self.baker_queue:
-			#ob = self.context.active_object
-			req = self.baker_queue.pop()
-			for ob in self.context.selected_objects: ob.select = False
-			ob = bpy.data.objects[ req['name'] ]
-			ob.select = True
-
-			bpy.ops.object.mode_set( mode='EDIT' )
-			bpy.ops.image.new( name='baked', width=64, height=64 )
-			#img = bpy.data.images[-1]
-			#img.file_format = 'jpg'
-			#img.filepath_raw = '/tmp/%s.jpg' %ob.name
-			self.context.scene.render.bake_type = 'AO'	# NORMALS, SHADOW, DISPLACEMENT, TEXTURE
-			bpy.ops.object.bake_image()
-			#img.save()
-			bpy.ops.object.mode_set( mode='OBJECT' )
-			bpy.ops.image.save_as(
-				file_format='JPEG', 
-				color_mode='RGB',
-				file_quality=50,
-				filepath= '/tmp/%s.jpg' %req['name'],
-				check_existing=False,
-			)
-
-
-
-
-	####################################################
-	def start_record(self):
-		self.recording = True
-		self._rec_start_frame = self.context.scene.frame_current
-		for ob in self.context.selected_objects:
-			ob.animation_data_clear()
-	def end_record(self):
-		self.recording = False
-		for name in ENGINE.objects:
-			w = ENGINE.objects[ name ]
-			print(name, w.recbuffer)
-
-
+class PyppetUI( PyppetAPI ):
 	def toggle_record( self, button ):
 		if button.get_active(): self.start_record()
 		else: self.end_record()
@@ -3179,6 +3053,168 @@ class App( PyppetAPI ):
 			return int( lines[0].split()[3] )
 
 
+##########################################################
+class App( PyppetUI ):
+	def exit(self, arg):
+		self.audio.exit()
+		self.active = False
+		sdl.Quit()
+		print('clean exit')
+
+	def cb_toggle_physics(self,button,event):
+		if button.get_active(): self.toggle_physics(False)	# reversed
+		else: self.toggle_physics(True)
+
+	def toggle_physics(self,switch):
+		if switch:
+			ENGINE.start()
+		else:
+			ENGINE.stop()
+			for e in self.entities.values(): e.reset()
+
+	# bpy.context workaround #
+	def sync_context(self, region):
+		#if self.recording:	# works but objects stick
+		#	print('recording.........')
+		#	bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
+
+		self.context = ContextCopy( bpy.context )
+		self.lock.acquire()
+		while gtk.gtk_events_pending():	# required to make callbacks safe
+			gtk.gtk_main_iteration()
+		self.lock.release()
+
+	def toggle_overlays( self, button ):
+		if button.get_active():
+			for o in self.overlays: o.enable()
+			for com in self.components: com.active = False
+		else:
+			for o in self.overlays: o.disable()
+			for com in self.components: com.active = True
+
+
+	def __init__(self):
+		self.reset_models()
+		self.recording = False
+		self.selected = None
+		self.active = True
+		self.overlays = []
+		self.components = []
+		self.bwidth = 640
+		self.bheight = 480
+		self.lock = threading._allocate_lock()
+
+		self.server = Server()
+		self.client = Client()
+		self.websocket_server = WebSocketServer( listen_port=8081 )
+		self.websocket_server.start()
+
+		self.audio = AudioThread()
+		self.audio.start()
+
+		self.camera_randomize = False
+		self.camera_focus = 1.5
+		self.camera_aperture = 0.15
+		self.camera_maxblur = 1.0
+
+		self.context = ContextCopy( bpy.context )
+		for area in bpy.context.screen.areas:		#bpy.context.window.screen.areas:
+			print(area, area.type)
+			if area.type == 'PROPERTIES':
+				#area.width = 240		# readonly
+				pass
+			elif area.type == 'VIEW_3D':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						## only POST_PIXEL is thread-safe and drag'n'drop safe  (NOT!) ##
+						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
+						break
+
+		self.baker_active = False
+		self.baker_region = None
+		self.baker_queue = []
+		self.setup_image_editor_callback( None )
+
+	def setup_image_editor_callback( self, b ):
+		if self.baker_active: return
+		for area in self.context.screen.areas:
+			if area.type == 'IMAGE_EDITOR':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						print('---------setting up image editor callback---------')
+						self.baker_active = reg.callback_add( self.bake_hack, (reg,), 'POST_VIEW' )	# PRE_VIEW is invalid here
+						self.baker_region = reg
+						break
+
+	def bake_hack( self, reg ):
+		self.context = ContextCopy( bpy.context )
+		self.server.update( self.context )	# update http server
+		if self.baker_queue:	# for debugging
+			req = self.baker_queue.pop()
+			print('bake hack debug', req)
+			self.bake_image( req['name'] )
+
+	## can only be called from inside ImageEditor redraw callback ##
+	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE'.split()
+	def bake_image( self, name, type='AO', width=64, height=None ):
+		assert type in self.BAKE_MODES
+		if height is None: height=width
+
+		path = '/tmp/%s.%s.jpg' %(name,type)
+		restore_active = self.context.active_object
+		restore = []
+		for ob in self.context.selected_objects:
+			ob.select = False
+			restore.append( ob )
+
+		ob = bpy.data.objects[ name ]
+		ob.select = True
+		self.context.scene.objects.active = ob
+		bpy.ops.object.mode_set( mode='EDIT' )
+		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
+		self.context.scene.render.bake_type = type
+		print('preparing to bake')
+		time.sleep(0.1)				# SEGFAULT without this sleep
+		#self.context.scene.update()	# no help!?
+		bpy.ops.object.bake_image()
+		print('bake ok!')
+		bpy.ops.object.mode_set( mode='OBJECT' )
+
+		#img = bpy.data.images[-1]
+		#img.file_format = 'jpg'
+		#img.filepath_raw = '/tmp/%s.jpg' %ob.name
+		#img.save()
+
+		bpy.ops.image.save_as(
+			file_format='JPEG', 
+			color_mode='RGB',
+			file_quality=50,
+			filepath= path,
+			check_existing=False,
+		)
+
+		for ob in restore: ob.select=True
+		self.context.scene.objects.active = restore_active
+
+		return open( path, 'rb' ).read()
+
+
+
+	####################################################
+	def start_record(self):
+		self.recording = True
+		self._rec_start_frame = self.context.scene.frame_current
+		for ob in self.context.selected_objects:
+			ob.animation_data_clear()
+	def end_record(self):
+		self.recording = False
+		for name in ENGINE.objects:
+			w = ENGINE.objects[ name ]
+			print(name, w.recbuffer)
+
+
+
+
 	def mainloop(self):
 		C = Blender.Context( bpy.context )
 		while self.active:
@@ -3252,7 +3288,9 @@ class App( PyppetAPI ):
 				for mod in models:
 					mod.update( self.context )
 
-			self.server.update( self.context )
+			if not self.baker_active:	# ImageEditor redraw callback will update http-server
+				self.server.update( self.context )
+
 			self.client.update( self.context )
 			self.websocket_server.update( self.context )
 
