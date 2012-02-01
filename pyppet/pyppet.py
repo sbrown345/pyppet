@@ -238,6 +238,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		for ob in context.scene.objects:
 			if ob.type in ('MESH','LAMP'):
+				if ob.type=='MESH' and not ob.data.uv_textures: continue
+
 				loc, rot, scl = ob.matrix_world.decompose()
 				loc = loc.to_tuple()
 				scl = scl.to_tuple()
@@ -274,7 +276,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 
 		## only stream mesh data of active-selected ##
-		if context.active_object and context.active_object.type == 'MESH':
+		if context.active_object and context.active_object.type == 'MESH' and context.active_object.name in msg['meshes']:
 			ob = context.active_object
 			pak = msg[ 'meshes' ][ ob.name ]
 			pak[ 'selected' ] = True
@@ -2892,31 +2894,46 @@ class App( PyppetAPI ):
 						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
 						break
 
-		self._handle_IMAGE_EDITOR = None
-		self.request_bake = False
+		self.baker_active = False
+		self.baker_region = None
+		self.baker_queue = []
 		self.setup_image_editor_callback( None )
 
 	def setup_image_editor_callback( self, b ):
-		if self._handle_IMAGE_EDITOR: return
+		if self.baker_active: return
 		for area in self.context.screen.areas:
 			if area.type == 'IMAGE_EDITOR':
 				for reg in area.regions:
 					if reg.type == 'WINDOW':
 						print('---------setting up image editor callback---------')
-						print(reg)
-						self._handle_IMAGE_EDITOR = reg.callback_add( self.bake_hack, (reg,), 'POST_PIXEL' )	# PRE_VIEW is invalid here
+						self.baker_active = reg.callback_add( self.bake_hack, (reg,), 'POST_PIXEL' )	# PRE_VIEW is invalid here
+						self.baker_region = reg
 						break
-		assert self._handle_IMAGE_EDITOR
 
 	def bake_hack( self, reg ):
-		if self.request_bake:
-			self.request_bake = False
+		if self.baker_queue:
+			#ob = self.context.active_object
+			req = self.baker_queue.pop()
+			for ob in self.context.selected_objects: ob.select = False
+			ob = bpy.data.objects[ req['name'] ]
+			ob.select = True
+
 			bpy.ops.object.mode_set( mode='EDIT' )
 			bpy.ops.image.new( name='baked', width=64, height=64 )
+			#img = bpy.data.images[-1]
+			#img.file_format = 'jpg'
+			#img.filepath_raw = '/tmp/%s.jpg' %ob.name
 			self.context.scene.render.bake_type = 'AO'	# NORMALS, SHADOW, DISPLACEMENT, TEXTURE
 			bpy.ops.object.bake_image()
-
-
+			#img.save()
+			bpy.ops.object.mode_set( mode='OBJECT' )
+			bpy.ops.image.save_as(
+				file_format='JPEG', 
+				color_mode='RGB',
+				file_quality=50,
+				filepath= '/tmp/%s.jpg' %req['name'],
+				check_existing=False,
+			)
 
 
 
@@ -3210,6 +3227,8 @@ class App( PyppetAPI ):
 							if reg.type == 'WINDOW':
 								reg.tag_redraw()	# bpy.context valid from redraw callbacks
 								break
+				if self.baker_active:
+					self.baker_region.tag_redraw()
 
 			DriverManager.update()
 			self.audio.update()		# updates gtk widgets
@@ -3288,7 +3307,7 @@ class App( PyppetAPI ):
 				b = gtk.Button('bake')
 				root.pack_start( b, expand=False )
 				#b.connect('clicked', lambda b,o: Blender.bake_image(o), ob)
-				b.connect('clicked', lambda b,s: setattr(s,'request_bake',True), self)
+				b.connect('clicked', lambda b,o: self.baker_queue.append({'name':ob.name}), ob)
 
 			root.show_all()
 

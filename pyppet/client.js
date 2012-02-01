@@ -1,4 +1,7 @@
-var DEBUG = false;
+var DEBUG = true;
+var USE_MODIFIERS = false;
+var USE_SHADOWS = false;
+
 
 var SELECTED = null;
 
@@ -136,15 +139,16 @@ function on_message(e) {
 			m.quaternion.y = ob.rot[2];
 			m.quaternion.z = ob.rot[3];
 			*/
-
-			if (ob.color) {
-				m._material.color.r = ob.color[0];
-				m._material.color.g = ob.color[1];
-				m._material.color.b = ob.color[2];
+			if (USE_MODIFIERS) {
+				if (ob.color && DEBUG==false) {
+					m._material.color.r = ob.color[0];
+					m._material.color.g = ob.color[1];
+					m._material.color.b = ob.color[2];
+				}
+				m._material.shininess = ob.spec;
 			}
-			m._material.shininess = ob.spec;
 
-			if (ob.verts) {
+			if (ob.verts && USE_MODIFIERS) {
 				m.dirty_modifiers = true;
 				m.subsurf = ob.subsurf;
 				m.geometry_base.computeCentroids();
@@ -217,26 +221,34 @@ function on_collada_ready( collada ) {
 	//skin = collada.skins[0]
 	//Objects[ skin.name ] = collada;
 	mesh = collada.scene.children[0];
-
 	mesh.useQuaternion = false;
+	mesh.geometry.computeTangents();		// requires UV's
 
-	mesh.castShadow = true;
-	mesh.receiveShadow = true;
-	mesh.geometry.dynamic = true;		// required
-	mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
-	mesh._material = mesh.material;
-	mesh.material = WIRE_MATERIAL;
+	if (USE_SHADOWS) {
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
+	}
+
+	if (USE_MODIFIERS) {
+		mesh.geometry.dynamic = true;		// required
+		mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
+		mesh._material = mesh.material;
+		mesh.material = WIRE_MATERIAL;
+	}
+
+	mesh.material = create_normal_shader();
 
 /*
 	// upgrade material to normal map shader //
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
-
-	uniforms[ "enableAO" ].value = false;
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
+	//uniforms[ "enableAO" ].value = false;
 	uniforms[ "enableDiffuse" ].value = true;
-	uniforms[ "enableSpecular" ].value = true;
-	uniforms[ "enableReflection" ].value = false;
-
+	//uniforms[ "enableSpecular" ].value = true;
+	//uniforms[ "enableReflection" ].value = false;
+	uniforms[ "wrapRGB" ].value.set( 0.575, 0.5, 0.5 );
 	var parameters = { 
 		fragmentShader: shader.fragmentShader, 
 		vertexShader: shader.vertexShader, 
@@ -244,14 +256,13 @@ function on_collada_ready( collada ) {
 		lights: true, fog: false 
 	};
 	var material = new THREE.ShaderMaterial( parameters );
+	material.wrapAround = true;
 	material.color = uniforms['uDiffuseColor'].value;
 	mesh._material = material;
 */
-
 	// upgrade to phong per-pixel material //
-	var material = new THREE.MeshPhongMaterial( {perPixel:true} );
+	//var material = new THREE.MeshPhongMaterial( {perPixel:true} );
 	//mesh._material = material;
-
 
 
 /*	## over allocation is not the trick ##
@@ -263,10 +274,46 @@ function on_collada_ready( collada ) {
 	mesh.dirty_modifiers = true;
 	scene.add( mesh );
 
-	//scene.add( collada.scene );
-	//dae = collada.scene;
-	//camera.lookAt( mesh.position );
 }
+
+
+function create_normal_shader() {
+	// material parameters
+
+	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
+
+	var shader = THREE.ShaderUtils.lib[ "normal" ];
+	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( "/objects//home/brett/Pictures/dolphin-fetus.jpg" );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "/objects//home/brett/Pictures/dolphin-fetus.jpg" );
+
+	uniforms[ "uNormalScale" ].value = 0.8;
+
+	//uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-COL.jpg" );
+	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-SPEC.jpg" );
+
+	uniforms[ "enableAO" ].value = false;
+	uniforms[ "enableDiffuse" ].value = true;
+	uniforms[ "enableSpecular" ].value = false;
+	uniforms[ "enableReflection" ].value = false;
+
+	uniforms[ "uDiffuseColor" ].value.setHex( diffuse );
+	uniforms[ "uSpecularColor" ].value.setHex( specular );
+	uniforms[ "uAmbientColor" ].value.setHex( ambient );
+
+	uniforms[ "uShininess" ].value = shininess;
+
+	uniforms[ "wrapRGB" ].value.set( 0.75, 0.5, 0.5 );
+
+	var parameters = { fragmentShader: shader.fragmentShader, vertexShader: shader.vertexShader, uniforms: uniforms, lights: true };
+	var material = new THREE.ShaderMaterial( parameters );
+
+	material.wrapAround = true;
+	return material;
+}
+
+
 
 
 ws.on('message', on_message);
@@ -346,9 +393,11 @@ function init() {
 
 	renderer.gammaInput = true;
 	renderer.gammaOutput = true;
-	renderer.shadowMapEnabled = true;
-	renderer.shadowMapSoft = true;
-	//renderer.shadowMapAutoUpdate = false;		// EVIL!
+	if (USE_SHADOWS) {
+		renderer.shadowMapEnabled = true;
+		renderer.shadowMapSoft = true;
+		//renderer.shadowMapAutoUpdate = false;		// EVIL!
+	}
 	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
@@ -498,7 +547,7 @@ function animate() {
 	for (n in Objects) {
 		var mesh = Objects[ n ];
 		dbug = mesh;
-		if (mesh) {
+		if (mesh && USE_MODIFIERS) {
 			if (mesh === SELECTED) { mesh.visible=true; }	// show hull
 			else { mesh.visible=false; }	// hide hull
 
