@@ -246,39 +246,39 @@ function on_collada_ready( collada ) {
 
 
 QUEUE = [];
-function progressive_texture( img ) {
+TEX_LOADING = {};
+function on_texture_ready( img ) {
 	var url = img.src.split('?')[0];
 	var args = img.src.split('?')[1];
 	var type = args.split('|')[0];
 	var size = parseInt( args.split('|')[1] );
-	size *= 2;
-	if (size >= 1024) { return; }
-
 	var a = url.split('/');
 	var name = a[ a.length-1 ];
 	name = name.substring( 0, name.length-4 );
 	ob = Objects[ name.replace( '.0', '_0') ];
 
-	QUEUE.push(
-		{
-			shader:ob.shader,
-			type : type,
-			url : '/bake/'+name+'.jpg?'+type+'|'+size
-		}
-	);
-	setTimeout( update_progressive_texture_queue, 1000 );
+	if (img.attributes['src'].nodeValue in TEX_LOADING) {		// only assign texture when ready
+		var tex = TEX_LOADING[ img.attributes['src'].nodeValue ];
+		if (type=='NORMALS') {
+			ob.shader.uniforms['tNormal'].texture = tex;
+		} else if (type=='TEXTURE') {
+			ob.shader.uniforms['tDiffuse'].texture = tex;
+		} else { console.log(type); }
+
+	}
+
+
+	size *= 2;
+	if (size < 1024) {
+		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+		setTimeout( request_progressive_texture, 1000 );
+	}
 }
 
-function update_progressive_texture_queue() {
-	var q = QUEUE.pop();
-	var tex = THREE.ImageUtils.loadTexture( q.url, undefined, progressive_texture );
-
-	if (q.type=='NORMALS') {
-		q.shader.uniforms['tNormal'].texture = tex;
-	} else if (q.type=='TEXTURE') {
-		q.shader.uniforms['tDiffuse'].texture = tex;
-	} else { console.log(q.type); }
-
+function request_progressive_texture() {
+	var url = QUEUE.pop();
+	var tex = THREE.ImageUtils.loadTexture( url, undefined, on_texture_ready );
+	TEX_LOADING[ url ] = tex;
 }
 
 function create_normal_shader( name ) {
@@ -289,8 +289,8 @@ function create_normal_shader( name ) {
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, progressive_texture );
-	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, progressive_texture );
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, on_texture_ready );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
 
