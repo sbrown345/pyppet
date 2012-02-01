@@ -139,12 +139,10 @@ function on_message(e) {
 			m.quaternion.z = ob.rot[3];
 			*/
 			if (USE_MODIFIERS) {
-				if (ob.color && DEBUG==false) {
-					m.shader.color.r = ob.color[0];
-					m.shader.color.g = ob.color[1];
-					m.shader.color.b = ob.color[2];
-				}
-				//m._material.shininess = ob.spec;
+				m.shader.color.r = ob.color[0];
+				m.shader.color.g = ob.color[1];
+				m.shader.color.b = ob.color[2];
+				m.shader.uniforms[ "uShininess" ].value = ob.spec;
 			}
 
 			if (ob.verts && USE_MODIFIERS) {
@@ -266,12 +264,19 @@ function on_texture_ready( img ) {
 		} else if (type=='AO') {
 			ob.shader.uniforms['tAO'].texture = tex;
 		} else { console.log(type); }
-
 	}
 
-
+	/////////////////// do progressive loading ////////////////
 	size *= 2;
-	if (size <= 2048) {
+	if (type=='TEXTURE' && size <= 2048) {
+		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+		setTimeout( request_progressive_texture, 1000 );
+	}
+	else if (type=='NORMALS' && size <= 1024) {
+		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+		setTimeout( request_progressive_texture, 1000 );
+	}
+	else if (size <= 512) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
@@ -294,14 +299,13 @@ function create_normal_shader( name ) {
 	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, on_texture_ready );
 	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
 	uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+	uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|64', undefined, on_texture_ready );
+	uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
-
-	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-SPEC.jpg" );
-
 	uniforms[ "enableAO" ].value = true;
 	uniforms[ "enableDiffuse" ].value = true;
-	uniforms[ "enableSpecular" ].value = false;
+	uniforms[ "enableSpecular" ].value = true;
 	uniforms[ "enableReflection" ].value = false;
 
 	uniforms[ "uDiffuseColor" ].value.setHex( diffuse );
@@ -309,6 +313,7 @@ function create_normal_shader( name ) {
 	uniforms[ "uAmbientColor" ].value.setHex( ambient );
 
 	uniforms[ "uShininess" ].value = shininess;
+	uniforms[ "uDisplacementScale" ].value = 50;
 
 	uniforms[ "wrapRGB" ].value.set( 0.75, 0.5, 0.5 );
 

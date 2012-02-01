@@ -128,6 +128,8 @@ def dump_collada( name, center=False ):
 	if materials:
 		ob.data.materials[0] = bpy.data.materials.new(name='tmp')
 
+	for mod in ob.modifiers: mod.show_viewport = False
+
 	#arm = ob.find_armature()		# armatures not working in Three.js ?
 	#if arm: arm.select = True
 	loc = ob.location
@@ -140,6 +142,8 @@ def dump_collada( name, center=False ):
 
 	for i,mat in enumerate(materials):
 		ob.data.materials[i]=mat
+
+	for mod in ob.modifiers: mod.show_viewport = True
 
 	return open('/tmp/dump.dae','rb').read()
 #####################################
@@ -271,7 +275,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 				elif ob.type == 'MESH':
 					msg[ 'meshes' ][ ob.name ] = pak
-					color = None
 					specular = None
 					if ob.data.materials:
 						mat = ob.data.materials[0]
@@ -279,7 +282,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 						color = (r,g,b)
 						specular = mat.specular_hardness
 
-					pak['color'] = color
+					pak['color'] = [ round(x,3) for x in ob.color ]
 					pak['spec'] = specular
 
 
@@ -291,7 +294,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 			mods = []
 			for mod in ob.modifiers:
-				if mod.type in ('SUBSURF',) and mod.show_viewport:
+				if mod.type in ('SUBSURF','MULTIRES') and mod.show_viewport:
 					mods.append( mod )
 			for mod in mods: mod.show_viewport = False
 			data = ob.to_mesh( context.scene, True, "PREVIEW")
@@ -3164,7 +3167,7 @@ class App( PyppetUI ):
 			self.bake_image( req['name'] )
 
 	## can only be called from inside ImageEditor redraw callback ##
-	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE'.split()
+	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
 	def bake_image( self, name, type='AO', width=64, height=None ):
 		assert type in self.BAKE_MODES
 		if height is None: height=width
@@ -3181,16 +3184,25 @@ class App( PyppetUI ):
 		self.context.scene.objects.active = ob
 		bpy.ops.object.mode_set( mode='EDIT' )
 		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
+		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
 
 		self.context.scene.render.bake_type = type
+		self.context.scene.render.bake_margin = 5
+		self.context.scene.render.use_bake_normalize = True
 		self.context.scene.render.use_bake_selected_to_active = False	# required
+		self.context.scene.render.use_bake_lores_mesh = True
+		self.context.scene.render.use_bake_multires = False
+		if type=='DISPLACEMENT':	# can also apply to NORMALS
+			for mod in ob.modifiers:
+				if mod.type == 'MULTIRES':
+					self.context.scene.render.use_bake_multires = True
+
 
 		print('preparing to bake')
 		time.sleep(0.25)				# SEGFAULT without this sleep
 		#self.context.scene.update()	# no help!?
 		bpy.ops.object.bake_image()
 		print('bake ok!')
-		bpy.ops.object.mode_set( mode='OBJECT' )
 
 		#img = bpy.data.images[-1]
 		#img.file_format = 'jpg'
