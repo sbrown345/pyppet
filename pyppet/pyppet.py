@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb1, 2012
+# Feb2, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3j'
+VERSION = '1.9.3k'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -288,10 +288,14 @@ class WebSocketServer( websocket.WebSocketServer ):
 					pak['color'] = [ round(x,3) for x in ob.color ]
 					pak['spec'] = specular
 
+					disp = 1.0
+					pak['disp_bias'] = 0.0
 					for mod in ob.modifiers:
 						if mod.type=='DISPLACE':
 							pak['disp_bias'] = mod.mid_level - 0.5
-							pak['disp_scale'] = mod.strength
+							disp = mod.strength
+							break
+					pak['disp'] = disp
 
 
 		## only stream mesh data of active-selected ##
@@ -3220,13 +3224,16 @@ class App( PyppetUI ):
 		bpy.ops.image.save_as(
 			file_format='JPEG', 
 			color_mode='RGB',
-			file_quality=50,
+			file_quality=75,
 			filepath= path,
 			check_existing=False,
 		)
 
 		for ob in restore: ob.select=True
 		self.context.scene.objects.active = restore_active
+
+		if type == 'DISPLACEMENT':
+			os.system( 'convert -gamma 0.36 %s %s' %(path,path) )
 
 		return open( path, 'rb' ).read()
 

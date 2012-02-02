@@ -2,7 +2,8 @@ var DEBUG = false;
 var USE_MODIFIERS = true;
 var USE_SHADOWS = true;
 
-var DISP_MAGIC = -0.188;		//-0.256
+var DISP_BIAS_MAGIC = 0.07;
+var DISP_SCALE_MAGIC = 1.0;
 
 var SELECTED = null;
 
@@ -15,13 +16,8 @@ var SCREEN_HEIGHT = window.innerHeight - 10;
 ws = new Websock();
 ws.open( 'ws://' + HOST + ':8081' );
 
-var dbugtex = null;
-function debug_texture( image ) {
-	console.log( image );
-	dbugtex = image;
-}
 
-var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png", undefined, debug_texture );
+var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
 var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
 var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
 
@@ -144,9 +140,9 @@ function on_message(e) {
 				m.shader.color.g = ob.color[1];
 				m.shader.color.b = ob.color[2];
 				m.shader.uniforms[ "uShininess" ].value = ob.spec;
-				if (m.multires && ob.disp_scale) {
-					m.shader.uniforms[ "uDisplacementBias" ].value = ob.disp_bias - 0.256;
-					m.shader.uniforms[ "uDisplacementScale" ].value = ob.disp_scale;
+				if (m.multires) {
+					m.shader.uniforms[ "uDisplacementBias" ].value = ob.disp_bias-DISP_BIAS_MAGIC;
+					m.shader.uniforms[ "uDisplacementScale" ].value = ob.disp+DISP_SCALE_MAGIC;
 				}
 			}
 
@@ -314,8 +310,9 @@ function create_normal_shader( name, displacement ) {
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, on_texture_ready );
+
 	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, on_texture_ready );
 	uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
 	uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
 
@@ -333,9 +330,9 @@ function create_normal_shader( name, displacement ) {
 
 	if (displacement) {
 		console.log(name + ' has displacement');
-		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|64', undefined, on_texture_ready );
-		uniforms[ "uDisplacementBias" ].value = -0.256;		// magic
-		uniforms[ "uDisplacementScale" ].value = 1.0;
+		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|256', undefined, on_texture_ready );
+		uniforms[ "uDisplacementBias" ].value = 0.0;
+		uniforms[ "uDisplacementScale" ].value = 0.0;
 	} else {
 		uniforms[ "uDisplacementBias" ].value = 0.0;
 		uniforms[ "uDisplacementScale" ].value = 0.0;
@@ -594,6 +591,7 @@ function animate() {
 
 				var subsurf = 0;
 				if ( mesh.subsurf ) { subsurf=mesh.subsurf; }
+				else if ( mesh.multires ) { subsurf=1; }
 
 				// update hull //
 				mesh.geometry.vertices = mesh.geometry_base.vertices;
