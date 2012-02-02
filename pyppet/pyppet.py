@@ -82,6 +82,8 @@ import urllib.request
 import websocket
 import json
 
+def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
+def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
 BG_COLOR = gtk.GdkColor(0,50000,50000,50000)
 BG_COLOR_DARK = gtk.GdkColor(0,40000,40000,40000)
@@ -2942,13 +2944,17 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
+		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
+		#frame.set_border_width(2)
+		box = gtk.HBox()
+		frame.add( box )
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
 		s.set_tooltip_text( 'toggle physics' )
-		self.header.pack_start( s, expand=False )
+		box.pack_start( s, expand=False )
 		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
-		self.header.pack_start( b, expand=False )
+		box.pack_start( b, expand=False )
 
 		self.header.pack_start( gtk.Label() )
 
@@ -3075,6 +3081,93 @@ class PyppetUI( PyppetAPI ):
 		elif data:
 			lines = data.splitlines()
 			return int( lines[0].split()[3] )
+
+	def update_selected_widget(self):
+		if self.context.active_object and self.context.active_object.name != self.selected:
+			self.selected = self.context.active_object.name
+			self._frame.remove( self._modal )
+			self._modal = root = gtk.HBox()
+			self._frame.add( root )
+			ob = bpy.data.objects[ self.selected ]
+			#root.pack_start( gtk.Label(ob.name), expand=False )
+
+			if ob.type == 'ARMATURE':
+				b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle pose mode')
+				root.pack_start( b, expand=False )
+				b.set_active( self.context.mode=='POSE' )
+				b.connect('toggled', self.toggle_pose_mode)
+
+				if ob.name not in self.entities:
+					biped = self.GetBiped( ob )
+					b = gtk.Button( icons.BIPED ); b.set_relief( gtk.RELIEF_NONE )
+					root.pack_start( b, expand=False )
+					b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
+
+			elif ob.type=='LAMP':
+				r,g,b = ob.data.color
+				gcolor = rgb2gdk(r,g,b)
+				b = gtk.ColorButton()
+				b.set_color(gcolor)
+				root.pack_start( b, expand=False )
+				b.connect('color-set', self.color_set, gcolor, ob.data )
+
+				slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
+				root.pack_start( slider.widget )
+
+			else:
+				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle body physics')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_body )
+				b.connect('toggled', self.toggle_body)
+
+				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle collision')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_collision )
+				b.connect('toggled', self.toggle_collision)
+
+				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle gravity')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_gravity )
+				b.connect('toggled', self.toggle_gravity)
+
+				#b = gtk.Button('bake')
+				#root.pack_start( b, expand=False )
+				#b.connect('clicked', lambda b,o: Blender.bake_image(o), ob)
+				#b.connect('clicked', lambda b,o: self.baker_queue.append({'name':ob.name}), ob)
+
+				r,g,b,a = ob.color	# ( mesh: float-array not color-object )
+				gcolor = rgb2gdk(r,g,b)
+				b = gtk.ColorButton()
+				b.set_color(gcolor)
+				root.pack_start( b, expand=False )
+				b.connect('color-set', self.color_set, gcolor, ob )
+				# "color-changed" with gtk_color_selection, then use ...get_current_color
+
+			root.show_all()
+
+	def color_set( self, button, color, ob ):
+		button.get_color( color )
+		r,g,b = gdk2rgb( color )
+		ob.color[0] = r
+		ob.color[1] = g
+		ob.color[2] = b
+
+	def toggle_pose_mode(self,button):
+		if button.get_active():
+			bpy.ops.object.mode_set( mode='POSE' )
+		else:
+			bpy.ops.object.mode_set( mode='OBJECT' )
+
+	def toggle_gravity(self, b):
+		for ob in self.context.selected_objects: ob.ode_use_gravity = b.get_active()
+	def toggle_collision(self, b):
+		for ob in self.context.selected_objects: ob.ode_use_collision = b.get_active()
+	def toggle_body(self, b):
+		for ob in self.context.selected_objects: ob.ode_use_body = b.get_active()
 
 
 ##########################################################
@@ -3340,66 +3433,6 @@ class App( PyppetUI ):
 			#if not DND.dragging:
 			#Blender.iterate(C, self.lock)
 
-	def update_selected_widget(self):
-		if self.context.active_object and self.context.active_object.name != self.selected:
-			self.selected = self.context.active_object.name
-			self._frame.remove( self._modal )
-			self._modal = root = gtk.HBox()
-			self._frame.add( root )
-			ob = bpy.data.objects[ self.selected ]
-			#root.pack_start( gtk.Label(ob.name), expand=False )
-
-			if ob.type == 'ARMATURE':
-				b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle pose mode')
-				root.pack_start( b, expand=False )
-				b.set_active( self.context.mode=='POSE' )
-				b.connect('toggled', self.toggle_pose_mode)
-
-				if ob.name not in self.entities:
-					biped = self.GetBiped( ob )
-					b = gtk.Button( icons.BIPED ); b.set_relief( gtk.RELIEF_NONE )
-					root.pack_start( b, expand=False )
-					b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
-
-			else:
-				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle body physics')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_body )
-				b.connect('toggled', self.toggle_body)
-
-				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle collision')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', self.toggle_collision)
-
-				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle gravity')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_gravity )
-				b.connect('toggled', self.toggle_gravity)
-
-				b = gtk.Button('bake')
-				root.pack_start( b, expand=False )
-				#b.connect('clicked', lambda b,o: Blender.bake_image(o), ob)
-				b.connect('clicked', lambda b,o: self.baker_queue.append({'name':ob.name}), ob)
-
-			root.show_all()
-
-	def toggle_pose_mode(self,button):
-		if button.get_active():
-			bpy.ops.object.mode_set( mode='POSE' )
-		else:
-			bpy.ops.object.mode_set( mode='OBJECT' )
-
-	def toggle_gravity(self, b):
-		for ob in self.context.selected_objects: ob.ode_use_gravity = b.get_active()
-	def toggle_collision(self, b):
-		for ob in self.context.selected_objects: ob.ode_use_collision = b.get_active()
-	def toggle_body(self, b):
-		for ob in self.context.selected_objects: ob.ode_use_body = b.get_active()
 
 
 ######## Pyppet Singleton #########
