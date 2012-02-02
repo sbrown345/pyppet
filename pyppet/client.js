@@ -2,6 +2,7 @@ var DEBUG = false;
 var USE_MODIFIERS = true;
 var USE_SHADOWS = true;
 
+var DISP_MAGIC = -0.188;		//-0.256
 
 var SELECTED = null;
 
@@ -143,6 +144,10 @@ function on_message(e) {
 				m.shader.color.g = ob.color[1];
 				m.shader.color.b = ob.color[2];
 				m.shader.uniforms[ "uShininess" ].value = ob.spec;
+				if (m.multires && ob.disp_scale) {
+					m.shader.uniforms[ "uDisplacementBias" ].value = ob.disp_bias - 0.256;
+					m.shader.uniforms[ "uDisplacementScale" ].value = ob.disp_scale;
+				}
 			}
 
 			if (ob.verts && USE_MODIFIERS) {
@@ -221,10 +226,15 @@ function on_collada_ready( collada ) {
 	dbugdae = collada;
 	mesh = collada.scene.children[0];
 	mesh.useQuaternion = false;
-	mesh._material_ = mesh.material;
 	mesh.geometry.computeTangents();		// requires UV's
 
-	mesh.shader = mesh.material = create_normal_shader( mesh.name );
+	mesh._material_ = mesh.material;
+	var displacement = false;
+	if (mesh.material.color.r) {
+		displacement = true;
+		mesh.multires = true;
+	}
+	mesh.shader = mesh.material = create_normal_shader( mesh.name, displacement );
 
 	if (USE_SHADOWS) {
 		mesh.castShadow = true;
@@ -263,7 +273,11 @@ function on_texture_ready( img ) {
 			ob.shader.uniforms['tDiffuse'].texture = tex;
 		} else if (type=='AO') {
 			ob.shader.uniforms['tAO'].texture = tex;
-		} else { console.log(type); }
+		} else if (type=='DISPLACEMENT') {
+			ob.shader.uniforms['tDisplacement'].texture = tex;
+		} else if (type=='SPEC_INTENSITY') {
+			ob.shader.uniforms['tSpecular'].texture = tex;
+		} else { console.log('ERROR: unknown shader layer: '+type); }
 	}
 
 	/////////////////// do progressive loading ////////////////
@@ -276,7 +290,11 @@ function on_texture_ready( img ) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
-	else if (size <= 512) {
+	else if (type=='DISPLACEMENT' && size <= 512) {
+		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+		setTimeout( request_progressive_texture, 1000 );
+	}
+	else if (size <= 256) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
@@ -288,7 +306,7 @@ function request_progressive_texture() {
 	TEX_LOADING[ url ] = tex;
 }
 
-function create_normal_shader( name ) {
+function create_normal_shader( name, displacement ) {
 	// material parameters
 	name = name.replace('_0', '.0');
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
@@ -299,7 +317,6 @@ function create_normal_shader( name ) {
 	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|64', undefined, on_texture_ready );
 	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
 	uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
-	uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|64', undefined, on_texture_ready );
 	uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
@@ -313,7 +330,16 @@ function create_normal_shader( name ) {
 	uniforms[ "uAmbientColor" ].value.setHex( ambient );
 
 	uniforms[ "uShininess" ].value = shininess;
-	uniforms[ "uDisplacementScale" ].value = 50;
+
+	if (displacement) {
+		console.log(name + ' has displacement');
+		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|64', undefined, on_texture_ready );
+		uniforms[ "uDisplacementBias" ].value = -0.256;		// magic
+		uniforms[ "uDisplacementScale" ].value = 1.0;
+	} else {
+		uniforms[ "uDisplacementBias" ].value = 0.0;
+		uniforms[ "uDisplacementScale" ].value = 0.0;
+	}
 
 	uniforms[ "wrapRGB" ].value.set( 0.75, 0.5, 0.5 );
 
@@ -581,6 +607,8 @@ function animate() {
 				modifier.modify( geo );
 				geo.__dirtyTangents = true;
 				geo.computeTangents();		// requires UV's
+				//geo.computeFaceNormals();
+				//geo.computeVertexNormals();
 
 				if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
 				var hack = new THREE.Mesh(geo, mesh.shader)

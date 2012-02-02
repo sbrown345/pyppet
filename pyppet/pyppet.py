@@ -124,11 +124,19 @@ def dump_collada( name, center=False ):
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
 	ob.select = True
-	materials = [ mat for mat in ob.data.materials ]
-	if materials:
-		ob.data.materials[0] = bpy.data.materials.new(name='tmp')
+	materials = []
+	for i,mat in enumerate(ob.data.materials):
+		materials.append( mat )
+		ob.data.materials[ i ] = None
 
-	for mod in ob.modifiers: mod.show_viewport = False
+	hack = bpy.data.materials.new(name='tmp')
+	hack.diffuse_color = [0,0,0]
+	for mod in ob.modifiers:
+		mod.show_viewport = False
+		if mod.type == 'MULTIRES':
+			hack.diffuse_color.r = 1.0	# ugly way to hide HINTS in the collada
+	if ob.data.materials: ob.data.materials[0] = hack
+	else: ob.data.materials.append( hack )
 
 	#arm = ob.find_armature()		# armatures not working in Three.js ?
 	#if arm: arm.select = True
@@ -140,9 +148,7 @@ def dump_collada( name, center=False ):
 	if center: ob.location = loc
 	restore_selection( state )
 
-	for i,mat in enumerate(materials):
-		ob.data.materials[i]=mat
-
+	for i,mat in enumerate(materials): ob.data.materials[i]=mat
 	for mod in ob.modifiers: mod.show_viewport = True
 
 	return open('/tmp/dump.dae','rb').read()
@@ -278,12 +284,14 @@ class WebSocketServer( websocket.WebSocketServer ):
 					specular = None
 					if ob.data.materials:
 						mat = ob.data.materials[0]
-						r,g,b = mat.diffuse_color
-						color = (r,g,b)
 						specular = mat.specular_hardness
-
 					pak['color'] = [ round(x,3) for x in ob.color ]
 					pak['spec'] = specular
+
+					for mod in ob.modifiers:
+						if mod.type=='DISPLACE':
+							pak['disp_bias'] = mod.mid_level - 0.5
+							pak['disp_scale'] = mod.strength
 
 
 		## only stream mesh data of active-selected ##
@@ -3190,7 +3198,7 @@ class App( PyppetUI ):
 		self.context.scene.render.bake_margin = 5
 		self.context.scene.render.use_bake_normalize = True
 		self.context.scene.render.use_bake_selected_to_active = False	# required
-		self.context.scene.render.use_bake_lores_mesh = True
+		self.context.scene.render.use_bake_lores_mesh = False		# should be True
 		self.context.scene.render.use_bake_multires = False
 		if type=='DISPLACEMENT':	# can also apply to NORMALS
 			for mod in ob.modifiers:
