@@ -2933,6 +2933,12 @@ class PyppetUI( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_left_tools)
+		self.header.pack_start( b, expand=False )
+
+
 		self.popup = Popup()
 		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled',self.popup.toggle_popup)
@@ -2945,7 +2951,6 @@ class PyppetUI( PyppetAPI ):
 		self.header.pack_start( gtk.Label() )
 
 		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
-		#frame.set_border_width(2)
 		box = gtk.HBox()
 		frame.add( box )
 		s = gtk.Switch()
@@ -2972,6 +2977,15 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( self.get_playback_widget() )
 
+	def toggle_left_tools(self,b):
+		if b.get_active():
+			self._left_tools.show()
+			self.socket.set_size_request( self.bwidth, self.bheight )
+			Blender.window_resize( self.bwidth, self.bheight )
+		else:
+			self._left_tools.hide()
+			self.socket.set_size_request( self.bwidth+150, self.bheight )
+			Blender.window_resize( self.bwidth+150, self.bheight )
 
 	def create_ui(self, context):
 		win = gtk.Window()
@@ -2985,22 +2999,16 @@ class PyppetUI( PyppetAPI ):
 		split = gtk.HBox()
 		root.pack_start( split )
 
-		note = gtk.Notebook()
+		############ LEFT TOOLS ###########
+		self._left_tools = note = gtk.Notebook()
 		note.set_border_width( 2 )
-		#for i in range(7):
-		#	#note.modify_bg( gtk.STATE_NORMAL, BG_COLOR_DARK )
-		#	note.modify_bg( i, BG_COLOR_DARK )
 		split.pack_start( note, expand=False )
-
 		widget = self.websocket_server.webGL.get_fx_widget()
 		note.append_page( widget, gtk.Label( icons.FX ) )
 		page = gtk.VBox()
-
 		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
 		b.connect( self, path='camera_randomize' )
 		page.pack_start( b.widget, expand=False )
-
-
 		for name in 'camera_focus camera_aperture camera_maxblur'.split():
 			page.pack_start( gtk.Label(name.split('_')[-1]), expand=False )
 			if name == 'camera_aperture':
@@ -3008,7 +3016,6 @@ class PyppetUI( PyppetAPI ):
 			else:
 				slider = SimpleSlider( self, name=name, title='', max=3.0, driveable=True )
 			page.pack_start( slider.widget, expand=False )
-
 		note.append_page(page, gtk.Label( icons.CAMERA) )
 
 		###############################
@@ -3315,9 +3322,9 @@ class App( PyppetUI ):
 		#img.save()
 
 		bpy.ops.image.save_as(
-			file_format='JPEG', 
-			color_mode='RGB',
-			file_quality=75,
+			#file_format='JPEG', 
+			#color_mode='RGB',
+			#file_quality=75,
 			filepath= path,
 			check_existing=False,
 		)
