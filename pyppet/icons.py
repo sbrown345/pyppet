@@ -1,6 +1,8 @@
 COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ￼⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕᨟'
 SOUTH_WEST_ARROW = '⬋'
 
+SOUTH_ARROW = '⇩'
+
 CAMERA = '⏣'
 
 FX = '𐎒'

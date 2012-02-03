@@ -2933,15 +2933,20 @@ class PyppetUI( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_left_tools)
-		self.header.pack_start( b, expand=False )
+
+		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
+		box = gtk.HBox(); box.set_border_width(4)
+		frame.add( box )
 
 		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
+		b.connect('toggled',self.toggle_left_tools)
+		box.pack_start( b, expand=False )
+
+		b = gtk.ToggleButton( icons.SOUTH_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
 		b.connect('toggled',self.toggle_footer)
-		self.header.pack_start( b, expand=False )
+		box.pack_start( b, expand=False )
 
 
 		self.popup = Popup()
@@ -2983,38 +2988,58 @@ class PyppetUI( PyppetAPI ):
 		self.header.pack_start( self.get_playback_widget() )
 
 	def toggle_left_tools(self,b):
+		width = ctypes.pointer( ctypes.c_int() )
+		height = ctypes.pointer( ctypes.c_int() )
+		self.window.get_size( width, height )
+		width = width.contents.value
+
 		if b.get_active():
 			self._left_tools.show()
-			#self.socket.set_size_request( self.bwidth, self.bheight )
-			#Blender.window_resize( self.bwidth, self.bheight )
+			self.socket.set_size_request( width-160, self.bheight )
+
 		else:
 			self._left_tools.hide()
-			#self.socket.set_size_request( self.bwidth+150, self.bheight )
-			#Blender.window_resize( self.bwidth+150, self.bheight )
+			self.socket.set_size_request( width-4, self.bheight )
+		self.socket.queue_resize()
 
 	def toggle_footer(self,b):
+		print('------------------ tog footer ------------------')
 		if b.get_active():
 			self.footer.show()
-			#self.socket.set_size_request( self.bwidth, self.bheight )
-			#Blender.window_resize( self.bwidth, self.bheight )
+			self.bheight -= 80
 		else:
 			self.footer.hide()
-			#self.socket.set_size_request( self.bwidth, self.bheight+100 )
-			#Blender.window_resize( self.bwidth, self.bheight+100 )
+			self.bheight += 80
+		self.socket.set_size_request( self.bwidth, self.bheight )
+		self.socket.queue_resize()
 
 	def canvas_resize(self,canvas,rect):
 		rect = gtk._cairo_rectangle_int()
 		canvas.get_allocation( rect )
-		print('Resize', rect.width, rect.height)
 		if self.blender_window_ready:
+			print('Canvas Resize', rect.width, rect.height)
 			w = rect.width
 			h = rect.height
+			self.bwidth = w
+			self.bheight = h
 			self.socket.set_size_request( w, h )
+			#self.socket.queue_resize()
+			#rect.x = 0; rect.y = 0;
+			#self.socket.size_allocate( rect )
+			#Blender.window_resize( w, h )
+
+	def gsocket_resize(self,gsock,rect):
+		rect = gtk._cairo_rectangle_int()
+		gsock.get_allocation( rect )
+		if self.blender_window_ready:
+			print('Gsocket Resize', rect.width, rect.height)
+			w = rect.width
+			h = rect.height
 			Blender.window_resize( w, h )
 
 
 	def create_ui(self, context):
-		win = gtk.Window()
+		self.window = win = gtk.Window()
 		#win.set_opacity( 0.5 )
 		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_size_request( 640, 480 )
@@ -3060,11 +3085,11 @@ class PyppetUI( PyppetAPI ):
 
 
 		self.socket = gtk.Socket()
-		#self.socket.set_size_request( 640, 480 )
 		self.blender_container = eb = gtk.EventBox()
 		eb.add( self.socket )
 		self.canvas.put( eb, 0,0 )
 		self.socket.connect('plug-added', self.on_plug)
+		self.socket.connect('size-allocate',self.gsocket_resize)
 
 		####################################
 		self.footer = gtk.Frame()
@@ -3099,7 +3124,7 @@ class PyppetUI( PyppetAPI ):
 		#self.socket.show_all()
 		self.bwidth = 1100	#win.get_width() - 420
 		self.bheight = 580	#win.get_height() - 340
-		self.socket.set_size_request( self.bwidth, self.bheight )
+		#self.socket.set_size_request( self.bwidth, self.bheight )
 		#Blender.window_expand()
 		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
 		#bpy.ops.wm.window_fullscreen_toggle()
