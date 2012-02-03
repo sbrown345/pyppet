@@ -1,4 +1,7 @@
 COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ￼⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕᨟'
+
+KEYBOARD = '⌨'
+
 SOUTH_WEST_ARROW = '⬋'
 
 SOUTH_ARROW = '⇩'

@@ -85,8 +85,8 @@ import json
 def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
-BG_COLOR = gtk.GdkColor(0,50000,50000,50000)
-BG_COLOR_DARK = gtk.GdkColor(0,40000,40000,40000)
+BG_COLOR = rgb2gdk( 0.7, 0.7, 0.7 )
+BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
 
 STREAM_BUFFER_SIZE = 2048
 
@@ -233,6 +233,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				if lsock in ready: startsock, address = lsock.accept()
 				else: continue
 			except Exception: continue
+			## keep outside of try for debugging ##
 			self.top_new_client(startsock, address)	# calls new_client()
 
 	def new_client(self): print('new client', self.client)
@@ -2933,35 +2934,8 @@ class PyppetUI( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
-
 		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
 		box = gtk.HBox(); box.set_border_width(4)
-		frame.add( box )
-
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_left_tools)
-		box.pack_start( b, expand=False )
-
-		b = gtk.ToggleButton( icons.SOUTH_ARROW ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_footer)
-		box.pack_start( b, expand=False )
-
-
-		self.popup = Popup()
-		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled',self.popup.toggle_popup)
-		self.header.pack_start( b, expand=False )
-
-		b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled',self.toggle_overlays)
-		self.header.pack_start( b, expand=False )
-
-		self.header.pack_start( gtk.Label() )
-
-		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
-		box = gtk.HBox()
 		frame.add( box )
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
@@ -2971,10 +2945,9 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
 		box.pack_start( b, expand=False )
 
-		self.header.pack_start( gtk.Label() )
-
 		widget = self.audio.microphone.get_widget()
 		self.header.pack_start( widget, expand=False )
+
 
 		self.header.pack_start( gtk.Label() )
 
@@ -2985,7 +2958,27 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
-		self.header.pack_start( self.get_playback_widget() )
+
+		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
+		box = gtk.HBox(); box.set_border_width(4)
+		frame.add( box )
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_left_tools)
+		box.pack_start( b, expand=False )
+		b = gtk.ToggleButton( icons.SOUTH_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_footer)
+		box.pack_start( b, expand=False )
+		self.popup = Popup()
+		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
+		b.connect('toggled',self.popup.toggle_popup)
+		self.header.pack_start( b, expand=False )
+		b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
+		b.connect('toggled',self.toggle_overlays)
+		self.header.pack_start( b, expand=False )
+
+
 
 	def toggle_left_tools(self,b):
 		width = ctypes.pointer( ctypes.c_int() )
@@ -3006,36 +2999,31 @@ class PyppetUI( PyppetAPI ):
 		print('------------------ tog footer ------------------')
 		if b.get_active():
 			self.footer.show()
-			self.bheight -= 80
+			self.bheight -= 112
 		else:
 			self.footer.hide()
-			self.bheight += 80
+			self.bheight += 105
 		self.socket.set_size_request( self.bwidth, self.bheight )
 		self.socket.queue_resize()
 
-	def canvas_resize(self,canvas,rect):
+	def canvas_resize(self,canvas,rect):	# this get's called every frame when overlays on
 		rect = gtk._cairo_rectangle_int()
 		canvas.get_allocation( rect )
 		if self.blender_window_ready:
-			print('Canvas Resize', rect.width, rect.height)
-			w = rect.width
-			h = rect.height
-			self.bwidth = w
-			self.bheight = h
-			self.socket.set_size_request( w, h )
-			#self.socket.queue_resize()
-			#rect.x = 0; rect.y = 0;
-			#self.socket.size_allocate( rect )
-			#Blender.window_resize( w, h )
+			self.bwidth = rect.width
+			self.bheight = rect.height
+			#self.socket.set_size_request( w, h )
+			#self.socket.queue_resize()		# triggers gsocket_resize, but won't auto expand/fill
+			#self.socket.size_allocate( rect )	# has funny offset
 
 	def gsocket_resize(self,gsock,rect):
 		rect = gtk._cairo_rectangle_int()
 		gsock.get_allocation( rect )
 		if self.blender_window_ready:
 			print('Gsocket Resize', rect.width, rect.height)
-			w = rect.width
-			h = rect.height
-			Blender.window_resize( w, h )
+			self.blender_width = rect.width
+			self.blender_height = rect.height
+			Blender.window_resize( self.blender_width, self.blender_height )
 
 
 	def create_ui(self, context):
@@ -3092,10 +3080,20 @@ class PyppetUI( PyppetAPI ):
 		self.socket.connect('size-allocate',self.gsocket_resize)
 
 		####################################
-		self.footer = gtk.Frame()
+		self.footer = note = gtk.Notebook()
+		note.set_tab_pos( gtk.POS_BOTTOM )
+
 		bsplit.pack_start( self.footer, expand=False )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.RECORD) )
+		page.add( self.get_playback_widget() )
+
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.KEYBOARD) )
 		w = self.audio.synth.channels[0].get_widget()
-		self.footer.add( w )
+		page.add( w )
 
 		############## overlays #############
 		ui = PropertiesUI( self.canvas, self.lock, context )
@@ -3117,19 +3115,12 @@ class PyppetUI( PyppetAPI ):
 		for o in self.overlays: o.disable()
 
 	def on_plug(self, args):
-		print( 'on plug...' )
-		win = self.socket.get_plug_window()
-		print(win)
+		self.blender_window_ready = True
+		win = self.socket.get_plug_window()	# gdk-window
 		#win.set_title('stolen window')
-		#self.socket.show_all()
 		self.bwidth = 1100	#win.get_width() - 420
 		self.bheight = 580	#win.get_height() - 340
-		#self.socket.set_size_request( self.bwidth, self.bheight )
-		#Blender.window_expand()
-		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
-		#bpy.ops.wm.window_fullscreen_toggle()
-		Blender.window_lower()
-		self.blender_window_ready = True
+		self.socket.set_size_request( self.bwidth, self.bheight )
 
 	def get_window_xid( self, name ):
 		p =os.popen('xwininfo -int -name %s' %name)
@@ -3233,6 +3224,7 @@ class App( PyppetUI ):
 	def exit(self, arg):
 		self.audio.exit()
 		self.active = False
+		self.websocket_server.active = False
 		sdl.Quit()
 		print('clean exit')
 
@@ -3277,6 +3269,8 @@ class App( PyppetUI ):
 		self.components = []
 		self.bwidth = 640
 		self.bheight = 480
+		self.blender_width = None
+		self.blender_height = None
 		self.lock = threading._allocate_lock()
 
 		self.server = Server()
@@ -3479,7 +3473,7 @@ class App( PyppetUI ):
 			self.update_selected_widget()
 
 			for o in self.overlays:
-				o.update( self.context.window.screen, self.bwidth, self.bheight )
+				o.update( self.context.window.screen, self.blender_width, self.blender_height )
 
 			for com in self.components: com.iterate( self.context )
 			self.popup.update( self.context )
@@ -3526,7 +3520,7 @@ class Overlay(object):
 		self.active = self.show = False
 		self.container.hide()
 
-	def __init__(self, widget, canvas, area, region, min_width=100):
+	def __init__(self, widget, canvas, area, region, min_width=100, min_height=150):
 		self.active = False
 		self.show = False
 		self.widget = widget
@@ -3534,6 +3528,7 @@ class Overlay(object):
 		self.area = area
 		self.region = region
 		self.min_width = min_width
+		self.min_height = min_height
 
 		self.container = gtk.EventBox()
 		self.container.add( widget )
@@ -3548,21 +3543,22 @@ class Overlay(object):
 			if area.type == self.area:		# VIEW_3D, INFO
 				for reg in area.regions:
 					if reg.type == self.region:
-						if reg.width < self.min_width:
+						if reg.width < self.min_width or reg.height < self.min_height:
 							self.show = False
 							self.container.hide()
 						elif not self.show:
 							self.show = True
 							self.container.show()
 
-						self.widget.set_size_request( reg.width-2, reg.height )
-						###########################################
-						r = Blender.Region( reg )
-						rct = r.winrct	# blender window space
-						#print(rct.ymin, rct.ymax)
-						self.canvas.move( self.container, rct.xmin+2, height - rct.ymax )
-						#self.canvas.move( self.container, 1440, height - rct.ymax )
-						return
+						if self.show:
+							self.widget.set_size_request( reg.width-2, reg.height )
+							###########################################
+							r = Blender.Region( reg )
+							rct = r.winrct	# blender window space
+							#print(rct.ymin, rct.ymax)
+							self.canvas.move( self.container, rct.xmin+2, height - rct.ymax )
+							#self.canvas.move( self.container, 1440, height - rct.ymax )
+							return
 
 		## hide if area not found ##
 		self.show = False
@@ -3742,7 +3738,7 @@ class PropertiesUI( Component ):
 	def create_widget(self, context):
 		self.notebook = gtk.Notebook()
 		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
-		o = Overlay( self.notebook, self.canvas, 'PROPERTIES', 'WINDOW', min_width=220 )
+		o = Overlay( self.notebook, self.canvas, 'PROPERTIES', 'WINDOW', min_width=280 )
 		self.overlays.append( o )
 
 		box = self.new_page( icons.WEBCAM )	# webcam
