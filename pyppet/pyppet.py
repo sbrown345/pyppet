@@ -2938,6 +2938,11 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled',self.toggle_left_tools)
 		self.header.pack_start( b, expand=False )
 
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_footer)
+		self.header.pack_start( b, expand=False )
+
 
 		self.popup = Popup()
 		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
@@ -2980,12 +2985,33 @@ class PyppetUI( PyppetAPI ):
 	def toggle_left_tools(self,b):
 		if b.get_active():
 			self._left_tools.show()
-			self.socket.set_size_request( self.bwidth, self.bheight )
-			Blender.window_resize( self.bwidth, self.bheight )
+			#self.socket.set_size_request( self.bwidth, self.bheight )
+			#Blender.window_resize( self.bwidth, self.bheight )
 		else:
 			self._left_tools.hide()
-			self.socket.set_size_request( self.bwidth+150, self.bheight )
-			Blender.window_resize( self.bwidth+150, self.bheight )
+			#self.socket.set_size_request( self.bwidth+150, self.bheight )
+			#Blender.window_resize( self.bwidth+150, self.bheight )
+
+	def toggle_footer(self,b):
+		if b.get_active():
+			self.footer.show()
+			#self.socket.set_size_request( self.bwidth, self.bheight )
+			#Blender.window_resize( self.bwidth, self.bheight )
+		else:
+			self.footer.hide()
+			#self.socket.set_size_request( self.bwidth, self.bheight+100 )
+			#Blender.window_resize( self.bwidth, self.bheight+100 )
+
+	def canvas_resize(self,canvas,rect):
+		rect = gtk._cairo_rectangle_int()
+		canvas.get_allocation( rect )
+		print('Resize', rect.width, rect.height)
+		if self.blender_window_ready:
+			w = rect.width
+			h = rect.height
+			self.socket.set_size_request( w, h )
+			Blender.window_resize( w, h )
+
 
 	def create_ui(self, context):
 		win = gtk.Window()
@@ -3029,8 +3055,8 @@ class PyppetUI( PyppetAPI ):
 		bsplit.pack_start( self.body )
 
 		self.canvas = gtk.Fixed()
-
-		self.body.pack_start( self.canvas, expand=False )
+		self.canvas.connect('size-allocate',self.canvas_resize)
+		self.body.pack_start( self.canvas, expand=True )
 
 
 		self.socket = gtk.Socket()
@@ -3078,7 +3104,7 @@ class PyppetUI( PyppetAPI ):
 		Blender.window_resize( self.bwidth, self.bheight )		# required - replaces wnck unshade hack
 		#bpy.ops.wm.window_fullscreen_toggle()
 		Blender.window_lower()
-
+		self.blender_window_ready = True
 
 	def get_window_xid( self, name ):
 		p =os.popen('xwininfo -int -name %s' %name)
@@ -3259,6 +3285,8 @@ class App( PyppetUI ):
 		self.baker_queue = []
 		self.setup_image_editor_callback( None )
 
+		self.blender_window_ready = False
+
 	def setup_image_editor_callback( self, b ):
 		if self.baker_active: return
 		for area in self.context.screen.areas:
@@ -3280,6 +3308,7 @@ class App( PyppetUI ):
 
 	## can only be called from inside ImageEditor redraw callback ##
 	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
+	BAKE_BYTES = 0
 	def bake_image( self, name, type='AO', width=64, height=None ):
 		assert type in self.BAKE_MODES
 		if height is None: height=width
@@ -3325,10 +3354,13 @@ class App( PyppetUI ):
 		for ob in restore: ob.select=True
 		self.context.scene.objects.active = restore_active
 
+		## 128 color PNG can beat JPG by half ##
 		if type == 'DISPLACEMENT':
 			os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
+			os.system( 'convert %s.png -colors 128 -gamma 0.36 %s.png' %(path,path) )
 		else:
 			os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
+			os.system( 'convert %s.png -colors 128 %s.png' %(path,path) )
 
 		## blender saves png's with high compressision level
 		## for simple textures, the PNG may infact be smaller than the jpeg
@@ -3338,9 +3370,11 @@ class App( PyppetUI ):
 		jpgsize = os.stat( path+'.jpg' ).st_size
 		if pngsize < jpgsize:
 			print('sending png data', pngsize)
+			self.BAKE_BYTES += pngsize
 			return open( path+'.png', 'rb' ).read()
 		else:
 			print('sending jpg data', jpgsize)
+			self.BAKE_BYTES += jpgsize
 			return open( path+'.jpg', 'rb' ).read()
 
 
