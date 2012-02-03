@@ -3284,7 +3284,7 @@ class App( PyppetUI ):
 		assert type in self.BAKE_MODES
 		if height is None: height=width
 
-		path = '/tmp/%s.%s.jpg' %(name,type)
+		path = '/tmp/%s.%s' %(name,type)
 		restore_active = self.context.active_object
 		restore = []
 		for ob in self.context.selected_objects:
@@ -3309,23 +3309,16 @@ class App( PyppetUI ):
 				if mod.type == 'MULTIRES':
 					self.context.scene.render.use_bake_multires = True
 
-
-		print('preparing to bake')
 		time.sleep(0.25)				# SEGFAULT without this sleep
-		#self.context.scene.update()	# no help!?
+		#self.context.scene.update()		# no help!? with SEGFAULT
 		bpy.ops.object.bake_image()
-		print('bake ok!')
 
 		#img = bpy.data.images[-1]
 		#img.file_format = 'jpg'
 		#img.filepath_raw = '/tmp/%s.jpg' %ob.name
 		#img.save()
-
 		bpy.ops.image.save_as(
-			#file_format='JPEG', 
-			#color_mode='RGB',
-			#file_quality=75,
-			filepath= path,
+			filepath = path+'.png',
 			check_existing=False,
 		)
 
@@ -3333,9 +3326,22 @@ class App( PyppetUI ):
 		self.context.scene.objects.active = restore_active
 
 		if type == 'DISPLACEMENT':
-			os.system( 'convert -gamma 0.36 %s %s' %(path,path) )
+			os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
+		else:
+			os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
 
-		return open( path, 'rb' ).read()
+		## blender saves png's with high compressision level
+		## for simple textures, the PNG may infact be smaller than the jpeg
+		## check which one is smaller, and send that one, 
+		## Three.js ignores the file extension and loads the data even if a png is called a jpg.
+		pngsize = os.stat( path+'.png' ).st_size
+		jpgsize = os.stat( path+'.jpg' ).st_size
+		if pngsize < jpgsize:
+			print('sending png data', pngsize)
+			return open( path+'.png', 'rb' ).read()
+		else:
+			print('sending jpg data', jpgsize)
+			return open( path+'.jpg', 'rb' ).read()
 
 
 
