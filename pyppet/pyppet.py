@@ -2892,8 +2892,21 @@ class PyppetAPI(object):
 				if i==len(buff)-1: done.append(True)
 				else: done.append(False)
 				break
-		if all(done):
-			self._rec_preview_button.set_active(False)
+
+		if all(done): self._rec_preview_button.set_active(False); return True
+		else: return False
+
+	def bake_animation(self,button):
+		self.context.scene.frame_current = 1
+		step = 1.0 / float(self.context.scene.render.fps)
+		now = 0.0
+		done = False
+		while not done:
+			self.context.scene.frame_current += 1
+			done = self.update_preview( now )
+			now += step
+			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
+		print('Finished baking animation')
 
 def set_transform( name, pos, rot ):
 	print('set-transform', name)
@@ -2932,6 +2945,7 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( b, expand=False )
 
 		b = gtk.Button( 'bake %s' %icons.WRITE )
+		b.connect('clicked', self.bake_animation)
 		bx.pack_start( b, expand=False )
 
 		bx.pack_start( gtk.Label() )
