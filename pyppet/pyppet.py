@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb2, 2012
+# Feb4, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD

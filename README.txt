@@ -1,4 +1,4 @@
-Pyppet2 - Jan2 2012
+Pyppet2 - Feb4 2012
 by Brett Hart - bhartsho@yahoo.com
 http://pyppet.blogspot.com
 License: BSD
@@ -6,7 +6,24 @@ License: BSD
 Usage:
 	./Pyppet.sh
 
-Installing:
+The script "Pyppet.sh" expects you have installed Blender to "~/Blender2.6"
+You can modify Pyppet.sh to match the path to your installed Blender.
+
+======================================================
+
+Requires:
+	Linux
+	Blender2.6.1
+	GTK3
+	ODE
+
+WebGL:
+	Tested with Google Chrome 15.0.874.121
+
+
+======================================================
+
+Installing Libraries:
 	You must install and/or compile these libraries to "/usr/lib" or "/usr/local/lib":
 		. gtk3
 		. opencv
@@ -36,7 +53,7 @@ Installing:
 		apt-get install bluez bluetooth
 		git clone http://github.com/rpavlik/wiiuse.git
 
-
+========================================================
 
 Known Issues:
 	. Xembed only works on Linux, what about OSX with X11?
