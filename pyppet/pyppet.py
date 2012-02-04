@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.3k'
+VERSION = '1.9.4a'
 
 import os, sys, time, subprocess, threading, math, ctypes
 from random import *
@@ -2851,11 +2851,85 @@ class PyppetAPI(object):
 		self.bipeds = {}
 		self.ropes = {}
 
+	def start_record(self):
+		self.recording = True
+		self._rec_start_frame = self.context.scene.frame_current
+		self._rec_start_time = time.time()
+		for ob in self.context.selected_objects:
+			if ob.name in ENGINE.objects:
+				ob.animation_data_clear()
+				self._rec_objects[ ob.name ] = buff = []
+				w = ENGINE.objects[ ob.name ]
+				w.set_recording_buffer( buff )
+
+	def end_record(self):
+		self.recording = False
+		for name in ENGINE.objects:
+			w = ENGINE.objects[ name ]
+			print(name, w.recbuffer)
+
+	def update_physics(self, now):
+		ENGINE.sync( self.context, now, self.recording )
+		models = self.entities.values()
+		for mod in models:
+			mod.update( self.context )
+
+
+	def update_preview(self, now):
+		print('updating preview',now)
+		for name in self._rec_objects:
+			buff = self._rec_objects[name]
+			for F in buff:
+				if F[0] < now: continue
+				frame_time, pos, rot = F
+				set_transform( name, pos, rot )
+
+def set_transform( name, pos, rot ):
+	ob = bpy.data.objects[name]
+	q = mathutils.Quaternion()
+	qw,qx,qy,qz = rot
+	q.w = qw; q.x=qx; q.y=qy; q.z=qz
+	m = q.to_matrix().to_4x4()
+	x,y,z = pos
+	m[0][3] = x; m[1][3] = y; m[2][3] = z
+	x,y,z = ob.scale	# save scale
+	ob.matrix_world = m
+	ob.scale = (x,y,z)	# restore scale
+
+
 class PyppetUI( PyppetAPI ):
 	def toggle_record( self, button ):
 		if button.get_active(): self.start_record()
 		else: self.end_record()
+	def toggle_preview( self, button ):
+		self.preview = button.get_active()
+		if self.preview: self._rec_start_time = time.time()
 
+
+	def get_recording_widget(self):
+		frame = gtk.Frame()
+		root = gtk.VBox(); frame.add( root )
+
+		bx = gtk.HBox(); root.pack_start( bx )
+		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
+		b.connect('toggled', self.toggle_record )
+		bx.pack_start( b, expand=False )
+
+		b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
+		b.connect('toggled', self.toggle_preview)
+		bx.pack_start( b, expand=False )
+
+		b = gtk.Button( 'bake %s' %icons.WRITE )
+		bx.pack_start( b, expand=False )
+
+		bx.pack_start( gtk.Label() )
+		self._rec_current_time_label = gtk.Label('0.0')
+		bx.pack_start( self._rec_current_time_label, expand=False )
+		bx.pack_start( gtk.Label() )
+
+		root.pack_start( self.get_playback_widget() )
+
+		return frame
 
 	def get_playback_widget(self):
 		frame = gtk.Frame()
@@ -2864,13 +2938,6 @@ class PyppetUI( PyppetAPI ):
 		b = gtk.ToggleButton( icons.PLAY )
 		b.connect('toggled', lambda b: bpy.ops.screen.animation_play() )
 		root.pack_start( b, expand=False )
-
-		b = gtk.ToggleButton( icons.RECORD )
-		b.connect('toggled', self.toggle_record )
-		#b.connect('toggled', lambda b,s: setattr(s.context.scene.tool_settings,'use_keyframe_insert_auto',b.get_active()), self )
-		#b.set_active( self.context.scene.tool_settings.use_keyframe_insert_auto )
-		root.pack_start( b, expand=False )
-
 
 		b = gtk.SpinButton()
 		self._current_frame_adjustment = adj = b.get_adjustment()
@@ -3087,7 +3154,7 @@ class PyppetUI( PyppetAPI ):
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.RECORD) )
-		page.add( self.get_playback_widget() )
+		page.add( self.get_recording_widget() )
 
 
 		page = gtk.Frame()
@@ -3261,6 +3328,10 @@ class App( PyppetUI ):
 
 
 	def __init__(self):
+		self._rec_start_time = time.time()
+		self._rec_objects = {}	# recording buffers
+		self.preview = False
+
 		self.reset_models()
 		self.recording = False
 		self.selected = None
@@ -3399,19 +3470,6 @@ class App( PyppetUI ):
 
 
 	####################################################
-	def start_record(self):
-		self.recording = True
-		self._rec_start_frame = self.context.scene.frame_current
-		for ob in self.context.selected_objects:
-			ob.animation_data_clear()
-	def end_record(self):
-		self.recording = False
-		for name in ENGINE.objects:
-			w = ENGINE.objects[ name ]
-			print(name, w.recbuffer)
-
-
-
 
 	def mainloop(self):
 		C = Blender.Context( bpy.context )
@@ -3481,10 +3539,12 @@ class App( PyppetUI ):
 			models = self.entities.values()
 			for mod in models: mod.update_ui( self.context )
 
-			if ENGINE.active and not ENGINE.paused:
-				ENGINE.sync( self.context, self.recording )
-				for mod in models:
-					mod.update( self.context )
+			now = time.time() - self._rec_start_time
+			if self.recording or self.preview:
+				self._rec_current_time_label.set_text( 'seconds: %s' %round(now,2) )
+			if self.preview: self.update_preview( now )
+			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
+
 
 			if not self.baker_active:	# ImageEditor redraw callback will update http-server
 				self.server.update( self.context )

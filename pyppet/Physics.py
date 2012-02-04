@@ -1,5 +1,6 @@
 ## Ode Physics Addon for Blender
-## by Hart, Dec 6th 2011
+## by Brett Hart, Fed 4th 2011
+## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
 import os, sys, time, ctypes
@@ -178,7 +179,7 @@ class OdeSingleton(object):
 		if ob.name not in self.objects: self.objects[ ob.name ] = Object( ob, self.world, self.space )
 		return self.objects[ ob.name ]
 
-	def sync( self, context, recording=False ):
+	def sync( self, context, now, recording=False ):
 		if not self.active: return
 
 		if context.active_object and context.active_object.name in self.objects:
@@ -217,8 +218,8 @@ class OdeSingleton(object):
 		ode.JointGroupEmpty( self.joint_group )
 		#print( '------------- joint group empty complete -------------', self._tmp_joints )
 
-		if fast:
-			for obj, bo in fast: obj.update( bo, recording )		# updates blender object for display
+		if fast:		# updates blender object for display
+			for obj, bo in fast: obj.update( bo, now, recording )
 
 
 
@@ -672,7 +673,6 @@ class Object( object ):
 
 
 	def reset(self):
-		self.recbuffer = []
 		name = self.name
 		cfg = self.config
 		ob = bpy.data.objects[ name ]
@@ -693,7 +693,7 @@ class Object( object ):
 			body.SetAngularVel( .0, .0, .0 )
 
 
-	def update( self, ob, recording=False ):
+	def update( self, ob, now=None, recording=False ):
 		if self.type == 'LAMP':
 			if 'random-color' in self.fx:
 				ob.data.color.r = random()
@@ -718,26 +718,23 @@ class Object( object ):
 		#	px,py,pz = geom.GetPosition()
 		#	rw,rx,ry,rz = geom.GetQuaternion()
 
-		m = mathutils.Matrix()
-		#x,y,z = ob.scale		# copy scale (local space?)
-		#m[0][0] = x
-		#m[1][1] = y
-		#m[2][2] = z
+		qw,qx,qy,qz = body.GetQuaternion()
 		x,y,z = body.GetPosition()
-		m[3][0] = x
-		m[3][1] = y
-		m[3][2] = z
+		if recording: self.recbuffer.append( (now, (x,y,z),(qw,qx,qy,qz)) )
 
 		q = mathutils.Quaternion()
-		qw,qx,qy,qz = body.GetQuaternion()
 		q.w = qw; q.x=qx; q.y=qy; q.z=qz
 
-		if recording:
-			self.recbuffer.append( ((x,y,z),(qw,qx,qy,qz)) )
+		m = q.to_matrix().to_4x4()
+		m[0][3] = x	# blender2.61 style
+		m[1][3] = y
+		m[2][3] = z
+		sx,sy,sz = ob.scale		# save scale
+		ob.matrix_world = m
+		ob.scale = (sx,sy,sz)	# restore scale (in local space)
+		#ob.location = body.GetPosition()	# this won't work, setting matrix_world is magic
 
-		x,y,z = ob.scale	# save scale
-		ob.matrix_world = m * q.to_matrix().to_4x4()
-		ob.scale = (x,y,z)	# restore scale
+	def set_recording_buffer( self, buff ): self.recbuffer = buff
 
 	def clear_body_config( self ):
 		keys = list(self.config.keys())
