@@ -2855,8 +2855,10 @@ class PyppetAPI(object):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
 		self._rec_start_time = time.time()
+		print('start-record', self._rec_start_time)
 		for ob in self.context.selected_objects:
 			if ob.name in ENGINE.objects:
+				print('record setup on object', ob.name)
 				ob.animation_data_clear()
 				self._rec_objects[ ob.name ] = buff = []
 				w = ENGINE.objects[ ob.name ]
@@ -2877,14 +2879,24 @@ class PyppetAPI(object):
 
 	def update_preview(self, now):
 		print('updating preview',now)
+		offset_cache = {}
+		done = []
 		for name in self._rec_objects:
 			buff = self._rec_objects[name]
-			for F in buff:
+			print('updating %s: %s' %(name,len(buff)))
+			for i,F in enumerate(buff):
 				if F[0] < now: continue
 				frame_time, pos, rot = F
 				set_transform( name, pos, rot )
+				offset_cache[ name ] = i
+				if i==len(buff)-1: done.append(True)
+				else: done.append(False)
+				break
+		if all(done):
+			self._rec_preview_button.set_active(False)
 
 def set_transform( name, pos, rot ):
+	print('set-transform', name)
 	ob = bpy.data.objects[name]
 	q = mathutils.Quaternion()
 	qw,qx,qy,qz = rot
@@ -2915,7 +2927,7 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled', self.toggle_record )
 		bx.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
+		self._rec_preview_button = b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
 		b.connect('toggled', self.toggle_preview)
 		bx.pack_start( b, expand=False )
 
