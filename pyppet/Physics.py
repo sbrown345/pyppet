@@ -91,41 +91,6 @@ bpy.types.World.ode_angular_damping = FloatProperty(
 
 
 
-
-
-class ActivePhysicsWorldPanel(bpy.types.Panel):
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "physics"
-	bl_label = "ODE Physics - World"
-	@classmethod
-	def poll(cls, context): return True
-
-	def draw(self, context):
-		layout = self.layout
-
-		box = layout.box()
-		box.label(text="Scene:")
-		row = box.row()
-
-		if ActivePhysics.active:
-			row.operator(DisableOp.bl_idname, text="Disable")
-		else:
-			row.operator(EnableOp.bl_idname, text="Enable")
-
-
-		if bpy.data.texts:
-			row.operator(ReloadUserCallbackOp.bl_idname, text="Reload User Callback")
-		else:
-			row.label(text='user callback requires a text')
-
-		row = box.row()
-		row.prop( context.scene, 'use_gravity', text='Gravity' )
-		row.prop( context.scene, 'gravity', text='' )
-		row = box.row()
-		row.prop( context.scene.game_settings, 'fps' )
-		row.prop( context.scene.game_settings, 'physics_gravity', text='springy' )
-
 # setFDir1
 #def setFDir1(self, fdir):
 #"""setFDir1(fdir)
@@ -278,38 +243,6 @@ class OdeSingleton(object):
 
 ENGINE = OdeSingleton()
 ActivePhysics = ENGINE
-
-
-
-
-
-############################# object ##########################
-
-
-
-
-
-class ActivePhysicsMaterialPanel(bpy.types.Panel):
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "physics"
-	bl_label = "ODE Physics - Material"
-	@classmethod
-	def poll(cls, context):
-		if context.active_object and context.active_object.type == 'MESH':
-			if context.active_object.data.materials:
-				if not context.active_object.game.use_ghost: return True
-
-	def draw(self, context):
-		layout = self.layout
-		mat = context.active_object.data.materials[0]
-		box = layout.box()
-		box.label(text="Material: %s" %mat.name)
-		box.prop( mat.physics, 'friction', text='Friction' )
-		box.prop( mat.physics, 'fh_force', text='Bounce' )
-		box.prop( mat.physics, 'fh_distance', text='Bounce Velocity Threshold' )
-		box.prop( mat.physics, 'fh_damping', text='Soft Error Reduction' )
-		box.prop( mat.physics, 'elasticity', text='Soft Mixing Force' )
 
 
 
@@ -493,32 +426,18 @@ class Object( object ):
 		m.SetSphereTotal( value, 0.1)
 		self.mass.Add( m )
 
-	'''
-	self.fx
-		use actuator edit-object > track-to, but hijack reverse, target lamp or camera
-		hijack linear vel, angular vel to use as thresholds for collision...
-		... no good way to pick input event, device API?
-		ok for now, collision always triggers if above thresh.
-
-	'''
 	def callback( self, other, contact, pos, normal, depth, hit_index, num_hits ):
-		contact.surface.mu += self.get_friction( pos, normal, depth )
-		contact.surface.bounce += self.get_bounce( pos, normal, depth )
-		contact.surface.bounce_vel += self.get_min_bounce_vel( pos, normal, depth )
-		contact.surface.soft_erp += self.get_collision_erp( pos, normal, depth )
-		contact.surface.soft_cfm += self.get_collision_cfm( pos, normal, depth )
+		#contact.surface.mu += self.get_friction( pos, normal, depth )
+		#contact.surface.bounce += self.get_bounce( pos, normal, depth )
+		#contact.surface.bounce_vel += self.get_min_bounce_vel( pos, normal, depth )
+		#contact.surface.soft_erp += self.get_collision_erp( pos, normal, depth )
+		#contact.surface.soft_cfm += self.get_collision_cfm( pos, normal, depth )
 		#con.surface.motion1 = 0.1	# Set the surface velocity in friction direction 1.
 		#con.surface.slip1 = 0.1		# Set the coefficient of force-dependent-slip (FDS) for friction direction 1.
 		#return 'PASS'		# this passes this contact and goes onto the next, more contact joints maybe created.
 		#print( self.get_linear_vel() )
 		if hit_index > 16: return 'BREAK'	# prevents too many collision joints, speeds things up, max hits is 32
 
-	def get_material(self):
-		if self.type == 'MESH':
-			bo = bpy.data.objects[ self.name ]
-			if bo.data.materials:
-				# only consider first material, since face/material lookup to pos is slow
-				return bo.data.materials[0]
 
 	def get_linear_vel( self ):
 		if self.body: return self.body.GetLinearVel()		# localspace
@@ -534,50 +453,6 @@ class Object( object ):
 
 
 
-	###################################################
-	def get_friction(self, pos, normal, depth ):
-		mu = 0.0
-		bo = bpy.data.objects[ self.name ]
-		m = self.get_material()
-		if m: mu += m.physics.friction
-		return mu
-
-	def get_bounce(self, pos, normal, depth ):
-		bounce = 0.0
-		bo = bpy.data.objects[ self.name ]
-		if self.type == 'MESH':
-			if bo.data.materials:
-				# only consider first material, since face/material lookup to pos is slow
-				m = bo.data.materials[0]
-				bounce += m.physics.fh_force
-		return bounce
-	def get_min_bounce_vel(self, pos, normal, depth ):
-		vel = 0.0
-		bo = bpy.data.objects[ self.name ]
-		if self.type == 'MESH':
-			if bo.data.materials:
-				# only consider first material, since face/material lookup to pos is slow
-				m = bo.data.materials[0]
-				vel += m.physics.fh_distance
-		return vel
-	def get_collision_erp(self, pos, normal, depth ):
-		erp = 0.0
-		bo = bpy.data.objects[ self.name ]
-		if self.type == 'MESH':
-			if bo.data.materials:
-				# only consider first material, since face/material lookup to pos is slow
-				m = bo.data.materials[0]
-				erp += m.physics.fh_damping
-		return erp
-	def get_collision_cfm(self, pos, normal, depth ):
-		cfm = 0.0
-		bo = bpy.data.objects[ self.name ]
-		if self.type == 'MESH':
-			if bo.data.materials:
-				# only consider first material, since face/material lookup to pos is slow
-				m = bo.data.materials[0]
-				cfm += m.physics.elasticity
-		return cfm
 
 	def toggle_collision(self, switch):
 		if not switch and self.geom:
@@ -658,7 +533,6 @@ class Object( object ):
 		self.geom = None
 		self.geomtype = None
 		self.joints = {}
-		self.fx = {}	# cmd : arg
 		self.alive = True
 		self.save_transform( bo )
 
@@ -694,23 +568,6 @@ class Object( object ):
 
 
 	def update( self, ob, now=None, recording=False ):
-		if self.type == 'LAMP':
-			if 'random-color' in self.fx:
-				ob.data.color.r = random()
-				ob.data.color.b = random()
-				ob.data.color.g = random()
-		if self.type in 'CAMERA LAMP'.split():
-			if 'look-at' in self.fx:
-				tt = None
-				for con in cam.constraints:
-					if con.type == 'TRACK_TO': tt = con; break
-				if not tt: tt = ob.constraints.new( 'TRACK_TO' )
-				tt.up_axis = 'UP_Y'
-				tt.track_axis = 'TRACK_NEGATIVE_Z'
-				if self.fx['look-at'] == MOST_KINEMATIC: pass
-				else: tt.target = bpy.data.objects[ self.fx['look-at'] ]
-		self.fx = {}
-
 		body = self.body
 		if not body or not self.alive: return
 
@@ -801,7 +658,7 @@ class Object( object ):
 				elif self.geomtype == 'CYLINDER': geom.CylinderSetParams( sradius, length )
 
 
-
+## DEPRECATED ##
 class ReloadUserCallbackOp(bpy.types.Operator):
 	bl_idname = "active_physics.reload_user_callback"
 	bl_label = "Reload User Collision Callback"
@@ -814,79 +671,6 @@ class ReloadUserCallbackOp(bpy.types.Operator):
 		assert 'callback' in locals()
 		setattr( Object, 'callback', locals()['callback'] )
 		return {'FINISHED'}
-
-
-
-class EnableOp(bpy.types.Operator):
-	bl_idname = "active_physics.enable_ode"
-	bl_label = "Toggle Active Physics"
-	bl_description = "Toggle ..."
-	@classmethod
-	def poll(cls, context): return True	#return context.mode!='EDIT_MESH'
-	def invoke(self, context, event):
-		ActivePhysics.start()
-		return {'FINISHED'}
-
-class DisableOp(bpy.types.Operator):
-	bl_idname = "active_physics.disable_ode"
-	bl_label = "Disable Active Physics"
-	bl_description = "end threads..."
-	@classmethod
-	def poll(cls, context): return True
-	def invoke(self, context, event):
-		ActivePhysics.stop()
-		return {'FINISHED'}
-
-class BodyEnableOp(bpy.types.Operator):
-	bl_idname = "active_physics.body_enable"
-	bl_label = "enable physics body"
-	bl_description = "..."
-	@classmethod
-	def poll(cls, context): return True
-	def invoke(self, context, event):
-		game = context.active_object.game
-		game.physics_type = 'DYNAMIC'
-		return {'FINISHED'}
-class BodyDisableOp(bpy.types.Operator):
-	bl_idname = "active_physics.body_disable"
-	bl_label = "disable physics body"
-	bl_description = "..."
-	@classmethod
-	def poll(cls, context): return True
-	def invoke(self, context, event):
-		game = context.active_object.game
-		game.physics_type = 'STATIC'		# in BGE static means non-moving, but may have collision
-		return {'FINISHED'}
-
-
-class GeomEnableOp(bpy.types.Operator):
-	bl_idname = "active_physics.collision_enable"
-	bl_label = "Enable Collision"
-	bl_description = "..."
-	@classmethod
-	def poll(cls, context): return True
-	def invoke(self, context, event):
-		game = context.active_object.game
-		game.use_ghost = False
-		#context.active_object.game.physics_type = 'DYNAMIC'
-		return {'FINISHED'}
-class GeomDisableOp(bpy.types.Operator):
-	bl_idname = "active_physics.collision_disable"
-	bl_label = "Disable Collision"
-	bl_description = "..."
-	@classmethod
-	def poll(cls, context): return True
-	def invoke(self, context, event):
-		game = context.active_object.game
-		game.use_ghost = True
-		#if game.physics_type == 'DYNAMIC': game.physics_type = 'STATIC'
-		#else: game.physics_type = 'NO_COLLISION'
-		return {'FINISHED'}
-
-
-
-
 #########################################
-
-bpy.utils.register_module(__name__)
+#bpy.utils.register_module(__name__)
 
