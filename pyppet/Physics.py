@@ -534,6 +534,7 @@ class Object( object ):
 		self.geomtype = None
 		self.joints = {}
 		self.alive = True
+		self.transform = None	# used to set a transform directly, format: (pos,quat)
 		self.save_transform( bo )
 
 	def save_transform(self, bo):
@@ -554,12 +555,8 @@ class Object( object ):
 		if body:
 			ob.matrix_world = self.start_matrix.copy()
 			x,y,z = self.start_position
-			#loc = ob.location
-			#loc.x = x; loc.y = y; loc.z = z	# restore transform
 			body.SetPosition( x,y,z )
 			w,x,y,z = self.start_rotation
-			#q = ob.rotation_quaternion
-			#q.w = w; q.x = x; q.y = y; q.z = z
 			body.SetQuaternion( (w,x,y,z) )
 			body.SetForce( .0, .0, .0 )
 			body.SetTorque( .0, .0, .0 )
@@ -577,7 +574,8 @@ class Object( object ):
 
 		qw,qx,qy,qz = body.GetQuaternion()
 		x,y,z = body.GetPosition()
-		if recording: self.recbuffer.append( (now, (x,y,z),(qw,qx,qy,qz)) )
+		if recording and not self.transform:	# do not record if using direct transform
+			self.recbuffer.append( (now, (x,y,z), (qw,qx,qy,qz)) )
 
 		q = mathutils.Quaternion()
 		q.w = qw; q.x=qx; q.y=qy; q.z=qz
@@ -591,7 +589,9 @@ class Object( object ):
 		ob.scale = (sx,sy,sz)	# restore scale (in local space)
 		#ob.location = body.GetPosition()	# this won't work, setting matrix_world is magic
 
-	def set_recording_buffer( self, buff ): self.recbuffer = buff
+	def reset_recording( self, buff ):
+		self.transform = None
+		self.recbuffer = buff
 
 	def clear_body_config( self ):
 		keys = list(self.config.keys())
@@ -599,7 +599,7 @@ class Object( object ):
 			if key not in 'use_ghost collision_bounds_type'.split():
 				self.config.pop( key )
 
-	def sync( self, ob ):	# checks config
+	def sync( self, ob ):		# pre-sync, called before physics update
 		cfg = self.config
 		body = self.body
 		geom = self.geom
@@ -610,14 +610,20 @@ class Object( object ):
 		sx,sy,sz = scl
 		if ob.type == 'MESH': sx,sy,sz = ob.dimensions
 
-		LIMIT = 10000
+		LIMIT = 10000	# this should be camera far range
 		if abs(px) > LIMIT or abs(py) > LIMIT or abs(pz) > LIMIT:
 			if self.alive and body: body.Disable()
 			self.alive = False
 		if not self.alive: return
 
+		if self.transform and body:	# used by preview playback
+			pos,rot = self.transform
+			x,y,z = pos
+			body.SetPosition( x, y, z )
+			w,x,y,z = rot
+			body.SetQuaternion( (w,x,y,z) )
 
-		if body:	# apply constant forces
+		elif body:				# apply constant forces
 			x,y,z = ob.ode_local_force
 			if x or y or z: body.AddRelForce( x,y,z )
 			x,y,z = ob.ode_global_force
@@ -633,7 +639,6 @@ class Object( object ):
 				vec[1] *= rate
 				vec[2] *= rate
 
-
 			x,y,z = ob.ode_constant_local_force
 			if x or y or z: body.AddRelForce( x,y,z )
 			x,y,z = ob.ode_constant_global_force
@@ -643,12 +648,10 @@ class Object( object ):
 			x,y,z = ob.ode_constant_global_torque
 			if x or y or z: body.AddTorque( x,y,z )
 
-
-		if geom and not body:
-			## bodyless geoms should always get updates from blender
+		elif geom and not body:  ## bodyless geoms should always get updates from blender
 			geom.SetPosition( px, py, pz )
 			geom.SetQuaternion( (rw,rx,ry,rz) )
-			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():	# can do fast dynamic update of scaling
+			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():
 				sradius = ((sx+sy+sz) / 3.0) *0.5
 				cradius = ((sx+sy)/2.0) * 0.5
 				length = sz

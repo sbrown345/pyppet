@@ -2855,20 +2855,27 @@ class PyppetAPI(object):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
 		self._rec_start_time = time.time()
-		print('start-record', self._rec_start_time)
+		self._rec_current_objects = []
 		for ob in self.context.selected_objects:
 			if ob.name in ENGINE.objects:
 				print('record setup on object', ob.name)
 				ob.animation_data_clear()
 				self._rec_objects[ ob.name ] = buff = []
 				w = ENGINE.objects[ ob.name ]
-				w.set_recording_buffer( buff )
+				w.reset_recording( buff )
+				self._rec_current_objects.append( ob.name )
+
+		self._rec_inactive_objects = []
+		for name in self._rec_objects:
+			if name not in self._rec_current_objects:
+				self._rec_inactive_objects.append( name )
 
 	def end_record(self):
 		self.recording = False
 		for name in ENGINE.objects:
 			w = ENGINE.objects[ name ]
-			print(name, w.recbuffer)
+			w.transform = None
+			print('recbuffer:', name, len(w.recbuffer))
 
 	def update_physics(self, now):
 		ENGINE.sync( self.context, now, self.recording )
@@ -2881,13 +2888,17 @@ class PyppetAPI(object):
 		print('updating preview',now)
 		offset_cache = {}
 		done = []
+
 		for name in self._rec_objects:
 			buff = self._rec_objects[name]
 			print('updating %s: %s' %(name,len(buff)))
 			for i,F in enumerate(buff):
 				if F[0] < now: continue
 				frame_time, pos, rot = F
-				set_transform( name, pos, rot )
+				set_transform( 
+					name, pos, rot, 
+					set_body = (self.recording and name in self._rec_inactive_objects)
+				)
 				offset_cache[ name ] = i
 				if i==len(buff)-1: done.append(True)
 				else: done.append(False)
@@ -2908,7 +2919,7 @@ class PyppetAPI(object):
 			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
 		print('Finished baking animation')
 
-def set_transform( name, pos, rot ):
+def set_transform( name, pos, rot, set_body=False ):
 	print('set-transform', name)
 	ob = bpy.data.objects[name]
 	q = mathutils.Quaternion()
@@ -2920,7 +2931,9 @@ def set_transform( name, pos, rot ):
 	x,y,z = ob.scale	# save scale
 	ob.matrix_world = m
 	ob.scale = (x,y,z)	# restore scale
-
+	if set_body:
+		w = ENGINE.objects[ name ]
+		w.transform = (pos,rot)
 
 class PyppetUI( PyppetAPI ):
 	def toggle_record( self, button ):
@@ -2937,6 +2950,7 @@ class PyppetUI( PyppetAPI ):
 
 		bx = gtk.HBox(); root.pack_start( bx )
 		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
+		b.set_tooltip_text('record selected objects')
 		b.connect('toggled', self.toggle_record )
 		bx.pack_start( b, expand=False )
 
@@ -2945,11 +2959,12 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( b, expand=False )
 
 		b = gtk.Button( 'bake %s' %icons.WRITE )
+		b.set_tooltip_text('bake selected objects animation to curves')
 		b.connect('clicked', self.bake_animation)
 		bx.pack_start( b, expand=False )
 
 		bx.pack_start( gtk.Label() )
-		self._rec_current_time_label = gtk.Label('0.0')
+		self._rec_current_time_label = gtk.Label('-')
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
 

@@ -1,4 +1,4 @@
-Pyppet2 - Feb4 2012
+Pyppet2 - Feb5 2012
 by Brett Hart - bhartsho@yahoo.com
 http://pyppet.blogspot.com
 License: BSD
@@ -19,6 +19,7 @@ Requires:
 
 WebGL:
 	Tested with Google Chrome 15.0.874.121
+	point browser to: http://localhost:8080
 
 
 ======================================================
