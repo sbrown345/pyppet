@@ -1090,9 +1090,10 @@ class Speaker(object):
 	#		AudioThread.lock.release()
 	#		time.sleep(0.1)
 
-	def __init__(self, frequency=22050, streaming=False):
+	def __init__(self, frequency=22050, stereo=False, streaming=False):
 		#Speaker.Speakers.append( self )
-		self.format=al.AL_FORMAT_MONO16
+		if stereo: self.format=al.AL_FORMAT_STEREO16
+		else: self.format=al.AL_FORMAT_MONO16
 		self.frequency = frequency
 		self.streaming = streaming
 		self.buffersize = 1024
@@ -1112,16 +1113,30 @@ class Speaker(object):
 		self.gain = 1.0
 		self.pitch = 1.0
 
+	def cache_samples(self, samples):
+		assert self.streaming == False
+		self.generate_buffers()
+		bid = self.output_buffer_ids[0]
+		n = len(samples)
+		data = (ctypes.c_byte*n)( *samples )
+		ptr = ctypes.pointer( data )
+		al.BufferData(
+			bid,
+			self.format, 
+			ptr, 
+			n, # size in bytes
+			self.frequency,
+		)
+		al.Sourcei( self.id, al.AL_BUFFER, bid )
+
+
 	def get_widget(self):
 		root = gtk.HBox()
-
 		bx = gtk.VBox(); root.pack_start( bx )
-
 		slider = SimpleSlider( self, name='gain', driveable=True )
 		bx.pack_start( slider.widget, expand=False )
 		slider = SimpleSlider( self, name='pitch', driveable=True )
 		bx.pack_start( slider.widget, expand=False )
-
 		return root
 
 
@@ -1499,10 +1514,7 @@ class Audio(object):
 			scale.set_digits(3)
 			row.pack_start( scale )
 
-
 		return root
-
-
 
 	def update(self):	# called from thread
 		#for speaker in self.speakers: speaker.update()
@@ -3001,26 +3013,52 @@ class PyppetUI( PyppetAPI ):
 
 		bx = gtk.HBox(); root.pack_start( bx )
 
+		b = gtk.ToggleButton( icons.PLAY )
+		b.connect('toggled', self.toggle_wave )
+		bx.pack_start( b, expand=False )
+
 		b = gtk.CheckButton('auto-play on record')
 		b.set_active( self.play_wave_on_record )
 		b.connect('toggled', lambda b: setattr(self,'play_wave_on_record',b.get_active()))
 		bx.pack_start( b, expand=False )
 
+		bx.pack_start( gtk.Label() )
+
+		self._wave_file_length_label = a = gtk.Label()
+		bx.pack_start( a, expand=False )
+
+		bx.pack_start( gtk.Label() )
+
 		return frame
 
+	def toggle_wave(self,button):
+		if button.get_active():
+			self.wave_playing = True
+			self.wave_speaker.play()
 
 	def open_wave(self, url):
 		if url.lower().endswith('.wav'):
+			print('loading wave file', url)
 			self.wave_url = url
-			self.wave_file = wf = wave.open( url, 'rb')
+			wf = wave.open( url, 'rb')
 			fmt = wf.getsampwidth()
-			print('format', fmt)
 			assert fmt==2	# 16bits
 			chans = wf.getnchannels()
-			print('channels', chans )
-			hz = wf.getframerate()
-			print('frame rate', hz )
+			self.wave_frequency = wf.getframerate()
+			## cache to list of chunks (bytes) ##
+			frames = wf.getnframes()
+			samples = wf.readframes(frames)
+			wf.close()
+			print('wave file loaded')
+			txt = 'seconds: %s' %(frames / self.wave_frequency)
+			self._wave_file_length_label.set_text( txt )
 
+			self.wave_speaker = Speaker( 
+				frequency=self.wave_frequency, 
+				stereo = chans==2,
+				streaming=False,
+			)
+			self.wave_speaker.cache_samples( samples )
 
 	def get_recording_widget(self):
 		frame = gtk.Frame()
