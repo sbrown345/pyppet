@@ -1153,6 +1153,11 @@ class Speaker(object):
 		assert al.GetError() == al.NO_ERROR
 		if loop: al.Sourcei( self.id, al.LOOPING, al.TRUE )
 
+	def stop(self):
+		al.SourceStop( self.id )
+		assert al.GetError() == al.NO_ERROR
+
+
 	def stream( self, array ):
 		self.output_buffer_index += 1
 		if self.output_buffer_index == self.num_output_buffers:
@@ -2893,12 +2898,18 @@ class PyppetAPI(object):
 			if name not in self._rec_current_objects:
 				self._rec_inactive_objects.append( name )
 
+		if self.play_wave_on_record:
+			self.start_wave()
+
 	def end_record(self):
 		self.recording = False
+		if self.play_wave_on_record: self.stop_wave()
 		for name in ENGINE.objects:
 			w = ENGINE.objects[ name ]
 			w.transform = None
 			print('recbuffer:', name, len(w.recbuffer))
+
+
 
 	def update_physics(self, now):
 		ENGINE.sync( self.context, now, self.recording )
@@ -3002,7 +3013,11 @@ class PyppetUI( PyppetAPI ):
 		else: self.end_record()
 	def toggle_preview( self, button ):
 		self.preview = button.get_active()
-		if self.preview: self._rec_start_time = time.time()
+		if self.preview:
+			self._rec_start_time = time.time()
+			if self.play_wave_on_record: self.start_wave()
+		else:
+			if self.play_wave_on_record: self.stop_wave()
 
 	def get_wave_widget(self):
 		frame = gtk.Frame()
@@ -3011,30 +3026,43 @@ class PyppetUI( PyppetAPI ):
 		e = FileEntry( 'wave file: ', self.open_wave )
 		root.pack_start( e.widget )
 
+		e.widget.pack_start( gtk.Label() )
+
+		self._wave_file_length_label = a = gtk.Label()
+		e.widget.pack_start( a, expand=False )
+
+
 		bx = gtk.HBox(); root.pack_start( bx )
 
 		b = gtk.ToggleButton( icons.PLAY )
 		b.connect('toggled', self.toggle_wave )
 		bx.pack_start( b, expand=False )
 
+		bx.pack_start( gtk.Label() )
+
+		self._wave_time_label = a = gtk.Label()
+		bx.pack_start( a, expand=False )
+
+		bx.pack_start( gtk.Label() )
+
 		b = gtk.CheckButton('auto-play on record')
 		b.set_active( self.play_wave_on_record )
 		b.connect('toggled', lambda b: setattr(self,'play_wave_on_record',b.get_active()))
 		bx.pack_start( b, expand=False )
 
-		bx.pack_start( gtk.Label() )
-
-		self._wave_file_length_label = a = gtk.Label()
-		bx.pack_start( a, expand=False )
-
-		bx.pack_start( gtk.Label() )
-
 		return frame
 
 	def toggle_wave(self,button):
-		if button.get_active():
-			self.wave_playing = True
-			self.wave_speaker.play()
+		if button.get_active(): self.start_wave()
+		else: self.stop_wave()
+
+	def start_wave(self):
+		self.wave_playing = True
+		self.wave_speaker.play()
+
+	def stop_wave(self):
+		self.wave_playing = False
+		self.wave_speaker.stop()
 
 	def open_wave(self, url):
 		if url.lower().endswith('.wav'):
@@ -3489,6 +3517,7 @@ class App( PyppetUI ):
 
 	def __init__(self):
 		self.play_wave_on_record = True
+		self.wave_playing = False
 
 		self._rec_start_time = time.time()
 		self._rec_objects = {}	# recording buffers
@@ -3701,7 +3730,17 @@ class App( PyppetUI ):
 			models = self.entities.values()
 			for mod in models: mod.update_ui( self.context )
 
+
 			now = time.time() - self._rec_start_time
+			if self.wave_playing:
+				self.wave_speaker.update()
+				#print('wave time', self.wave_speaker.seconds)
+				self._wave_time_label.set_text(
+					'seconds: %s' %round(self.wave_speaker.seconds,2)
+				)
+				## use wave time if play on record is true ##
+				if self.play_wave_on_record: now = self.wave_speaker.seconds
+
 			if self.recording or self.preview:
 				self._rec_current_time_label.set_text( 'seconds: %s' %round(now,2) )
 			if self.preview: self.update_preview( now )
@@ -3713,14 +3752,6 @@ class App( PyppetUI ):
 
 			self.client.update( self.context )
 			self.websocket_server.update( self.context )
-
-			#if self.recording:
-			#	print('recording...')
-			#	bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
-
-			#if not DND.dragging:
-			#Blender.iterate(C, self.lock)
-
 
 
 ######## Pyppet Singleton #########
