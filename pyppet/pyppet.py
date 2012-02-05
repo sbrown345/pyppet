@@ -7,6 +7,7 @@
 VERSION = '1.9.4a'
 
 import os, sys, time, subprocess, threading, math, ctypes
+import wave
 from random import *
 
 ## make sure we can import from same directory ##
@@ -765,6 +766,7 @@ class ContextCopy(object):
 
 class SimpleDND(object):		## simple drag'n'drop API ##
 	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )
+
 	def __init__(self):
 		self.dragging = False
 		self.source = None			# the destination may want to use the source widget directly
@@ -831,6 +833,14 @@ class SimpleDND(object):		## simple drag'n'drop API ##
 
 DND = SimpleDND()	# singleton
 
+class ExternalDND( SimpleDND ):
+	#target = gtk.target_entry_new( 'text/plain',2,gtk.TARGET_OTHER_APP )
+	target = gtk.target_entry_new( 'file://',2,gtk.TARGET_OTHER_APP )
+	#('text/plain', gtk.TARGET_OTHER_APP, 0),	# gnome
+	#('text/uri-list', gtk.TARGET_OTHER_APP, 1),	# XFCE
+	#('TEXT', 0, 2),
+	#('STRING', 0, 3),
+XDND = ExternalDND()
 
 #########################################################
 
@@ -2919,6 +2929,16 @@ class PyppetAPI(object):
 			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
 		print('Finished baking animation')
 
+	def open_wave(self, url):
+		wf = wave.open( self._sound_url, 'rb')
+		fmt = wf.getsampwidth()
+		print('format', fmt)
+		chans = wf.getnchannels()
+		print('channels', chans )
+		framerate = wf.getframerate()
+		print('frame rate', framerate )
+
+
 def set_transform( name, pos, rot, set_body=False ):
 	print('set-transform', name)
 	ob = bpy.data.objects[name]
@@ -2968,9 +2988,18 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
 
+		a = gtk.Entry()
+		a.connect('changed', self.drop_text)
+		bx.pack_start( a, expand=False )
+		#XDND.make_destination( a )
+
 		root.pack_start( self.get_playback_widget() )
 
 		return frame
+
+	def drop_text(self,entry):
+		print(entry)
+		print(entry.get_text())
 
 	def get_playback_widget(self):
 		frame = gtk.Frame()
@@ -3115,7 +3144,7 @@ class PyppetUI( PyppetAPI ):
 		self.socket.queue_resize()
 
 	def canvas_resize(self,canvas,rect):	# this get's called every frame when overlays on
-		rect = gtk._cairo_rectangle_int()
+		rect = gtk.cairo_rectangle_int()
 		canvas.get_allocation( rect )
 		if self.blender_window_ready:
 			self.bwidth = rect.width
@@ -3125,7 +3154,7 @@ class PyppetUI( PyppetAPI ):
 			#self.socket.size_allocate( rect )	# has funny offset
 
 	def gsocket_resize(self,gsock,rect):
-		rect = gtk._cairo_rectangle_int()
+		rect = gtk.cairo_rectangle_int()
 		gsock.get_allocation( rect )
 		if self.blender_window_ready:
 			print('Gsocket Resize', rect.width, rect.height)
