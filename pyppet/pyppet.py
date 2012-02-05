@@ -79,6 +79,7 @@ import wsgiref
 import wsgiref.simple_server
 import io, socket, select, pickle, urllib
 import urllib.request
+import urllib.parse
 
 import websocket
 import json
@@ -1624,7 +1625,7 @@ class Microphone( Audio ):
 		b.connect('toggled', self.toggle_capture)
 		root.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.SINE_WAVE ); b.set_relief( gtk.RELIEF_NONE )
+		b = gtk.ToggleButton( icons.FFT ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_tooltip_text( 'toggle spectral analysis' )
 		b.set_active( self.analysis )
 		b.connect('toggled', lambda b,s: setattr(s,'analysis',b.get_active()), self)
@@ -2929,15 +2930,6 @@ class PyppetAPI(object):
 			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
 		print('Finished baking animation')
 
-	def open_wave(self, url):
-		wf = wave.open( self._sound_url, 'rb')
-		fmt = wf.getsampwidth()
-		print('format', fmt)
-		chans = wf.getnchannels()
-		print('channels', chans )
-		framerate = wf.getframerate()
-		print('frame rate', framerate )
-
 
 def set_transform( name, pos, rot, set_body=False ):
 	print('set-transform', name)
@@ -2955,6 +2947,43 @@ def set_transform( name, pos, rot, set_body=False ):
 		w = ENGINE.objects[ name ]
 		w.transform = (pos,rot)
 
+######################################################
+
+class FileEntry( object ):
+	## for drag and drop ##
+	def __init__(self, name, callback):
+		self.name = name
+		self.callback = callback
+
+		self.widget = bx = gtk.HBox()
+		bx.pack_start( gtk.Label(name), expand=False )
+
+		self.entry = e = gtk.Entry()
+		e.connect('changed', self.changed)
+		bx.pack_start( e, expand=True )
+
+		b = gtk.Button( icons.REFRESH )
+		bx.pack_start( b, expand=False )
+		b.set_relief( gtk.RELIEF_NONE )
+
+		b = gtk.Button( icons.DELETE )
+		b.connect('clicked', self.delete)
+		bx.pack_start( b, expand=False )
+		b.set_relief( gtk.RELIEF_NONE )
+
+	def changed( self, entry ):
+		url = urllib.parse.unquote(entry.get_text()).strip()
+		if url.startswith('file://'): url = url[ 7 : ]
+		if os.path.isfile(url):
+			gtk.editable_set_editable(entry,False)
+			self.callback( url )
+
+	def delete(self,button):
+		self.entry.set_text('')
+		gtk.editable_set_editable(self.entry,True)
+
+
+
 class PyppetUI( PyppetAPI ):
 	def toggle_record( self, button ):
 		if button.get_active(): self.start_record()
@@ -2962,6 +2991,35 @@ class PyppetUI( PyppetAPI ):
 	def toggle_preview( self, button ):
 		self.preview = button.get_active()
 		if self.preview: self._rec_start_time = time.time()
+
+	def get_wave_widget(self):
+		frame = gtk.Frame()
+		root = gtk.VBox(); frame.add( root )
+
+		e = FileEntry( 'wave file: ', self.open_wave )
+		root.pack_start( e.widget )
+
+		bx = gtk.HBox(); root.pack_start( bx )
+
+		b = gtk.CheckButton('auto-play on record')
+		b.set_active( self.play_wave_on_record )
+		b.connect('toggled', lambda b: setattr(self,'play_wave_on_record',b.get_active()))
+		bx.pack_start( b, expand=False )
+
+		return frame
+
+
+	def open_wave(self, url):
+		if url.lower().endswith('.wav'):
+			self.wave_url = url
+			self.wave_file = wf = wave.open( url, 'rb')
+			fmt = wf.getsampwidth()
+			print('format', fmt)
+			assert fmt==2	# 16bits
+			chans = wf.getnchannels()
+			print('channels', chans )
+			hz = wf.getframerate()
+			print('frame rate', hz )
 
 
 	def get_recording_widget(self):
@@ -2988,18 +3046,9 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
 
-		a = gtk.Entry()
-		a.connect('changed', self.drop_text)
-		bx.pack_start( a, expand=False )
-		#XDND.make_destination( a )
-
 		root.pack_start( self.get_playback_widget() )
 
 		return frame
-
-	def drop_text(self,entry):
-		print(entry)
-		print(entry.get_text())
 
 	def get_playback_widget(self):
 		frame = gtk.Frame()
@@ -3226,6 +3275,9 @@ class PyppetUI( PyppetAPI ):
 		note.append_page( page, gtk.Label(icons.RECORD) )
 		page.add( self.get_recording_widget() )
 
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.SINE_WAVE) )
+		page.add( self.get_wave_widget() )
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.KEYBOARD) )
@@ -3398,6 +3450,8 @@ class App( PyppetUI ):
 
 
 	def __init__(self):
+		self.play_wave_on_record = True
+
 		self._rec_start_time = time.time()
 		self._rec_objects = {}	# recording buffers
 		self.preview = False
