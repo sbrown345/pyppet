@@ -3038,6 +3038,12 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled', self.toggle_wave )
 		bx.pack_start( b, expand=False )
 
+		b = gtk.CheckButton('loop')
+		#b.set_active( self.play_wave_on_record )
+		#b.connect('toggled', lambda b: setattr(self,'play_wave_on_record',b.get_active()))
+		bx.pack_start( b, expand=False )
+
+
 		bx.pack_start( gtk.Label() )
 
 		self._wave_time_label = a = gtk.Label()
@@ -3420,28 +3426,7 @@ class PyppetUI( PyppetAPI ):
 				root.pack_start( slider.widget )
 
 			else:
-				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle body physics')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_body )
-				b.connect('toggled', self.toggle_body)
-
-				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle collision')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', self.toggle_collision)
-
-				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle gravity')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_gravity )
-				b.connect('toggled', self.toggle_gravity)
-
-				#b = gtk.Button('bake')
-				#root.pack_start( b, expand=False )
-				#b.connect('clicked', lambda b,o: Blender.bake_image(o), ob)
-				#b.connect('clicked', lambda b,o: self.baker_queue.append({'name':ob.name}), ob)
+				root.set_border_width(3)
 
 				r,g,b,a = ob.color	# ( mesh: float-array not color-object )
 				gcolor = rgb2gdk(r,g,b)
@@ -3450,6 +3435,38 @@ class PyppetUI( PyppetAPI ):
 				root.pack_start( b, expand=False )
 				b.connect('color-set', self.color_set, gcolor, ob )
 				# "color-changed" with gtk_color_selection, then use ...get_current_color
+
+				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle body physics')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_body )
+				b.connect('toggled', self.toggle_body)
+
+				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle gravity')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_gravity )
+				b.connect('toggled', self.toggle_gravity)
+
+				combo = gtk.ComboBoxText()
+
+				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle collision')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_collision )
+				b.connect('toggled', self.toggle_collision, combo)
+
+				root.pack_start( combo, expand=False )
+				for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
+					combo.append('id', type)
+					if type == ob.game.collision_bounds_type:
+						gtk.combo_box_set_active( combo, i )
+				combo.set_tooltip_text( 'collision type' )
+				combo.connect('changed',self.change_collision_type, ob )
+
+				if ob.ode_use_collision: combo.show()
+				else: combo.hide()
+				combo.set_no_show_all(True)
 
 			root.show_all()
 
@@ -3468,10 +3485,18 @@ class PyppetUI( PyppetAPI ):
 
 	def toggle_gravity(self, b):
 		for ob in self.context.selected_objects: ob.ode_use_gravity = b.get_active()
-	def toggle_collision(self, b):
+	def toggle_collision(self, b, combo):
 		for ob in self.context.selected_objects: ob.ode_use_collision = b.get_active()
+		if b.get_active(): combo.show()
+		else: combo.hide()
 	def toggle_body(self, b):
 		for ob in self.context.selected_objects: ob.ode_use_body = b.get_active()
+
+	def change_collision_type(self,combo, ob):
+		type = combo.get_active_text()
+		ob.game.collision_bounds_type = type
+		w = ENGINE.get_wrapper(ob)
+		w.reset_collision_type()
 
 
 ##########################################################

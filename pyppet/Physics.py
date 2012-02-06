@@ -460,33 +460,41 @@ class Object( object ):
 			self.geom = None
 			print('destroyed geom')
 		elif switch:
-			ob = bpy.data.objects[ self.name ]
-			pos,rot,scl = ob.matrix_world.decompose()
-			px,py,pz = pos
-			rw,rx,ry,rz = rot
-			sx,sy,sz = scl
-			if ob.type == 'MESH': sx,sy,sz = ob.dimensions
+			self.reset_collision_type()
 
-			T = ob.game.collision_bounds_type
-			if T in 'BOX SPHERE CAPSULE CYLINDER'.split():		#TODO: CONVEX_HULL, TRIANGLE_MESH
-				sradius = ((sx+sy+sz) / 3.0) *0.5
-				cradius = ((sx+sy)/2.0) * 0.5
-				length = sz
-				self.geomtype = T
-				if T == 'BOX': self.geom = ode.CreateBox( self.space, sx, sy, sz )
-				elif T == 'SPHERE': self.geom = ode.CreateSphere( self.space, sradius )
-				elif T == 'CAPSULE': self.geom = ode.CreateCapsule( self.space, cradius, length )
-				elif T == 'CYLINDER': self.geom = ode.CreateCylinder( self.space, cradius, length )
-				#elif T == 'CONVEX_HULL': self.geom = ode.CreateConvex( self.space, planes, numplanes, points, numpoints, polys )
-				geom = self.geom
-				geom.SetPosition( px, py, pz )
-				geom.SetQuaternion( (rw,rx,ry,rz) )
-				if self.body: geom.SetBody( self.body )
+	def reset_collision_type(self):
+		if self.geom:
+			self.geom.Destroy()
+			self.geom = None
+			print('destroyed geom')
 
-				print( 'created new geom', T, self.name )
-				## this is safe ##
-				self._geom_set_data_pointer = ctypes.pointer( ctypes.py_object(self) )
-				geom.SetData( self._geom_set_data_pointer )
+		ob = bpy.data.objects[ self.name ]
+		pos,rot,scl = ob.matrix_world.decompose()
+		px,py,pz = pos
+		rw,rx,ry,rz = rot
+		sx,sy,sz = scl
+		if ob.type == 'MESH': sx,sy,sz = ob.dimensions
+
+		T = ob.game.collision_bounds_type
+		if T in 'BOX SPHERE CAPSULE CYLINDER'.split():		#TODO: CONVEX_HULL, TRIANGLE_MESH
+			sradius = ((sx+sy+sz) / 3.0) *0.5
+			cradius = ((sx+sy)/2.0) * 0.5
+			length = sz
+			self.geomtype = T
+			if T == 'BOX': self.geom = ode.CreateBox( self.space, sx, sy, sz )
+			elif T == 'SPHERE': self.geom = ode.CreateSphere( self.space, sradius )
+			elif T == 'CAPSULE': self.geom = ode.CreateCapsule( self.space, cradius, length )
+			elif T == 'CYLINDER': self.geom = ode.CreateCylinder( self.space, cradius, length )
+			#elif T == 'CONVEX_HULL': self.geom = ode.CreateConvex( self.space, planes, numplanes, points, numpoints, polys )
+			geom = self.geom
+			geom.SetPosition( px, py, pz )
+			geom.SetQuaternion( (rw,rx,ry,rz) )
+			if self.body: geom.SetBody( self.body )
+
+			print( 'created new geom', T, self.name )
+			## this is safe ##
+			self._geom_set_data_pointer = ctypes.pointer( ctypes.py_object(self) )
+			geom.SetData( self._geom_set_data_pointer )
 
 	def toggle_body(self, switch):
 		if switch:
