@@ -980,13 +980,12 @@ class ToggleButton(object):
 		self.driver.gain = 1.0
 		self.button.set_label( '%s%s' %(icons.DRIVER,self.name.strip()))
 
-
-class CheckButton( ToggleButton ):
-	_type = 'check'
+class CheckButton( ToggleButton ): _type = 'check'
 
 
+############## Simple Driveable Slider ##############
 class SimpleSlider(object):
-	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False):
+	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False, no_show_all=False, tooltip=None):
 		if title is not None: self.title = title
 		else: self.title = name.replace('_',' ')
 
@@ -998,6 +997,8 @@ class SimpleSlider(object):
 			self.widget = gtk.Frame( self.title )
 			self.modal = row = gtk.HBox()
 		self.widget.add( row )
+
+		if tooltip: self.widget.set_tooltip_text( tooltip )
 
 		if object is not None: value = getattr( object, name )
 		self.adjustment = adjust = gtk.Adjustment( value=value, lower=min, upper=max )
@@ -1019,6 +1020,10 @@ class SimpleSlider(object):
 				'drag-drop', self.drop_driver,
 				object, name
 			)
+
+		self.widget.show_all()
+		if no_show_all: self.widget.set_no_show_all(True)
+
 
 	def drop_driver(self, wid, context, x, y, time, target, path):
 		print('on drop')
@@ -3220,11 +3225,11 @@ class PyppetUI( PyppetAPI ):
 		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
 		box = gtk.HBox(); box.set_border_width(4)
 		frame.add( box )
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b = gtk.ToggleButton( icons.FX ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_left_tools)
 		box.pack_start( b, expand=False )
-		b = gtk.ToggleButton( icons.SOUTH_ARROW ); b.set_relief( gtk.RELIEF_NONE )
+		b = gtk.ToggleButton( icons.TOOLS ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_footer)
 		box.pack_start( b, expand=False )
@@ -3301,7 +3306,7 @@ class PyppetUI( PyppetAPI ):
 		note.set_border_width( 2 )
 		split.pack_start( note, expand=False )
 		widget = self.websocket_server.webGL.get_fx_widget()
-		note.append_page( widget, gtk.Label( icons.FX ) )
+		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
 		page = gtk.VBox()
 		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
 		b.connect( self, path='camera_randomize' )
@@ -3417,8 +3422,8 @@ class PyppetUI( PyppetAPI ):
 			elif ob.type=='LAMP':
 				r,g,b = ob.data.color
 				gcolor = rgb2gdk(r,g,b)
-				b = gtk.ColorButton()
-				b.set_color(gcolor)
+				b = gtk.ColorButton( gcolor )
+				#b.set_color(gcolor)
 				root.pack_start( b, expand=False )
 				b.connect('color-set', self.color_set, gcolor, ob.data )
 
@@ -3430,31 +3435,41 @@ class PyppetUI( PyppetAPI ):
 
 				r,g,b,a = ob.color	# ( mesh: float-array not color-object )
 				gcolor = rgb2gdk(r,g,b)
-				b = gtk.ColorButton()
-				b.set_color(gcolor)
+				b = gtk.ColorButton(gcolor)
 				root.pack_start( b, expand=False )
 				b.connect('color-set', self.color_set, gcolor, ob )
 				# "color-changed" with gtk_color_selection, then use ...get_current_color
+
+				root.pack_start( gtk.Label('    '), expand=False )
+
+				g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
+				g.set_no_show_all(True)
+				if ob.ode_use_body: g.show()
+				else: g.hide()
 
 				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle body physics')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_body )
-				b.connect('toggled', self.toggle_body)
+				b.connect('toggled', self.toggle_body, g)
 
-				b = gtk.ToggleButton( icons.GRAVITY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle gravity')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_gravity )
-				b.connect('toggled', self.toggle_gravity)
+				g.set_tooltip_text('toggle gravity')
+				root.pack_start( g, expand=False )
+				g.set_active( ob.ode_use_gravity )
+				g.connect('toggled', self.toggle_gravity)
+
+				root.pack_start( gtk.Label('    '), expand=False )
+
 
 				combo = gtk.ComboBoxText()
+				Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, driveable=True, border_width=0, no_show_all=True, tooltip='friction' )
+				Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, driveable=True, border_width=0, no_show_all=True, tooltip='bounce' )
 
 				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle collision')
 				root.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', self.toggle_collision, combo)
+				b.connect('toggled', self.toggle_collision, combo, Fslider.widget, Bslider.widget)
 
 				root.pack_start( combo, expand=False )
 				for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
@@ -3464,8 +3479,20 @@ class PyppetUI( PyppetAPI ):
 				combo.set_tooltip_text( 'collision type' )
 				combo.connect('changed',self.change_collision_type, ob )
 
-				if ob.ode_use_collision: combo.show()
-				else: combo.hide()
+				root.pack_start( Fslider.widget )
+				root.pack_start( Bslider.widget )
+
+
+				if ob.ode_use_collision:
+					combo.show()
+					Fslider.widget.show()
+					Bslider.widget.show()
+
+				else:
+					combo.hide()
+					Fslider.widget.hide()
+					Bslider.widget.hide()
+
 				combo.set_no_show_all(True)
 
 			root.show_all()
@@ -3485,12 +3512,21 @@ class PyppetUI( PyppetAPI ):
 
 	def toggle_gravity(self, b):
 		for ob in self.context.selected_objects: ob.ode_use_gravity = b.get_active()
-	def toggle_collision(self, b, combo):
+	def toggle_collision(self, b, combo, fslider, bslider):
 		for ob in self.context.selected_objects: ob.ode_use_collision = b.get_active()
-		if b.get_active(): combo.show()
-		else: combo.hide()
-	def toggle_body(self, b):
+		if b.get_active():
+			combo.show()
+			fslider.show()
+			bslider.show()
+		else:
+			combo.hide()
+			fslider.hide()
+			bslider.hide()
+
+	def toggle_body(self, b, gravity_button):
 		for ob in self.context.selected_objects: ob.ode_use_body = b.get_active()
+		if b.get_active(): gravity_button.show()
+		else: gravity_button.hide()
 
 	def change_collision_type(self,combo, ob):
 		type = combo.get_active_text()

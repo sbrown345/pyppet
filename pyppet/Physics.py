@@ -16,6 +16,10 @@ def _None(arg): return None		# stupid rule, why should the func have to return N
 
 
 #################### pyRNA ##################
+bpy.types.Object.ode_friction = FloatProperty( name='body friction', default=0.5 )
+
+bpy.types.Object.ode_bounce = FloatProperty( name='body bounce', default=0.05 )
+
 bpy.types.Object.ode_use_body = BoolProperty( 
 	name='use physics body', default=False, 
 	update=lambda self,con:  ENGINE.get_wrapper(self).toggle_body(self.ode_use_body)
@@ -217,14 +221,20 @@ class OdeSingleton(object):
 			ctypes.sizeof( dContactGeom )
 		)
 
+		bo1 = bpy.data.objects[ ob1.name ]
+		bo2 = bpy.data.objects[ ob2.name ]
+
 		dContact = ode.Contact.CSTRUCT			# get the raw ctypes struct
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
 			con = dContact()
 			con.surface.mode = ode.ContactBounce	# pyode default
-			#con.surface.bounce = 0.1				# pyode default
-			con.surface.mu = 100.0
+			#con.surface.bounce = 0.1			# pyode default
+			#con.surface.mu = 100.0
 			con.geom = g
+
+			con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
+			con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
 
 			## user callbacks ##
 			dojoint = True

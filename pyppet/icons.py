@@ -1,5 +1,10 @@
 COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ￼⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕᨟'
 
+TOOLS = '𝙩𝙤𝙤𝙡𝙨'
+
+FX = '𝗙𝗫'
+FX_LAYERS = '𐎒'
+
 REFRESH = '⟳'
 
 FFT = '𝟋'
@@ -13,8 +18,6 @@ SOUTH_WEST_ARROW = '⬋'
 SOUTH_ARROW = '⇩'
 
 CAMERA = '⏣'
-
-FX = '𐎒'
 
 MODE = '⬕'
 
@@ -60,9 +63,13 @@ DELETE = '✗'
 
 GRAVITY = '〄'
 
-POPUP = ''
+POPUP = '𝛒𝛐𝛒𝛖𝛒'
 
-OVERLAY = '⎚'
+DEVICES = '𝓭𝓮𝓿𝓲𝓬𝓮𝓼'
+
+OVERLAY = '𝗨𝗶'
+
+FULLSCREEN = '⎚'
 
 PLAY_PHYSICS = '⧐'
 
