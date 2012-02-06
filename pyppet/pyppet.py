@@ -3024,6 +3024,67 @@ class PyppetUI( PyppetAPI ):
 		else:
 			if self.play_wave_on_record: self.stop_wave()
 
+	def load_texture(self,entry): pass
+
+	def get_textures_widget(self):
+		self._textures_widget_sw = sw = gtk.ScrolledWindow()
+		self._textures_widget_container = frame = gtk.Frame()
+		self._textures_widget_modal = root = gtk.VBox()
+		sw.add_with_viewport( frame )
+		sw.set_policy(True,False)
+		frame.add( root )
+		return sw
+
+	def toggle_texture_slot(self,button, slot, opt, slider):
+		setattr(slot, opt, button.get_active())
+		if button.get_active(): slider.show()
+		else: slider.hide()
+
+	def update_footer(self, ob):
+		if ob.type != 'MESH': return
+		print('updating footer')
+		self._textures_widget_container.remove( self._textures_widget_modal )
+		self._textures_widget_modal = root = gtk.VBox()
+		self._textures_widget_container.add( root )
+
+		if not ob.data.materials: ob.data.materials.append( bpy.data.materials.new(name=ob.name) )
+		mat = ob.data.materials[0]
+
+		for i in range(4):
+			row = gtk.HBox(); root.pack_start( row )
+			row.set_border_width(3)
+			row.pack_start( gtk.Label('%s: '%(i+1)), expand=False )
+
+			if not mat.texture_slots[ i ]: mat.texture_slots.add()
+			slot = mat.texture_slots[ i ]
+			if not slot.texture: slot.texture = bpy.data.textures.new(name='%s.TEX%s'%(ob.name,i), type='IMAGE')
+
+			combo = gtk.ComboBoxText()
+			row.pack_start( combo, expand=False )
+			for i,type in enumerate( 'MIX ADD SUBTRACT OVERLAY MULTIPLY'.split() ):
+				combo.append('id', type)
+				if type == slot.blend_type: gtk.combo_box_set_active( combo, i )
+			combo.set_tooltip_text( 'texture blend mode' )
+			combo.connect('changed', lambda c,s: setattr(s,'blend_type',c.get_active_text()), slot)
+
+			for name,uname,fname in [('color','use_map_color_diffuse','diffuse_color_factor'), ('normal','use_map_normal','normal_factor'), ('alpha','use_map_alpha','alpha_factor'), ('specular','use_map_specular','specular_factor')]:
+
+				slider = SimpleSlider( slot, name=fname, title='', max=1.0, driveable=False, border_width=0, no_show_all=True )
+				b = gtk.CheckButton( name )
+				b.set_active( slot.use_map_diffuse )
+				b.connect('toggled', self.toggle_texture_slot, slot, uname, slider.widget)
+				row.pack_start( b, expand=False )
+				row.pack_start( slider.widget )
+				if b.get_active(): slider.widget.show()
+				else: slider.widget.hide()
+
+			row.pack_start( gtk.Label() )
+			e = FileEntry( '', self.load_texture )
+			row.pack_start( e.widget, expand=False )
+
+
+		root.show_all()
+
 	def get_wave_widget(self):
 		frame = gtk.Frame()
 		root = gtk.VBox(); frame.add( root )
@@ -3342,7 +3403,7 @@ class PyppetUI( PyppetAPI ):
 		self.socket.connect('plug-added', self.on_plug)
 		self.socket.connect('size-allocate',self.gsocket_resize)
 
-		####################################
+		############### FOOTER #################
 		self.footer = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
 
@@ -3357,9 +3418,15 @@ class PyppetUI( PyppetAPI ):
 		page.add( self.get_wave_widget() )
 
 		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.TEXTURE) )
+		page.add( self.get_textures_widget() )
+
+
+		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.KEYBOARD) )
 		w = self.audio.synth.channels[0].get_widget()
 		page.add( w )
+
 
 		############## overlays #############
 		ui = PropertiesUI( self.canvas, self.lock, context )
@@ -3397,105 +3464,108 @@ class PyppetUI( PyppetAPI ):
 			lines = data.splitlines()
 			return int( lines[0].split()[3] )
 
-	def update_selected_widget(self):
+	def update_selected_dependent_widgets(self):
 		if self.context.active_object and self.context.active_object.name != self.selected:
 			self.selected = self.context.active_object.name
-			self._frame.remove( self._modal )
-			self._modal = root = gtk.HBox()
-			self._frame.add( root )
 			ob = bpy.data.objects[ self.selected ]
-			#root.pack_start( gtk.Label(ob.name), expand=False )
+			self.update_header( ob )
+			self.update_footer( ob )
 
-			if ob.type == 'ARMATURE':
-				b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle pose mode')
+	def update_header(self,ob):
+		self._frame.remove( self._modal )
+		self._modal = root = gtk.HBox()
+		self._frame.add( root )
+
+		if ob.type == 'ARMATURE':
+			b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('toggle pose mode')
+			root.pack_start( b, expand=False )
+			b.set_active( self.context.mode=='POSE' )
+			b.connect('toggled', self.toggle_pose_mode)
+
+			if ob.name not in self.entities:
+				biped = self.GetBiped( ob )
+				b = gtk.Button( icons.BIPED ); b.set_relief( gtk.RELIEF_NONE )
 				root.pack_start( b, expand=False )
-				b.set_active( self.context.mode=='POSE' )
-				b.connect('toggled', self.toggle_pose_mode)
+				b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
 
-				if ob.name not in self.entities:
-					biped = self.GetBiped( ob )
-					b = gtk.Button( icons.BIPED ); b.set_relief( gtk.RELIEF_NONE )
-					root.pack_start( b, expand=False )
-					b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
+		elif ob.type=='LAMP':
+			r,g,b = ob.data.color
+			gcolor = rgb2gdk(r,g,b)
+			b = gtk.ColorButton( gcolor )
+			#b.set_color(gcolor)
+			root.pack_start( b, expand=False )
+			b.connect('color-set', self.color_set, gcolor, ob.data )
 
-			elif ob.type=='LAMP':
-				r,g,b = ob.data.color
-				gcolor = rgb2gdk(r,g,b)
-				b = gtk.ColorButton( gcolor )
-				#b.set_color(gcolor)
-				root.pack_start( b, expand=False )
-				b.connect('color-set', self.color_set, gcolor, ob.data )
+			slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
+			root.pack_start( slider.widget )
 
-				slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
-				root.pack_start( slider.widget )
+		else:
+			root.set_border_width(3)
+
+			r,g,b,a = ob.color	# ( mesh: float-array not color-object )
+			gcolor = rgb2gdk(r,g,b)
+			b = gtk.ColorButton(gcolor)
+			root.pack_start( b, expand=False )
+			b.connect('color-set', self.color_set, gcolor, ob )
+			# "color-changed" with gtk_color_selection, then use ...get_current_color
+
+			root.pack_start( gtk.Label('    '), expand=False )
+
+			g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
+			g.set_no_show_all(True)
+			if ob.ode_use_body: g.show()
+			else: g.hide()
+
+			b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('toggle body physics')
+			root.pack_start( b, expand=False )
+			b.set_active( ob.ode_use_body )
+			b.connect('toggled', self.toggle_body, g)
+
+			g.set_tooltip_text('toggle gravity')
+			root.pack_start( g, expand=False )
+			g.set_active( ob.ode_use_gravity )
+			g.connect('toggled', self.toggle_gravity)
+
+			root.pack_start( gtk.Label('    '), expand=False )
+
+
+			combo = gtk.ComboBoxText()
+			Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, driveable=True, border_width=0, no_show_all=True, tooltip='friction' )
+			Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, driveable=True, border_width=0, no_show_all=True, tooltip='bounce' )
+
+			b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('toggle collision')
+			root.pack_start( b, expand=False )
+			b.set_active( ob.ode_use_collision )
+			b.connect('toggled', self.toggle_collision, combo, Fslider.widget, Bslider.widget)
+
+			root.pack_start( combo, expand=False )
+			for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
+				combo.append('id', type)
+				if type == ob.game.collision_bounds_type:
+					gtk.combo_box_set_active( combo, i )
+			combo.set_tooltip_text( 'collision type' )
+			combo.connect('changed',self.change_collision_type, ob )
+
+			root.pack_start( Fslider.widget )
+			root.pack_start( Bslider.widget )
+
+
+			if ob.ode_use_collision:
+				combo.show()
+				Fslider.widget.show()
+				Bslider.widget.show()
 
 			else:
-				root.set_border_width(3)
+				combo.hide()
+				Fslider.widget.hide()
+				Bslider.widget.hide()
 
-				r,g,b,a = ob.color	# ( mesh: float-array not color-object )
-				gcolor = rgb2gdk(r,g,b)
-				b = gtk.ColorButton(gcolor)
-				root.pack_start( b, expand=False )
-				b.connect('color-set', self.color_set, gcolor, ob )
-				# "color-changed" with gtk_color_selection, then use ...get_current_color
+			combo.set_no_show_all(True)
 
-				root.pack_start( gtk.Label('    '), expand=False )
-
-				g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
-				g.set_no_show_all(True)
-				if ob.ode_use_body: g.show()
-				else: g.hide()
-
-				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle body physics')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_body )
-				b.connect('toggled', self.toggle_body, g)
-
-				g.set_tooltip_text('toggle gravity')
-				root.pack_start( g, expand=False )
-				g.set_active( ob.ode_use_gravity )
-				g.connect('toggled', self.toggle_gravity)
-
-				root.pack_start( gtk.Label('    '), expand=False )
-
-
-				combo = gtk.ComboBoxText()
-				Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, driveable=True, border_width=0, no_show_all=True, tooltip='friction' )
-				Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, driveable=True, border_width=0, no_show_all=True, tooltip='bounce' )
-
-				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle collision')
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', self.toggle_collision, combo, Fslider.widget, Bslider.widget)
-
-				root.pack_start( combo, expand=False )
-				for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
-					combo.append('id', type)
-					if type == ob.game.collision_bounds_type:
-						gtk.combo_box_set_active( combo, i )
-				combo.set_tooltip_text( 'collision type' )
-				combo.connect('changed',self.change_collision_type, ob )
-
-				root.pack_start( Fslider.widget )
-				root.pack_start( Bslider.widget )
-
-
-				if ob.ode_use_collision:
-					combo.show()
-					Fslider.widget.show()
-					Bslider.widget.show()
-
-				else:
-					combo.hide()
-					Fslider.widget.hide()
-					Bslider.widget.hide()
-
-				combo.set_no_show_all(True)
-
-			root.show_all()
+		root.show_all()
 
 	def color_set( self, button, color, ob ):
 		button.get_color( color )
@@ -3780,7 +3850,7 @@ class App( PyppetUI ):
 			if self.context.scene.frame_current != int(self._current_frame_adjustment.get_value()):
 				self._current_frame_adjustment.set_value( self.context.scene.frame_current )
 
-			self.update_selected_widget()
+			self.update_selected_dependent_widgets()
 
 			for o in self.overlays:
 				o.update( self.context.window.screen, self.blender_width, self.blender_height )

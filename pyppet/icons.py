@@ -29,6 +29,8 @@ LIGHT = '☼'
 
 MATERIAL = '▧'
 
+TEXTURE = '▩'
+
 MICROPHONE = '𐎘'
 
 SINE_WAVE = '∿'
