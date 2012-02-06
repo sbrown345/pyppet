@@ -2979,9 +2979,10 @@ def set_transform( name, pos, rot, set_body=False ):
 
 class FileEntry( object ):
 	## for drag and drop ##
-	def __init__(self, name, callback):
+	def __init__(self, name, callback, *args):
 		self.name = name
 		self.callback = callback
+		self.callback_args = args
 
 		self.widget = bx = gtk.HBox()
 		bx.pack_start( gtk.Label(name), expand=False )
@@ -3004,7 +3005,7 @@ class FileEntry( object ):
 		if url.startswith('file://'): url = url[ 7 : ]
 		if os.path.isfile(url):
 			gtk.editable_set_editable(entry,False)
-			self.callback( url )
+			self.callback( url, *self.callback_args )
 
 	def delete(self,button):
 		self.entry.set_text('')
@@ -3024,7 +3025,6 @@ class PyppetUI( PyppetAPI ):
 		else:
 			if self.play_wave_on_record: self.stop_wave()
 
-	def load_texture(self,entry): pass
 
 	def get_textures_widget(self):
 		self._textures_widget_sw = sw = gtk.ScrolledWindow()
@@ -3039,6 +3039,16 @@ class PyppetUI( PyppetAPI ):
 		setattr(slot, opt, button.get_active())
 		if button.get_active(): slider.show()
 		else: slider.hide()
+
+	def load_texture(self,url, texture):
+		print(url)
+		if texture.type != 'IMAGE': texture.type = 'IMAGE'
+		if not texture.image:
+			texture.image = bpy.data.images.new(name=url.split('/')[-1], width=64, height=64)
+			texture.image.source = 'FILE'
+		texture.image.filepath = url
+		#texture.image.reload()
+
 
 	def update_footer(self, ob):
 		if ob.type != 'MESH': return
@@ -3055,7 +3065,7 @@ class PyppetUI( PyppetAPI ):
 			row.set_border_width(3)
 			row.pack_start( gtk.Label('%s: '%(i+1)), expand=False )
 
-			if not mat.texture_slots[ i ]: mat.texture_slots.add()
+			if not mat.texture_slots[ i ]: mat.texture_slots.add(); mat.texture_slots[ i ].texture_coords = 'UV'
 			slot = mat.texture_slots[ i ]
 			if not slot.texture: slot.texture = bpy.data.textures.new(name='%s.TEX%s'%(ob.name,i), type='IMAGE')
 
@@ -3071,7 +3081,7 @@ class PyppetUI( PyppetAPI ):
 
 				slider = SimpleSlider( slot, name=fname, title='', max=1.0, driveable=False, border_width=0, no_show_all=True )
 				b = gtk.CheckButton( name )
-				b.set_active( slot.use_map_diffuse )
+				b.set_active( getattr(slot,uname) )
 				b.connect('toggled', self.toggle_texture_slot, slot, uname, slider.widget)
 				row.pack_start( b, expand=False )
 				row.pack_start( slider.widget )
@@ -3079,9 +3089,8 @@ class PyppetUI( PyppetAPI ):
 				else: slider.widget.hide()
 
 			row.pack_start( gtk.Label() )
-			e = FileEntry( '', self.load_texture )
+			e = FileEntry( '', self.load_texture, slot.texture )
 			row.pack_start( e.widget, expand=False )
-
 
 		root.show_all()
 
