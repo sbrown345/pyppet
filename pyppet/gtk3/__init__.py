@@ -5755,7 +5755,7 @@ __freeze_rpythonic_struct( __pthread_mutex_s, [
 	( "__owner", ctypes.c_int ),
 	( "__kind", ctypes.c_int ),
 	( "__nusers", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xdbfb3ac>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xdc9052c>
 ])
 
 __freeze_rpythonic_struct( pthread_mutex_t, [
@@ -15311,12 +15311,12 @@ calloc = _rpythonic_function_(		"calloc", ctypes.POINTER(ctypes.c_void_p), [
 try_malloc = _rpythonic_function_(		"try_malloc", ctypes.POINTER(ctypes.c_void_p), [
 	("n_bytes",		ctypes.c_uint),] )
 
+g_mem_set_vtable = _rpythonic_function_(		"g_mem_set_vtable", ctypes.c_void_p, [
+	("vtable",		ctypes.POINTER(_GMemVTable)),] )
+
 try_realloc = _rpythonic_function_(		"try_realloc", ctypes.POINTER(ctypes.c_void_p), [
 	("mem",		ctypes.POINTER(ctypes.c_void_p)),
 	("n_bytes",		ctypes.c_uint),] )
-
-g_mem_set_vtable = _rpythonic_function_(		"g_mem_set_vtable", ctypes.c_void_p, [
-	("vtable",		ctypes.POINTER(_GMemVTable)),] )
 
 g_mem_is_system_malloc = _rpythonic_function_(		"g_mem_is_system_malloc", ctypes.c_int, [] )
 
@@ -17377,10 +17377,10 @@ io_set_flags = _rpythonic_function_(		"io_set_flags", ctypes.c_int, [
 	("flags",		ctypes.c_int),
 	("err",		ctypes.POINTER(ctypes.POINTER(_GError))),] )
 
-io_get_flags = _rpythonic_function_(		"io_get_flags", ctypes.c_int, [
+g_io_channel_init = _rpythonic_function_(		"g_io_channel_init", ctypes.c_void_p, [
 	("channel",		ctypes.POINTER(_GIOChannel)),] )
 
-g_io_channel_init = _rpythonic_function_(		"g_io_channel_init", ctypes.c_void_p, [
+io_get_flags = _rpythonic_function_(		"io_get_flags", ctypes.c_int, [
 	("channel",		ctypes.POINTER(_GIOChannel)),] )
 
 g_io_channel_ref = _rpythonic_function_(		"g_io_channel_ref", ctypes.POINTER(_GIOChannel), [
@@ -20204,17 +20204,17 @@ collect_value = _rpythonic_function_(		"collect_value", ctypes.POINTER(ctypes.c_
 	("collect_values",		ctypes.POINTER(_GTypeCValue)),
 	("collect_flags",		ctypes.c_uint),] )
 
-g_type_register_static = _rpythonic_function_(		"g_type_register_static", ctypes.c_uint, [
-	("parent_type",		ctypes.c_uint),
-	("type_name",		ctypes.POINTER(ctypes.c_char)),
-	("info",		ctypes.POINTER(_GTypeInfo)),
-	("flags",		ctypes.c_int),] )
-
 lcopy_value = _rpythonic_function_(		"lcopy_value", ctypes.POINTER(ctypes.c_char), [
 	("value",		ctypes.POINTER(_GValue)),
 	("n_collect_values",		ctypes.c_uint),
 	("collect_values",		ctypes.POINTER(_GTypeCValue)),
 	("collect_flags",		ctypes.c_uint),] )
+
+g_type_register_static = _rpythonic_function_(		"g_type_register_static", ctypes.c_uint, [
+	("parent_type",		ctypes.c_uint),
+	("type_name",		ctypes.POINTER(ctypes.c_char)),
+	("info",		ctypes.POINTER(_GTypeInfo)),
+	("flags",		ctypes.c_int),] )
 
 g_type_register_static_simple = _rpythonic_function_(		"g_type_register_static_simple", ctypes.c_uint, [
 	("parent_type",		ctypes.c_uint),
@@ -22273,11 +22273,11 @@ set_state = _rpythonic_function_(		"set_state", ctypes.c_void_p, [
 	("action",		ctypes.POINTER(_GAction)),
 	("value",		ctypes.POINTER(_GVariant)),] )
 
+g_action_get_type = _rpythonic_function_(		"g_action_get_type", ctypes.c_uint, [] )
+
 activate = _rpythonic_function_(		"activate", ctypes.c_void_p, [
 	("action",		ctypes.POINTER(_GAction)),
 	("parameter",		ctypes.POINTER(_GVariant)),] )
-
-g_action_get_type = _rpythonic_function_(		"g_action_get_type", ctypes.c_uint, [] )
 
 g_action_get_name = _rpythonic_function_(		"g_action_get_name", ctypes.POINTER(ctypes.c_char), [
 	("action",		ctypes.POINTER(_GAction)),] )
@@ -24988,12 +24988,12 @@ eject_with_operation = _rpythonic_function_(		"eject_with_operation", ctypes.c_v
 	("callback",		ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(_GObject),ctypes.POINTER(_GAsyncResult),ctypes.POINTER(ctypes.c_void_p),)),
 	("user_data",		ctypes.POINTER(ctypes.c_void_p)),] )
 
-g_drive_get_type = _rpythonic_function_(		"g_drive_get_type", ctypes.c_uint, [] )
-
 eject_with_operation_finish = _rpythonic_function_(		"eject_with_operation_finish", ctypes.c_int, [
 	("drive",		ctypes.POINTER(_GDrive)),
 	("result",		ctypes.POINTER(_GAsyncResult)),
 	("error",		ctypes.POINTER(ctypes.POINTER(_GError))),] )
+
+g_drive_get_type = _rpythonic_function_(		"g_drive_get_type", ctypes.c_uint, [] )
 
 g_drive_get_name = _rpythonic_function_(		"g_drive_get_name", ctypes.POINTER(ctypes.c_char), [
 	("drive",		ctypes.POINTER(_GDrive)),] )
@@ -25111,13 +25111,13 @@ to_tokens = _rpythonic_function_(		"to_tokens", ctypes.c_int, [
 	("tokens",		ctypes.POINTER(_GPtrArray)),
 	("out_version",		ctypes.POINTER(ctypes.c_int)),] )
 
-g_icon_get_type = _rpythonic_function_(		"g_icon_get_type", ctypes.c_uint, [] )
-
 from_tokens = _rpythonic_function_(		"from_tokens", ctypes.POINTER(_GIcon), [
 	("tokens",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
 	("num_tokens",		ctypes.c_int),
 	("version",		ctypes.c_int),
 	("error",		ctypes.POINTER(ctypes.POINTER(_GError))),] )
+
+g_icon_get_type = _rpythonic_function_(		"g_icon_get_type", ctypes.c_uint, [] )
 
 g_icon_hash = _rpythonic_function_(		"g_icon_hash", ctypes.c_uint, [("icon",		ctypes.c_void_p)] )
 
@@ -26917,10 +26917,10 @@ g_file_output_stream_get_etag = _rpythonic_function_(		"g_file_output_stream_get
 to_string = _rpythonic_function_(		"to_string", ctypes.POINTER(ctypes.c_char), [
 	("address",		ctypes.POINTER(_GInetAddress)),] )
 
+g_inet_address_get_type = _rpythonic_function_(		"g_inet_address_get_type", ctypes.c_uint, [] )
+
 to_bytes = _rpythonic_function_(		"to_bytes", ctypes.POINTER(ctypes.c_ubyte), [
 	("address",		ctypes.POINTER(_GInetAddress)),] )
-
-g_inet_address_get_type = _rpythonic_function_(		"g_inet_address_get_type", ctypes.c_uint, [] )
 
 g_inet_address_new_from_string = _rpythonic_function_(		"g_inet_address_new_from_string", ctypes.POINTER(_GInetAddress), [
 	("string",		ctypes.POINTER(ctypes.c_char)),] )
@@ -27859,13 +27859,13 @@ g_pollable_source_new = _rpythonic_function_(		"g_pollable_source_new", ctypes.P
 is_writable = _rpythonic_function_(		"is_writable", ctypes.c_int, [
 	("stream",		ctypes.POINTER(_GPollableOutputStream)),] )
 
+g_pollable_output_stream_get_type = _rpythonic_function_(		"g_pollable_output_stream_get_type", ctypes.c_uint, [] )
+
 write_nonblocking = _rpythonic_function_(		"write_nonblocking", ctypes.c_int, [
 	("stream",		ctypes.POINTER(_GPollableOutputStream)),
 	("buffer",		ctypes.POINTER(ctypes.c_void_p)),
 	("size",		ctypes.c_uint),
 	("error",		ctypes.POINTER(ctypes.POINTER(_GError))),] )
-
-g_pollable_output_stream_get_type = _rpythonic_function_(		"g_pollable_output_stream_get_type", ctypes.c_uint, [] )
 
 g_pollable_output_stream_can_poll = _rpythonic_function_(		"g_pollable_output_stream_can_poll", ctypes.c_int, [
 	("stream",		ctypes.POINTER(_GPollableOutputStream)),] )
@@ -33624,10 +33624,10 @@ area_updated = _rpythonic_function_(		"area_updated", ctypes.c_void_p, [
 	("width",		ctypes.c_int),
 	("height",		ctypes.c_int),] )
 
-gdk_pixbuf_loader_get_type = _rpythonic_function_(		"gdk_pixbuf_loader_get_type", ctypes.c_uint, [] )
-
 closed = _rpythonic_function_(		"closed", ctypes.c_void_p, [
 	("loader",		ctypes.POINTER(_GdkPixbufLoader)),] )
+
+gdk_pixbuf_loader_get_type = _rpythonic_function_(		"gdk_pixbuf_loader_get_type", ctypes.c_uint, [] )
 
 gdk_pixbuf_loader_new = _rpythonic_function_(		"gdk_pixbuf_loader_new", ctypes.POINTER(_GdkPixbufLoader), [] )
 
@@ -35587,9 +35587,9 @@ _gtk_reserved9 = _rpythonic_function_(		"_gtk_reserved9", ctypes.c_void_p, [] )
 
 _gtk_reserved10 = _rpythonic_function_(		"_gtk_reserved10", ctypes.c_void_p, [] )
 
-_gtk_reserved11 = _rpythonic_function_(		"_gtk_reserved11", ctypes.c_void_p, [] )
-
 gtk_style_get_type = _rpythonic_function_(		"gtk_style_get_type", ctypes.c_uint, [] )
+
+_gtk_reserved11 = _rpythonic_function_(		"_gtk_reserved11", ctypes.c_void_p, [] )
 
 gtk_style_new = _rpythonic_function_(		"gtk_style_new", ctypes.POINTER(_GtkStyle), [] )
 
@@ -36336,11 +36336,11 @@ get_style_property = _rpythonic_function_(		"get_style_property", ctypes.c_int, 
 	("pspec",		ctypes.POINTER(_GParamSpec)),
 	("value",		ctypes.POINTER(_GValue)),] )
 
+gtk_style_provider_get_type = _rpythonic_function_(		"gtk_style_provider_get_type", ctypes.c_uint, [] )
+
 get_icon_factory = _rpythonic_function_(		"get_icon_factory", ctypes.POINTER(_GtkIconFactory), [
 	("provider",		ctypes.POINTER(_GtkStyleProvider)),
 	("path",		ctypes.POINTER(_GtkWidgetPath)),] )
-
-gtk_style_provider_get_type = _rpythonic_function_(		"gtk_style_provider_get_type", ctypes.c_uint, [] )
 
 gtk_style_provider_get_style = _rpythonic_function_(		"gtk_style_provider_get_style", ctypes.POINTER(_GtkStyleProperties), [
 	("provider",		ctypes.POINTER(_GtkStyleProvider)),
@@ -55909,7 +55909,7 @@ def connect( ptr, name, func, *args ):
 for o in (GtkVBox, GtkHBox): o._rpythonic_parent_classes_.append( GtkBox )
 for o in (GtkCheckButton,): o._rpythonic_parent_classes_.append( GtkToggleButton )
 for o in (GtkHScale, GtkVScale): o._rpythonic_parent_classes_.append( GtkScale )
-for o in (GtkCheckButton,GtkToggleButton): o._rpythonic_parent_classes_.append( GtkButton )
+for o in (GtkCheckButton,GtkToggleButton, GtkColorButton): o._rpythonic_parent_classes_.append( GtkButton )
 
 GTK_WIDGET_CLASSES = {
 	GtkButton : gtk_button_new_with_label,

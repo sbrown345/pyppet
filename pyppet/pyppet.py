@@ -87,8 +87,10 @@ import json
 def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
-BG_COLOR = rgb2gdk( 0.7, 0.7, 0.7 )
+
+BG_COLOR = rgb2gdk( 0.705, 0.7, 0.7 )
 BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
+DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
 
 STREAM_BUFFER_SIZE = 2048
 
@@ -1015,6 +1017,8 @@ class SimpleSlider(object):
 		self.widget.set_border_width( border_width )
 
 		if driveable:
+			scale.override_color( gtk.STATE_NORMAL, DRIVER_COLOR )
+
 			DND.make_destination( self.widget )
 			self.widget.connect(
 				'drag-drop', self.drop_driver,
@@ -3343,6 +3347,7 @@ class PyppetUI( PyppetAPI ):
 		rect = gtk.cairo_rectangle_int()
 		canvas.get_allocation( rect )
 		if self.blender_window_ready:
+			print('canvas', rect.width, rect.height)
 			self.bwidth = rect.width
 			self.bheight = rect.height
 			#self.socket.set_size_request( w, h )
@@ -3358,15 +3363,36 @@ class PyppetUI( PyppetAPI ):
 			self.blender_height = rect.height
 			Blender.window_resize( self.blender_width, self.blender_height )
 
+	def root_resize(self,root,rect):	# can be called on any state change, not just a resize #
+		rect = gtk.cairo_rectangle_int()
+		root.get_allocation( rect )
+		if rect.width != self._prev_root_width or rect.height != self._prev_root_height:
+			if self._prev_root_width is not None:
+				xd = rect.width - self._prev_root_width
+				yd = rect.height - self._prev_root_height
+				w = (self._b_min_width - 0) + xd
+				h = (self._b_min_height - 0) + yd
+				print('REQ',w,h)
+				#self.socket.set_size_request( self.bwidth, self.bheight )
+			self._prev_root_width = rect.width
+			self._prev_root_height = rect.height
+
 
 	def create_ui(self, context):
 		self.window = win = gtk.Window()
 		#win.set_opacity( 0.5 )
 		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		win.set_size_request( 640, 480 )
+		#win.set_size_request( 640, 480 )
 		win.set_title( 'Pyppet '+VERSION )
 		self.root = root = gtk.VBox()
 		win.add( root )
+		self._prev_root_width = None
+		self._prev_root_height = None
+		root.connect('size-allocate',self.root_resize)
+
+		self._b_min_width = 1100
+		self._b_min_height = 500
+
 
 		split = gtk.HBox()
 		root.pack_start( split )
@@ -3396,27 +3422,26 @@ class PyppetUI( PyppetAPI ):
 
 		self.create_header_ui( bsplit )
 
-		self.body = gtk.HBox()
-
-		bsplit.pack_start( self.body )
-
+		#self.body = gtk.HBox()
+		#bsplit.pack_start( self.body, expand=False )
 		self.canvas = gtk.Fixed()
 		self.canvas.connect('size-allocate',self.canvas_resize)
-		self.body.pack_start( self.canvas, expand=True )
-
+		#self.body.pack_start( self.canvas, expand=False )
+		############bsplit.pack_start( self.canvas, expand=True )
 
 		self.socket = gtk.Socket()
 		self.blender_container = eb = gtk.EventBox()
 		eb.add( self.socket )
-		self.canvas.put( eb, 0,0 )
+		############self.canvas.put( eb, 0,0 )
 		self.socket.connect('plug-added', self.on_plug)
 		self.socket.connect('size-allocate',self.gsocket_resize)
+		bsplit.pack_start( self.blender_container )
 
 		############### FOOTER #################
 		self.footer = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
 
-		bsplit.pack_start( self.footer, expand=False )
+		bsplit.pack_start( self.footer, expand=True )
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.RECORD) )
@@ -3461,7 +3486,7 @@ class PyppetUI( PyppetAPI ):
 		win = self.socket.get_plug_window()	# gdk-window
 		#win.set_title('stolen window')
 		self.bwidth = 1100	#win.get_width() - 420
-		self.bheight = 580	#win.get_height() - 340
+		self.bheight = 500	#win.get_height() - 340
 		self.socket.set_size_request( self.bwidth, self.bheight )
 
 	def get_window_xid( self, name ):
@@ -3502,10 +3527,9 @@ class PyppetUI( PyppetAPI ):
 			r,g,b = ob.data.color
 			gcolor = rgb2gdk(r,g,b)
 			b = gtk.ColorButton( gcolor )
-			#b.set_color(gcolor)
+			b.set_relief( gtk.RELIEF_NONE )
 			root.pack_start( b, expand=False )
 			b.connect('color-set', self.color_set, gcolor, ob.data )
-
 			slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
 			root.pack_start( slider.widget )
 
@@ -3515,9 +3539,9 @@ class PyppetUI( PyppetAPI ):
 			r,g,b,a = ob.color	# ( mesh: float-array not color-object )
 			gcolor = rgb2gdk(r,g,b)
 			b = gtk.ColorButton(gcolor)
+			b.set_relief( gtk.RELIEF_NONE )
 			root.pack_start( b, expand=False )
 			b.connect('color-set', self.color_set, gcolor, ob )
-			# "color-changed" with gtk_color_selection, then use ...get_current_color
 
 			root.pack_start( gtk.Label('    '), expand=False )
 
