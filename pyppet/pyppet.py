@@ -3316,69 +3316,28 @@ class PyppetUI( PyppetAPI ):
 		self.header.pack_start( b, expand=False )
 
 
-
 	def toggle_left_tools(self,b):
-		width = ctypes.pointer( ctypes.c_int() )
-		height = ctypes.pointer( ctypes.c_int() )
-		self.window.get_size( width, height )
-		width = width.contents.value
-
-		if b.get_active():
-			self._left_tools.show()
-			self.socket.set_size_request( width-160, self.bheight )
-
-		else:
-			self._left_tools.hide()
-			self.socket.set_size_request( width-4, self.bheight )
-		self.socket.queue_resize()
+		if b.get_active(): self._left_tools.show()
+		else: self._left_tools.hide()
 
 	def toggle_footer(self,b):
-		print('------------------ tog footer ------------------')
-		if b.get_active():
-			self.footer.show()
-			self.bheight -= 112
-		else:
-			self.footer.hide()
-			self.bheight += 105
-		self.socket.set_size_request( self.bwidth, self.bheight )
-		self.socket.queue_resize()
+		if b.get_active(): self.footer.show()
+		else: self.footer.hide()
 
-	def canvas_resize(self,canvas,rect):	# this get's called every frame when overlays on
+	def Xsocket_resize(self,sock,rect):
 		rect = gtk.cairo_rectangle_int()
-		canvas.get_allocation( rect )
+		sock.get_allocation( rect )
 		if self.blender_window_ready:
-			print('canvas', rect.width, rect.height)
-			self.bwidth = rect.width
-			self.bheight = rect.height
-			#self.socket.set_size_request( w, h )
-			#self.socket.queue_resize()		# triggers gsocket_resize, but won't auto expand/fill
-			#self.socket.size_allocate( rect )	# has funny offset
-
-	def gsocket_resize(self,gsock,rect):
-		rect = gtk.cairo_rectangle_int()
-		gsock.get_allocation( rect )
-		if self.blender_window_ready:
-			print('Gsocket Resize', rect.width, rect.height)
+			print('Xsocket Resize', rect.width, rect.height)
 			self.blender_width = rect.width
 			self.blender_height = rect.height
 			Blender.window_resize( self.blender_width, self.blender_height )
 
-	def root_resize(self,root,rect):	# can be called on any state change, not just a resize #
-		rect = gtk.cairo_rectangle_int()
-		root.get_allocation( rect )
-		if rect.width != self._prev_root_width or rect.height != self._prev_root_height:
-			if self._prev_root_width is not None:
-				xd = rect.width - self._prev_root_width
-				yd = rect.height - self._prev_root_height
-				w = (self._b_min_width - 0) + xd
-				h = (self._b_min_height - 0) + yd
-				print('REQ',w,h)
-				#self.socket.set_size_request( self.bwidth, self.bheight )
-			self._prev_root_width = rect.width
-			self._prev_root_height = rect.height
-
 
 	def create_ui(self, context):
+		self._blender_min_width = 640
+		self._blender_min_height = 480
+
 		self.window = win = gtk.Window()
 		#win.set_opacity( 0.5 )
 		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
@@ -3386,13 +3345,6 @@ class PyppetUI( PyppetAPI ):
 		win.set_title( 'Pyppet '+VERSION )
 		self.root = root = gtk.VBox()
 		win.add( root )
-		self._prev_root_width = None
-		self._prev_root_height = None
-		root.connect('size-allocate',self.root_resize)
-
-		self._b_min_width = 1100
-		self._b_min_height = 500
-
 
 		split = gtk.HBox()
 		root.pack_start( split )
@@ -3422,20 +3374,14 @@ class PyppetUI( PyppetAPI ):
 
 		self.create_header_ui( bsplit )
 
-		#self.body = gtk.HBox()
-		#bsplit.pack_start( self.body, expand=False )
-		self.canvas = gtk.Fixed()
-		self.canvas.connect('size-allocate',self.canvas_resize)
-		#self.body.pack_start( self.canvas, expand=False )
-		############bsplit.pack_start( self.canvas, expand=True )
-
-		self.socket = gtk.Socket()
 		self.blender_container = eb = gtk.EventBox()
-		eb.add( self.socket )
-		############self.canvas.put( eb, 0,0 )
-		self.socket.connect('plug-added', self.on_plug)
-		self.socket.connect('size-allocate',self.gsocket_resize)
 		bsplit.pack_start( self.blender_container )
+
+		self.Xsocket = gtk.Socket()	# the XEMBED hack - TODO MSWindows solution?
+		eb.add( self.Xsocket )
+		############self.canvas.put( eb, 0,0 )
+		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
+		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
 
 		############### FOOTER #################
 		self.footer = note = gtk.Notebook()
@@ -3474,20 +3420,21 @@ class PyppetUI( PyppetAPI ):
 		win.connect('destroy', self.exit )
 		win.show_all()
 
+		############## get XID and then Embed Blender ##########
 		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
 		print('ready to xembed...')
 		xid = self.get_window_xid( 'Blender' )
-		self.socket.add_id( xid )
+		self.Xsocket.add_id( xid )
+		# ( this is brutal, ideally blender API supports embeding from python )
 
 		for o in self.overlays: o.disable()
 
-	def on_plug(self, args):
+	def on_plug_Xsocket(self, args):
 		self.blender_window_ready = True
-		win = self.socket.get_plug_window()	# gdk-window
-		#win.set_title('stolen window')
-		self.bwidth = 1100	#win.get_width() - 420
-		self.bheight = 500	#win.get_height() - 340
-		self.socket.set_size_request( self.bwidth, self.bheight )
+		self.Xsocket.set_size_request(
+			self._blender_min_width, 
+			self._blender_min_height
+		)
 
 	def get_window_xid( self, name ):
 		p =os.popen('xwininfo -int -name %s' %name)
@@ -3693,10 +3640,7 @@ class App( PyppetUI ):
 		self.active = True
 		self.overlays = []
 		self.components = []
-		self.bwidth = 640
-		self.bheight = 480
-		self.blender_width = None
-		self.blender_height = None
+
 		self.lock = threading._allocate_lock()
 
 		self.server = Server()
