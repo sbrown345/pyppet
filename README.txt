@@ -26,6 +26,10 @@ WebGL Notes:
 	( UV/image editor window must be open for streaming textures )
 
 ======================================================
+Having a hard time installing GTK3?
+http://abhizweblog.blogspot.com/2011/04/gnome-3-in-natty.html
+
+======================================================
 
 Installing Libraries:
 	You must install and/or compile these libraries to "/usr/lib" or "/usr/local/lib":

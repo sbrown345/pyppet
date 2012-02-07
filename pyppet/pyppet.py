@@ -88,7 +88,8 @@ def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
 
-BG_COLOR = rgb2gdk( 0.705, 0.7, 0.7 )
+#BG_COLOR = rgb2gdk( 0.74, 0.74, 0.76 )
+BG_COLOR = rgb2gdk( 0.94, 0.94, 0.96 )
 BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
 DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
 
@@ -1017,7 +1018,7 @@ class SimpleSlider(object):
 		self.widget.set_border_width( border_width )
 
 		if driveable:
-			scale.override_color( gtk.STATE_NORMAL, DRIVER_COLOR )
+			#scale.override_color( gtk.STATE_NORMAL, DRIVER_COLOR )
 
 			DND.make_destination( self.widget )
 			self.widget.connect(
@@ -3407,6 +3408,7 @@ class PyppetUI( PyppetAPI ):
 
 		############### ToolsUI ################
 		self.toolsUI = ToolsUI( self.lock, context )
+		self.toolsUI.widget.set_border_width(2)
 		Hsplit.pack_start( self.toolsUI.widget, expand=False )
 
 		############### FOOTER #################
@@ -3432,15 +3434,6 @@ class PyppetUI( PyppetAPI ):
 		w = self.audio.synth.channels[0].get_widget()
 		page.add( w )
 
-
-		############## overlays #############
-		#ui = PropertiesUI( self.canvas, self.lock, context )
-		#self.components.append( ui )
-		#self.overlays += ui.overlays
-
-		#ui = OutlinerUI( self.canvas, self.lock, context )
-		#self.components.append( ui )
-		#self.overlays += ui.overlays
 
 		win.connect('destroy', self.exit )
 		win.show_all()
@@ -4089,16 +4082,22 @@ class ToolsUI( object ):
 		sw = gtk.ScrolledWindow()
 		self.notebook.append_page( sw, gtk.Label(title) )
 		eb = gtk.EventBox()
-		eb.override_background_color( gtk.STATE_NORMAL, self.COLOR )
+		#eb.override_background_color( gtk.STATE_NORMAL, self.COLOR )
 		box = gtk.VBox(); eb.add( box )
 		sw.add_with_viewport( eb )
 		return box
 
 	def __init__(self, lock, context):
 		self.lock = lock
-		self.widget = self.notebook = gtk.Notebook()
-		self.widget.set_size_request( 280, 480 )
-		self.notebook.set_tab_pos( gtk.POS_RIGHT )
+		self.widget = root = gtk.VBox()
+		self.widget.set_size_request( 220, 480 )
+
+		ex = gtk.Expander( icons.DEVICES )
+		root.pack_start( ex )
+
+		self.notebook = gtk.Notebook()
+		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
+		ex.add( self.notebook )
 
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )

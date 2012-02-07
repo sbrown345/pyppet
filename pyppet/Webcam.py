@@ -313,11 +313,11 @@ class Widget(object):
 	def __init__(self, parent, active=True ):
 		self.webcam = WebCamera( active=active )
 		self.active = active
-		root = gtk.VBox(); root.set_border_width( 3 )
+		root = gtk.VBox(); root.set_border_width( 2 )
 		parent.add( root )
 		root.pack_start( self.webcam.preview_image_gtk, expand=False )
 		note = gtk.Notebook()
-		note.set_tab_pos( gtk.POS_LEFT )
+		note.set_tab_pos( gtk.POS_BOTTOM )
 		root.pack_start( note, expand=False )
 		for layer in self.webcam.layers:
 			layer.widget( note )
