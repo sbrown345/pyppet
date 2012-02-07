@@ -2888,7 +2888,26 @@ class PyppetAPI(object):
 		self.ragdolls = {}
 		self.bipeds = {}
 		self.ropes = {}
+	######################################
+	def reset( self ):
+		self.selected = None
+		self.on_active_object_changed_callbacks = []
+		self.reset_models()
 
+	def register(self, func):
+		self.on_active_object_changed_callbacks.append( func )
+
+
+	def update_callbacks(self):
+		if self.context.active_object and self.context.active_object.name != self.selected:
+			self.selected = self.context.active_object.name
+			ob = bpy.data.objects[ self.selected ]
+
+			for func in self.on_active_object_changed_callbacks:
+				func( ob )
+
+
+	########### recording/baking ###########
 	def start_record(self):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
@@ -3353,6 +3372,12 @@ class PyppetUI( PyppetAPI ):
 			self.blender_height = rect.height
 			Blender.window_resize( self.blender_width, self.blender_height )
 
+	def drop_on_Xsocket(self, wid, con, x, y, time):
+		if type(DND.object) is bpy.types.Material:
+			print('material dropped')
+			mat = DND.object
+			bpy.ops.object.material_slot_assign()
+
 
 	def create_ui(self, context):
 		self._blender_min_width = 640
@@ -3405,6 +3430,9 @@ class PyppetUI( PyppetAPI ):
 		eb.add( self.Xsocket )
 		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
 		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
+		DND.make_destination( self.Xsocket )
+		self.Xsocket.connect('drag-drop', self.drop_on_Xsocket)
+
 
 		############### ToolsUI ################
 		self.toolsUI = ToolsUI( self.lock, context )
@@ -3462,12 +3490,6 @@ class PyppetUI( PyppetAPI ):
 			lines = data.splitlines()
 			return int( lines[0].split()[3] )
 
-	def update_selected_dependent_widgets(self):
-		if self.context.active_object and self.context.active_object.name != self.selected:
-			self.selected = self.context.active_object.name
-			ob = bpy.data.objects[ self.selected ]
-			self.update_header( ob )
-			self.update_footer( ob )
 
 	def update_header(self,ob):
 		self._frame.remove( self._modal )
@@ -3631,16 +3653,17 @@ class App( PyppetUI ):
 		self.lock.release()
 
 	def __init__(self):
+		self.reset()		# PyppetAPI Public
+		self.register( self.update_header ) # listen to active object change
+		self.register( self.update_footer )
+
 		self.play_wave_on_record = True
 		self.wave_playing = False
 
 		self._rec_start_time = time.time()
 		self._rec_objects = {}	# recording buffers
 		self.preview = False
-
-		self.reset_models()
 		self.recording = False
-		self.selected = None
 		self.active = True
 
 		self.lock = threading._allocate_lock()
@@ -3829,7 +3852,7 @@ class App( PyppetUI ):
 			if self.context.scene.frame_current != int(self._current_frame_adjustment.get_value()):
 				self._current_frame_adjustment.set_value( self.context.scene.frame_current )
 
-			self.update_selected_dependent_widgets()
+			self.update_callbacks()	# updates UI on active object changed
 			self.toolsUI.iterate( self.context )
 			self.outlinerUI.iterate( self.context )
 			self.popup.update( self.context )
@@ -4074,7 +4097,70 @@ class OutlinerUI( object ):
 			eb.show_all()
 
 
+class MaterialsUI(object):
+	## ob.material_slots	(missing .new or .add)
+	### slot.link = 'DATA'
+	### slot.material
 
+	def __init__(self):
+		self.widget = gtk.Frame()
+		self.root = gtk.VBox()
+		self.widget.add( self.root )
+		Pyppet.register( self.on_active_object_changed )
+
+
+	def on_active_object_changed(self, ob):
+		self.widget.remove( self.root )
+		self.root = root = gtk.VBox()
+		self.widget.add( self.root )
+		root.set_border_width(2)
+
+		for mat in ob.data.materials:
+			ex = gtk.Expander( mat.name )
+			root.pack_start( ex )
+			bx = gtk.VBox(); ex.add( bx )
+			if mat == ob.active_material: ex.set_expanded(True)
+
+			DND.make_source( ex, mat )
+
+			row = gtk.HBox(); bx.pack_start( row, expand=False )
+			b = gtk.ColorButton( rgb2gdk(*mat.diffuse_color) )
+			row.pack_start( b, expand=False )
+
+			b = gtk.ColorButton( rgb2gdk(*mat.specular_color) )
+			row.pack_start( b, expand=False )
+
+			slider = SimpleSlider( mat, name='diffuse_intensity', title='', max=1.0, driveable=True, tooltip='diffuse' )
+			bx.pack_start( slider.widget, expand=False )
+
+			slider = SimpleSlider( mat, name='specular_intensity', title='', max=1.0, driveable=True, tooltip='specular' )
+			bx.pack_start( slider.widget, expand=False )
+
+			slider = SimpleSlider( mat, name='specular_hardness', title='', max=500, driveable=True, tooltip='hardness' )
+			bx.pack_start( slider.widget, expand=False )
+
+			slider = SimpleSlider( mat, name='emit', title='', max=1.0, driveable=True, tooltip='emission' )	# max is 2.0
+			bx.pack_start( slider.widget, expand=False )
+
+			slider = SimpleSlider( mat, name='ambient', title='', max=1.0, driveable=True, tooltip='ambient' )
+			bx.pack_start( slider.widget, expand=False )
+
+		root.pack_start( gtk.Label() )
+		b = gtk.Button('add material')
+		b.connect('clicked', self.add_material, ob)
+		root.pack_start( b, expand=False )
+
+		self.root.show_all()
+
+	def add_material(self,button, ob):
+		bpy.ops.object.material_slot_add()
+		mat = bpy.data.materials.new( name=ob.name )
+		ob.data.materials[ len(ob.data.materials)-1 ] = mat
+
+	def drop_on_face(self, ob):
+		#ob.active_material_index = index	# works
+		#ob.active_material = mat	# also works
+		bpy.ops.object.material_slot_assign()
 
 class ToolsUI( object ):
 	COLOR = gtk.GdkRGBA(0.96,.95,.95, 0.85)
@@ -4090,10 +4176,10 @@ class ToolsUI( object ):
 	def __init__(self, lock, context):
 		self.lock = lock
 		self.widget = root = gtk.VBox()
-		self.widget.set_size_request( 220, 480 )
+		self.widget.set_size_request( 140, 480 )
 
 		ex = gtk.Expander( icons.DEVICES )
-		root.pack_start( ex )
+		root.pack_start( ex, expand=False )
 
 		self.notebook = gtk.Notebook()
 		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
@@ -4121,9 +4207,24 @@ class ToolsUI( object ):
 		widget = Pyppet.audio.microphone.get_analysis_widget()
 		box.pack_start( widget )
 
-		box = self.new_page( icons.PHYSICS )
+		ex = gtk.Expander( icons.PHYSICS )
+		root.pack_start( ex, expand=False )
+		box = gtk.VBox()
+		ex.add( box )
 		self.engine = Physics.ENGINE
 		self.physics_widget = PhysicsWidget( box, context )
+
+		ex = gtk.Expander( icons.MODIFIERS )
+		root.pack_start( ex, expand=False )
+
+		ex = gtk.Expander( icons.CONSTRAINTS )
+		root.pack_start( ex, expand=False )
+
+		ex = gtk.Expander( icons.MATERIALS )
+		root.pack_start( ex, expand=False )
+		self.materials_UI = MaterialsUI()
+		ex.add( self.materials_UI.widget )
+
 
 	def iterate(self, context):
 		self.physics_widget.update_ui( context )
