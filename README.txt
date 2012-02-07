@@ -1,4 +1,4 @@
-Pyppet2 - Feb5 2012
+Pyppet2 - Feb7 2012
 by Brett Hart - bhartsho@yahoo.com
 http://pyppet.blogspot.com
 License: BSD
@@ -9,6 +9,9 @@ Usage:
 The script "Pyppet.sh" expects you have installed Blender to "~/Blender2.6"
 You can modify Pyppet.sh to match the path to your installed Blender.
 
+If Blender opens without the GTK interface, something is not installed correctly,
+see Installing Libraries below.
+
 ======================================================
 
 Requires:
@@ -17,10 +20,10 @@ Requires:
 	GTK3
 	ODE
 
-WebGL:
+WebGL Notes:
 	Tested with Google Chrome 15.0.874.121
 	point browser to: http://localhost:8080
-
+	( UV/image editor window must be open for streaming textures )
 
 ======================================================
 
@@ -57,8 +60,15 @@ Installing Libraries:
 ========================================================
 
 Known Issues:
-	. Xembed only works on Linux, what about OSX with X11?
+	. Xembed only works on Linux.
+
 	. the wnck-helper.py is a hack that leaves a dead Blender window open
+
 	. keyboard entry fails on Gtk widgets if Blender's screen is clicked
 		( moving the Pyppet window captures keyboard focus again )
+
+	. the UV/image editor must be open for WebGL streaming textures to work
+
+	. file open is not working
+		workaround set the file you wish to open as your startup default
 

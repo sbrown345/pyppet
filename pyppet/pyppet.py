@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb4, 2012
+# Feb7, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4a'
+VERSION = '1.9.4b'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -3299,26 +3299,45 @@ class PyppetUI( PyppetAPI ):
 		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
 		box = gtk.HBox(); box.set_border_width(4)
 		frame.add( box )
-		b = gtk.ToggleButton( icons.FX ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_left_tools)
-		box.pack_start( b, expand=False )
-		b = gtk.ToggleButton( icons.TOOLS ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_footer)
-		box.pack_start( b, expand=False )
+
+
+
 		self.popup = Popup()
 		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled',self.popup.toggle_popup)
-		self.header.pack_start( b, expand=False )
+		box.pack_start( b, expand=False )
+
 		b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled',self.toggle_overlays)
+		b.connect('toggled',self.toggle_overlay)
+		box.pack_start( b, expand=False )
+
+		b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_footer)
 		self.header.pack_start( b, expand=False )
 
+		b = gtk.ToggleButton( icons.LEFT_UI ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_left_tools)
+		self.header.pack_start( b, expand=False )
+
+		b = gtk.ToggleButton( icons.RIGHT_UI ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_right_tools)
+		self.header.pack_start( b, expand=False )
+
+
+	def toggle_overlay(self,b):
+		if b.get_active(): self.window.set_opacity( 0.6 )
+		else: self.window.set_opacity( 1.0 )
 
 	def toggle_left_tools(self,b):
 		if b.get_active(): self._left_tools.show()
 		else: self._left_tools.hide()
+
+	def toggle_right_tools(self,b):
+		if b.get_active(): self.toolsUI.widget.show()
+		else: self.toolsUI.widget.hide()
 
 	def toggle_footer(self,b):
 		if b.get_active(): self.footer.show()
@@ -3339,7 +3358,6 @@ class PyppetUI( PyppetAPI ):
 		self._blender_min_height = 480
 
 		self.window = win = gtk.Window()
-		#win.set_opacity( 0.5 )
 		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		#win.set_size_request( 640, 480 )
 		win.set_title( 'Pyppet '+VERSION )
@@ -3369,7 +3387,7 @@ class PyppetUI( PyppetAPI ):
 		note.append_page(page, gtk.Label( icons.CAMERA) )
 
 		self.outlinerUI = OutlinerUI()
-		note.append_page( self.outlinerUI.widget, gtk.Label('o') )
+		note.append_page( self.outlinerUI.widget, gtk.Label(icons.OUTLINER) )
 
 		###############################
 		Vsplit = gtk.VBox()
@@ -3384,7 +3402,6 @@ class PyppetUI( PyppetAPI ):
 
 		self.Xsocket = gtk.Socket()	# the XEMBED hack - TODO MSWindows solution?
 		eb.add( self.Xsocket )
-		############self.canvas.put( eb, 0,0 )
 		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
 		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
 
@@ -3614,24 +3631,11 @@ class App( PyppetUI ):
 
 	# bpy.context workaround #
 	def sync_context(self, region):
-		#if self.recording:	# works but objects stick
-		#	print('recording.........')
-		#	bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
-
 		self.context = ContextCopy( bpy.context )
 		self.lock.acquire()
 		while gtk.gtk_events_pending():	# required to make callbacks safe
 			gtk.gtk_main_iteration()
 		self.lock.release()
-
-	def toggle_overlays( self, button ):
-		if button.get_active():
-			for o in self.overlays: o.enable()
-			for com in self.components: com.active = False
-		else:
-			for o in self.overlays: o.disable()
-			for com in self.components: com.active = True
-
 
 	def __init__(self):
 		self.play_wave_on_record = True
@@ -4558,6 +4562,28 @@ class WiimotesWidget(object):
 			note.show_all()
 
 
+def try_load_theme( name ):	# not working?
+	themedir = gtk.rc_get_theme_dir()
+	print( 'gtk-rc theme dir', themedir )
+	path = os.path.join( themedir, name )
+	if os.path.isdir( path ):
+		path = os.path.join( path, 'gtk-3.0' )
+		if os.path.isdir( path ):
+			print('has gtk-3.0 theme', path)
+			dark = os.path.join( path, 'gtkrc-dark' )
+
+			settings = gtk.settings_get_default()
+			if os.path.isfile( dark ):
+				print('loading dark theme')
+				gtk.rc_parse( dark )
+			else:
+				path = os.path.join( path, 'gtkrc' )
+				gtk.rc_parse( path )
+				gtk.rc_add_default_file( path )
+
+			#gtk.rc_reset_styles(settings)
+			gtk.rc_reparse_all_for_settings( settings, True )
+
 #####################################
 if __name__ == '__main__':
 
@@ -4566,8 +4592,10 @@ if __name__ == '__main__':
 	assert os.path.isfile( wnck_helper )
 	os.system( wnck_helper )
 
-	## run pyppet ##
+	#try_load_theme( 'Clearlooks' )
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
+
+	## run pyppet ##
 	Pyppet.mainloop()
 
 

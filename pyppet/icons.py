@@ -1,4 +1,9 @@
-COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ￼⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕᨟'
+COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕᨟'
+BOTTOM_UI = 'ᐁ'
+LEFT_UI = 'ᐘ'
+RIGHT_UI = 'ᐒ'
+
+OUTLINER = '￼'
 
 TOOLS = '𝙩𝙤𝙤𝙡𝙨'
 
@@ -69,9 +74,11 @@ POPUP = '𝛒𝛐𝛒𝛖𝛒'
 
 DEVICES = '𝓭𝓮𝓿𝓲𝓬𝓮𝓼'
 
-OVERLAY = '𝗨𝗶'
+UI = '𝗨𝗶'
 
-FULLSCREEN = '⎚'
+OVERLAY = '⎚'
+
+FULLSCREEN = '⬚'
 
 PLAY_PHYSICS = '⧐'
 
