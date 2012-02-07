@@ -3368,14 +3368,19 @@ class PyppetUI( PyppetAPI ):
 			page.pack_start( slider.widget, expand=False )
 		note.append_page(page, gtk.Label( icons.CAMERA) )
 
+		self.outlinerUI = OutlinerUI()
+		note.append_page( self.outlinerUI.widget, gtk.Label('o') )
+
 		###############################
-		bsplit = gtk.VBox()
-		split.pack_start( bsplit, expand=True )
+		Vsplit = gtk.VBox()
+		split.pack_start( Vsplit, expand=True )
 
-		self.create_header_ui( bsplit )
+		self.create_header_ui( Vsplit )
 
+		Hsplit = gtk.HBox()
+		Vsplit.pack_start( Hsplit )
 		self.blender_container = eb = gtk.EventBox()
-		bsplit.pack_start( self.blender_container )
+		Hsplit.pack_start( self.blender_container )
 
 		self.Xsocket = gtk.Socket()	# the XEMBED hack - TODO MSWindows solution?
 		eb.add( self.Xsocket )
@@ -3383,11 +3388,14 @@ class PyppetUI( PyppetAPI ):
 		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
 		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
 
+		############### ToolsUI ################
+		self.toolsUI = ToolsUI( self.lock, context )
+		Hsplit.pack_start( self.toolsUI.widget, expand=False )
+
 		############### FOOTER #################
 		self.footer = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
-
-		bsplit.pack_start( self.footer, expand=True )
+		Vsplit.pack_start( self.footer, expand=False )
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.RECORD) )
@@ -3409,13 +3417,13 @@ class PyppetUI( PyppetAPI ):
 
 
 		############## overlays #############
-		ui = PropertiesUI( self.canvas, self.lock, context )
-		self.components.append( ui )
-		self.overlays += ui.overlays
+		#ui = PropertiesUI( self.canvas, self.lock, context )
+		#self.components.append( ui )
+		#self.overlays += ui.overlays
 
-		ui = OutlinerUI( self.canvas, self.lock, context )
-		self.components.append( ui )
-		self.overlays += ui.overlays
+		#ui = OutlinerUI( self.canvas, self.lock, context )
+		#self.components.append( ui )
+		#self.overlays += ui.overlays
 
 		win.connect('destroy', self.exit )
 		win.show_all()
@@ -3427,7 +3435,6 @@ class PyppetUI( PyppetAPI ):
 		self.Xsocket.add_id( xid )
 		# ( this is brutal, ideally blender API supports embeding from python )
 
-		for o in self.overlays: o.disable()
 
 	def on_plug_Xsocket(self, args):
 		self.blender_window_ready = True
@@ -3638,8 +3645,6 @@ class App( PyppetUI ):
 		self.recording = False
 		self.selected = None
 		self.active = True
-		self.overlays = []
-		self.components = []
 
 		self.lock = threading._allocate_lock()
 
@@ -3828,11 +3833,8 @@ class App( PyppetUI ):
 				self._current_frame_adjustment.set_value( self.context.scene.frame_current )
 
 			self.update_selected_dependent_widgets()
-
-			for o in self.overlays:
-				o.update( self.context.window.screen, self.blender_width, self.blender_height )
-
-			for com in self.components: com.iterate( self.context )
+			self.toolsUI.iterate( self.context )
+			self.outlinerUI.iterate( self.context )
 			self.popup.update( self.context )
 
 			models = self.entities.values()
@@ -3925,15 +3927,8 @@ class Overlay(object):
 		self.show = False
 		self.container.hide()
 
-class Component(object):
-	def create_widget(self): pass
-	def iterate(self, context): pass
-	def __init__(self,canvas, lock, context):
-		self.canvas = canvas
-		self.lock = lock
-		self.overlays = []
-		self.create_widget(context)	# overloaded
 
+########## Cache for OutlinerUI and Joint functions ##########
 class ObjectWrapper( object ):
 	def __init__(self, ob):
 		self.name = ob.name
@@ -4021,19 +4016,16 @@ class ObjectWrapper( object ):
 		combo.set_tooltip_text( Physics.Joint.Tooltips[type] )
 
 
-class OutlinerUI( Component ):
-	def create_widget(self, context):
+class OutlinerUI( object ):
+	def __init__(self):
 		self.objects = {}	# name : ObjectWrapper
 		self.meshes = {}
 
-		sw = gtk.ScrolledWindow()
+		self.widget = sw = gtk.ScrolledWindow()
 		self.lister = box = gtk.VBox()
 		box.set_border_width(6)
 		sw.add_with_viewport( box )
 		sw.set_policy(True,False)
-
-		o = Overlay( sw, self.canvas, 'OUTLINER', 'WINDOW', min_width=100 )
-		self.overlays.append( o )
 
 
 	def iterate(self, context):
@@ -4087,20 +4079,22 @@ class OutlinerUI( Component ):
 
 
 
-class PropertiesUI( Component ):
+class ToolsUI( object ):
+	COLOR = gtk.GdkRGBA(0.96,.95,.95, 0.85)
 	def new_page( self, title ):
 		sw = gtk.ScrolledWindow()
 		self.notebook.append_page( sw, gtk.Label(title) )
-		box = gtk.VBox()
-		sw.add_with_viewport( box )
-		sw.set_policy(True,False)
+		eb = gtk.EventBox()
+		eb.override_background_color( gtk.STATE_NORMAL, self.COLOR )
+		box = gtk.VBox(); eb.add( box )
+		sw.add_with_viewport( eb )
 		return box
 
-	def create_widget(self, context):
-		self.notebook = gtk.Notebook()
-		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
-		o = Overlay( self.notebook, self.canvas, 'PROPERTIES', 'WINDOW', min_width=280 )
-		self.overlays.append( o )
+	def __init__(self, lock, context):
+		self.lock = lock
+		self.widget = self.notebook = gtk.Notebook()
+		self.widget.set_size_request( 280, 480 )
+		self.notebook.set_tab_pos( gtk.POS_RIGHT )
 
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )
