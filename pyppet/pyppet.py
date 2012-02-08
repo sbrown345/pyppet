@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb7, 2012
+# Feb8, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4b'
+VERSION = '1.9.4c'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -4125,8 +4125,13 @@ class MaterialsUI(object):
 		exs = []
 		for mat in ob.data.materials:
 			ex = gtk.Expander( mat.name ); exs.append( ex )
-			root.pack_start( ex, expand=False )
-			bx = gtk.VBox(); ex.add( bx )
+			eb = gtk.EventBox()	# expander background is colorized
+			root.pack_start( eb, expand=False )
+			eb.add( ex )
+
+			subeb = gtk.EventBox()	# not colorized
+			bx = gtk.VBox(); subeb.add( bx )
+			ex.add( subeb )
 			#if mat == ob.active_material: ex.set_expanded(True)
 			if mat.name == expand_material: ex.set_expanded(True)
 
@@ -4134,15 +4139,22 @@ class MaterialsUI(object):
 
 			row = gtk.HBox(); bx.pack_start( row, expand=False )
 
+			row.pack_start( gtk.Label() )
+
 			color = rgb2gdk(*mat.diffuse_color)
 			b = gtk.ColorButton( color )
-			b.connect('color-set', self.color_set, color, mat, 'diffuse_color')
+			b.connect('color-set', self.color_set, color, mat, 'diffuse_color', eb)
 			row.pack_start( b, expand=False )
+
+			eb.modify_bg( gtk.STATE_NORMAL, color )
 
 			color = rgb2gdk(*mat.specular_color)
 			b = gtk.ColorButton( color )
-			b.connect('color-set', self.color_set, color, mat, 'specular_color')
+			b.connect('color-set', self.color_set, color, mat, 'specular_color', eb)
 			row.pack_start( b, expand=False )
+
+			row.pack_start( gtk.Label() )
+
 
 			subex = gtk.Expander( icons.SETTINGS )
 			subex.set_border_width(2)
@@ -4175,17 +4187,19 @@ class MaterialsUI(object):
 
 	def add_material(self,button, ob):
 		bpy.ops.object.material_slot_add()
-		mat = bpy.data.materials.new( name=ob.name )
-		ob.data.materials[ len(ob.data.materials)-1 ] = mat
+		index = len(ob.data.materials)-1
+		mat = bpy.data.materials.new( name='%s.MAT%s' %(ob.name,index) )
+		ob.data.materials[ index ] = mat
 		self.on_active_object_changed( ob, expand_material=mat.name )
 
-	def color_set( self, button, color, mat, attr ):
+	def color_set( self, button, color, mat, attr, eventbox ):
 		button.get_color( color )
 		r,g,b = gdk2rgb( color )
 		vec = getattr(mat,attr)
 		vec[0] = r
 		vec[1] = g
 		vec[2] = b
+		if attr == 'diffuse_color': eventbox.modify_bg( gtk.STATE_NORMAL, color )
 
 class ToolsUI( object ):
 	COLOR = gtk.GdkRGBA(0.96,.95,.95, 0.85)
