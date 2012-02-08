@@ -58,8 +58,6 @@ import fftw
 import Webcam
 import Kinect
 import Wiimote
-
-
 import Blender
 import Physics
 
@@ -207,7 +205,6 @@ class WebGL(object):
 		self.effects.append( FX('noise', False, nIntensity=0.01, sIntensity=0.5) )
 		self.effects.append( FX('film', False, nIntensity=10.0, sIntensity=0.1) )
 
-
 	def get_fx_widget(self):
 		root = gtk.VBox()
 		root.set_border_width(3)
@@ -218,7 +215,6 @@ class WebGL(object):
 class WebSocketServer( websocket.WebSocketServer ):
 	buffer_size = 8096
 	client = None
-
 	webGL = WebGL()
 
 	def start(self):
@@ -3217,6 +3213,19 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
 
+		frame2 = gtk.Frame()
+		bx.pack_start( frame2, expand=False )
+		box = gtk.HBox(); box.set_border_width(4)
+		frame2.add( box )
+		box.pack_start( gtk.Label('physics'), expand=False )
+		s = gtk.Switch()
+		s.connect('button-press-event', self.cb_toggle_physics )
+		s.set_tooltip_text( 'toggle physics' )
+		box.pack_start( s, expand=False )
+		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
+		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
+		box.pack_start( b, expand=False )
+
 		root.pack_start( self.get_playback_widget() )
 
 		return frame
@@ -3291,20 +3300,8 @@ class PyppetUI( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
-		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
-		box = gtk.HBox(); box.set_border_width(4)
-		frame.add( box )
-		s = gtk.Switch()
-		s.connect('button-press-event', self.cb_toggle_physics )
-		s.set_tooltip_text( 'toggle physics' )
-		box.pack_start( s, expand=False )
-		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
-		box.pack_start( b, expand=False )
-
 		widget = self.audio.microphone.get_widget()
 		self.header.pack_start( widget, expand=False )
-
 
 		self.header.pack_start( gtk.Label() )
 
@@ -3315,12 +3312,9 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
-
 		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
 		box = gtk.HBox(); box.set_border_width(4)
 		frame.add( box )
-
-
 
 		self.popup = Popup()
 		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
@@ -4139,23 +4133,30 @@ class MaterialsUI(object):
 
 			DND.make_source( ex, mat )
 
-			row = gtk.HBox(); bx.pack_start( row, expand=False )
-
-			row.pack_start( gtk.Label() )
-
 			color = rgb2gdk(*mat.diffuse_color)
-			b = gtk.ColorButton( color )
-			b.connect('color-set', self.color_set, color, mat, 'diffuse_color', eb)
-			row.pack_start( b, expand=False )
-
 			eb.modify_bg( gtk.STATE_NORMAL, color )
 
-			color = rgb2gdk(*mat.specular_color)
-			b = gtk.ColorButton( color )
-			b.connect('color-set', self.color_set, color, mat, 'specular_color', eb)
-			row.pack_start( b, expand=False )
+			#row = gtk.HBox(); bx.pack_start( row, expand=False )
+			#row.pack_start( gtk.Label() )
+			#b = gtk.ColorButton( color )
+			#b.connect('color-set', self.color_set, color, mat, 'diffuse_color', eb)
+			#row.pack_start( b, expand=False )
+			#color = rgb2gdk(*mat.specular_color)
+			#b = gtk.ColorButton( color )
+			#b.connect('color-set', self.color_set, color, mat, 'specular_color', eb)
+			#row.pack_start( b, expand=False )
+			#row.pack_start( gtk.Label() )
 
-			row.pack_start( gtk.Label() )
+
+			hsv = gtk.HSV()
+			hsv.set_color( *gtk.rgb2hsv(*mat.diffuse_color) )
+			hsv.connect('changed', self.color_changed, mat, 'diffuse_color', eb)
+			bx.pack_start( hsv, expand=False )
+
+			#hsv = gtk.HSV()		# some bug with GTK, two HSV's can not be used in tabs???
+			#hsv.set_color( *gtk.rgb2hsv(*mat.specular_color) )
+			#hsv.connect('changed', self.color_changed, mat, 'specular_color', eb)
+			#note.append_page( hsv, gtk.Label('spec') )
 
 
 			subex = gtk.Expander( icons.SETTINGS )
@@ -4202,6 +4203,24 @@ class MaterialsUI(object):
 		vec[1] = g
 		vec[2] = b
 		if attr == 'diffuse_color': eventbox.modify_bg( gtk.STATE_NORMAL, color )
+
+	def color_changed( self, hsv, mat, attr, eventbox ):
+		r,g,b = get_hsv_color_as_rgb( hsv )
+		vec = getattr(mat,attr)
+		vec[0] = r
+		vec[1] = g
+		vec[2] = b
+		if attr == 'diffuse_color':
+			color = rgb2gdk(r,g,b)
+			eventbox.modify_bg( gtk.STATE_NORMAL, color )
+
+def get_hsv_color_as_rgb( hsv ):
+	h = ctypes.pointer( ctypes.c_double() )
+	s = ctypes.pointer( ctypes.c_double() )
+	v = ctypes.pointer( ctypes.c_double() )
+	hsv.get_color( h,s,v )
+	return gtk.hsv2rgb( h.contents.value,s.contents.value,v.contents.value )
+
 
 class ToolsUI( object ):
 	COLOR = gtk.GdkRGBA(0.96,.95,.95, 0.85)

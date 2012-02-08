@@ -5755,7 +5755,7 @@ __freeze_rpythonic_struct( __pthread_mutex_s, [
 	( "__owner", ctypes.c_int ),
 	( "__kind", ctypes.c_int ),
 	( "__nusers", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xdc9052c>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xcbc252c>
 ])
 
 __freeze_rpythonic_struct( pthread_mutex_t, [
@@ -55960,6 +55960,7 @@ GTK_WIDGET_CLASSES = {
 	GtkFileChooserButton : gtk_file_chooser_button_new,
 	GtkColorSelection : gtk_color_selection_new,
 	GtkColorButton : gtk_color_button_new_with_color,
+	GtkHSV : gtk_hsv_new,
 
 	GtkCalendar : gtk_calendar_new,
 	GtkArrow : gtk_arrow_new,
@@ -55995,6 +55996,23 @@ for d in (GTK_WIDGET_CLASSES, GTK_CONTAINER_CLASSES):
 		s = "lambda *args, **kw: %s(*args, **kw)"%d[o].name
 		globals()[ o.__name__[3:] ] = eval(s)
 
+
+def rgb2hsv( r,g,b ):
+	h = ctypes.pointer( ctypes.c_double() )
+	s = ctypes.pointer( ctypes.c_double() )
+	v = ctypes.pointer( ctypes.c_double() )
+	gtk_rgb_to_hsv( r,g,b, h,s,v )
+	return h.contents.value, s.contents.value, v.contents.value
+
+def hsv2rgb( h,s,v ):
+	r = ctypes.pointer( ctypes.c_double() )
+	g = ctypes.pointer( ctypes.c_double() )
+	b = ctypes.pointer( ctypes.c_double() )
+	gtk_hsv_to_rgb( h,s,v, r,g,b )
+	return r.contents.value, g.contents.value, b.contents.value
+
+def rgb2gdk( r, g, b ): return GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
+def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
 
 _rpythonic_setup_return_wrappers()
