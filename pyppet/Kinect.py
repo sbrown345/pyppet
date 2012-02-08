@@ -329,8 +329,8 @@ class ProcessShapes( object ):
 	def __init__(self):
 		self.active = False
 		self.contours_image = cv.cvCreateImage((640,480), 8, 3)
-		self.dwidth = 320
-		self.dheight = 240
+		self.dwidth = 240
+		self.dheight = 160
 		self.loops = 0
 
 		self.preview_image = cv.CreateImage((self.dwidth,self.dheight), cv.IPL_DEPTH_8U, 3)
@@ -413,7 +413,7 @@ class ProcessShapes( object ):
 		#self.lock.acquire()
 		cv.cvResize( self.contours_image, self.preview_image, True )
 		if Kinect.show_depth:
-			cv.Add( self.preview_image, ProcessContours.DEPTH320, self.preview_image )
+			cv.Add( self.preview_image, ProcessContours.DEPTH240, self.preview_image )
 
 		Kinect.PREVIEW_IMAGE = self.preview_image
 		self.update_preview_image( self.preview_image.imageData )
@@ -453,7 +453,8 @@ class ProcessShapes( object ):
 
 class ProcessContours( object ):
 	DEPTH640 = cv.CreateImage((640,480), cv.IPL_DEPTH_8U, 3)
-	DEPTH320 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
+	#DEPTH320 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
+	DEPTH240 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 
 	DEPTH8 = cv.CreateImage((640,480), 8, 1)
 
@@ -475,7 +476,7 @@ class ProcessContours( object ):
 			lock.acquire()
 			#lock.release()	# bug was here
 			cv.CvtColor(self.depth8, self.DEPTH640, cv.CV_GRAY2RGB)
-			cv.Resize( self.DEPTH640, self.DEPTH320, False )
+			cv.Resize( self.DEPTH640, self.DEPTH240, False )
 			lock.release()	# fixed Dec 6th 2011
 			print('.....contours thread ok.....')
 			# blur helps?

@@ -62,6 +62,13 @@ Installing Libraries:
 		git clone http://github.com/rpavlik/wiiuse.git
 
 ========================================================
+GTK3 Theme
+Pyppet has been optimized to work with a dark GTK theme.
+AtoLm by the DeviantMars is included, you can install it by extracting to:
+"/usr/share/themes"
+Then use gnome-tweak-tool to select the theme
+
+========================================================
 
 Known Issues:
 	. Xembed only works on Linux.

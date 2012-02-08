@@ -179,8 +179,8 @@ class WebCamera(object):
 		self._B = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_8U, 1)
 		self._A = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_8U, 1)
 
-		self.dwidth = int(x/2)
-		self.dheight = int(y/2)
+		self.dwidth = 240	#int(x/2)
+		self.dheight = 160	#int(y/2)
 
 		self.preview_image = cv.CreateImage((self.dwidth,self.dheight), cv.IPL_DEPTH_8U, 3)
 

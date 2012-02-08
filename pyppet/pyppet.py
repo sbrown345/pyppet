@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4c'
+VERSION = '1.9.4d'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -88,8 +88,8 @@ def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
 
-#BG_COLOR = rgb2gdk( 0.74, 0.74, 0.76 )
-BG_COLOR = rgb2gdk( 0.94, 0.94, 0.96 )
+BG_COLOR = rgb2gdk( 0.44, 0.44, 0.46 )
+#BG_COLOR = rgb2gdk( 0.94, 0.94, 0.96 )
 BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
 DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
 
@@ -4118,6 +4118,8 @@ class MaterialsUI(object):
 
 
 	def on_active_object_changed(self, ob, expand_material=None):
+		if ob.type != 'MESH': return
+
 		self.widget.remove( self.root )
 		self.root = root = gtk.VBox()
 		self.widget.add( self.root )
@@ -4222,19 +4224,20 @@ class ToolsUI( object ):
 
 		self.notebook = gtk.Notebook()
 		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
+		self.notebook.set_size_request( 260,420 )
 		ex.add( self.notebook )
 
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )
 		self.webcam = widget.webcam
 		self.webcam.start_thread( self.lock )
-		bpy.data.images.new( name='webcam', width=320, height=240 )
+		bpy.data.images.new( name='webcam', width=240, height=160 )
 
 		box = self.new_page( icons.KINECT )		# kinect
 		widget = Kinect.Widget( box )
 		self.kinect = widget.kinect
 		widget.start_threads( self.lock )
-		bpy.data.images.new( name='kinect', width=320, height=240 )
+		bpy.data.images.new( name='kinect', width=240, height=160 )
 
 		box = self.new_page( icons.GAMEPAD )	# gamepad
 		self.gamepads_widget = GamepadsWidget( box )
