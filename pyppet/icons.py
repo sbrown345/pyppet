@@ -65,6 +65,7 @@ PHYSICS = '𝓹𝓱𝔂𝓼𝓲𝓬𝓼'
 MODIFIERS = '𝓶𝓸𝓭𝓲𝓯𝓲𝓮𝓻𝓼'
 CONSTRAINTS = '𝓬𝓸𝓷𝓼𝓽𝓻𝓪𝓲𝓷𝓽𝓼'
 MATERIALS = '𝓶𝓪𝓽𝓮𝓻𝓲𝓪𝓵𝓼'
+SETTINGS = '𝓼𝓮𝓽𝓽𝓲𝓷𝓰𝓼'
 
 CONTACT = 'ⴿ'
 

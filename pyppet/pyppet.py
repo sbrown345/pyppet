@@ -3376,8 +3376,13 @@ class PyppetUI( PyppetAPI ):
 		if type(DND.object) is bpy.types.Material:
 			print('material dropped')
 			mat = DND.object
+			ob = self.context.active_object
+			index = 0
+			for index in range( len(ob.data.materials) ):
+				if ob.data.materials[ index ] == mat: break
+			ob.active_material_index = index
 			bpy.ops.object.material_slot_assign()
-
+			## should be in edit mode, if not then what action? ##
 
 	def create_ui(self, context):
 		self._blender_min_width = 640
@@ -4101,6 +4106,9 @@ class MaterialsUI(object):
 	## ob.material_slots	(missing .new or .add)
 	### slot.link = 'DATA'
 	### slot.material
+	#ob.active_material_index = index	# works
+	#ob.active_material = mat	# assigns material to active slot
+	#bpy.ops.object.material_slot_assign()
 
 	def __init__(self):
 		self.widget = gtk.Frame()
@@ -4109,44 +4117,57 @@ class MaterialsUI(object):
 		Pyppet.register( self.on_active_object_changed )
 
 
-	def on_active_object_changed(self, ob):
+	def on_active_object_changed(self, ob, expand_material=None):
 		self.widget.remove( self.root )
 		self.root = root = gtk.VBox()
 		self.widget.add( self.root )
 		root.set_border_width(2)
-
+		exs = []
 		for mat in ob.data.materials:
-			ex = gtk.Expander( mat.name )
-			root.pack_start( ex )
+			ex = gtk.Expander( mat.name ); exs.append( ex )
+			root.pack_start( ex, expand=False )
 			bx = gtk.VBox(); ex.add( bx )
-			if mat == ob.active_material: ex.set_expanded(True)
+			#if mat == ob.active_material: ex.set_expanded(True)
+			if mat.name == expand_material: ex.set_expanded(True)
 
 			DND.make_source( ex, mat )
 
 			row = gtk.HBox(); bx.pack_start( row, expand=False )
-			b = gtk.ColorButton( rgb2gdk(*mat.diffuse_color) )
+
+			color = rgb2gdk(*mat.diffuse_color)
+			b = gtk.ColorButton( color )
+			b.connect('color-set', self.color_set, color, mat, 'diffuse_color')
 			row.pack_start( b, expand=False )
 
-			b = gtk.ColorButton( rgb2gdk(*mat.specular_color) )
+			color = rgb2gdk(*mat.specular_color)
+			b = gtk.ColorButton( color )
+			b.connect('color-set', self.color_set, color, mat, 'specular_color')
 			row.pack_start( b, expand=False )
+
+			subex = gtk.Expander( icons.SETTINGS )
+			subex.set_border_width(2)
+			bx.pack_start( subex, expand=False )
+			bxx = gtk.VBox(); subex.add( bxx )
 
 			slider = SimpleSlider( mat, name='diffuse_intensity', title='', max=1.0, driveable=True, tooltip='diffuse' )
-			bx.pack_start( slider.widget, expand=False )
+			bxx.pack_start( slider.widget, expand=False )
 
 			slider = SimpleSlider( mat, name='specular_intensity', title='', max=1.0, driveable=True, tooltip='specular' )
-			bx.pack_start( slider.widget, expand=False )
+			bxx.pack_start( slider.widget, expand=False )
 
 			slider = SimpleSlider( mat, name='specular_hardness', title='', max=500, driveable=True, tooltip='hardness' )
-			bx.pack_start( slider.widget, expand=False )
+			bxx.pack_start( slider.widget, expand=False )
 
 			slider = SimpleSlider( mat, name='emit', title='', max=1.0, driveable=True, tooltip='emission' )	# max is 2.0
-			bx.pack_start( slider.widget, expand=False )
+			bxx.pack_start( slider.widget, expand=False )
 
 			slider = SimpleSlider( mat, name='ambient', title='', max=1.0, driveable=True, tooltip='ambient' )
-			bx.pack_start( slider.widget, expand=False )
+			bxx.pack_start( slider.widget, expand=False )
+
+		if len(exs)==1: exs[0].set_expanded(True)
 
 		root.pack_start( gtk.Label() )
-		b = gtk.Button('add material')
+		b = gtk.Button('new material')
 		b.connect('clicked', self.add_material, ob)
 		root.pack_start( b, expand=False )
 
@@ -4156,11 +4177,15 @@ class MaterialsUI(object):
 		bpy.ops.object.material_slot_add()
 		mat = bpy.data.materials.new( name=ob.name )
 		ob.data.materials[ len(ob.data.materials)-1 ] = mat
+		self.on_active_object_changed( ob, expand_material=mat.name )
 
-	def drop_on_face(self, ob):
-		#ob.active_material_index = index	# works
-		#ob.active_material = mat	# also works
-		bpy.ops.object.material_slot_assign()
+	def color_set( self, button, color, mat, attr ):
+		button.get_color( color )
+		r,g,b = gdk2rgb( color )
+		vec = getattr(mat,attr)
+		vec[0] = r
+		vec[1] = g
+		vec[2] = b
 
 class ToolsUI( object ):
 	COLOR = gtk.GdkRGBA(0.96,.95,.95, 0.85)
@@ -4221,7 +4246,7 @@ class ToolsUI( object ):
 		root.pack_start( ex, expand=False )
 
 		ex = gtk.Expander( icons.MATERIALS )
-		root.pack_start( ex, expand=False )
+		root.pack_start( ex, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
 
