@@ -54,6 +54,10 @@ class BlenderHack( object ):
 		. request Ideasman and Ton for proper support for this.
 	'''
 
+	_blender_min_width = 640
+	_blender_min_height = 480
+	blender_window_ready = False
+
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
 		self.context = BlenderContextCopy( bpy.context )
@@ -99,11 +103,13 @@ class BlenderHackLinux( BlenderHack ):
 		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
 		print('ready to xembed...')
 		xid = self.get_window_xid( 'Blender' )
+		print('got blender XID', xid)
 		self.Xsocket.add_id( xid )
 		# ( this is brutal, ideally blender API supports embeding from python )
 
 
 	def on_plug_Xsocket(self, args):
+		print( 'on_plug_Xsocket')
 		self.blender_window_ready = True
 		self.Xsocket.set_size_request(
 			self._blender_min_width, 
