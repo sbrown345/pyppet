@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4d'
+VERSION = '1.9.4e'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -2656,7 +2656,7 @@ class Biped( AbstractArmature ):
 ##########################################################
 bpy.types.Object.pyppet_model = bpy.props.StringProperty( name='pyppet model type', default='' )
 
-class PyppetAPI( BlenderHack ):
+class PyppetAPI( BlenderHackLinux ):
 	'''
 	Public API
 	'''
@@ -3159,14 +3159,6 @@ class PyppetUI( PyppetAPI ):
 		if b.get_active(): self.footer.show()
 		else: self.footer.hide()
 
-	def Xsocket_resize(self,sock,rect):
-		rect = gtk.cairo_rectangle_int()
-		sock.get_allocation( rect )
-		if self.blender_window_ready:
-			print('Xsocket Resize', rect.width, rect.height)
-			self.blender_width = rect.width
-			self.blender_height = rect.height
-			Blender.window_resize( self.blender_width, self.blender_height )
 
 	def drop_on_Xsocket(self, wid, con, x, y, time):
 		ob = self.context.active_object
@@ -3241,12 +3233,10 @@ class PyppetUI( PyppetAPI ):
 		self.blender_container = eb = gtk.EventBox()
 		Hsplit.pack_start( self.blender_container )
 
-		self.Xsocket = gtk.Socket()	# the XEMBED hack - TODO MSWindows solution?
-		eb.add( self.Xsocket )
-		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
-		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
-		DND.make_destination( self.Xsocket )
-		self.Xsocket.connect('drag-drop', self.drop_on_Xsocket)
+		xsocket = self.create_xembed_socket()
+		eb.add( xsocket )
+		DND.make_destination( xsocket )
+		xsocket.connect('drag-drop', self.drop_on_Xsocket)
 
 
 		############### ToolsUI ################
@@ -3277,33 +3267,12 @@ class PyppetUI( PyppetAPI ):
 		w = self.audio.synth.channels[0].get_widget()
 		page.add( w )
 
-
 		win.connect('destroy', self.exit )
 		win.show_all()
 
-		############## get XID and then Embed Blender ##########
-		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
-		print('ready to xembed...')
-		xid = self.get_window_xid( 'Blender' )
-		self.Xsocket.add_id( xid )
-		# ( this is brutal, ideally blender API supports embeding from python )
+		self.do_embed_blender()		# this must come last
 
 
-	def on_plug_Xsocket(self, args):
-		self.blender_window_ready = True
-		self.Xsocket.set_size_request(
-			self._blender_min_width, 
-			self._blender_min_height
-		)
-
-	def get_window_xid( self, name ):
-		p =os.popen('xwininfo -int -name %s' %name)
-		data = p.read().strip()
-		p.close()
-		if data.startswith('xwininfo: error:'): return None
-		elif data:
-			lines = data.splitlines()
-			return int( lines[0].split()[3] )
 
 
 	def update_header(self,ob):

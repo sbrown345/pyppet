@@ -7,7 +7,7 @@ import bpy
 import ctypes, time, threading
 import gtk3 as gtk
 import icons
-
+import Blender
 
 def get_hsv_color_as_rgb( hsv ):
 	h = ctypes.pointer( ctypes.c_double() )
@@ -75,7 +75,50 @@ class BlenderHack( object ):
 						return True
 		return False
 
+class BlenderHackWindows( BlenderHack ): pass	#TODO
+class BlenderHackOSX( BlenderHack ): pass		# TODO
 
+class BlenderHackLinux( BlenderHack ):
+	def Xsocket_resize(self,sock,rect):
+		rect = gtk.cairo_rectangle_int()
+		sock.get_allocation( rect )
+		if self.blender_window_ready:
+			print('Xsocket Resize', rect.width, rect.height)
+			self.blender_width = rect.width
+			self.blender_height = rect.height
+			Blender.window_resize( self.blender_width, self.blender_height )
+
+	def create_xembed_socket(self):
+		self.Xsocket = gtk.Socket()	# the XEMBED hack - TODO MSWindows solution?
+		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
+		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
+		return self.Xsocket
+
+	def do_embed_blender(self):
+		############## get XID and then Embed Blender ##########
+		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
+		print('ready to xembed...')
+		xid = self.get_window_xid( 'Blender' )
+		self.Xsocket.add_id( xid )
+		# ( this is brutal, ideally blender API supports embeding from python )
+
+
+	def on_plug_Xsocket(self, args):
+		self.blender_window_ready = True
+		self.Xsocket.set_size_request(
+			self._blender_min_width, 
+			self._blender_min_height
+		)
+
+	def get_window_xid( self, name ):
+		import os
+		p =os.popen('xwininfo -int -name %s' %name)
+		data = p.read().strip()
+		p.close()
+		if data.startswith('xwininfo: error:'): return None
+		elif data:
+			lines = data.splitlines()
+			return int( lines[0].split()[3] )
 
 
 
