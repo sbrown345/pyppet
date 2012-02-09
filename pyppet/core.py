@@ -3,7 +3,8 @@
 # http://pyppet.blogspot.com
 # License: BSD
 
-import ctypes, time
+import bpy
+import ctypes, time, threading
 import gtk3 as gtk
 import icons
 
@@ -34,6 +35,53 @@ class BlenderContextCopy(object):
 		copy = context.copy()		# returns dict
 		for name in copy: setattr( self, name, copy[name] )
 		self.blender_has_cursor = False	# extra
+
+class BlenderHack( object ):
+	'''
+	gtk.gtk_main_iteration() is safe to use outside of blender's mainloop,
+	except that gtk callbacks might call some operators or change add/remove data,
+	this invalidates the blender context and can cause a SEGFAULT.
+	The only known safe way to mix GTK and blender is to call gtk.gtk_main_iteration()
+	inside blender's mainloop.  This is done by attaching a callback to the VIEW_3D,
+	Window region.  This is a hack because if the user hides the VIEW_3D then GTK
+	will fail to update.
+
+	TODO Workarounds:
+		. from the outer python mainloop check to see if GTK updated from inside
+		  blender, if not then attach new redraw callback to any visible view.
+
+	TOO MANY HACKS:
+		. request Ideasman and Ton for proper support for this.
+	'''
+
+	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
+	def sync_context(self, region):
+		self.context = BlenderContextCopy( bpy.context )
+		self.lock.acquire()
+		while gtk.gtk_events_pending():	# required to make callbacks safe
+			gtk.gtk_main_iteration()
+		self.lock.release()
+
+	def setup_blender_hack(self, context):
+		if not hasattr(self,'lock'): self.lock = threading._allocate_lock()
+		self.context = BlenderContextCopy( context )
+		for area in context.screen.areas:
+			if area.type == 'VIEW_3D':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						## only POST_PIXEL is thread-safe and drag'n'drop safe
+						## (maybe not!?) ##
+						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
+						return True
+		return False
+
+
+
+
+
+
+
+
 #########################################################
 
 class DriverManagerSingleton(object):

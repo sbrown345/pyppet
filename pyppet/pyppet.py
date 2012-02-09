@@ -2656,7 +2656,7 @@ class Biped( AbstractArmature ):
 ##########################################################
 bpy.types.Object.pyppet_model = bpy.props.StringProperty( name='pyppet model type', default='' )
 
-class PyppetAPI(object):
+class PyppetAPI( BlenderHack ):
 	'''
 	Public API
 	'''
@@ -3459,15 +3459,10 @@ class App( PyppetUI ):
 			ENGINE.stop()
 			for e in self.entities.values(): e.reset()
 
-	# bpy.context workaround #
-	def sync_context(self, region):
-		self.context = BlenderContextCopy( bpy.context )
-		self.lock.acquire()
-		while gtk.gtk_events_pending():	# required to make callbacks safe
-			gtk.gtk_main_iteration()
-		self.lock.release()
 
 	def __init__(self):
+		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
+
 		self.reset()		# PyppetAPI Public
 		self.register( self.update_header ) # listen to active object change
 		self.register( self.update_footer )
@@ -3481,7 +3476,7 @@ class App( PyppetUI ):
 		self.recording = False
 		self.active = True
 
-		self.lock = threading._allocate_lock()
+		#self.lock = threading._allocate_lock()
 
 		self.server = Server()
 		self.client = Client()
@@ -3496,18 +3491,8 @@ class App( PyppetUI ):
 		self.camera_aperture = 0.15
 		self.camera_maxblur = 1.0
 
-		self.context = BlenderContextCopy( bpy.context )
-		for area in bpy.context.screen.areas:		#bpy.context.window.screen.areas:
-			print(area, area.type)
-			if area.type == 'PROPERTIES':
-				#area.width = 240		# readonly
-				pass
-			elif area.type == 'VIEW_3D':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						## only POST_PIXEL is thread-safe and drag'n'drop safe  (NOT!) ##
-						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
-						break
+		#self.setup_blender_hack()	# moved to BlenderHack in core.py
+
 
 		self.baker_active = False
 		self.baker_region = None
