@@ -330,7 +330,7 @@ class ProcessShapes( object ):
 		self.active = False
 		self.contours_image = cv.cvCreateImage((640,480), 8, 3)
 		self.dwidth = 240
-		self.dheight = 160
+		self.dheight = 180
 		self.loops = 0
 
 		self.preview_image = cv.CreateImage((self.dwidth,self.dheight), cv.IPL_DEPTH_8U, 3)
@@ -454,7 +454,7 @@ class ProcessShapes( object ):
 class ProcessContours( object ):
 	DEPTH640 = cv.CreateImage((640,480), cv.IPL_DEPTH_8U, 3)
 	#DEPTH320 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
-	DEPTH240 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
+	DEPTH240 = cv.CreateImage((240,180), cv.IPL_DEPTH_8U, 3)
 
 	DEPTH8 = cv.CreateImage((640,480), 8, 1)
 
@@ -558,8 +558,9 @@ class Widget(object):
 		root.set_border_width( 3 )
 		parent.add( root )
 
-
-		root.pack_start( self.proc_shapes.preview_image_gtk, expand=False )
+		self.dnd_container = gtk.EventBox()
+		self.dnd_container.add( self.proc_shapes.preview_image_gtk )
+		root.pack_start( self.dnd_container, expand=False )
 
 		row = gtk.HBox(); root.pack_start( row, expand=False )
 		b = gtk.CheckButton('show depth')

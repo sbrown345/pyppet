@@ -12,7 +12,7 @@ FX_LAYERS = '𐎒'
 
 REFRESH = '⟳'
 
-FFT = '𝟋'
+FFT = '𝕗𝕗𝕥'
 
 WRITE = '✎'
 

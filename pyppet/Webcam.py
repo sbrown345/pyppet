@@ -180,7 +180,7 @@ class WebCamera(object):
 		self._A = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_8U, 1)
 
 		self.dwidth = 240	#int(x/2)
-		self.dheight = 160	#int(y/2)
+		self.dheight = 180	#int(y/2)
 
 		self.preview_image = cv.CreateImage((self.dwidth,self.dheight), cv.IPL_DEPTH_8U, 3)
 
@@ -293,6 +293,7 @@ class WebCamera(object):
 			self.dwidth*3,	# row-stride
 		)
 		gtk.image_set_from_pixbuf( self.preview_image_gtk, pix )
+		#self.preview_image_gtk.set_from_pixbuf( pix )	# bug - MISSING?
 
 	def start_thread(self, lock):
 		self.lock = lock
@@ -313,9 +314,14 @@ class Widget(object):
 	def __init__(self, parent, active=True ):
 		self.webcam = WebCamera( active=active )
 		self.active = active
-		root = gtk.VBox(); root.set_border_width( 2 )
+		self.root = root = gtk.VBox()
+		root.set_border_width( 2 )
 		parent.add( root )
-		root.pack_start( self.webcam.preview_image_gtk, expand=False )
+
+		self.dnd_container = gtk.EventBox()
+		self.dnd_container.add( self.webcam.preview_image_gtk )
+		self.dnd_image = self.webcam.preview_image_gtk
+		root.pack_start( self.dnd_container, expand=False )
 		note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
 		root.pack_start( note, expand=False )

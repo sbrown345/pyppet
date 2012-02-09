@@ -54,6 +54,8 @@ import SDL as sdl
 import fluidsynth as fluid
 import openal as al
 import fftw
+#import cv
+#import highgui as gui
 
 import Webcam
 import Kinect
@@ -775,6 +777,7 @@ class SimpleDND(object):		## simple drag'n'drop API ##
 		self._args = None
 
 	def make_source(self, a, ob):
+		## a should be an gtk.EventBox or have an eventbox as its parent, how strict is this rule? ##
 		a.drag_source_set(
 			gtk.GDK_BUTTON1_MASK, 
 			self.target, 1, 
@@ -1643,8 +1646,9 @@ class Microphone( Audio ):
 	def get_widget(self):
 		frame = gtk.Frame()
 		root = gtk.HBox(); frame.add( root )
-		b = gtk.ToggleButton( icons.MICROPHONE ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_tooltip_text( 'toggle microphone' )
+
+		b = gtk.ToggleButton( 'microphone' ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_tooltip_text( 'toggle microphone input' )
 		b.connect('toggled', self.toggle_capture)
 		root.pack_start( b, expand=False )
 
@@ -3069,7 +3073,6 @@ class PyppetUI( PyppetAPI ):
 		texture.image.filepath = url
 		#texture.image.reload()
 
-
 	def update_footer(self, ob):
 		if ob.type != 'MESH': return
 		print('updating footer')
@@ -3126,6 +3129,8 @@ class PyppetUI( PyppetAPI ):
 		self._wave_file_length_label = a = gtk.Label()
 		e.widget.pack_start( a, expand=False )
 
+		widget = self.audio.microphone.get_widget()
+		e.widget.pack_start( widget, expand=False )
 
 		bx = gtk.HBox(); root.pack_start( bx )
 
@@ -3300,18 +3305,6 @@ class PyppetUI( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
-		widget = self.audio.microphone.get_widget()
-		self.header.pack_start( widget, expand=False )
-
-		self.header.pack_start( gtk.Label() )
-
-		self._frame = gtk.Frame()
-		self._modal = gtk.Label()
-		self._frame.add( self._modal )
-		self.header.pack_start( self._frame )
-
-		self.header.pack_start( gtk.Label() )
-
 		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
 		box = gtk.HBox(); box.set_border_width(4)
 		frame.add( box )
@@ -3324,6 +3317,15 @@ class PyppetUI( PyppetAPI ):
 		b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled',self.toggle_overlay)
 		box.pack_start( b, expand=False )
+
+		self.header.pack_start( gtk.Label() )
+
+		self._frame = gtk.Frame()
+		self._modal = gtk.Label()
+		self._frame.add( self._modal )
+		self.header.pack_start( self._frame )
+
+		self.header.pack_start( gtk.Label() )
 
 		b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
@@ -3367,16 +3369,31 @@ class PyppetUI( PyppetAPI ):
 			Blender.window_resize( self.blender_width, self.blender_height )
 
 	def drop_on_Xsocket(self, wid, con, x, y, time):
+		ob = self.context.active_object
+
 		if type(DND.object) is bpy.types.Material:
 			print('material dropped')
 			mat = DND.object
-			ob = self.context.active_object
 			index = 0
 			for index in range( len(ob.data.materials) ):
 				if ob.data.materials[ index ] == mat: break
 			ob.active_material_index = index
 			bpy.ops.object.material_slot_assign()
 			## should be in edit mode, if not then what action? ##
+		elif DND.object == 'WEBCAM':
+			if '_webcam_' not in bpy.data.images:
+				bpy.data.images.new( name='_webcam_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_webcam_']
+
+
+		elif DND.object == 'KINECT':
+			if '_kinect_' not in bpy.data.images:
+				bpy.data.images.new( name='_kinect_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_kinect_']
+
+
 
 	def create_ui(self, context):
 		self._blender_min_width = 640
@@ -3384,7 +3401,6 @@ class PyppetUI( PyppetAPI ):
 
 		self.window = win = gtk.Window()
 		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		#win.set_size_request( 640, 480 )
 		win.set_title( 'Pyppet '+VERSION )
 		self.root = root = gtk.VBox()
 		win.add( root )
@@ -3894,57 +3910,6 @@ Pyppet = App()
 #)
 
 #################################
-class Overlay(object):
-	def enable(self):
-		self.active = self.show = True
-		self.container.show()
-	def disable(self):
-		self.active = self.show = False
-		self.container.hide()
-
-	def __init__(self, widget, canvas, area, region, min_width=100, min_height=150):
-		self.active = False
-		self.show = False
-		self.widget = widget
-		self.canvas = canvas
-		self.area = area
-		self.region = region
-		self.min_width = min_width
-		self.min_height = min_height
-
-		self.container = gtk.EventBox()
-		self.container.add( widget )
-		self.canvas.put( self.container, 0,0 )
-
-	def update(self, screen, width, height):
-		if not self.active: return
-
-		#self.container.set_state_flags( gtk.STATE_FLAG_FOCUSED )
-
-		for area in screen.areas:		#bpy.context.window.screen.areas:
-			if area.type == self.area:		# VIEW_3D, INFO
-				for reg in area.regions:
-					if reg.type == self.region:
-						if reg.width < self.min_width or reg.height < self.min_height:
-							self.show = False
-							self.container.hide()
-						elif not self.show:
-							self.show = True
-							self.container.show()
-
-						if self.show:
-							self.widget.set_size_request( reg.width-2, reg.height )
-							###########################################
-							r = Blender.Region( reg )
-							rct = r.winrct	# blender window space
-							#print(rct.ymin, rct.ymax)
-							self.canvas.move( self.container, rct.xmin+2, height - rct.ymax )
-							#self.canvas.move( self.container, 1440, height - rct.ymax )
-							return
-
-		## hide if area not found ##
-		self.show = False
-		self.container.hide()
 
 
 ########## Cache for OutlinerUI and Joint functions ##########
@@ -4243,20 +4208,20 @@ class ToolsUI( object ):
 
 		self.notebook = gtk.Notebook()
 		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
-		self.notebook.set_size_request( 260,420 )
+		self.notebook.set_size_request( 260,450 )
 		ex.add( self.notebook )
 
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )
 		self.webcam = widget.webcam
+		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source
 		self.webcam.start_thread( self.lock )
-		bpy.data.images.new( name='webcam', width=240, height=160 )
 
 		box = self.new_page( icons.KINECT )		# kinect
 		widget = Kinect.Widget( box )
 		self.kinect = widget.kinect
+		DND.make_source( widget.dnd_container, 'KINECT' )	# make drag source
 		widget.start_threads( self.lock )
-		bpy.data.images.new( name='kinect', width=240, height=160 )
 
 		box = self.new_page( icons.GAMEPAD )	# gamepad
 		self.gamepads_widget = GamepadsWidget( box )
@@ -4293,18 +4258,20 @@ class ToolsUI( object ):
 		self.wiimotes_widget.update()
 		#self.engine.sync( context )
 
-		img = bpy.data.images['webcam']
-		if img.bindcode:
-			ptr = self.webcam.preview_image.imageData
-			self.upload_texture_data( img, ptr )
+		if '_webcam_' in bpy.data.images:
+			img = bpy.data.images['_webcam_']
+			if img.bindcode:
+				ptr = self.webcam.preview_image.imageData
+				self.upload_texture_data( img, ptr )
 
-		img = bpy.data.images['kinect']
-		if img.bindcode and self.kinect.PREVIEW_IMAGE:
-			ptr = self.kinect.PREVIEW_IMAGE.imageData
-			self.upload_texture_data( img, ptr )
+		if '_kinect_' in bpy.data.images:
+			img = bpy.data.images['_kinect_']
+			if img.bindcode and self.kinect.PREVIEW_IMAGE:
+				ptr = self.kinect.PREVIEW_IMAGE.imageData
+				self.upload_texture_data( img, ptr )
 
 
-	def upload_texture_data( self, img, ptr, width=320, height=240 ):
+	def upload_texture_data( self, img, ptr, width=240, height=180 ):
 		## fast update raw image data into texture using image.bindcode
 		## the openGL module must not load an external libGL.so/dll
 		## BGL is not used here because raw pointers are not supported (bgl.Buffer is expected)
@@ -4329,39 +4296,42 @@ class ToolsUI( object ):
 
 
 
-
+################################################
 class PhysicsWidget(object):
 
 	def __init__(self, parent, context):
-		self.engine = Physics.ENGINE
-		root = gtk.VBox(); root.set_border_width( 3 )
-		parent.add( root )
+		self.widget = note = gtk.Notebook()
+		parent.add( self.widget )
 
-		#b = gtk.CheckButton('physics active')
-		#b.set_active( bool(self.engine.active) )
-		#b.connect('toggled', lambda button: Pyppet.toggle_physics(button.get_active()) )
-		#root.pack_start( b, expand=False )
-		#root.pack_start( gtk.HSeparator(), expand=True )
+		scn = context.scene
 
-		s = Slider(context.scene.game_settings, 'fps')
-		root.pack_start(s.widget, expand=False)
+		page = gtk.VBox(); page.set_border_width( 3 )
+		note.append_page( page, gtk.Label('settings') )
 
-		s = Slider(context.scene.world, 'ode_ERP', min=0.0001, max=1.0)
-		root.pack_start(s.widget, expand=False)
+		s = SimpleSlider(scn.game_settings, name='fps', title='FPS', max=120, tooltip='frames per second', driveable=True)
+		page.pack_start(s.widget, expand=False)
 
-		s = Slider(context.scene.world, 'ode_CFM')
-		root.pack_start(s.widget, expand=False)
+		s = SimpleSlider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction', driveable=True)
+		page.pack_start(s.widget, expand=False)
 
-		s = Slider(context.scene.world, 'ode_linear_damping')
-		root.pack_start(s.widget, expand=False)
+		s = SimpleSlider(scn.world, name='ode_CFM', title='CFM', max=5, tooltip='joint constant mixing force', driveable=True)
+		page.pack_start(s.widget, expand=False)
 
-		s = Slider(context.scene.world, 'ode_angular_damping')
-		root.pack_start(s.widget, expand=False)
+		page = gtk.VBox(); page.set_border_width( 3 )
+		note.append_page( page, gtk.Label('damping') )
 
-		root.pack_start( gtk.HSeparator(), expand=True )
+		s = SimpleSlider(scn.world, name='ode_linear_damping', title='linear', max=2, tooltip='linear damping', driveable=True)
+		page.pack_start(s.widget, expand=False)
+
+		s = SimpleSlider(scn.world, name='ode_angular_damping', title='angular', max=2, tooltip='angular damping', driveable=True)
+		page.pack_start(s.widget, expand=False)
+
+
+		page = gtk.VBox(); page.set_border_width( 3 )
+		note.append_page( page, gtk.Label('gravity') )
 
 		s = Slider(context.scene.world, 'ode_gravity', title='Gravity')
-		root.pack_start(s.widget, expand=False)
+		page.pack_start(s.widget, expand=False)
 
 
 	def update_ui(self,context):
