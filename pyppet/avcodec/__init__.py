@@ -1681,13 +1681,13 @@ __freeze_rpythonic_struct( __wait_terminated, [
 	( "__w_termsig", ctypes.c_uint ),
 	( "__w_coredump", ctypes.c_uint ),
 	( "__w_retcode", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x8eb824c>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xa5a626c>
 ])
 
 __freeze_rpythonic_struct( __wait_stopped, [
 	( "__w_stopval", ctypes.c_uint ),
 	( "__w_stopsig", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x8eb83ec>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xa5a640c>
 ])
 
 __freeze_rpythonic_struct( wait, [
@@ -1749,7 +1749,7 @@ __freeze_rpythonic_struct( __pthread_mutex_s, [
 	( "__owner", ctypes.c_int ),
 	( "__kind", ctypes.c_int ),
 	( "__nusers", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x8eccdcc>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0xa5badec>
 ])
 
 __freeze_rpythonic_struct( pthread_mutex_t, [

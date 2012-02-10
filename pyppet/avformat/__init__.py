@@ -759,6 +759,20 @@ AVSEEK_FLAG_ANY = 4
 AVSEEK_FLAG_FRAME = 8
 FFM_PACKET_SIZE = 4096
 ## enums ##
+AVLockOp = { 
+	"AV_LOCK_CREATE" : 0, 
+	"AV_LOCK_OBTAIN" : 1, 
+	"AV_LOCK_RELEASE" : 2, 
+	"AV_LOCK_DESTROY" : 3, 
+}
+
+AVSubtitleType = { 
+	"SUBTITLE_NONE" : 0, 
+	"SUBTITLE_BITMAP" : 1, 
+	"SUBTITLE_TEXT" : 2, 
+	"SUBTITLE_ASS" : 3, 
+}
+
 FP_NAN = 0 
 FP_INFINITE = 1 
 FP_ZERO = 2 
@@ -1205,20 +1219,6 @@ AVChromaLocation = {
 	"AVCHROMA_LOC_NB" : 7, 
 }
 
-AVSubtitleType = { 
-	"SUBTITLE_NONE" : 0, 
-	"SUBTITLE_BITMAP" : 1, 
-	"SUBTITLE_TEXT" : 2, 
-	"SUBTITLE_ASS" : 3, 
-}
-
-AVLockOp = { 
-	"AV_LOCK_CREATE" : 0, 
-	"AV_LOCK_OBTAIN" : 1, 
-	"AV_LOCK_RELEASE" : 2, 
-	"AV_LOCK_DESTROY" : 3, 
-}
-
 AVMediaType = { 
 	"AVMEDIA_TYPE_UNKNOWN" : -1, 
 	"AVMEDIA_TYPE_VIDEO" : 0, 
@@ -1468,13 +1468,13 @@ __freeze_rpythonic_struct( __wait_terminated, [
 	( "__w_termsig", ctypes.c_uint ),
 	( "__w_coredump", ctypes.c_uint ),
 	( "__w_retcode", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x85b15ac>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x9c9c5cc>
 ])
 
 __freeze_rpythonic_struct( __wait_stopped, [
 	( "__w_stopval", ctypes.c_uint ),
 	( "__w_stopsig", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x85b170c>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x9c9c72c>
 ])
 
 __freeze_rpythonic_struct( wait, [
@@ -1531,7 +1531,7 @@ __freeze_rpythonic_struct( __pthread_mutex_s, [
 	( "__owner", ctypes.c_int ),
 	( "__kind", ctypes.c_int ),
 	( "__nusers", ctypes.c_uint ),
-	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x85c1dac>
+	#opaque-warning# <rpythonic.rpythonic.SomeThing object at 0x9ca8dcc>
 ])
 
 __freeze_rpythonic_struct( pthread_mutex_t, [
@@ -2300,10 +2300,7 @@ __freeze_rpythonic_struct( AVFormatContext, [
 ])
 
 ## wrapper functions ##
-exp = _rpythonic_function_(		"exp", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-sinh = _rpythonic_function_(		"sinh", ctypes.c_double, [
+asinh = _rpythonic_function_(		"asinh", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
 tanh = _rpythonic_function_(		"tanh", ctypes.c_double, [
@@ -2312,27 +2309,13 @@ tanh = _rpythonic_function_(		"tanh", ctypes.c_double, [
 atanh = _rpythonic_function_(		"atanh", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
-asinh = _rpythonic_function_(		"asinh", ctypes.c_double, [
+sinh = _rpythonic_function_(		"sinh", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+exp = _rpythonic_function_(		"exp", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
 acosh = _rpythonic_function_(		"acosh", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-trunc = _rpythonic_function_(		"trunc", ctypes.c_double, [
-	("__x",		ctypes.c_double),] )
-
-remquo = _rpythonic_function_(		"remquo", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),
-	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
-
-lrint = _rpythonic_function_(		"lrint", ctypes.c_int64, [
-	("__x",		ctypes.c_double),] )
-
-llrint = _rpythonic_function_(		"llrint", ctypes.c_longlong, [
-	("__x",		ctypes.c_double),] )
-
-lround = _rpythonic_function_(		"lround", ctypes.c_int64, [
 	("__x",		ctypes.c_double),] )
 
 frexp = _rpythonic_function_(		"frexp", ctypes.c_double, [
@@ -2518,52 +2501,616 @@ nearbyint = _rpythonic_function_(		"nearbyint", ctypes.c_double, [
 round = _rpythonic_function_(		"round", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
-initstate_r = _rpythonic_function_(		"initstate_r", ctypes.c_int, [
-	("__seed",		ctypes.c_uint),
-	("__statebuf",		ctypes.POINTER(ctypes.c_char)),
-	("__statelen",		ctypes.c_uint),
-	("__buf",		ctypes.POINTER(random_data)),] )
-
-setstate_r = _rpythonic_function_(		"setstate_r", ctypes.c_int, [
-	("__statebuf",		ctypes.POINTER(ctypes.c_char)),
-	("__buf",		ctypes.POINTER(random_data)),] )
-
-rand = _rpythonic_function_(		"rand", ctypes.c_int, [] )
-
-srand = _rpythonic_function_(		"srand", ctypes.c_void_p, [
-	("__seed",		ctypes.c_uint),] )
-
-rand_r = _rpythonic_function_(		"rand_r", ctypes.c_int, [
-	("__seed",		ctypes.POINTER(ctypes.c_uint)),] )
-
-drand48 = _rpythonic_function_(		"drand48", ctypes.c_double, [] )
-
-erand48 = _rpythonic_function_(		"erand48", ctypes.c_double, [
-	("__xsubi",		( ctypes.c_uint16 * 3 )),] )
-
-lrand48 = _rpythonic_function_(		"lrand48", ctypes.c_int64, [] )
-
-nrand48 = _rpythonic_function_(		"nrand48", ctypes.c_int64, [
-	("__xsubi",		( ctypes.c_uint16 * 3 )),] )
-
-mrand48 = _rpythonic_function_(		"mrand48", ctypes.c_int64, [] )
-
-roundl = _rpythonic_function_(		"roundl", ctypes.c_double, [
+trunc = _rpythonic_function_(		"trunc", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
-truncl = _rpythonic_function_(		"truncl", ctypes.c_double, [
+lrint = _rpythonic_function_(		"lrint", ctypes.c_int64, [
 	("__x",		ctypes.c_double),] )
 
-remquol = _rpythonic_function_(		"remquol", ctypes.c_double, [
+remquo = _rpythonic_function_(		"remquo", ctypes.c_double, [
 	("__x",		ctypes.c_double),
 	("__y",		ctypes.c_double),
 	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
 
-lrintl = _rpythonic_function_(		"lrintl", ctypes.c_int64, [
+llrint = _rpythonic_function_(		"llrint", ctypes.c_longlong, [
 	("__x",		ctypes.c_double),] )
 
-llrintl = _rpythonic_function_(		"llrintl", ctypes.c_longlong, [
+lround = _rpythonic_function_(		"lround", ctypes.c_int64, [
 	("__x",		ctypes.c_double),] )
+
+avpicture_deinterlace = _rpythonic_function_(		"avpicture_deinterlace", ctypes.c_int, [
+	("dst",		ctypes.POINTER(AVPicture)),
+	("src",		ctypes.POINTER(AVPicture)),
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+av_codec_next = _rpythonic_function_(		"av_codec_next", ctypes.POINTER(AVCodec), [
+	("c",		ctypes.POINTER(AVCodec)),] )
+
+avcodec_version = _rpythonic_function_(		"avcodec_version", ctypes.c_void_p, [] )
+
+avcodec_configuration = _rpythonic_function_(		"avcodec_configuration", ctypes.POINTER(ctypes.c_char), [] )
+
+avcodec_license = _rpythonic_function_(		"avcodec_license", ctypes.POINTER(ctypes.c_char), [] )
+
+avcodec_init = _rpythonic_function_(		"avcodec_init", ctypes.c_void_p, [] )
+
+register_avcodec = _rpythonic_function_(		"register_avcodec", ctypes.c_void_p, [
+	("codec",		ctypes.POINTER(AVCodec)),] )
+
+avcodec_register = _rpythonic_function_(		"avcodec_register", ctypes.c_void_p, [
+	("codec",		ctypes.POINTER(AVCodec)),] )
+
+avcodec_find_encoder = _rpythonic_function_(		"avcodec_find_encoder", ctypes.POINTER(AVCodec), [
+	("C_id",		ctypes.c_int),] )
+
+avcodec_find_encoder_by_name = _rpythonic_function_(		"avcodec_find_encoder_by_name", ctypes.POINTER(AVCodec), [
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+avcodec_find_decoder = _rpythonic_function_(		"avcodec_find_decoder", ctypes.POINTER(AVCodec), [
+	("C_id",		ctypes.c_int),] )
+
+avcodec_find_decoder_by_name = _rpythonic_function_(		"avcodec_find_decoder_by_name", ctypes.POINTER(AVCodec), [
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+avcodec_string = _rpythonic_function_(		"avcodec_string", ctypes.c_void_p, [
+	("buf",		ctypes.POINTER(ctypes.c_char)),
+	("buf_size",		ctypes.c_int),
+	("enc",		ctypes.POINTER(AVCodecContext)),
+	("encode",		ctypes.c_int),] )
+
+avcodec_get_context_defaults = _rpythonic_function_(		"avcodec_get_context_defaults", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),] )
+
+avcodec_get_context_defaults2 = _rpythonic_function_(		"avcodec_get_context_defaults2", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("AVMediaType",		ctypes.c_int),] )
+
+avcodec_alloc_context = _rpythonic_function_(		"avcodec_alloc_context", ctypes.POINTER(AVCodecContext), [] )
+
+avcodec_alloc_context2 = _rpythonic_function_(		"avcodec_alloc_context2", ctypes.POINTER(AVCodecContext), [
+	("AVMediaType",		ctypes.c_int),] )
+
+avcodec_copy_context = _rpythonic_function_(		"avcodec_copy_context", ctypes.c_int, [
+	("dest",		ctypes.POINTER(AVCodecContext)),
+	("src",		ctypes.POINTER(AVCodecContext)),] )
+
+avcodec_get_frame_defaults = _rpythonic_function_(		"avcodec_get_frame_defaults", ctypes.c_void_p, [
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+avcodec_alloc_frame = _rpythonic_function_(		"avcodec_alloc_frame", ctypes.POINTER(AVFrame), [] )
+
+avcodec_default_get_buffer = _rpythonic_function_(		"avcodec_default_get_buffer", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+avcodec_default_release_buffer = _rpythonic_function_(		"avcodec_default_release_buffer", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+avcodec_default_reget_buffer = _rpythonic_function_(		"avcodec_default_reget_buffer", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+avcodec_get_edge_width = _rpythonic_function_(		"avcodec_get_edge_width", ctypes.c_void_p, [] )
+
+avcodec_align_dimensions = _rpythonic_function_(		"avcodec_align_dimensions", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("width",		ctypes.POINTER(ctypes.c_int)),
+	("height",		ctypes.POINTER(ctypes.c_int)),] )
+
+avcodec_align_dimensions2 = _rpythonic_function_(		"avcodec_align_dimensions2", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("width",		ctypes.POINTER(ctypes.c_int)),
+	("height",		ctypes.POINTER(ctypes.c_int)),
+	("linesize_align",		( ctypes.c_int * 4 )),] )
+
+avcodec_check_dimensions = _rpythonic_function_(		"avcodec_check_dimensions", ctypes.c_int, [
+	("av_log_ctx",		ctypes.POINTER(ctypes.c_void_p)),
+	("w",		ctypes.c_uint),
+	("h",		ctypes.c_uint),] )
+
+avcodec_default_get_format = _rpythonic_function_(		"avcodec_default_get_format", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("fmt",		ctypes.POINTER(ctypes.c_int)),] )
+
+avcodec_thread_init = _rpythonic_function_(		"avcodec_thread_init", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("thread_count",		ctypes.c_int),] )
+
+avcodec_thread_free = _rpythonic_function_(		"avcodec_thread_free", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),] )
+
+avcodec_default_execute = _rpythonic_function_(		"avcodec_default_execute", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("func",		ctypes.c_void_p),
+	("arg",		ctypes.POINTER(ctypes.c_void_p)),
+	("ret",		ctypes.POINTER(ctypes.c_int)),
+	("count",		ctypes.c_int),
+	("size",		ctypes.c_int),] )
+
+avcodec_default_execute2 = _rpythonic_function_(		"avcodec_default_execute2", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("func",		ctypes.c_void_p),
+	("arg",		ctypes.POINTER(ctypes.c_void_p)),
+	("ret",		ctypes.POINTER(ctypes.c_int)),
+	("count",		ctypes.c_int),] )
+
+avcodec_open = _rpythonic_function_(		"avcodec_open", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("codec",		ctypes.POINTER(AVCodec)),] )
+
+avcodec_decode_audio2 = _rpythonic_function_(		"avcodec_decode_audio2", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("samples",		ctypes.POINTER(ctypes.c_int16)),
+	("frame_size_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),] )
+
+avcodec_decode_audio3 = _rpythonic_function_(		"avcodec_decode_audio3", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("samples",		ctypes.POINTER(ctypes.c_int16)),
+	("frame_size_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("avpkt",		ctypes.POINTER(AVPacket)),] )
+
+avcodec_decode_video = _rpythonic_function_(		"avcodec_decode_video", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("picture",		ctypes.POINTER(AVFrame)),
+	("got_picture_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),] )
+
+avcodec_decode_video2 = _rpythonic_function_(		"avcodec_decode_video2", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("picture",		ctypes.POINTER(AVFrame)),
+	("got_picture_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("avpkt",		ctypes.POINTER(AVPacket)),] )
+
+avcodec_decode_subtitle = _rpythonic_function_(		"avcodec_decode_subtitle", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("sub",		ctypes.POINTER(AVSubtitle)),
+	("got_sub_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),] )
+
+avcodec_decode_subtitle2 = _rpythonic_function_(		"avcodec_decode_subtitle2", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("sub",		ctypes.POINTER(AVSubtitle)),
+	("got_sub_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("avpkt",		ctypes.POINTER(AVPacket)),] )
+
+avcodec_parse_frame = _rpythonic_function_(		"avcodec_parse_frame", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("pdata",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("data_size_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),] )
+
+avcodec_encode_audio = _rpythonic_function_(		"avcodec_encode_audio", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("samples",		ctypes.POINTER(ctypes.c_short)),] )
+
+avcodec_encode_video = _rpythonic_function_(		"avcodec_encode_video", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("pict",		ctypes.POINTER(AVFrame)),] )
+
+avcodec_encode_subtitle = _rpythonic_function_(		"avcodec_encode_subtitle", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("sub",		ctypes.POINTER(AVSubtitle)),] )
+
+avcodec_close = _rpythonic_function_(		"avcodec_close", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),] )
+
+avcodec_register_all = _rpythonic_function_(		"avcodec_register_all", ctypes.c_void_p, [] )
+
+avcodec_flush_buffers = _rpythonic_function_(		"avcodec_flush_buffers", ctypes.c_void_p, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),] )
+
+avcodec_default_free_buffers = _rpythonic_function_(		"avcodec_default_free_buffers", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),] )
+
+av_get_pict_type_char = _rpythonic_function_(		"av_get_pict_type_char", ctypes.c_char, [
+	("pict_type",		ctypes.c_int),] )
+
+av_get_bits_per_sample = _rpythonic_function_(		"av_get_bits_per_sample", ctypes.c_int, [
+	("codec_id",		ctypes.c_int),] )
+
+av_get_bits_per_sample_format = _rpythonic_function_(		"av_get_bits_per_sample_format", ctypes.c_int, [
+	("sample_fmt",		ctypes.c_int),] )
+
+parser_init = _rpythonic_function_(		"parser_init", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),] )
+
+parser_parse = _rpythonic_function_(		"parser_parse", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),] )
+
+parser_close = _rpythonic_function_(		"parser_close", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),] )
+
+split = _rpythonic_function_(		"split", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),] )
+
+av_parser_next = _rpythonic_function_(		"av_parser_next", ctypes.POINTER(AVCodecParser), [
+	("c",		ctypes.POINTER(AVCodecParser)),] )
+
+av_register_codec_parser = _rpythonic_function_(		"av_register_codec_parser", ctypes.c_void_p, [
+	("parser",		ctypes.POINTER(AVCodecParser)),] )
+
+av_parser_init = _rpythonic_function_(		"av_parser_init", ctypes.POINTER(AVCodecParserContext), [
+	("codec_id",		ctypes.c_int),] )
+
+av_parser_parse = _rpythonic_function_(		"av_parser_parse", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("pts",		ctypes.c_int64),
+	("dts",		ctypes.c_int64),] )
+
+av_parser_parse2 = _rpythonic_function_(		"av_parser_parse2", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("pts",		ctypes.c_int64),
+	("dts",		ctypes.c_int64),
+	("pos",		ctypes.c_int64),] )
+
+av_parser_change = _rpythonic_function_(		"av_parser_change", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("keyframe",		ctypes.c_int),] )
+
+av_parser_close = _rpythonic_function_(		"av_parser_close", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecParserContext)),] )
+
+filter = _rpythonic_function_(		"filter", ctypes.c_int, [
+	("bsfc",		ctypes.POINTER(AVBitStreamFilterContext)),
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("args",		ctypes.POINTER(ctypes.c_char)),
+	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("keyframe",		ctypes.c_int),] )
+
+av_register_bitstream_filter = _rpythonic_function_(		"av_register_bitstream_filter", ctypes.c_void_p, [
+	("bsf",		ctypes.POINTER(AVBitStreamFilter)),] )
+
+av_bitstream_filter_init = _rpythonic_function_(		"av_bitstream_filter_init", ctypes.POINTER(AVBitStreamFilterContext), [
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+av_bitstream_filter_filter = _rpythonic_function_(		"av_bitstream_filter_filter", ctypes.c_int, [
+	("bsfc",		ctypes.POINTER(AVBitStreamFilterContext)),
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("args",		ctypes.POINTER(ctypes.c_char)),
+	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
+	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("keyframe",		ctypes.c_int),] )
+
+av_bitstream_filter_close = _rpythonic_function_(		"av_bitstream_filter_close", ctypes.c_void_p, [
+	("bsf",		ctypes.POINTER(AVBitStreamFilterContext)),] )
+
+av_bitstream_filter_next = _rpythonic_function_(		"av_bitstream_filter_next", ctypes.POINTER(AVBitStreamFilter), [
+	("f",		ctypes.POINTER(AVBitStreamFilter)),] )
+
+av_fast_realloc = _rpythonic_function_(		"av_fast_realloc", ctypes.POINTER(ctypes.c_void_p), [
+	("ptr",		ctypes.POINTER(ctypes.c_void_p)),
+	("size",		ctypes.POINTER(ctypes.c_uint)),
+	("min_size",		ctypes.c_uint),] )
+
+av_fast_malloc = _rpythonic_function_(		"av_fast_malloc", ctypes.c_void_p, [
+	("ptr",		ctypes.POINTER(ctypes.c_void_p)),
+	("size",		ctypes.POINTER(ctypes.c_uint)),
+	("min_size",		ctypes.c_uint),] )
+
+av_picture_copy = _rpythonic_function_(		"av_picture_copy", ctypes.c_void_p, [
+	("dst",		ctypes.POINTER(AVPicture)),
+	("src",		ctypes.POINTER(AVPicture)),
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+av_picture_crop = _rpythonic_function_(		"av_picture_crop", ctypes.c_int, [
+	("dst",		ctypes.POINTER(AVPicture)),
+	("src",		ctypes.POINTER(AVPicture)),
+	("pix_fmt",		ctypes.c_int),
+	("top_band",		ctypes.c_int),
+	("left_band",		ctypes.c_int),] )
+
+av_picture_pad = _rpythonic_function_(		"av_picture_pad", ctypes.c_int, [
+	("dst",		ctypes.POINTER(AVPicture)),
+	("src",		ctypes.POINTER(AVPicture)),
+	("height",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("pix_fmt",		ctypes.c_int),
+	("padtop",		ctypes.c_int),
+	("padbottom",		ctypes.c_int),
+	("padleft",		ctypes.c_int),
+	("padright",		ctypes.c_int),
+	("color",		ctypes.POINTER(ctypes.c_int)),] )
+
+av_xiphlacing = _rpythonic_function_(		"av_xiphlacing", ctypes.c_uint, [
+	("s",		ctypes.POINTER(ctypes.c_ubyte)),
+	("v",		ctypes.c_uint),] )
+
+av_parse_video_frame_size = _rpythonic_function_(		"av_parse_video_frame_size", ctypes.c_int, [
+	("width_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("height_ptr",		ctypes.POINTER(ctypes.c_int)),
+	("C_str",		ctypes.POINTER(ctypes.c_char)),] )
+
+av_parse_video_frame_rate = _rpythonic_function_(		"av_parse_video_frame_rate", ctypes.c_int, [
+	("frame_rate",		ctypes.POINTER(AVRational)),
+	("C_str",		ctypes.POINTER(ctypes.c_char)),] )
+
+av_log_missing_feature = _rpythonic_function_(		"av_log_missing_feature", ctypes.c_void_p, [
+	("avc",		ctypes.POINTER(ctypes.c_void_p)),
+	("feature",		ctypes.POINTER(ctypes.c_char)),
+	("want_sample",		ctypes.c_int),] )
+
+av_log_ask_for_sample = _rpythonic_function_(		"av_log_ask_for_sample", ctypes.c_void_p, [
+	("avc",		ctypes.POINTER(ctypes.c_void_p)),
+	("msg",		ctypes.POINTER(ctypes.c_char)),] )
+
+av_register_hwaccel = _rpythonic_function_(		"av_register_hwaccel", ctypes.c_void_p, [
+	("hwaccel",		ctypes.POINTER(AVHWAccel)),] )
+
+av_hwaccel_next = _rpythonic_function_(		"av_hwaccel_next", ctypes.POINTER(AVHWAccel), [
+	("hwaccel",		ctypes.POINTER(AVHWAccel)),] )
+
+av_lockmgr_register = _rpythonic_function_(		"av_lockmgr_register", ctypes.c_int, [
+	("cb",		ctypes.c_void_p),] )
+
+cb = _rpythonic_function_(		"cb", ctypes.c_int, [
+	("mutex",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),
+	("op",		ctypes.c_int),] )
+
+get_buffer = _rpythonic_function_(		"get_buffer", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+release_buffer = _rpythonic_function_(		"release_buffer", ctypes.c_void_p, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+get_format = _rpythonic_function_(		"get_format", ctypes.c_int, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("fmt",		ctypes.POINTER(ctypes.c_int)),] )
+
+reget_buffer = _rpythonic_function_(		"reget_buffer", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("pic",		ctypes.POINTER(AVFrame)),] )
+
+execute = _rpythonic_function_(		"execute", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("func",		ctypes.c_void_p),
+	("arg2",		ctypes.POINTER(ctypes.c_void_p)),
+	("ret",		ctypes.POINTER(ctypes.c_int)),
+	("count",		ctypes.c_int),
+	("size",		ctypes.c_int),] )
+
+func = _rpythonic_function_(		"func", ctypes.c_int, [
+	("c2",		ctypes.POINTER(AVCodecContext)),
+	("arg",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+execute2 = _rpythonic_function_(		"execute2", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVCodecContext)),
+	("func",		ctypes.c_void_p),
+	("arg2",		ctypes.POINTER(ctypes.c_void_p)),
+	("ret",		ctypes.POINTER(ctypes.c_int)),
+	("count",		ctypes.c_int),] )
+
+init = _rpythonic_function_(		"init", ctypes.c_int, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+encode = _rpythonic_function_(		"encode", ctypes.c_int, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_int),
+	("data",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+close = _rpythonic_function_(		"close", ctypes.c_int, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+decode = _rpythonic_function_(		"decode", ctypes.c_int, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),
+	("outdata",		ctypes.POINTER(ctypes.c_void_p)),
+	("outdata_size",		ctypes.POINTER(ctypes.c_int)),
+	("avpkt",		ctypes.POINTER(AVPacket)),] )
+
+flush = _rpythonic_function_(		"flush", ctypes.c_void_p, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+start_frame = _rpythonic_function_(		"start_frame", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_uint32),] )
+
+decode_slice = _rpythonic_function_(		"decode_slice", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("buf",		ctypes.POINTER(ctypes.c_uint8)),
+	("buf_size",		ctypes.c_uint32),] )
+
+end_frame = _rpythonic_function_(		"end_frame", ctypes.c_int, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),] )
+
+av_destruct_packet_nofree = _rpythonic_function_(		"av_destruct_packet_nofree", ctypes.c_void_p, [
+	("pkt",		ctypes.POINTER(AVPacket)),] )
+
+av_destruct_packet = _rpythonic_function_(		"av_destruct_packet", ctypes.c_void_p, [
+	("pkt",		ctypes.POINTER(AVPacket)),] )
+
+av_init_packet = _rpythonic_function_(		"av_init_packet", ctypes.c_void_p, [
+	("pkt",		ctypes.POINTER(AVPacket)),] )
+
+av_new_packet = _rpythonic_function_(		"av_new_packet", ctypes.c_int, [
+	("pkt",		ctypes.POINTER(AVPacket)),
+	("size",		ctypes.c_int),] )
+
+av_shrink_packet = _rpythonic_function_(		"av_shrink_packet", ctypes.c_void_p, [
+	("pkt",		ctypes.POINTER(AVPacket)),
+	("size",		ctypes.c_int),] )
+
+av_dup_packet = _rpythonic_function_(		"av_dup_packet", ctypes.c_int, [
+	("pkt",		ctypes.POINTER(AVPacket)),] )
+
+av_free_packet = _rpythonic_function_(		"av_free_packet", ctypes.c_void_p, [
+	("pkt",		ctypes.POINTER(AVPacket)),] )
+
+audio_resample_init = _rpythonic_function_(		"audio_resample_init", ctypes.POINTER(ReSampleContext), [
+	("output_channels",		ctypes.c_int),
+	("input_channels",		ctypes.c_int),
+	("output_rate",		ctypes.c_int),
+	("input_rate",		ctypes.c_int),] )
+
+av_audio_resample_init = _rpythonic_function_(		"av_audio_resample_init", ctypes.POINTER(ReSampleContext), [
+	("output_channels",		ctypes.c_int),
+	("input_channels",		ctypes.c_int),
+	("output_rate",		ctypes.c_int),
+	("input_rate",		ctypes.c_int),
+	("sample_fmt_out",		ctypes.c_int),
+	("sample_fmt_in",		ctypes.c_int),
+	("filter_length",		ctypes.c_int),
+	("log2_phase_count",		ctypes.c_int),
+	("linear",		ctypes.c_int),
+	("cutoff",		ctypes.c_double),] )
+
+audio_resample = _rpythonic_function_(		"audio_resample", ctypes.c_int, [
+	("s",		ctypes.POINTER(ReSampleContext)),
+	("output",		ctypes.POINTER(ctypes.c_short)),
+	("input",		ctypes.POINTER(ctypes.c_short)),
+	("nb_samples",		ctypes.c_int),] )
+
+audio_resample_close = _rpythonic_function_(		"audio_resample_close", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(ReSampleContext)),] )
+
+av_resample_init = _rpythonic_function_(		"av_resample_init", ctypes.POINTER(AVResampleContext), [
+	("out_rate",		ctypes.c_int),
+	("in_rate",		ctypes.c_int),
+	("filter_length",		ctypes.c_int),
+	("log2_phase_count",		ctypes.c_int),
+	("linear",		ctypes.c_int),
+	("cutoff",		ctypes.c_double),] )
+
+av_resample = _rpythonic_function_(		"av_resample", ctypes.c_int, [
+	("c",		ctypes.POINTER(AVResampleContext)),
+	("dst",		ctypes.POINTER(ctypes.c_short)),
+	("src",		ctypes.POINTER(ctypes.c_short)),
+	("consumed",		ctypes.POINTER(ctypes.c_int)),
+	("src_size",		ctypes.c_int),
+	("dst_size",		ctypes.c_int),
+	("update_ctx",		ctypes.c_int),] )
+
+av_resample_compensate = _rpythonic_function_(		"av_resample_compensate", ctypes.c_void_p, [
+	("c",		ctypes.POINTER(AVResampleContext)),
+	("sample_delta",		ctypes.c_int),
+	("compensation_distance",		ctypes.c_int),] )
+
+av_resample_close = _rpythonic_function_(		"av_resample_close", ctypes.c_void_p, [
+	("c",		ctypes.POINTER(AVResampleContext)),] )
+
+avpicture_alloc = _rpythonic_function_(		"avpicture_alloc", ctypes.c_int, [
+	("picture",		ctypes.POINTER(AVPicture)),
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+avpicture_free = _rpythonic_function_(		"avpicture_free", ctypes.c_void_p, [
+	("picture",		ctypes.POINTER(AVPicture)),] )
+
+avpicture_fill = _rpythonic_function_(		"avpicture_fill", ctypes.c_int, [
+	("picture",		ctypes.POINTER(AVPicture)),
+	("ptr",		ctypes.POINTER(ctypes.c_uint8)),
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+avpicture_layout = _rpythonic_function_(		"avpicture_layout", ctypes.c_int, [
+	("src",		ctypes.POINTER(AVPicture)),
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),
+	("dest",		ctypes.POINTER(ctypes.c_ubyte)),
+	("dest_size",		ctypes.c_int),] )
+
+avpicture_get_size = _rpythonic_function_(		"avpicture_get_size", ctypes.c_int, [
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+avcodec_get_chroma_sub_sample = _rpythonic_function_(		"avcodec_get_chroma_sub_sample", ctypes.c_void_p, [
+	("pix_fmt",		ctypes.c_int),
+	("h_shift",		ctypes.POINTER(ctypes.c_int)),
+	("v_shift",		ctypes.POINTER(ctypes.c_int)),] )
+
+avcodec_get_pix_fmt_name = _rpythonic_function_(		"avcodec_get_pix_fmt_name", ctypes.POINTER(ctypes.c_char), [
+	("pix_fmt",		ctypes.c_int),] )
+
+avcodec_set_dimensions = _rpythonic_function_(		"avcodec_set_dimensions", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+avcodec_get_pix_fmt = _rpythonic_function_(		"avcodec_get_pix_fmt", ctypes.c_int, [
+	("name",		ctypes.POINTER(ctypes.c_char)),] )
+
+avcodec_pix_fmt_to_codec_tag = _rpythonic_function_(		"avcodec_pix_fmt_to_codec_tag", ctypes.c_uint, [
+	("pix_fmt",		ctypes.c_int),] )
+
+avcodec_get_pix_fmt_loss = _rpythonic_function_(		"avcodec_get_pix_fmt_loss", ctypes.c_int, [
+	("dst_pix_fmt",		ctypes.c_int),
+	("src_pix_fmt",		ctypes.c_int),
+	("has_alpha",		ctypes.c_int),] )
+
+avcodec_find_best_pix_fmt = _rpythonic_function_(		"avcodec_find_best_pix_fmt", ctypes.c_int, [
+	("pix_fmt_mask",		ctypes.c_int64),
+	("src_pix_fmt",		ctypes.c_int),
+	("has_alpha",		ctypes.c_int),
+	("loss_ptr",		ctypes.POINTER(ctypes.c_int)),] )
+
+avcodec_pix_fmt_string = _rpythonic_function_(		"avcodec_pix_fmt_string", ctypes.c_void_p, [
+	("buf",		ctypes.POINTER(ctypes.c_char)),
+	("buf_size",		ctypes.c_int),
+	("pix_fmt",		ctypes.c_int),] )
+
+img_get_alpha_info = _rpythonic_function_(		"img_get_alpha_info", ctypes.c_int, [
+	("src",		ctypes.POINTER(AVPicture)),
+	("pix_fmt",		ctypes.c_int),
+	("width",		ctypes.c_int),
+	("height",		ctypes.c_int),] )
+
+fmal = _rpythonic_function_(		"fmal", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),
+	("__z",		ctypes.c_double),] )
+
+scalbl = _rpythonic_function_(		"scalbl", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__n",		ctypes.c_double),] )
 
 matherr = _rpythonic_function_(		"matherr", ctypes.c_int, [
 	("__exc",		ctypes.POINTER(exception)),] )
@@ -2573,6 +3120,21 @@ atof = _rpythonic_function_(		"atof", ctypes.c_double, [
 
 atoi = _rpythonic_function_(		"atoi", ctypes.c_int, [
 	("__nptr",		ctypes.POINTER(ctypes.c_char)),] )
+
+select = _rpythonic_function_(		"select", ctypes.c_int, [
+	("__nfds",		ctypes.c_int),
+	("__readfds",		ctypes.POINTER(fd_set)),
+	("__writefds",		ctypes.POINTER(fd_set)),
+	("__exceptfds",		ctypes.POINTER(fd_set)),
+	("__timeout",		ctypes.POINTER(timeval)),] )
+
+pselect = _rpythonic_function_(		"pselect", ctypes.c_int, [
+	("__nfds",		ctypes.c_int),
+	("__readfds",		ctypes.POINTER(fd_set)),
+	("__writefds",		ctypes.POINTER(fd_set)),
+	("__exceptfds",		ctypes.POINTER(fd_set)),
+	("__timeout",		ctypes.POINTER(timespec)),
+	("__sigmask",		ctypes.POINTER(__sigset_t)),] )
 
 atol = _rpythonic_function_(		"atol", ctypes.c_int64, [
 	("__nptr",		ctypes.POINTER(ctypes.c_char)),] )
@@ -2628,29 +3190,39 @@ l64a = _rpythonic_function_(		"l64a", ctypes.POINTER(ctypes.c_char), [
 a64l = _rpythonic_function_(		"a64l", ctypes.c_int64, [
 	("__s",		ctypes.POINTER(ctypes.c_char)),] )
 
-select = _rpythonic_function_(		"select", ctypes.c_int, [
-	("__nfds",		ctypes.c_int),
-	("__readfds",		ctypes.POINTER(fd_set)),
-	("__writefds",		ctypes.POINTER(fd_set)),
-	("__exceptfds",		ctypes.POINTER(fd_set)),
-	("__timeout",		ctypes.POINTER(timeval)),] )
+srandom_r = _rpythonic_function_(		"srandom_r", ctypes.c_int, [
+	("__seed",		ctypes.c_uint),
+	("__buf",		ctypes.POINTER(random_data)),] )
 
-pselect = _rpythonic_function_(		"pselect", ctypes.c_int, [
-	("__nfds",		ctypes.c_int),
-	("__readfds",		ctypes.POINTER(fd_set)),
-	("__writefds",		ctypes.POINTER(fd_set)),
-	("__exceptfds",		ctypes.POINTER(fd_set)),
-	("__timeout",		ctypes.POINTER(timespec)),
-	("__sigmask",		ctypes.POINTER(__sigset_t)),] )
+initstate_r = _rpythonic_function_(		"initstate_r", ctypes.c_int, [
+	("__seed",		ctypes.c_uint),
+	("__statebuf",		ctypes.POINTER(ctypes.c_char)),
+	("__statelen",		ctypes.c_uint),
+	("__buf",		ctypes.POINTER(random_data)),] )
 
-fmal = _rpythonic_function_(		"fmal", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),
-	("__z",		ctypes.c_double),] )
+setstate_r = _rpythonic_function_(		"setstate_r", ctypes.c_int, [
+	("__statebuf",		ctypes.POINTER(ctypes.c_char)),
+	("__buf",		ctypes.POINTER(random_data)),] )
 
-scalbl = _rpythonic_function_(		"scalbl", ctypes.c_double, [
-	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_double),] )
+rand = _rpythonic_function_(		"rand", ctypes.c_int, [] )
+
+srand = _rpythonic_function_(		"srand", ctypes.c_void_p, [
+	("__seed",		ctypes.c_uint),] )
+
+rand_r = _rpythonic_function_(		"rand_r", ctypes.c_int, [
+	("__seed",		ctypes.POINTER(ctypes.c_uint)),] )
+
+drand48 = _rpythonic_function_(		"drand48", ctypes.c_double, [] )
+
+erand48 = _rpythonic_function_(		"erand48", ctypes.c_double, [
+	("__xsubi",		( ctypes.c_uint16 * 3 )),] )
+
+lrand48 = _rpythonic_function_(		"lrand48", ctypes.c_int64, [] )
+
+nrand48 = _rpythonic_function_(		"nrand48", ctypes.c_int64, [
+	("__xsubi",		( ctypes.c_uint16 * 3 )),] )
+
+mrand48 = _rpythonic_function_(		"mrand48", ctypes.c_int64, [] )
 
 gnu_dev_major = _rpythonic_function_(		"gnu_dev_major", ctypes.c_uint, [
 	("__dev",		ctypes.c_ulonglong),] )
@@ -2661,6 +3233,23 @@ gnu_dev_minor = _rpythonic_function_(		"gnu_dev_minor", ctypes.c_uint, [
 gnu_dev_makedev = _rpythonic_function_(		"gnu_dev_makedev", ctypes.c_ulonglong, [
 	("__major",		ctypes.c_uint),
 	("__minor",		ctypes.c_uint),] )
+
+roundl = _rpythonic_function_(		"roundl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+truncl = _rpythonic_function_(		"truncl", ctypes.c_double, [
+	("__x",		ctypes.c_double),] )
+
+remquol = _rpythonic_function_(		"remquol", ctypes.c_double, [
+	("__x",		ctypes.c_double),
+	("__y",		ctypes.c_double),
+	("__quo",		ctypes.POINTER(ctypes.c_int)),] )
+
+lrintl = _rpythonic_function_(		"lrintl", ctypes.c_int64, [
+	("__x",		ctypes.c_double),] )
+
+llrintl = _rpythonic_function_(		"llrintl", ctypes.c_longlong, [
+	("__x",		ctypes.c_double),] )
 
 lroundl = _rpythonic_function_(		"lroundl", ctypes.c_int64, [
 	("__x",		ctypes.c_double),] )
@@ -2680,28 +3269,23 @@ fminl = _rpythonic_function_(		"fminl", ctypes.c_double, [
 	("__x",		ctypes.c_double),
 	("__y",		ctypes.c_double),] )
 
-scalbnl = _rpythonic_function_(		"scalbnl", ctypes.c_double, [
+remainderl = _rpythonic_function_(		"remainderl", ctypes.c_double, [
 	("__x",		ctypes.c_double),
-	("__n",		ctypes.c_int),] )
-
-ilogbl = _rpythonic_function_(		"ilogbl", ctypes.c_int, [
-	("__x",		ctypes.c_double),] )
+	("__y",		ctypes.c_double),] )
 
 scalblnl = _rpythonic_function_(		"scalblnl", ctypes.c_double, [
 	("__x",		ctypes.c_double),
 	("__n",		ctypes.c_int64),] )
 
-remainderl = _rpythonic_function_(		"remainderl", ctypes.c_double, [
+ilogbl = _rpythonic_function_(		"ilogbl", ctypes.c_int, [
+	("__x",		ctypes.c_double),] )
+
+scalbnl = _rpythonic_function_(		"scalbnl", ctypes.c_double, [
 	("__x",		ctypes.c_double),
-	("__y",		ctypes.c_double),] )
+	("__n",		ctypes.c_int),] )
 
 nearbyintl = _rpythonic_function_(		"nearbyintl", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
-
-setstate = _rpythonic_function_(		"setstate", ctypes.POINTER(ctypes.c_char), [
-	("__statebuf",		ctypes.POINTER(ctypes.c_char)),] )
-
-random = _rpythonic_function_(		"random", ctypes.c_int64, [] )
 
 random_r = _rpythonic_function_(		"random_r", ctypes.c_int, [
 	("__buf",		ctypes.POINTER(random_data)),
@@ -2712,9 +3296,10 @@ initstate = _rpythonic_function_(		"initstate", ctypes.POINTER(ctypes.c_char), [
 	("__statebuf",		ctypes.POINTER(ctypes.c_char)),
 	("__statelen",		ctypes.c_uint),] )
 
-srandom_r = _rpythonic_function_(		"srandom_r", ctypes.c_int, [
-	("__seed",		ctypes.c_uint),
-	("__buf",		ctypes.POINTER(random_data)),] )
+setstate = _rpythonic_function_(		"setstate", ctypes.POINTER(ctypes.c_char), [
+	("__statebuf",		ctypes.POINTER(ctypes.c_char)),] )
+
+random = _rpythonic_function_(		"random", ctypes.c_int64, [] )
 
 srandom = _rpythonic_function_(		"srandom", ctypes.c_void_p, [
 	("__seed",		ctypes.c_uint),] )
@@ -2770,20 +3355,17 @@ calloc = _rpythonic_function_(		"calloc", ctypes.POINTER(ctypes.c_void_p), [
 	("__nmemb",		ctypes.c_uint),
 	("__size",		ctypes.c_uint),] )
 
+seed48 = _rpythonic_function_(		"seed48", ctypes.POINTER(ctypes.c_uint16), [
+	("__seed16v",		( ctypes.c_uint16 * 3 )),] )
+
 erand48_r = _rpythonic_function_(		"erand48_r", ctypes.c_int, [
 	("__xsubi",		( ctypes.c_uint16 * 3 )),
 	("__buffer",		ctypes.POINTER(drand48_data)),
 	("__result",		ctypes.POINTER(ctypes.c_double)),] )
 
-seed48 = _rpythonic_function_(		"seed48", ctypes.POINTER(ctypes.c_uint16), [
-	("__seed16v",		( ctypes.c_uint16 * 3 )),] )
-
-lcong48 = _rpythonic_function_(		"lcong48", ctypes.c_void_p, [
-	("__param",		( ctypes.c_uint16 * 7 )),] )
-
-drand48_r = _rpythonic_function_(		"drand48_r", ctypes.c_int, [
+lrand48_r = _rpythonic_function_(		"lrand48_r", ctypes.c_int, [
 	("__buffer",		ctypes.POINTER(drand48_data)),
-	("__result",		ctypes.POINTER(ctypes.c_double)),] )
+	("__result",		ctypes.POINTER(ctypes.c_int64)),] )
 
 srand48 = _rpythonic_function_(		"srand48", ctypes.c_void_p, [
 	("__seedval",		ctypes.c_int64),] )
@@ -2791,9 +3373,27 @@ srand48 = _rpythonic_function_(		"srand48", ctypes.c_void_p, [
 jrand48 = _rpythonic_function_(		"jrand48", ctypes.c_int64, [
 	("__xsubi",		( ctypes.c_uint16 * 3 )),] )
 
-lrand48_r = _rpythonic_function_(		"lrand48_r", ctypes.c_int, [
+drand48_r = _rpythonic_function_(		"drand48_r", ctypes.c_int, [
 	("__buffer",		ctypes.POINTER(drand48_data)),
-	("__result",		ctypes.POINTER(ctypes.c_int64)),] )
+	("__result",		ctypes.POINTER(ctypes.c_double)),] )
+
+lcong48 = _rpythonic_function_(		"lcong48", ctypes.c_void_p, [
+	("__param",		( ctypes.c_uint16 * 7 )),] )
+
+asctime_r = _rpythonic_function_(		"asctime_r", ctypes.POINTER(ctypes.c_char), [
+	("__tp",		ctypes.POINTER(tm)),
+	("__buf",		ctypes.POINTER(ctypes.c_char)),] )
+
+gmtime_r = _rpythonic_function_(		"gmtime_r", ctypes.POINTER(tm), [
+	("__timer",		ctypes.POINTER(ctypes.c_int64)),
+	("__tp",		ctypes.POINTER(tm)),] )
+
+ctime = _rpythonic_function_(		"ctime", ctypes.POINTER(ctypes.c_char), [
+	("__timer",		ctypes.POINTER(ctypes.c_int64)),] )
+
+ctime_r = _rpythonic_function_(		"ctime_r", ctypes.POINTER(ctypes.c_char), [
+	("__timer",		ctypes.POINTER(ctypes.c_int64)),
+	("__buf",		ctypes.POINTER(ctypes.c_char)),] )
 
 asctime = _rpythonic_function_(		"asctime", ctypes.POINTER(ctypes.c_char), [
 	("__tp",		ctypes.POINTER(tm)),] )
@@ -2801,21 +3401,6 @@ asctime = _rpythonic_function_(		"asctime", ctypes.POINTER(ctypes.c_char), [
 localtime_r = _rpythonic_function_(		"localtime_r", ctypes.POINTER(tm), [
 	("__timer",		ctypes.POINTER(ctypes.c_int64)),
 	("__tp",		ctypes.POINTER(tm)),] )
-
-ctime = _rpythonic_function_(		"ctime", ctypes.POINTER(ctypes.c_char), [
-	("__timer",		ctypes.POINTER(ctypes.c_int64)),] )
-
-gmtime_r = _rpythonic_function_(		"gmtime_r", ctypes.POINTER(tm), [
-	("__timer",		ctypes.POINTER(ctypes.c_int64)),
-	("__tp",		ctypes.POINTER(tm)),] )
-
-ctime_r = _rpythonic_function_(		"ctime_r", ctypes.POINTER(ctypes.c_char), [
-	("__timer",		ctypes.POINTER(ctypes.c_int64)),
-	("__buf",		ctypes.POINTER(ctypes.c_char)),] )
-
-asctime_r = _rpythonic_function_(		"asctime_r", ctypes.POINTER(ctypes.c_char), [
-	("__tp",		ctypes.POINTER(tm)),
-	("__buf",		ctypes.POINTER(ctypes.c_char)),] )
 
 realloc = _rpythonic_function_(		"realloc", ctypes.POINTER(ctypes.c_void_p), [
 	("__ptr",		ctypes.POINTER(ctypes.c_void_p)),
@@ -2845,18 +3430,15 @@ on_exit = _rpythonic_function_(		"on_exit", ctypes.c_int, [
 	("__func",		ctypes.c_void_p),
 	("__arg",		ctypes.POINTER(ctypes.c_void_p)),] )
 
+memcpy = _rpythonic_function_(		"memcpy", ctypes.POINTER(ctypes.c_void_p), [
+	("__dest",		ctypes.POINTER(ctypes.c_void_p)),
+	("__src",		ctypes.POINTER(ctypes.c_void_p)),
+	("__n",		ctypes.c_uint),] )
+
 memset = _rpythonic_function_(		"memset", ctypes.POINTER(ctypes.c_void_p), [
 	("__s",		ctypes.POINTER(ctypes.c_void_p)),
 	("__c",		ctypes.c_int),
 	("__n",		ctypes.c_uint),] )
-
-rpmatch = _rpythonic_function_(		"rpmatch", ctypes.c_int, [
-	("__response",		ctypes.POINTER(ctypes.c_char)),] )
-
-getsubopt = _rpythonic_function_(		"getsubopt", ctypes.c_int, [
-	("__optionp",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
-	("__tokens",		ctypes.POINTER(ctypes.c_char)),
-	("__valuep",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),] )
 
 memccpy = _rpythonic_function_(		"memccpy", ctypes.POINTER(ctypes.c_void_p), [
 	("__dest",		ctypes.POINTER(ctypes.c_void_p)),
@@ -2864,19 +3446,22 @@ memccpy = _rpythonic_function_(		"memccpy", ctypes.POINTER(ctypes.c_void_p), [
 	("__c",		ctypes.c_int),
 	("__n",		ctypes.c_uint),] )
 
+getloadavg = _rpythonic_function_(		"getloadavg", ctypes.c_int, [
+	("__loadavg",		ctypes.c_double),
+	("__nelem",		ctypes.c_int),] )
+
 memmove = _rpythonic_function_(		"memmove", ctypes.POINTER(ctypes.c_void_p), [
 	("__dest",		ctypes.POINTER(ctypes.c_void_p)),
 	("__src",		ctypes.POINTER(ctypes.c_void_p)),
 	("__n",		ctypes.c_uint),] )
 
-memcpy = _rpythonic_function_(		"memcpy", ctypes.POINTER(ctypes.c_void_p), [
-	("__dest",		ctypes.POINTER(ctypes.c_void_p)),
-	("__src",		ctypes.POINTER(ctypes.c_void_p)),
-	("__n",		ctypes.c_uint),] )
+getsubopt = _rpythonic_function_(		"getsubopt", ctypes.c_int, [
+	("__optionp",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
+	("__tokens",		ctypes.POINTER(ctypes.c_char)),
+	("__valuep",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),] )
 
-getloadavg = _rpythonic_function_(		"getloadavg", ctypes.c_int, [
-	("__loadavg",		ctypes.c_double),
-	("__nelem",		ctypes.c_int),] )
+rpmatch = _rpythonic_function_(		"rpmatch", ctypes.c_int, [
+	("__response",		ctypes.POINTER(ctypes.c_char)),] )
 
 exit = _rpythonic_function_(		"exit", ctypes.c_void_p, [
 	("__status",		ctypes.c_int),] )
@@ -2947,18 +3532,12 @@ qsort = _rpythonic_function_(		"qsort", ctypes.c_void_p, [
 	("__size",		ctypes.c_uint),
 	("__compar",		ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_void_p),)),] )
 
-abs = _rpythonic_function_(		"abs", ctypes.c_int, [
-	("__x",		ctypes.c_int),] )
+mkdtemp = _rpythonic_function_(		"mkdtemp", ctypes.POINTER(ctypes.c_char), [
+	("__template",		ctypes.POINTER(ctypes.c_char)),] )
 
 mkstemps = _rpythonic_function_(		"mkstemps", ctypes.c_int, [
 	("__template",		ctypes.POINTER(ctypes.c_char)),
 	("__suffixlen",		ctypes.c_int),] )
-
-system = _rpythonic_function_(		"system", ctypes.c_int, [
-	("__command",		ctypes.POINTER(ctypes.c_char)),] )
-
-mkdtemp = _rpythonic_function_(		"mkdtemp", ctypes.POINTER(ctypes.c_char), [
-	("__template",		ctypes.POINTER(ctypes.c_char)),] )
 
 bsearch = _rpythonic_function_(		"bsearch", ctypes.POINTER(ctypes.c_void_p), [
 	("__key",		ctypes.POINTER(ctypes.c_void_p)),
@@ -2966,6 +3545,12 @@ bsearch = _rpythonic_function_(		"bsearch", ctypes.POINTER(ctypes.c_void_p), [
 	("__nmemb",		ctypes.c_uint),
 	("__size",		ctypes.c_uint),
 	("__compar",		ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_void_p),)),] )
+
+system = _rpythonic_function_(		"system", ctypes.c_int, [
+	("__command",		ctypes.POINTER(ctypes.c_char)),] )
+
+abs = _rpythonic_function_(		"abs", ctypes.c_int, [
+	("__x",		ctypes.c_int),] )
 
 realpath = _rpythonic_function_(		"realpath", ctypes.POINTER(ctypes.c_char), [
 	("__name",		ctypes.POINTER(ctypes.c_char)),
@@ -3002,42 +3587,6 @@ strncat = _rpythonic_function_(		"strncat", ctypes.POINTER(ctypes.c_char), [
 strcmp = _rpythonic_function_(		"strcmp", ctypes.c_int, [
 	("__s1",		ctypes.POINTER(ctypes.c_char)),
 	("__s2",		ctypes.POINTER(ctypes.c_char)),] )
-
-strncmp = _rpythonic_function_(		"strncmp", ctypes.c_int, [
-	("__s1",		ctypes.POINTER(ctypes.c_char)),
-	("__s2",		ctypes.POINTER(ctypes.c_char)),
-	("__n",		ctypes.c_uint),] )
-
-strcoll = _rpythonic_function_(		"strcoll", ctypes.c_int, [
-	("__s1",		ctypes.POINTER(ctypes.c_char)),
-	("__s2",		ctypes.POINTER(ctypes.c_char)),] )
-
-strxfrm = _rpythonic_function_(		"strxfrm", ctypes.c_uint, [
-	("__dest",		ctypes.POINTER(ctypes.c_char)),
-	("__src",		ctypes.POINTER(ctypes.c_char)),
-	("__n",		ctypes.c_uint),] )
-
-strcoll_l = _rpythonic_function_(		"strcoll_l", ctypes.c_int, [
-	("__s1",		ctypes.POINTER(ctypes.c_char)),
-	("__s2",		ctypes.POINTER(ctypes.c_char)),
-	("__l",		ctypes.POINTER(__locale_struct)),] )
-
-strxfrm_l = _rpythonic_function_(		"strxfrm_l", ctypes.c_uint, [
-	("__dest",		ctypes.POINTER(ctypes.c_char)),
-	("__src",		ctypes.POINTER(ctypes.c_char)),
-	("__n",		ctypes.c_uint),
-	("__l",		ctypes.POINTER(__locale_struct)),] )
-
-strdup = _rpythonic_function_(		"strdup", ctypes.POINTER(ctypes.c_char), [
-	("__s",		ctypes.POINTER(ctypes.c_char)),] )
-
-strndup = _rpythonic_function_(		"strndup", ctypes.POINTER(ctypes.c_char), [
-	("__string",		ctypes.POINTER(ctypes.c_char)),
-	("__n",		ctypes.c_uint),] )
-
-strchr = _rpythonic_function_(		"strchr", ctypes.POINTER(ctypes.c_char), [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__c",		ctypes.c_int),] )
 
 qecvt = _rpythonic_function_(		"qecvt", ctypes.POINTER(ctypes.c_char), [
 	("__value",		ctypes.c_double),
@@ -3080,6 +3629,42 @@ qecvt_r = _rpythonic_function_(		"qecvt_r", ctypes.c_int, [
 	("__buf",		ctypes.POINTER(ctypes.c_char)),
 	("__len",		ctypes.c_uint),] )
 
+strncmp = _rpythonic_function_(		"strncmp", ctypes.c_int, [
+	("__s1",		ctypes.POINTER(ctypes.c_char)),
+	("__s2",		ctypes.POINTER(ctypes.c_char)),
+	("__n",		ctypes.c_uint),] )
+
+strcoll = _rpythonic_function_(		"strcoll", ctypes.c_int, [
+	("__s1",		ctypes.POINTER(ctypes.c_char)),
+	("__s2",		ctypes.POINTER(ctypes.c_char)),] )
+
+strxfrm = _rpythonic_function_(		"strxfrm", ctypes.c_uint, [
+	("__dest",		ctypes.POINTER(ctypes.c_char)),
+	("__src",		ctypes.POINTER(ctypes.c_char)),
+	("__n",		ctypes.c_uint),] )
+
+strcoll_l = _rpythonic_function_(		"strcoll_l", ctypes.c_int, [
+	("__s1",		ctypes.POINTER(ctypes.c_char)),
+	("__s2",		ctypes.POINTER(ctypes.c_char)),
+	("__l",		ctypes.POINTER(__locale_struct)),] )
+
+strxfrm_l = _rpythonic_function_(		"strxfrm_l", ctypes.c_uint, [
+	("__dest",		ctypes.POINTER(ctypes.c_char)),
+	("__src",		ctypes.POINTER(ctypes.c_char)),
+	("__n",		ctypes.c_uint),
+	("__l",		ctypes.POINTER(__locale_struct)),] )
+
+strdup = _rpythonic_function_(		"strdup", ctypes.POINTER(ctypes.c_char), [
+	("__s",		ctypes.POINTER(ctypes.c_char)),] )
+
+strndup = _rpythonic_function_(		"strndup", ctypes.POINTER(ctypes.c_char), [
+	("__string",		ctypes.POINTER(ctypes.c_char)),
+	("__n",		ctypes.c_uint),] )
+
+strchr = _rpythonic_function_(		"strchr", ctypes.POINTER(ctypes.c_char), [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__c",		ctypes.c_int),] )
+
 strtok = _rpythonic_function_(		"strtok", ctypes.POINTER(ctypes.c_char), [
 	("__s",		ctypes.POINTER(ctypes.c_char)),
 	("__delim",		ctypes.POINTER(ctypes.c_char)),] )
@@ -3092,10 +3677,6 @@ strspn = _rpythonic_function_(		"strspn", ctypes.c_uint, [
 	("__s",		ctypes.POINTER(ctypes.c_char)),
 	("__accept",		ctypes.POINTER(ctypes.c_char)),] )
 
-strrchr = _rpythonic_function_(		"strrchr", ctypes.POINTER(ctypes.c_char), [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__c",		ctypes.c_int),] )
-
 strpbrk = _rpythonic_function_(		"strpbrk", ctypes.POINTER(ctypes.c_char), [
 	("__s",		ctypes.POINTER(ctypes.c_char)),
 	("__accept",		ctypes.POINTER(ctypes.c_char)),] )
@@ -3103,6 +3684,10 @@ strpbrk = _rpythonic_function_(		"strpbrk", ctypes.POINTER(ctypes.c_char), [
 strstr = _rpythonic_function_(		"strstr", ctypes.POINTER(ctypes.c_char), [
 	("__haystack",		ctypes.POINTER(ctypes.c_char)),
 	("__needle",		ctypes.POINTER(ctypes.c_char)),] )
+
+strrchr = _rpythonic_function_(		"strrchr", ctypes.POINTER(ctypes.c_char), [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__c",		ctypes.c_int),] )
 
 qfcvt_r = _rpythonic_function_(		"qfcvt_r", ctypes.c_int, [
 	("__value",		ctypes.c_double),
@@ -3135,225 +3720,25 @@ wcstombs = _rpythonic_function_(		"wcstombs", ctypes.c_uint, [
 	("__pwcs",		ctypes.POINTER(ctypes.c_int)),
 	("__n",		ctypes.c_uint),] )
 
-strtok_r = _rpythonic_function_(		"strtok_r", ctypes.POINTER(ctypes.c_char), [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__delim",		ctypes.POINTER(ctypes.c_char)),
-	("__save_ptr",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),] )
+exp2f = _rpythonic_function_(		"exp2f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
 
-strlen = _rpythonic_function_(		"strlen", ctypes.c_uint, [
-	("__s",		ctypes.POINTER(ctypes.c_char)),] )
+log2f = _rpythonic_function_(		"log2f", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
 
-strnlen = _rpythonic_function_(		"strnlen", ctypes.c_uint, [
-	("__string",		ctypes.POINTER(ctypes.c_char)),
-	("__maxlen",		ctypes.c_uint),] )
+powf = _rpythonic_function_(		"powf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
 
-strerror = _rpythonic_function_(		"strerror", ctypes.POINTER(ctypes.c_char), [
-	("__errnum",		ctypes.c_int),] )
+sqrtf = _rpythonic_function_(		"sqrtf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
 
-strerror_r = _rpythonic_function_(		"strerror_r", ctypes.c_int, [
-	("__errnum",		ctypes.c_int),
-	("__buf",		ctypes.POINTER(ctypes.c_char)),
-	("__buflen",		ctypes.c_uint),] )
+hypotf = _rpythonic_function_(		"hypotf", ctypes.c_float, [
+	("__x",		ctypes.c_float),
+	("__y",		ctypes.c_float),] )
 
-strerror_l = _rpythonic_function_(		"strerror_l", ctypes.POINTER(ctypes.c_char), [
-	("__errnum",		ctypes.c_int),
-	("__l",		ctypes.POINTER(__locale_struct)),] )
-
-bcopy = _rpythonic_function_(		"bcopy", ctypes.c_void_p, [
-	("__src",		ctypes.POINTER(ctypes.c_void_p)),
-	("__dest",		ctypes.POINTER(ctypes.c_void_p)),
-	("__n",		ctypes.c_uint),] )
-
-bzero = _rpythonic_function_(		"bzero", ctypes.c_void_p, [
-	("__s",		ctypes.POINTER(ctypes.c_void_p)),
-	("__n",		ctypes.c_uint),] )
-
-bcmp = _rpythonic_function_(		"bcmp", ctypes.c_int, [
-	("__s1",		ctypes.POINTER(ctypes.c_void_p)),
-	("__s2",		ctypes.POINTER(ctypes.c_void_p)),
-	("__n",		ctypes.c_uint),] )
-
-index = _rpythonic_function_(		"index", ctypes.POINTER(ctypes.c_char), [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__c",		ctypes.c_int),] )
-
-rindex = _rpythonic_function_(		"rindex", ctypes.POINTER(ctypes.c_char), [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__c",		ctypes.c_int),] )
-
-ffs = _rpythonic_function_(		"ffs", ctypes.c_int, [
-	("__i",		ctypes.c_int),] )
-
-strcasecmp = _rpythonic_function_(		"strcasecmp", ctypes.c_int, [
-	("__s1",		ctypes.POINTER(ctypes.c_char)),
-	("__s2",		ctypes.POINTER(ctypes.c_char)),] )
-
-strncasecmp = _rpythonic_function_(		"strncasecmp", ctypes.c_int, [
-	("__s1",		ctypes.POINTER(ctypes.c_char)),
-	("__s2",		ctypes.POINTER(ctypes.c_char)),
-	("__n",		ctypes.c_uint),] )
-
-strsep = _rpythonic_function_(		"strsep", ctypes.POINTER(ctypes.c_char), [
-	("__stringp",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
-	("__delim",		ctypes.POINTER(ctypes.c_char)),] )
-
-strsignal = _rpythonic_function_(		"strsignal", ctypes.POINTER(ctypes.c_char), [
-	("__sig",		ctypes.c_int),] )
-
-stpcpy = _rpythonic_function_(		"stpcpy", ctypes.POINTER(ctypes.c_char), [
-	("__dest",		ctypes.POINTER(ctypes.c_char)),
-	("__src",		ctypes.POINTER(ctypes.c_char)),] )
-
-stpncpy = _rpythonic_function_(		"stpncpy", ctypes.POINTER(ctypes.c_char), [
-	("__dest",		ctypes.POINTER(ctypes.c_char)),
-	("__src",		ctypes.POINTER(ctypes.c_char)),
-	("__n",		ctypes.c_uint),] )
-
-av_malloc = _rpythonic_function_(		"av_malloc", ctypes.POINTER(ctypes.c_void_p), [
-	("size",		ctypes.c_uint),] )
-
-av_realloc = _rpythonic_function_(		"av_realloc", ctypes.POINTER(ctypes.c_void_p), [
-	("ptr",		ctypes.POINTER(ctypes.c_void_p)),
-	("size",		ctypes.c_uint),] )
-
-av_free = _rpythonic_function_(		"av_free", ctypes.c_void_p, [("ptr",		ctypes.c_void_p)] )
-
-av_mallocz = _rpythonic_function_(		"av_mallocz", ctypes.POINTER(ctypes.c_void_p), [
-	("size",		ctypes.c_uint),] )
-
-av_strdup = _rpythonic_function_(		"av_strdup", ctypes.POINTER(ctypes.c_char), [
-	("s",		ctypes.POINTER(ctypes.c_char)),] )
-
-av_freep = _rpythonic_function_(		"av_freep", ctypes.c_void_p, [("ptr",		ctypes.c_void_p)] )
-
-av_strerror = _rpythonic_function_(		"av_strerror", ctypes.c_int, [
-	("errnum",		ctypes.c_int),
-	("errbuf",		ctypes.POINTER(ctypes.c_char)),
-	("errbuf_size",		ctypes.c_uint),] )
-
-av_reduce = _rpythonic_function_(		"av_reduce", ctypes.c_int, [
-	("dst_num",		ctypes.POINTER(ctypes.c_int)),
-	("dst_den",		ctypes.POINTER(ctypes.c_int)),
-	("num",		ctypes.c_int64),
-	("den",		ctypes.c_int64),
-	("max",		ctypes.c_int64),] )
-
-av_mul_q = _rpythonic_function_(		"av_mul_q", AVRational, [
-	("b",		AVRational),
-	("c",		AVRational),] )
-
-av_div_q = _rpythonic_function_(		"av_div_q", AVRational, [
-	("b",		AVRational),
-	("c",		AVRational),] )
-
-av_add_q = _rpythonic_function_(		"av_add_q", AVRational, [
-	("b",		AVRational),
-	("c",		AVRational),] )
-
-av_sub_q = _rpythonic_function_(		"av_sub_q", AVRational, [
-	("b",		AVRational),
-	("c",		AVRational),] )
-
-av_d2q = _rpythonic_function_(		"av_d2q", AVRational, [
-	("d",		ctypes.c_double),
-	("max",		ctypes.c_int),] )
-
-av_nearer_q = _rpythonic_function_(		"av_nearer_q", ctypes.c_int, [
-	("q",		AVRational),
-	("q1",		AVRational),
-	("q2",		AVRational),] )
-
-av_find_nearest_q_idx = _rpythonic_function_(		"av_find_nearest_q_idx", ctypes.c_int, [
-	("q",		AVRational),
-	("q_list",		ctypes.POINTER(AVRational)),] )
-
-av_gcd = _rpythonic_function_(		"av_gcd", ctypes.c_int64, [
-	("a",		ctypes.c_int64),
-	("b",		ctypes.c_int64),] )
-
-av_rescale = _rpythonic_function_(		"av_rescale", ctypes.c_int64, [
-	("a",		ctypes.c_int64),
-	("b",		ctypes.c_int64),
-	("c",		ctypes.c_int64),] )
-
-av_rescale_rnd = _rpythonic_function_(		"av_rescale_rnd", ctypes.c_int64, [
-	("a",		ctypes.c_int64),
-	("b",		ctypes.c_int64),
-	("c",		ctypes.c_int64),
-	("AVRounding",		ctypes.c_int),] )
-
-av_rescale_q = _rpythonic_function_(		"av_rescale_q", ctypes.c_int64, [
-	("a",		ctypes.c_int64),
-	("bq",		AVRational),
-	("cq",		AVRational),] )
-
-av_compare_ts = _rpythonic_function_(		"av_compare_ts", ctypes.c_int, [
-	("ts_a",		ctypes.c_int64),
-	("tb_a",		AVRational),
-	("ts_b",		ctypes.c_int64),
-	("tb_b",		AVRational),] )
-
-av_int2dbl = _rpythonic_function_(		"av_int2dbl", ctypes.c_double, [
-	("v",		ctypes.c_int64),] )
-
-av_int2flt = _rpythonic_function_(		"av_int2flt", ctypes.c_float, [
-	("v",		ctypes.c_int32),] )
-
-av_ext2dbl = _rpythonic_function_(		"av_ext2dbl", ctypes.c_double, [
-	("ext",		AVExtFloat),] )
-
-av_dbl2int = _rpythonic_function_(		"av_dbl2int", ctypes.c_int64, [
-	("d",		ctypes.c_double),] )
-
-av_flt2int = _rpythonic_function_(		"av_flt2int", ctypes.c_int32, [
-	("d",		ctypes.c_float),] )
-
-av_dbl2ext = _rpythonic_function_(		"av_dbl2ext", AVExtFloat, [
-	("d",		ctypes.c_double),] )
-
-av_log = _rpythonic_function_(		"av_log", ctypes.c_void_p, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),
-	("level",		ctypes.c_int),
-	("fmt",		ctypes.POINTER(ctypes.c_char)),] )
-
-item_name = _rpythonic_function_(		"item_name", ctypes.POINTER(ctypes.c_char), [("ctx",		ctypes.c_void_p)] )
-
-av_vlog = _rpythonic_function_(		"av_vlog", ctypes.c_void_p, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),
-	("level",		ctypes.c_int),
-	("fmt",		ctypes.POINTER(ctypes.c_char)),
-	("none",		ctypes.c_char),] )
-
-av_log_get_level = _rpythonic_function_(		"av_log_get_level", ctypes.c_int, [] )
-
-av_log_set_level = _rpythonic_function_(		"av_log_set_level", ctypes.c_void_p, [
-	("none",		ctypes.c_int),] )
-
-av_log_set_callback = _rpythonic_function_(		"av_log_set_callback", ctypes.c_void_p, [
-	("none",		ctypes.c_void_p),] )
-
-av_log_default_callback = _rpythonic_function_(		"av_log_default_callback", ctypes.c_void_p, [
-	("ptr",		ctypes.POINTER(ctypes.c_void_p)),
-	("level",		ctypes.c_int),
-	("fmt",		ctypes.POINTER(ctypes.c_char)),
-	("vl",		ctypes.c_char),] )
-
-destruct = _rpythonic_function_(		"destruct", ctypes.c_void_p, [
-	("AVPacket",		ctypes.POINTER(AVPacket)),] )
-
-draw_horiz_band = _rpythonic_function_(		"draw_horiz_band", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("src",		ctypes.POINTER(AVFrame)),
-	("offset",		( ctypes.c_int * 4 )),
-	("y",		ctypes.c_int),
-	("C_type",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-rtp_callback = _rpythonic_function_(		"rtp_callback", ctypes.c_void_p, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("data",		ctypes.POINTER(ctypes.c_void_p)),
-	("size",		ctypes.c_int),
-	("mb_nb",		ctypes.c_int),] )
+cbrtf = _rpythonic_function_(		"cbrtf", ctypes.c_float, [
+	("__x",		ctypes.c_float),] )
 
 finitef = _rpythonic_function_(		"finitef", ctypes.c_int, [
 	("__value",		ctypes.c_float),] )
@@ -3374,26 +3759,6 @@ nanf = _rpythonic_function_(		"nanf", ctypes.c_float, [
 
 isnanf = _rpythonic_function_(		"isnanf", ctypes.c_int, [
 	("__value",		ctypes.c_float),] )
-
-exp2f = _rpythonic_function_(		"exp2f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-log2f = _rpythonic_function_(		"log2f", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-powf = _rpythonic_function_(		"powf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-sqrtf = _rpythonic_function_(		"sqrtf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
-
-hypotf = _rpythonic_function_(		"hypotf", ctypes.c_float, [
-	("__x",		ctypes.c_float),
-	("__y",		ctypes.c_float),] )
-
-cbrtf = _rpythonic_function_(		"cbrtf", ctypes.c_float, [
-	("__x",		ctypes.c_float),] )
 
 ceilf = _rpythonic_function_(		"ceilf", ctypes.c_float, [
 	("__x",		ctypes.c_float),] )
@@ -3447,6 +3812,9 @@ nanosleep = _rpythonic_function_(		"nanosleep", ctypes.c_int, [
 	("__requested_time",		ctypes.POINTER(timespec)),
 	("__remaining",		ctypes.POINTER(timespec)),] )
 
+timegm = _rpythonic_function_(		"timegm", ctypes.c_int64, [
+	("__tp",		ctypes.POINTER(tm)),] )
+
 clock_gettime = _rpythonic_function_(		"clock_gettime", ctypes.c_int, [
 	("__clock_id",		ctypes.c_int),
 	("__tp",		ctypes.POINTER(timespec)),] )
@@ -3455,9 +3823,6 @@ dysize = _rpythonic_function_(		"dysize", ctypes.c_int, [
 	("__year",		ctypes.c_int),] )
 
 timelocal = _rpythonic_function_(		"timelocal", ctypes.c_int64, [
-	("__tp",		ctypes.POINTER(tm)),] )
-
-timegm = _rpythonic_function_(		"timegm", ctypes.c_int64, [
 	("__tp",		ctypes.POINTER(tm)),] )
 
 rintf = _rpythonic_function_(		"rintf", ctypes.c_float, [
@@ -3510,13 +3875,13 @@ fdim = _rpythonic_function_(		"fdim", ctypes.c_double, [
 	("__x",		ctypes.c_double),
 	("__y",		ctypes.c_double),] )
 
+llround = _rpythonic_function_(		"llround", ctypes.c_longlong, [
+	("__x",		ctypes.c_double),] )
+
 fma = _rpythonic_function_(		"fma", ctypes.c_double, [
 	("__x",		ctypes.c_double),
 	("__y",		ctypes.c_double),
 	("__z",		ctypes.c_double),] )
-
-llround = _rpythonic_function_(		"llround", ctypes.c_longlong, [
-	("__x",		ctypes.c_double),] )
 
 acoshf = _rpythonic_function_(		"acoshf", ctypes.c_float, [
 	("__x",		ctypes.c_float),] )
@@ -3926,590 +4291,225 @@ ff_crc04C11DB7_update = _rpythonic_function_(		"ff_crc04C11DB7_update", ctypes.c
 get_checksum = _rpythonic_function_(		"get_checksum", ctypes.c_ulong, [
 	("s",		ctypes.POINTER(ByteIOContext)),] )
 
-get_buffer = _rpythonic_function_(		"get_buffer", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-release_buffer = _rpythonic_function_(		"release_buffer", ctypes.c_void_p, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-get_format = _rpythonic_function_(		"get_format", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("fmt",		ctypes.POINTER(ctypes.c_int)),] )
-
-reget_buffer = _rpythonic_function_(		"reget_buffer", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-execute = _rpythonic_function_(		"execute", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("func",		ctypes.c_void_p),
-	("arg2",		ctypes.POINTER(ctypes.c_void_p)),
-	("ret",		ctypes.POINTER(ctypes.c_int)),
-	("count",		ctypes.c_int),
-	("size",		ctypes.c_int),] )
-
-func = _rpythonic_function_(		"func", ctypes.c_int, [
-	("c2",		ctypes.POINTER(AVCodecContext)),
-	("arg",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-execute2 = _rpythonic_function_(		"execute2", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("func",		ctypes.c_void_p),
-	("arg2",		ctypes.POINTER(ctypes.c_void_p)),
-	("ret",		ctypes.POINTER(ctypes.c_int)),
-	("count",		ctypes.c_int),] )
-
-init = _rpythonic_function_(		"init", ctypes.c_int, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-encode = _rpythonic_function_(		"encode", ctypes.c_int, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("data",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-close = _rpythonic_function_(		"close", ctypes.c_int, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-decode = _rpythonic_function_(		"decode", ctypes.c_int, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),
-	("outdata",		ctypes.POINTER(ctypes.c_void_p)),
-	("outdata_size",		ctypes.POINTER(ctypes.c_int)),
-	("avpkt",		ctypes.POINTER(AVPacket)),] )
-
-flush = _rpythonic_function_(		"flush", ctypes.c_void_p, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-start_frame = _rpythonic_function_(		"start_frame", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_uint32),] )
-
-decode_slice = _rpythonic_function_(		"decode_slice", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_uint32),] )
-
-end_frame = _rpythonic_function_(		"end_frame", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),] )
-
-av_destruct_packet_nofree = _rpythonic_function_(		"av_destruct_packet_nofree", ctypes.c_void_p, [
-	("pkt",		ctypes.POINTER(AVPacket)),] )
-
-av_destruct_packet = _rpythonic_function_(		"av_destruct_packet", ctypes.c_void_p, [
-	("pkt",		ctypes.POINTER(AVPacket)),] )
-
-av_init_packet = _rpythonic_function_(		"av_init_packet", ctypes.c_void_p, [
-	("pkt",		ctypes.POINTER(AVPacket)),] )
-
-av_new_packet = _rpythonic_function_(		"av_new_packet", ctypes.c_int, [
-	("pkt",		ctypes.POINTER(AVPacket)),
-	("size",		ctypes.c_int),] )
-
-av_shrink_packet = _rpythonic_function_(		"av_shrink_packet", ctypes.c_void_p, [
-	("pkt",		ctypes.POINTER(AVPacket)),
-	("size",		ctypes.c_int),] )
-
-av_dup_packet = _rpythonic_function_(		"av_dup_packet", ctypes.c_int, [
-	("pkt",		ctypes.POINTER(AVPacket)),] )
-
-av_free_packet = _rpythonic_function_(		"av_free_packet", ctypes.c_void_p, [
-	("pkt",		ctypes.POINTER(AVPacket)),] )
-
-audio_resample_init = _rpythonic_function_(		"audio_resample_init", ctypes.POINTER(ReSampleContext), [
-	("output_channels",		ctypes.c_int),
-	("input_channels",		ctypes.c_int),
-	("output_rate",		ctypes.c_int),
-	("input_rate",		ctypes.c_int),] )
-
-av_audio_resample_init = _rpythonic_function_(		"av_audio_resample_init", ctypes.POINTER(ReSampleContext), [
-	("output_channels",		ctypes.c_int),
-	("input_channels",		ctypes.c_int),
-	("output_rate",		ctypes.c_int),
-	("input_rate",		ctypes.c_int),
-	("sample_fmt_out",		ctypes.c_int),
-	("sample_fmt_in",		ctypes.c_int),
-	("filter_length",		ctypes.c_int),
-	("log2_phase_count",		ctypes.c_int),
-	("linear",		ctypes.c_int),
-	("cutoff",		ctypes.c_double),] )
-
-audio_resample = _rpythonic_function_(		"audio_resample", ctypes.c_int, [
-	("s",		ctypes.POINTER(ReSampleContext)),
-	("output",		ctypes.POINTER(ctypes.c_short)),
-	("input",		ctypes.POINTER(ctypes.c_short)),
-	("nb_samples",		ctypes.c_int),] )
-
-audio_resample_close = _rpythonic_function_(		"audio_resample_close", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(ReSampleContext)),] )
-
-av_resample_init = _rpythonic_function_(		"av_resample_init", ctypes.POINTER(AVResampleContext), [
-	("out_rate",		ctypes.c_int),
-	("in_rate",		ctypes.c_int),
-	("filter_length",		ctypes.c_int),
-	("log2_phase_count",		ctypes.c_int),
-	("linear",		ctypes.c_int),
-	("cutoff",		ctypes.c_double),] )
-
-av_resample = _rpythonic_function_(		"av_resample", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVResampleContext)),
-	("dst",		ctypes.POINTER(ctypes.c_short)),
-	("src",		ctypes.POINTER(ctypes.c_short)),
-	("consumed",		ctypes.POINTER(ctypes.c_int)),
-	("src_size",		ctypes.c_int),
-	("dst_size",		ctypes.c_int),
-	("update_ctx",		ctypes.c_int),] )
-
-av_resample_compensate = _rpythonic_function_(		"av_resample_compensate", ctypes.c_void_p, [
-	("c",		ctypes.POINTER(AVResampleContext)),
-	("sample_delta",		ctypes.c_int),
-	("compensation_distance",		ctypes.c_int),] )
-
-av_resample_close = _rpythonic_function_(		"av_resample_close", ctypes.c_void_p, [
-	("c",		ctypes.POINTER(AVResampleContext)),] )
-
-avpicture_alloc = _rpythonic_function_(		"avpicture_alloc", ctypes.c_int, [
-	("picture",		ctypes.POINTER(AVPicture)),
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-avpicture_free = _rpythonic_function_(		"avpicture_free", ctypes.c_void_p, [
-	("picture",		ctypes.POINTER(AVPicture)),] )
-
-avpicture_fill = _rpythonic_function_(		"avpicture_fill", ctypes.c_int, [
-	("picture",		ctypes.POINTER(AVPicture)),
-	("ptr",		ctypes.POINTER(ctypes.c_uint8)),
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-avpicture_layout = _rpythonic_function_(		"avpicture_layout", ctypes.c_int, [
-	("src",		ctypes.POINTER(AVPicture)),
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),
-	("dest",		ctypes.POINTER(ctypes.c_ubyte)),
-	("dest_size",		ctypes.c_int),] )
-
-avpicture_get_size = _rpythonic_function_(		"avpicture_get_size", ctypes.c_int, [
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-avcodec_get_chroma_sub_sample = _rpythonic_function_(		"avcodec_get_chroma_sub_sample", ctypes.c_void_p, [
-	("pix_fmt",		ctypes.c_int),
-	("h_shift",		ctypes.POINTER(ctypes.c_int)),
-	("v_shift",		ctypes.POINTER(ctypes.c_int)),] )
-
-avcodec_get_pix_fmt_name = _rpythonic_function_(		"avcodec_get_pix_fmt_name", ctypes.POINTER(ctypes.c_char), [
-	("pix_fmt",		ctypes.c_int),] )
-
-avcodec_set_dimensions = _rpythonic_function_(		"avcodec_set_dimensions", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-avcodec_get_pix_fmt = _rpythonic_function_(		"avcodec_get_pix_fmt", ctypes.c_int, [
-	("name",		ctypes.POINTER(ctypes.c_char)),] )
-
-avcodec_pix_fmt_to_codec_tag = _rpythonic_function_(		"avcodec_pix_fmt_to_codec_tag", ctypes.c_uint, [
-	("pix_fmt",		ctypes.c_int),] )
-
-avcodec_get_pix_fmt_loss = _rpythonic_function_(		"avcodec_get_pix_fmt_loss", ctypes.c_int, [
-	("dst_pix_fmt",		ctypes.c_int),
-	("src_pix_fmt",		ctypes.c_int),
-	("has_alpha",		ctypes.c_int),] )
-
-avcodec_find_best_pix_fmt = _rpythonic_function_(		"avcodec_find_best_pix_fmt", ctypes.c_int, [
-	("pix_fmt_mask",		ctypes.c_int64),
-	("src_pix_fmt",		ctypes.c_int),
-	("has_alpha",		ctypes.c_int),
-	("loss_ptr",		ctypes.POINTER(ctypes.c_int)),] )
-
-avcodec_pix_fmt_string = _rpythonic_function_(		"avcodec_pix_fmt_string", ctypes.c_void_p, [
-	("buf",		ctypes.POINTER(ctypes.c_char)),
-	("buf_size",		ctypes.c_int),
-	("pix_fmt",		ctypes.c_int),] )
-
-img_get_alpha_info = _rpythonic_function_(		"img_get_alpha_info", ctypes.c_int, [
-	("src",		ctypes.POINTER(AVPicture)),
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-avpicture_deinterlace = _rpythonic_function_(		"avpicture_deinterlace", ctypes.c_int, [
-	("dst",		ctypes.POINTER(AVPicture)),
-	("src",		ctypes.POINTER(AVPicture)),
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("height",		ctypes.c_int),] )
-
-av_codec_next = _rpythonic_function_(		"av_codec_next", ctypes.POINTER(AVCodec), [
-	("c",		ctypes.POINTER(AVCodec)),] )
-
-avcodec_version = _rpythonic_function_(		"avcodec_version", ctypes.c_void_p, [] )
-
-avcodec_configuration = _rpythonic_function_(		"avcodec_configuration", ctypes.POINTER(ctypes.c_char), [] )
-
-avcodec_license = _rpythonic_function_(		"avcodec_license", ctypes.POINTER(ctypes.c_char), [] )
-
-avcodec_init = _rpythonic_function_(		"avcodec_init", ctypes.c_void_p, [] )
-
-register_avcodec = _rpythonic_function_(		"register_avcodec", ctypes.c_void_p, [
-	("codec",		ctypes.POINTER(AVCodec)),] )
-
-avcodec_register = _rpythonic_function_(		"avcodec_register", ctypes.c_void_p, [
-	("codec",		ctypes.POINTER(AVCodec)),] )
-
-avcodec_find_encoder = _rpythonic_function_(		"avcodec_find_encoder", ctypes.POINTER(AVCodec), [
-	("C_id",		ctypes.c_int),] )
-
-avcodec_find_encoder_by_name = _rpythonic_function_(		"avcodec_find_encoder_by_name", ctypes.POINTER(AVCodec), [
-	("name",		ctypes.POINTER(ctypes.c_char)),] )
-
-avcodec_find_decoder = _rpythonic_function_(		"avcodec_find_decoder", ctypes.POINTER(AVCodec), [
-	("C_id",		ctypes.c_int),] )
-
-avcodec_find_decoder_by_name = _rpythonic_function_(		"avcodec_find_decoder_by_name", ctypes.POINTER(AVCodec), [
-	("name",		ctypes.POINTER(ctypes.c_char)),] )
-
-avcodec_string = _rpythonic_function_(		"avcodec_string", ctypes.c_void_p, [
-	("buf",		ctypes.POINTER(ctypes.c_char)),
-	("buf_size",		ctypes.c_int),
-	("enc",		ctypes.POINTER(AVCodecContext)),
-	("encode",		ctypes.c_int),] )
-
-avcodec_get_context_defaults = _rpythonic_function_(		"avcodec_get_context_defaults", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),] )
-
-avcodec_get_context_defaults2 = _rpythonic_function_(		"avcodec_get_context_defaults2", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("AVMediaType",		ctypes.c_int),] )
-
-avcodec_alloc_context = _rpythonic_function_(		"avcodec_alloc_context", ctypes.POINTER(AVCodecContext), [] )
-
-avcodec_alloc_context2 = _rpythonic_function_(		"avcodec_alloc_context2", ctypes.POINTER(AVCodecContext), [
-	("AVMediaType",		ctypes.c_int),] )
-
-avcodec_copy_context = _rpythonic_function_(		"avcodec_copy_context", ctypes.c_int, [
-	("dest",		ctypes.POINTER(AVCodecContext)),
-	("src",		ctypes.POINTER(AVCodecContext)),] )
-
-avcodec_get_frame_defaults = _rpythonic_function_(		"avcodec_get_frame_defaults", ctypes.c_void_p, [
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-avcodec_alloc_frame = _rpythonic_function_(		"avcodec_alloc_frame", ctypes.POINTER(AVFrame), [] )
-
-avcodec_default_get_buffer = _rpythonic_function_(		"avcodec_default_get_buffer", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-avcodec_default_release_buffer = _rpythonic_function_(		"avcodec_default_release_buffer", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-avcodec_default_reget_buffer = _rpythonic_function_(		"avcodec_default_reget_buffer", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("pic",		ctypes.POINTER(AVFrame)),] )
-
-avcodec_get_edge_width = _rpythonic_function_(		"avcodec_get_edge_width", ctypes.c_void_p, [] )
-
-avcodec_align_dimensions = _rpythonic_function_(		"avcodec_align_dimensions", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("width",		ctypes.POINTER(ctypes.c_int)),
-	("height",		ctypes.POINTER(ctypes.c_int)),] )
-
-avcodec_align_dimensions2 = _rpythonic_function_(		"avcodec_align_dimensions2", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("width",		ctypes.POINTER(ctypes.c_int)),
-	("height",		ctypes.POINTER(ctypes.c_int)),
-	("linesize_align",		( ctypes.c_int * 4 )),] )
-
-avcodec_check_dimensions = _rpythonic_function_(		"avcodec_check_dimensions", ctypes.c_int, [
-	("av_log_ctx",		ctypes.POINTER(ctypes.c_void_p)),
-	("w",		ctypes.c_uint),
-	("h",		ctypes.c_uint),] )
-
-avcodec_default_get_format = _rpythonic_function_(		"avcodec_default_get_format", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("fmt",		ctypes.POINTER(ctypes.c_int)),] )
-
-avcodec_thread_init = _rpythonic_function_(		"avcodec_thread_init", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecContext)),
-	("thread_count",		ctypes.c_int),] )
-
-avcodec_thread_free = _rpythonic_function_(		"avcodec_thread_free", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),] )
-
-avcodec_default_execute = _rpythonic_function_(		"avcodec_default_execute", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("func",		ctypes.c_void_p),
-	("arg",		ctypes.POINTER(ctypes.c_void_p)),
-	("ret",		ctypes.POINTER(ctypes.c_int)),
-	("count",		ctypes.c_int),
-	("size",		ctypes.c_int),] )
-
-avcodec_default_execute2 = _rpythonic_function_(		"avcodec_default_execute2", ctypes.c_int, [
-	("c",		ctypes.POINTER(AVCodecContext)),
-	("func",		ctypes.c_void_p),
-	("arg",		ctypes.POINTER(ctypes.c_void_p)),
-	("ret",		ctypes.POINTER(ctypes.c_int)),
-	("count",		ctypes.c_int),] )
-
-avcodec_open = _rpythonic_function_(		"avcodec_open", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("codec",		ctypes.POINTER(AVCodec)),] )
-
-avcodec_decode_audio2 = _rpythonic_function_(		"avcodec_decode_audio2", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("samples",		ctypes.POINTER(ctypes.c_int16)),
-	("frame_size_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),] )
-
-avcodec_decode_audio3 = _rpythonic_function_(		"avcodec_decode_audio3", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("samples",		ctypes.POINTER(ctypes.c_int16)),
-	("frame_size_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("avpkt",		ctypes.POINTER(AVPacket)),] )
-
-avcodec_decode_video = _rpythonic_function_(		"avcodec_decode_video", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("picture",		ctypes.POINTER(AVFrame)),
-	("got_picture_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),] )
-
-avcodec_decode_video2 = _rpythonic_function_(		"avcodec_decode_video2", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("picture",		ctypes.POINTER(AVFrame)),
-	("got_picture_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("avpkt",		ctypes.POINTER(AVPacket)),] )
-
-avcodec_decode_subtitle = _rpythonic_function_(		"avcodec_decode_subtitle", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("sub",		ctypes.POINTER(AVSubtitle)),
-	("got_sub_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),] )
-
-avcodec_decode_subtitle2 = _rpythonic_function_(		"avcodec_decode_subtitle2", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("sub",		ctypes.POINTER(AVSubtitle)),
-	("got_sub_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("avpkt",		ctypes.POINTER(AVPacket)),] )
-
-avcodec_parse_frame = _rpythonic_function_(		"avcodec_parse_frame", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("pdata",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("data_size_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),] )
-
-avcodec_encode_audio = _rpythonic_function_(		"avcodec_encode_audio", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("samples",		ctypes.POINTER(ctypes.c_short)),] )
-
-avcodec_encode_video = _rpythonic_function_(		"avcodec_encode_video", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("pict",		ctypes.POINTER(AVFrame)),] )
-
-avcodec_encode_subtitle = _rpythonic_function_(		"avcodec_encode_subtitle", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("sub",		ctypes.POINTER(AVSubtitle)),] )
-
-avcodec_close = _rpythonic_function_(		"avcodec_close", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),] )
-
-avcodec_register_all = _rpythonic_function_(		"avcodec_register_all", ctypes.c_void_p, [] )
-
-avcodec_flush_buffers = _rpythonic_function_(		"avcodec_flush_buffers", ctypes.c_void_p, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),] )
-
-avcodec_default_free_buffers = _rpythonic_function_(		"avcodec_default_free_buffers", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecContext)),] )
-
-av_get_pict_type_char = _rpythonic_function_(		"av_get_pict_type_char", ctypes.c_char, [
-	("pict_type",		ctypes.c_int),] )
-
-av_get_bits_per_sample = _rpythonic_function_(		"av_get_bits_per_sample", ctypes.c_int, [
-	("codec_id",		ctypes.c_int),] )
-
-av_get_bits_per_sample_format = _rpythonic_function_(		"av_get_bits_per_sample_format", ctypes.c_int, [
-	("sample_fmt",		ctypes.c_int),] )
-
-parser_init = _rpythonic_function_(		"parser_init", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),] )
-
-parser_parse = _rpythonic_function_(		"parser_parse", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),] )
-
-parser_close = _rpythonic_function_(		"parser_close", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),] )
-
-split = _rpythonic_function_(		"split", ctypes.c_int, [
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),] )
-
-av_parser_next = _rpythonic_function_(		"av_parser_next", ctypes.POINTER(AVCodecParser), [
-	("c",		ctypes.POINTER(AVCodecParser)),] )
-
-av_register_codec_parser = _rpythonic_function_(		"av_register_codec_parser", ctypes.c_void_p, [
-	("parser",		ctypes.POINTER(AVCodecParser)),] )
-
-av_parser_init = _rpythonic_function_(		"av_parser_init", ctypes.POINTER(AVCodecParserContext), [
-	("codec_id",		ctypes.c_int),] )
-
-av_parser_parse = _rpythonic_function_(		"av_parser_parse", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("pts",		ctypes.c_int64),
-	("dts",		ctypes.c_int64),] )
-
-av_parser_parse2 = _rpythonic_function_(		"av_parser_parse2", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("pts",		ctypes.c_int64),
-	("dts",		ctypes.c_int64),
-	("pos",		ctypes.c_int64),] )
-
-av_parser_change = _rpythonic_function_(		"av_parser_change", ctypes.c_int, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("keyframe",		ctypes.c_int),] )
-
-av_parser_close = _rpythonic_function_(		"av_parser_close", ctypes.c_void_p, [
-	("s",		ctypes.POINTER(AVCodecParserContext)),] )
-
-filter = _rpythonic_function_(		"filter", ctypes.c_int, [
-	("bsfc",		ctypes.POINTER(AVBitStreamFilterContext)),
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("args",		ctypes.POINTER(ctypes.c_char)),
-	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("keyframe",		ctypes.c_int),] )
-
-av_register_bitstream_filter = _rpythonic_function_(		"av_register_bitstream_filter", ctypes.c_void_p, [
-	("bsf",		ctypes.POINTER(AVBitStreamFilter)),] )
-
-av_bitstream_filter_init = _rpythonic_function_(		"av_bitstream_filter_init", ctypes.POINTER(AVBitStreamFilterContext), [
-	("name",		ctypes.POINTER(ctypes.c_char)),] )
-
-av_bitstream_filter_filter = _rpythonic_function_(		"av_bitstream_filter_filter", ctypes.c_int, [
-	("bsfc",		ctypes.POINTER(AVBitStreamFilterContext)),
-	("avctx",		ctypes.POINTER(AVCodecContext)),
-	("args",		ctypes.POINTER(ctypes.c_char)),
-	("poutbuf",		ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))),
-	("poutbuf_size",		ctypes.POINTER(ctypes.c_int)),
-	("buf",		ctypes.POINTER(ctypes.c_uint8)),
-	("buf_size",		ctypes.c_int),
-	("keyframe",		ctypes.c_int),] )
-
-av_bitstream_filter_close = _rpythonic_function_(		"av_bitstream_filter_close", ctypes.c_void_p, [
-	("bsf",		ctypes.POINTER(AVBitStreamFilterContext)),] )
-
-av_bitstream_filter_next = _rpythonic_function_(		"av_bitstream_filter_next", ctypes.POINTER(AVBitStreamFilter), [
-	("f",		ctypes.POINTER(AVBitStreamFilter)),] )
-
-av_fast_realloc = _rpythonic_function_(		"av_fast_realloc", ctypes.POINTER(ctypes.c_void_p), [
+strtok_r = _rpythonic_function_(		"strtok_r", ctypes.POINTER(ctypes.c_char), [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__delim",		ctypes.POINTER(ctypes.c_char)),
+	("__save_ptr",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),] )
+
+strlen = _rpythonic_function_(		"strlen", ctypes.c_uint, [
+	("__s",		ctypes.POINTER(ctypes.c_char)),] )
+
+strnlen = _rpythonic_function_(		"strnlen", ctypes.c_uint, [
+	("__string",		ctypes.POINTER(ctypes.c_char)),
+	("__maxlen",		ctypes.c_uint),] )
+
+strerror = _rpythonic_function_(		"strerror", ctypes.POINTER(ctypes.c_char), [
+	("__errnum",		ctypes.c_int),] )
+
+strerror_r = _rpythonic_function_(		"strerror_r", ctypes.c_int, [
+	("__errnum",		ctypes.c_int),
+	("__buf",		ctypes.POINTER(ctypes.c_char)),
+	("__buflen",		ctypes.c_uint),] )
+
+strerror_l = _rpythonic_function_(		"strerror_l", ctypes.POINTER(ctypes.c_char), [
+	("__errnum",		ctypes.c_int),
+	("__l",		ctypes.POINTER(__locale_struct)),] )
+
+bcopy = _rpythonic_function_(		"bcopy", ctypes.c_void_p, [
+	("__src",		ctypes.POINTER(ctypes.c_void_p)),
+	("__dest",		ctypes.POINTER(ctypes.c_void_p)),
+	("__n",		ctypes.c_uint),] )
+
+bzero = _rpythonic_function_(		"bzero", ctypes.c_void_p, [
+	("__s",		ctypes.POINTER(ctypes.c_void_p)),
+	("__n",		ctypes.c_uint),] )
+
+bcmp = _rpythonic_function_(		"bcmp", ctypes.c_int, [
+	("__s1",		ctypes.POINTER(ctypes.c_void_p)),
+	("__s2",		ctypes.POINTER(ctypes.c_void_p)),
+	("__n",		ctypes.c_uint),] )
+
+index = _rpythonic_function_(		"index", ctypes.POINTER(ctypes.c_char), [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__c",		ctypes.c_int),] )
+
+rindex = _rpythonic_function_(		"rindex", ctypes.POINTER(ctypes.c_char), [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__c",		ctypes.c_int),] )
+
+ffs = _rpythonic_function_(		"ffs", ctypes.c_int, [
+	("__i",		ctypes.c_int),] )
+
+strcasecmp = _rpythonic_function_(		"strcasecmp", ctypes.c_int, [
+	("__s1",		ctypes.POINTER(ctypes.c_char)),
+	("__s2",		ctypes.POINTER(ctypes.c_char)),] )
+
+strncasecmp = _rpythonic_function_(		"strncasecmp", ctypes.c_int, [
+	("__s1",		ctypes.POINTER(ctypes.c_char)),
+	("__s2",		ctypes.POINTER(ctypes.c_char)),
+	("__n",		ctypes.c_uint),] )
+
+strsep = _rpythonic_function_(		"strsep", ctypes.POINTER(ctypes.c_char), [
+	("__stringp",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
+	("__delim",		ctypes.POINTER(ctypes.c_char)),] )
+
+strsignal = _rpythonic_function_(		"strsignal", ctypes.POINTER(ctypes.c_char), [
+	("__sig",		ctypes.c_int),] )
+
+stpcpy = _rpythonic_function_(		"stpcpy", ctypes.POINTER(ctypes.c_char), [
+	("__dest",		ctypes.POINTER(ctypes.c_char)),
+	("__src",		ctypes.POINTER(ctypes.c_char)),] )
+
+stpncpy = _rpythonic_function_(		"stpncpy", ctypes.POINTER(ctypes.c_char), [
+	("__dest",		ctypes.POINTER(ctypes.c_char)),
+	("__src",		ctypes.POINTER(ctypes.c_char)),
+	("__n",		ctypes.c_uint),] )
+
+av_malloc = _rpythonic_function_(		"av_malloc", ctypes.POINTER(ctypes.c_void_p), [
+	("size",		ctypes.c_uint),] )
+
+av_realloc = _rpythonic_function_(		"av_realloc", ctypes.POINTER(ctypes.c_void_p), [
 	("ptr",		ctypes.POINTER(ctypes.c_void_p)),
-	("size",		ctypes.POINTER(ctypes.c_uint)),
-	("min_size",		ctypes.c_uint),] )
+	("size",		ctypes.c_uint),] )
 
-av_fast_malloc = _rpythonic_function_(		"av_fast_malloc", ctypes.c_void_p, [
+av_free = _rpythonic_function_(		"av_free", ctypes.c_void_p, [("ptr",		ctypes.c_void_p)] )
+
+av_mallocz = _rpythonic_function_(		"av_mallocz", ctypes.POINTER(ctypes.c_void_p), [
+	("size",		ctypes.c_uint),] )
+
+av_strdup = _rpythonic_function_(		"av_strdup", ctypes.POINTER(ctypes.c_char), [
+	("s",		ctypes.POINTER(ctypes.c_char)),] )
+
+av_freep = _rpythonic_function_(		"av_freep", ctypes.c_void_p, [("ptr",		ctypes.c_void_p)] )
+
+av_strerror = _rpythonic_function_(		"av_strerror", ctypes.c_int, [
+	("errnum",		ctypes.c_int),
+	("errbuf",		ctypes.POINTER(ctypes.c_char)),
+	("errbuf_size",		ctypes.c_uint),] )
+
+av_reduce = _rpythonic_function_(		"av_reduce", ctypes.c_int, [
+	("dst_num",		ctypes.POINTER(ctypes.c_int)),
+	("dst_den",		ctypes.POINTER(ctypes.c_int)),
+	("num",		ctypes.c_int64),
+	("den",		ctypes.c_int64),
+	("max",		ctypes.c_int64),] )
+
+av_mul_q = _rpythonic_function_(		"av_mul_q", AVRational, [
+	("b",		AVRational),
+	("c",		AVRational),] )
+
+av_div_q = _rpythonic_function_(		"av_div_q", AVRational, [
+	("b",		AVRational),
+	("c",		AVRational),] )
+
+av_add_q = _rpythonic_function_(		"av_add_q", AVRational, [
+	("b",		AVRational),
+	("c",		AVRational),] )
+
+av_sub_q = _rpythonic_function_(		"av_sub_q", AVRational, [
+	("b",		AVRational),
+	("c",		AVRational),] )
+
+av_d2q = _rpythonic_function_(		"av_d2q", AVRational, [
+	("d",		ctypes.c_double),
+	("max",		ctypes.c_int),] )
+
+av_nearer_q = _rpythonic_function_(		"av_nearer_q", ctypes.c_int, [
+	("q",		AVRational),
+	("q1",		AVRational),
+	("q2",		AVRational),] )
+
+av_find_nearest_q_idx = _rpythonic_function_(		"av_find_nearest_q_idx", ctypes.c_int, [
+	("q",		AVRational),
+	("q_list",		ctypes.POINTER(AVRational)),] )
+
+av_gcd = _rpythonic_function_(		"av_gcd", ctypes.c_int64, [
+	("a",		ctypes.c_int64),
+	("b",		ctypes.c_int64),] )
+
+av_rescale = _rpythonic_function_(		"av_rescale", ctypes.c_int64, [
+	("a",		ctypes.c_int64),
+	("b",		ctypes.c_int64),
+	("c",		ctypes.c_int64),] )
+
+av_rescale_rnd = _rpythonic_function_(		"av_rescale_rnd", ctypes.c_int64, [
+	("a",		ctypes.c_int64),
+	("b",		ctypes.c_int64),
+	("c",		ctypes.c_int64),
+	("AVRounding",		ctypes.c_int),] )
+
+av_rescale_q = _rpythonic_function_(		"av_rescale_q", ctypes.c_int64, [
+	("a",		ctypes.c_int64),
+	("bq",		AVRational),
+	("cq",		AVRational),] )
+
+av_compare_ts = _rpythonic_function_(		"av_compare_ts", ctypes.c_int, [
+	("ts_a",		ctypes.c_int64),
+	("tb_a",		AVRational),
+	("ts_b",		ctypes.c_int64),
+	("tb_b",		AVRational),] )
+
+av_int2dbl = _rpythonic_function_(		"av_int2dbl", ctypes.c_double, [
+	("v",		ctypes.c_int64),] )
+
+av_int2flt = _rpythonic_function_(		"av_int2flt", ctypes.c_float, [
+	("v",		ctypes.c_int32),] )
+
+av_ext2dbl = _rpythonic_function_(		"av_ext2dbl", ctypes.c_double, [
+	("ext",		AVExtFloat),] )
+
+av_dbl2int = _rpythonic_function_(		"av_dbl2int", ctypes.c_int64, [
+	("d",		ctypes.c_double),] )
+
+av_flt2int = _rpythonic_function_(		"av_flt2int", ctypes.c_int32, [
+	("d",		ctypes.c_float),] )
+
+av_dbl2ext = _rpythonic_function_(		"av_dbl2ext", AVExtFloat, [
+	("d",		ctypes.c_double),] )
+
+av_log = _rpythonic_function_(		"av_log", ctypes.c_void_p, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),
+	("level",		ctypes.c_int),
+	("fmt",		ctypes.POINTER(ctypes.c_char)),] )
+
+item_name = _rpythonic_function_(		"item_name", ctypes.POINTER(ctypes.c_char), [("ctx",		ctypes.c_void_p)] )
+
+av_vlog = _rpythonic_function_(		"av_vlog", ctypes.c_void_p, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),
+	("level",		ctypes.c_int),
+	("fmt",		ctypes.POINTER(ctypes.c_char)),
+	("none",		ctypes.c_char),] )
+
+av_log_get_level = _rpythonic_function_(		"av_log_get_level", ctypes.c_int, [] )
+
+av_log_set_level = _rpythonic_function_(		"av_log_set_level", ctypes.c_void_p, [
+	("none",		ctypes.c_int),] )
+
+av_log_set_callback = _rpythonic_function_(		"av_log_set_callback", ctypes.c_void_p, [
+	("none",		ctypes.c_void_p),] )
+
+av_log_default_callback = _rpythonic_function_(		"av_log_default_callback", ctypes.c_void_p, [
 	("ptr",		ctypes.POINTER(ctypes.c_void_p)),
-	("size",		ctypes.POINTER(ctypes.c_uint)),
-	("min_size",		ctypes.c_uint),] )
+	("level",		ctypes.c_int),
+	("fmt",		ctypes.POINTER(ctypes.c_char)),
+	("vl",		ctypes.c_char),] )
 
-av_picture_copy = _rpythonic_function_(		"av_picture_copy", ctypes.c_void_p, [
-	("dst",		ctypes.POINTER(AVPicture)),
-	("src",		ctypes.POINTER(AVPicture)),
-	("pix_fmt",		ctypes.c_int),
-	("width",		ctypes.c_int),
+destruct = _rpythonic_function_(		"destruct", ctypes.c_void_p, [
+	("AVPacket",		ctypes.POINTER(AVPacket)),] )
+
+draw_horiz_band = _rpythonic_function_(		"draw_horiz_band", ctypes.c_void_p, [
+	("s",		ctypes.POINTER(AVCodecContext)),
+	("src",		ctypes.POINTER(AVFrame)),
+	("offset",		( ctypes.c_int * 4 )),
+	("y",		ctypes.c_int),
+	("C_type",		ctypes.c_int),
 	("height",		ctypes.c_int),] )
 
-av_picture_crop = _rpythonic_function_(		"av_picture_crop", ctypes.c_int, [
-	("dst",		ctypes.POINTER(AVPicture)),
-	("src",		ctypes.POINTER(AVPicture)),
-	("pix_fmt",		ctypes.c_int),
-	("top_band",		ctypes.c_int),
-	("left_band",		ctypes.c_int),] )
-
-av_picture_pad = _rpythonic_function_(		"av_picture_pad", ctypes.c_int, [
-	("dst",		ctypes.POINTER(AVPicture)),
-	("src",		ctypes.POINTER(AVPicture)),
-	("height",		ctypes.c_int),
-	("width",		ctypes.c_int),
-	("pix_fmt",		ctypes.c_int),
-	("padtop",		ctypes.c_int),
-	("padbottom",		ctypes.c_int),
-	("padleft",		ctypes.c_int),
-	("padright",		ctypes.c_int),
-	("color",		ctypes.POINTER(ctypes.c_int)),] )
-
-av_xiphlacing = _rpythonic_function_(		"av_xiphlacing", ctypes.c_uint, [
-	("s",		ctypes.POINTER(ctypes.c_ubyte)),
-	("v",		ctypes.c_uint),] )
-
-av_parse_video_frame_size = _rpythonic_function_(		"av_parse_video_frame_size", ctypes.c_int, [
-	("width_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("height_ptr",		ctypes.POINTER(ctypes.c_int)),
-	("C_str",		ctypes.POINTER(ctypes.c_char)),] )
-
-av_parse_video_frame_rate = _rpythonic_function_(		"av_parse_video_frame_rate", ctypes.c_int, [
-	("frame_rate",		ctypes.POINTER(AVRational)),
-	("C_str",		ctypes.POINTER(ctypes.c_char)),] )
-
-av_log_missing_feature = _rpythonic_function_(		"av_log_missing_feature", ctypes.c_void_p, [
-	("avc",		ctypes.POINTER(ctypes.c_void_p)),
-	("feature",		ctypes.POINTER(ctypes.c_char)),
-	("want_sample",		ctypes.c_int),] )
-
-av_log_ask_for_sample = _rpythonic_function_(		"av_log_ask_for_sample", ctypes.c_void_p, [
-	("avc",		ctypes.POINTER(ctypes.c_void_p)),
-	("msg",		ctypes.POINTER(ctypes.c_char)),] )
-
-av_register_hwaccel = _rpythonic_function_(		"av_register_hwaccel", ctypes.c_void_p, [
-	("hwaccel",		ctypes.POINTER(AVHWAccel)),] )
-
-av_hwaccel_next = _rpythonic_function_(		"av_hwaccel_next", ctypes.POINTER(AVHWAccel), [
-	("hwaccel",		ctypes.POINTER(AVHWAccel)),] )
-
-av_lockmgr_register = _rpythonic_function_(		"av_lockmgr_register", ctypes.c_int, [
-	("cb",		ctypes.c_void_p),] )
-
-cb = _rpythonic_function_(		"cb", ctypes.c_int, [
-	("mutex",		ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))),
-	("op",		ctypes.c_int),] )
+rtp_callback = _rpythonic_function_(		"rtp_callback", ctypes.c_void_p, [
+	("avctx",		ctypes.POINTER(AVCodecContext)),
+	("data",		ctypes.POINTER(ctypes.c_void_p)),
+	("size",		ctypes.c_int),
+	("mb_nb",		ctypes.c_int),] )
 
 ilogbf = _rpythonic_function_(		"ilogbf", ctypes.c_int, [
 	("__x",		ctypes.c_float),] )
@@ -4616,10 +4616,10 @@ ldexpl = _rpythonic_function_(		"ldexpl", ctypes.c_double, [
 	("__x",		ctypes.c_double),
 	("__exponent",		ctypes.c_int),] )
 
-logl = _rpythonic_function_(		"logl", ctypes.c_double, [
+log10l = _rpythonic_function_(		"log10l", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
-log10l = _rpythonic_function_(		"log10l", ctypes.c_double, [
+logl = _rpythonic_function_(		"logl", ctypes.c_double, [
 	("__x",		ctypes.c_double),] )
 
 expm1l = _rpythonic_function_(		"expm1l", ctypes.c_double, [
@@ -4731,12 +4731,12 @@ _IO_seekpos = _rpythonic_function_(		"_IO_seekpos", ctypes.c_longlong, [
 _IO_free_backup_area = _rpythonic_function_(		"_IO_free_backup_area", ctypes.c_void_p, [
 	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
 
+remove = _rpythonic_function_(		"remove", ctypes.c_int, [
+	("__filename",		ctypes.POINTER(ctypes.c_char)),] )
+
 rename = _rpythonic_function_(		"rename", ctypes.c_int, [
 	("__old",		ctypes.POINTER(ctypes.c_char)),
 	("__new",		ctypes.POINTER(ctypes.c_char)),] )
-
-remove = _rpythonic_function_(		"remove", ctypes.c_int, [
-	("__filename",		ctypes.POINTER(ctypes.c_char)),] )
 
 renameat = _rpythonic_function_(		"renameat", ctypes.c_int, [
 	("__oldfd",		ctypes.c_int),
@@ -4745,6 +4745,9 @@ renameat = _rpythonic_function_(		"renameat", ctypes.c_int, [
 	("__new",		ctypes.POINTER(ctypes.c_char)),] )
 
 tmpfile = _rpythonic_function_(		"tmpfile", ctypes.POINTER(_IO_FILE), [] )
+
+fflush_unlocked = _rpythonic_function_(		"fflush_unlocked", ctypes.c_int, [
+	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
 tmpnam = _rpythonic_function_(		"tmpnam", ctypes.POINTER(ctypes.c_char), [
 	("__s",		ctypes.POINTER(ctypes.c_char)),] )
@@ -4759,76 +4762,49 @@ tempnam = _rpythonic_function_(		"tempnam", ctypes.POINTER(ctypes.c_char), [
 fclose = _rpythonic_function_(		"fclose", ctypes.c_int, [
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
-fflush_unlocked = _rpythonic_function_(		"fflush_unlocked", ctypes.c_int, [
+fflush = _rpythonic_function_(		"fflush", ctypes.c_int, [
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
 fopen = _rpythonic_function_(		"fopen", ctypes.POINTER(_IO_FILE), [
 	("__filename",		ctypes.POINTER(ctypes.c_char)),
 	("__modes",		ctypes.POINTER(ctypes.c_char)),] )
 
-fflush = _rpythonic_function_(		"fflush", ctypes.c_int, [
-	("__stream",		ctypes.POINTER(_IO_FILE)),] )
-
 freopen = _rpythonic_function_(		"freopen", ctypes.POINTER(_IO_FILE), [
 	("__filename",		ctypes.POINTER(ctypes.c_char)),
 	("__modes",		ctypes.POINTER(ctypes.c_char)),
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
-fdopen = _rpythonic_function_(		"fdopen", ctypes.POINTER(_IO_FILE), [
-	("__fd",		ctypes.c_int),
-	("__modes",		ctypes.POINTER(ctypes.c_char)),] )
-
-open_memstream = _rpythonic_function_(		"open_memstream", ctypes.POINTER(_IO_FILE), [
-	("__bufloc",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
-	("__sizeloc",		ctypes.POINTER(ctypes.c_uint)),] )
-
-fmemopen = _rpythonic_function_(		"fmemopen", ctypes.POINTER(_IO_FILE), [
-	("__s",		ctypes.POINTER(ctypes.c_void_p)),
-	("__len",		ctypes.c_uint),
-	("__modes",		ctypes.POINTER(ctypes.c_char)),] )
-
-setbuf = _rpythonic_function_(		"setbuf", ctypes.c_void_p, [
-	("__stream",		ctypes.POINTER(_IO_FILE)),
-	("__buf",		ctypes.POINTER(ctypes.c_char)),] )
-
-setvbuf = _rpythonic_function_(		"setvbuf", ctypes.c_int, [
-	("__stream",		ctypes.POINTER(_IO_FILE)),
-	("__buf",		ctypes.POINTER(ctypes.c_char)),
-	("__modes",		ctypes.c_int),
-	("__n",		ctypes.c_uint),] )
-
 setlinebuf = _rpythonic_function_(		"setlinebuf", ctypes.c_void_p, [
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
-setbuffer = _rpythonic_function_(		"setbuffer", ctypes.c_void_p, [
+fprintf = _rpythonic_function_(		"fprintf", ctypes.c_int, [
 	("__stream",		ctypes.POINTER(_IO_FILE)),
-	("__buf",		ctypes.POINTER(ctypes.c_char)),
-	("__size",		ctypes.c_uint),] )
+	("__format",		ctypes.POINTER(ctypes.c_char)),] )
 
-vsnprintf = _rpythonic_function_(		"vsnprintf", ctypes.c_int, [
+printf = _rpythonic_function_(		"printf", ctypes.c_int, [
+	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+
+sprintf = _rpythonic_function_(		"sprintf", ctypes.c_int, [
 	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__maxlen",		ctypes.c_uint),
+	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+
+vfprintf = _rpythonic_function_(		"vfprintf", ctypes.c_int, [
+	("__s",		ctypes.POINTER(_IO_FILE)),
 	("__format",		ctypes.POINTER(ctypes.c_char)),
 	("__arg",		ctypes.c_char),] )
 
-vdprintf = _rpythonic_function_(		"vdprintf", ctypes.c_int, [
-	("__fd",		ctypes.c_int),
-	("__fmt",		ctypes.POINTER(ctypes.c_char)),
+vprintf = _rpythonic_function_(		"vprintf", ctypes.c_int, [
+	("__format",		ctypes.POINTER(ctypes.c_char)),
 	("__arg",		ctypes.c_char),] )
 
-dprintf = _rpythonic_function_(		"dprintf", ctypes.c_int, [
-	("__fd",		ctypes.c_int),
-	("__fmt",		ctypes.POINTER(ctypes.c_char)),] )
-
-fscanf = _rpythonic_function_(		"fscanf", ctypes.c_int, [
-	("__stream",		ctypes.POINTER(_IO_FILE)),
-	("__format",		ctypes.POINTER(ctypes.c_char)),] )
-
-scanf = _rpythonic_function_(		"scanf", ctypes.c_int, [
-	("__format",		ctypes.POINTER(ctypes.c_char)),] )
-
-sscanf = _rpythonic_function_(		"sscanf", ctypes.c_int, [
+vsprintf = _rpythonic_function_(		"vsprintf", ctypes.c_int, [
 	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__format",		ctypes.POINTER(ctypes.c_char)),
+	("__arg",		ctypes.c_char),] )
+
+snprintf = _rpythonic_function_(		"snprintf", ctypes.c_int, [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__maxlen",		ctypes.c_uint),
 	("__format",		ctypes.POINTER(ctypes.c_char)),] )
 
 fputs = _rpythonic_function_(		"fputs", ctypes.c_int, [
@@ -5523,23 +5499,17 @@ _IO_vfprintf = _rpythonic_function_(		"_IO_vfprintf", ctypes.c_int, [
 	("__restrict",		ctypes.POINTER(ctypes.c_char)),
 	("none",		ctypes.c_char),] )
 
+_IO_funlockfile = _rpythonic_function_(		"_IO_funlockfile", ctypes.c_void_p, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
+
+_IO_ftrylockfile = _rpythonic_function_(		"_IO_ftrylockfile", ctypes.c_int, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
+
 _IO_vfscanf = _rpythonic_function_(		"_IO_vfscanf", ctypes.c_int, [
 	("__restrict",		ctypes.POINTER(_IO_FILE)),
 	("__restrict",		ctypes.POINTER(ctypes.c_char)),
 	("none",		ctypes.c_char),
 	("__restrict",		ctypes.POINTER(ctypes.c_int)),] )
-
-_IO_ftrylockfile = _rpythonic_function_(		"_IO_ftrylockfile", ctypes.c_int, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
-
-localtime = _rpythonic_function_(		"localtime", ctypes.POINTER(tm), [
-	("__timer",		ctypes.POINTER(ctypes.c_int64)),] )
-
-strftime = _rpythonic_function_(		"strftime", ctypes.c_uint, [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__maxsize",		ctypes.c_uint),
-	("__format",		ctypes.POINTER(ctypes.c_char)),
-	("__tp",		ctypes.POINTER(tm)),] )
 
 strftime_l = _rpythonic_function_(		"strftime_l", ctypes.c_uint, [
 	("__s",		ctypes.POINTER(ctypes.c_char)),
@@ -5548,7 +5518,16 @@ strftime_l = _rpythonic_function_(		"strftime_l", ctypes.c_uint, [
 	("__tp",		ctypes.POINTER(tm)),
 	("__loc",		ctypes.POINTER(__locale_struct)),] )
 
+strftime = _rpythonic_function_(		"strftime", ctypes.c_uint, [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__maxsize",		ctypes.c_uint),
+	("__format",		ctypes.POINTER(ctypes.c_char)),
+	("__tp",		ctypes.POINTER(tm)),] )
+
 gmtime = _rpythonic_function_(		"gmtime", ctypes.POINTER(tm), [
+	("__timer",		ctypes.POINTER(ctypes.c_int64)),] )
+
+localtime = _rpythonic_function_(		"localtime", ctypes.POINTER(tm), [
 	("__timer",		ctypes.POINTER(ctypes.c_int64)),] )
 
 getc = _rpythonic_function_(		"getc", ctypes.c_int, [
@@ -5583,50 +5562,74 @@ putc_unlocked = _rpythonic_function_(		"putc_unlocked", ctypes.c_int, [
 	("__c",		ctypes.c_int),
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
-putchar_unlocked = _rpythonic_function_(		"putchar_unlocked", ctypes.c_int, [
-	("__c",		ctypes.c_int),] )
+vsnprintf = _rpythonic_function_(		"vsnprintf", ctypes.c_int, [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__maxlen",		ctypes.c_uint),
+	("__format",		ctypes.POINTER(ctypes.c_char)),
+	("__arg",		ctypes.c_char),] )
+
+vdprintf = _rpythonic_function_(		"vdprintf", ctypes.c_int, [
+	("__fd",		ctypes.c_int),
+	("__fmt",		ctypes.POINTER(ctypes.c_char)),
+	("__arg",		ctypes.c_char),] )
+
+dprintf = _rpythonic_function_(		"dprintf", ctypes.c_int, [
+	("__fd",		ctypes.c_int),
+	("__fmt",		ctypes.POINTER(ctypes.c_char)),] )
+
+fscanf = _rpythonic_function_(		"fscanf", ctypes.c_int, [
+	("__stream",		ctypes.POINTER(_IO_FILE)),
+	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+
+scanf = _rpythonic_function_(		"scanf", ctypes.c_int, [
+	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+
+sscanf = _rpythonic_function_(		"sscanf", ctypes.c_int, [
+	("__s",		ctypes.POINTER(ctypes.c_char)),
+	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+
+mktime = _rpythonic_function_(		"mktime", ctypes.c_int64, [
+	("__tp",		ctypes.POINTER(tm)),] )
 
 clock = _rpythonic_function_(		"clock", ctypes.c_int64, [] )
 
 time = _rpythonic_function_(		"time", ctypes.c_int64, [
 	("__timer",		ctypes.POINTER(ctypes.c_int64)),] )
 
-mktime = _rpythonic_function_(		"mktime", ctypes.c_int64, [
-	("__tp",		ctypes.POINTER(tm)),] )
-
 difftime = _rpythonic_function_(		"difftime", ctypes.c_double, [
 	("__time1",		ctypes.c_int64),
 	("__time0",		ctypes.c_int64),] )
 
-printf = _rpythonic_function_(		"printf", ctypes.c_int, [
-	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+fdopen = _rpythonic_function_(		"fdopen", ctypes.POINTER(_IO_FILE), [
+	("__fd",		ctypes.c_int),
+	("__modes",		ctypes.POINTER(ctypes.c_char)),] )
 
-fprintf = _rpythonic_function_(		"fprintf", ctypes.c_int, [
+fmemopen = _rpythonic_function_(		"fmemopen", ctypes.POINTER(_IO_FILE), [
+	("__s",		ctypes.POINTER(ctypes.c_void_p)),
+	("__len",		ctypes.c_uint),
+	("__modes",		ctypes.POINTER(ctypes.c_char)),] )
+
+setbuf = _rpythonic_function_(		"setbuf", ctypes.c_void_p, [
 	("__stream",		ctypes.POINTER(_IO_FILE)),
-	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+	("__buf",		ctypes.POINTER(ctypes.c_char)),] )
 
-vfprintf = _rpythonic_function_(		"vfprintf", ctypes.c_int, [
-	("__s",		ctypes.POINTER(_IO_FILE)),
-	("__format",		ctypes.POINTER(ctypes.c_char)),
-	("__arg",		ctypes.c_char),] )
+setvbuf = _rpythonic_function_(		"setvbuf", ctypes.c_int, [
+	("__stream",		ctypes.POINTER(_IO_FILE)),
+	("__buf",		ctypes.POINTER(ctypes.c_char)),
+	("__modes",		ctypes.c_int),
+	("__n",		ctypes.c_uint),] )
 
-vprintf = _rpythonic_function_(		"vprintf", ctypes.c_int, [
-	("__format",		ctypes.POINTER(ctypes.c_char)),
-	("__arg",		ctypes.c_char),] )
+setbuffer = _rpythonic_function_(		"setbuffer", ctypes.c_void_p, [
+	("__stream",		ctypes.POINTER(_IO_FILE)),
+	("__buf",		ctypes.POINTER(ctypes.c_char)),
+	("__size",		ctypes.c_uint),] )
 
-snprintf = _rpythonic_function_(		"snprintf", ctypes.c_int, [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__maxlen",		ctypes.c_uint),
-	("__format",		ctypes.POINTER(ctypes.c_char)),] )
+open_memstream = _rpythonic_function_(		"open_memstream", ctypes.POINTER(_IO_FILE), [
+	("__bufloc",		ctypes.POINTER(ctypes.POINTER(ctypes.c_char))),
+	("__sizeloc",		ctypes.POINTER(ctypes.c_uint)),] )
 
-sprintf = _rpythonic_function_(		"sprintf", ctypes.c_int, [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__format",		ctypes.POINTER(ctypes.c_char)),] )
-
-vsprintf = _rpythonic_function_(		"vsprintf", ctypes.c_int, [
-	("__s",		ctypes.POINTER(ctypes.c_char)),
-	("__format",		ctypes.POINTER(ctypes.c_char)),
-	("__arg",		ctypes.c_char),] )
+putchar_unlocked = _rpythonic_function_(		"putchar_unlocked", ctypes.c_int, [
+	("__c",		ctypes.c_int),] )
 
 getw = _rpythonic_function_(		"getw", ctypes.c_int, [
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
@@ -5654,14 +5657,14 @@ getline = _rpythonic_function_(		"getline", ctypes.c_int, [
 	("__n",		ctypes.POINTER(ctypes.c_uint)),
 	("__stream",		ctypes.POINTER(_IO_FILE)),] )
 
+_IO_flockfile = _rpythonic_function_(		"_IO_flockfile", ctypes.c_void_p, [
+	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
+
 _IO_ferror = _rpythonic_function_(		"_IO_ferror", ctypes.c_int, [
 	("__fp",		ctypes.POINTER(_IO_FILE)),] )
 
 _IO_peekc_locked = _rpythonic_function_(		"_IO_peekc_locked", ctypes.c_int, [
 	("__fp",		ctypes.POINTER(_IO_FILE)),] )
-
-_IO_flockfile = _rpythonic_function_(		"_IO_flockfile", ctypes.c_void_p, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
 
 _IO_sgetn = _rpythonic_function_(		"_IO_sgetn", ctypes.c_uint, [
 	("none",		ctypes.POINTER(ctypes.c_void_p)),
@@ -5673,9 +5676,6 @@ _IO_seekoff = _rpythonic_function_(		"_IO_seekoff", ctypes.c_longlong, [
 	("none",		ctypes.c_longlong),
 	("none",		ctypes.c_int),
 	("none",		ctypes.c_int),] )
-
-_IO_funlockfile = _rpythonic_function_(		"_IO_funlockfile", ctypes.c_void_p, [
-	("none",		ctypes.POINTER(ctypes.c_void_p)),] )
 
 
 _rpythonic_convert_structs_to_objects()
