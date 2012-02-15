@@ -1,4 +1,4 @@
-# run: ~/Blender/blender --python helloworld.py
+# run: ~/Blender/blender --python helloworld-dnd.py
 
 import os, sys, time
 import bpy
@@ -24,13 +24,23 @@ class MyApp( BlenderHackLinux ):
 		frame = gtk.Frame()
 		frame.set_border_width( 10 )
 		root.pack_start( frame, expand=False )
-		button = gtk.Button('hello world')
+		button = gtk.Button('drag me onto the blender window')
 		button.set_border_width( 10 )
 		button.connect('clicked', self.on_click)
 		frame.add( button )
 
+		someobject = 'hello world (source)'
+		DND.make_source( button, someobject, 'arg2', 'arg3', 'arg4' )
+
 		self.blender_container = eb = gtk.EventBox()
 		root.pack_start( self.blender_container )
+
+		DND.make_destination(eb)
+		extra_arg = 'hello world (destination)'
+		eb.connect(
+			'drag-drop', self.on_drop,
+			extra_arg,	# more extra args can go here
+		)
 
 		xsocket = self.create_blender_xembed_socket()
 		eb.add( xsocket )
@@ -42,12 +52,19 @@ class MyApp( BlenderHackLinux ):
 	def on_click(self, button):
 		print('you clicked')
 
+	def on_drop(self, widget, gcontext, x, y, time, extra_arg):
+		print( 'this is the widget you dropped on', widget )
+		print( 'this is the widget you dragged from', DND.source_widget)
+		print( 'mouse:', x,y )
+		print( 'extra argument from destination-side', extra_arg )
+		print( 'first extra argument from source-side', DND.source_object )
+		print( 'all extra arguments from source-side', DND.source_args )
+
 
 	def mainloop(self):
 		self.active = True
 		while self.active:
 			self.update_blender_and_gtk()
-
 
 
 

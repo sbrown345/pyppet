@@ -3229,11 +3229,19 @@ class PyppetUI( PyppetAPI ):
 
 		Hsplit = gtk.HBox()
 		Vsplit.pack_start( Hsplit )
+		subV = gtk.VPaned()
+		Hsplit.pack_start( subV )
+
 		self.blender_container = eb = gtk.EventBox()
-		Hsplit.pack_start( self.blender_container )
+		subV.add1( self.blender_container )
+
+		ex = gtk.Expander('chrome')
+		subV.add2( ex )
+		self._chrome_xsocket = gtk.Socket()
+		ex.add( self._chrome_xsocket )
 
 		xsocket = self.create_blender_xembed_socket()
-		eb.add( xsocket )
+		self.blender_container.add( xsocket )
 		DND.make_destination( xsocket )
 		xsocket.connect('drag-drop', self.drop_on_Xsocket)
 
@@ -3270,7 +3278,7 @@ class PyppetUI( PyppetAPI ):
 		win.show_all()
 
 		self.do_xembed( xsocket, 'Blender' )		# this must come last
-
+		self.do_xembed( self._chrome_xsocket, "New Tab - Google Chrome")
 
 
 
@@ -3564,55 +3572,15 @@ class App( PyppetUI ):
 	####################################################
 
 	def mainloop(self):
-		C = Blender.Context( bpy.context )
 		while self.active:
 
-			if DND.dragging and False:	# not safe with drag and drop
-				print('outer gtk iter')
-				Blender.iterate(C, draw=False)
-				if gtk.gtk_events_pending():
-					#print('gtk update', time.time())
-					#self.lock.acquire()
-					while gtk.gtk_events_pending():
-						gtk.gtk_main_iteration()
-					#self.lock.release()
+			if self.baker_active: self.baker_region.tag_redraw()
+			self.update_blender_and_gtk()
 
-			#print( 'MAINLOOP', bpy.context, bpy.context.scene )	# bpy.context is not in sync after first Blender.iterate(C)
-			#print( 'MAINLOOP', bpy.data.scenes, bpy.data.scenes[0] )	# this remains valid
-			#print( bpy.data.objects )	# this also remains valid
-
-			#if not DND.dragging:
-			if True:
-				Blender.iterate(C)
-				if not self.active: break
-				#print('mainloop', self.context, self.context.scene)	# THIS TRICK WORKS!
-				#bpy.context = self.context	#  this wont work
-
-				win = Blender.Window( self.context.window )
-				# grabcursor on click and drag (view3d only)
-				#print(win, win.winid, win.grabcursor, win.windowstate, win.modalcursor)
-				self.context.blender_has_cursor = bool( win.grabcursor )
-				if self.context.blender_has_cursor: pass #print('blender has cursor')
-
-				#print(win.active)
-				#Blender.blender.wm_window_lower( win )	# useless
-				#win.active = 1	#  useless
-				#win.windowstate = 0
-				#Blender.blender.GHOST_setAcceptDragOperation( win.ghostwin, 0 )
-				#Blender.blender.GHOST_SetWindowOrder(win.ghostwin, Blender.blender.GHOST_kWindowOrderBottom)
-
-				#Blender.blender.GHOST_InvalidateWindow(win.ghostwin)
-				#Blender.blender.GHOST_SetWindowState(win.ghostwin, Blender.blender.GHOST_kWindowStateNormal)
-
-				## force redraw in VIEW_3D ##
-				for area in self.context.window.screen.areas:		#bpy.context.window.screen.areas:
-					if area.type == 'VIEW_3D':
-						for reg in area.regions:
-							if reg.type == 'WINDOW':
-								reg.tag_redraw()	# bpy.context valid from redraw callbacks
-								break
-				if self.baker_active:
-					self.baker_region.tag_redraw()
+			win = Blender.Window( self.context.window )
+			# grabcursor on click and drag (view3d only)
+			#print(win, win.winid, win.grabcursor, win.windowstate, win.modalcursor)
+			self.context.blender_has_cursor = bool( win.grabcursor )
 
 			DriverManager.update()
 			self.audio.update()		# updates gtk widgets
@@ -3627,7 +3595,6 @@ class App( PyppetUI ):
 
 			models = self.entities.values()
 			for mod in models: mod.update_ui( self.context )
-
 
 			now = time.time() - self._rec_start_time
 			if self.wave_playing:
@@ -3645,7 +3612,9 @@ class App( PyppetUI ):
 			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
 
 
-			if not self.baker_active:	# ImageEditor redraw callback will update http-server
+			if not self.baker_active:
+				# ImageEditor redraw callback will update http-server,
+				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
 
 			self.client.update( self.context )

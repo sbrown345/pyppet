@@ -57,17 +57,20 @@ class BlenderHack( object ):
 	_blender_min_width = 640
 	_blender_min_height = 480
 	blender_window_ready = False
+	_gtk_updated = False
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
+		self._gtk_updated = True
 		self.context = BlenderContextCopy( bpy.context )
 		self.lock.acquire()
-		while gtk.gtk_events_pending():	# required to make callbacks safe
+		while gtk.gtk_events_pending():	# doing it here makes callbacks safe
 			gtk.gtk_main_iteration()
 		self.lock.release()
 
 	def setup_blender_hack(self, context):
 		if not hasattr(self,'lock'): self.lock = threading._allocate_lock()
+		self.evil_C = Blender.Context( bpy.context )
 		self.context = BlenderContextCopy( context )
 		for area in context.screen.areas:
 			if area.type == 'VIEW_3D':
@@ -78,6 +81,26 @@ class BlenderHack( object ):
 						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
 						return True
 		return False
+
+	def update_blender_and_gtk( self ):
+		self._gtk_updated = False
+		## force redraw in VIEW_3D ##
+		for area in self.context.window.screen.areas:
+			if area.type == 'VIEW_3D':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						reg.tag_redraw()
+						break
+
+		Blender.iterate( self.evil_C)
+
+		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
+			print('WARN: 3D view is not shown - this is dangerous')
+			self.lock.acquire()
+			while gtk.gtk_events_pending():
+				gtk.gtk_main_iteration()
+			self.lock.release()
+
 
 class BlenderHackWindows( BlenderHack ): pass	#TODO
 class BlenderHackOSX( BlenderHack ): pass		# TODO
@@ -105,7 +128,7 @@ class BlenderHackLinux( BlenderHack ):
 	def on_resize_blender(self,sock,rect):
 		rect = gtk.cairo_rectangle_int()
 		sock.get_allocation( rect )
-		if self.blender_window_ready:
+		if self.blender_window_ready and self._gtk_updated:
 			print('Xsocket Resize', rect.width, rect.height)
 			self.blender_width = rect.width
 			self.blender_height = rect.height
@@ -114,7 +137,7 @@ class BlenderHackLinux( BlenderHack ):
 
 	def get_window_xid( self, name ):
 		import os
-		p =os.popen('xwininfo -int -name %s' %name)
+		p =os.popen('xwininfo -int -name "%s" ' %name)
 		data = p.read().strip()
 		p.close()
 		if data.startswith('xwininfo: error:'): return None

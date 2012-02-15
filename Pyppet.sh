@@ -1,7 +1,8 @@
 #!/bin/bash
-## not compatible with wnck hack
-#~/Blender2.6/blender --window-borderless --python ./pyppet.py
+google-chrome &
 
-#~/blender26/blender -noaudio --python ./pyppet/pyppet.py
-~/Blender2.6/blender -noaudio --python ./pyppet/pyppet.py
+## --window-borderless is not compatible with wnck hack
+#~/Blender2.6/blender --window-borderless --python ./pyppet.py
 #wine ~/blender-mingw/blender.exe --python ./pyppet.py
+
+~/Blender2.6/blender -noaudio --python ./pyppet/pyppet.py
