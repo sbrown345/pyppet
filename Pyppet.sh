@@ -1,4 +1,5 @@
 #!/bin/bash
+## note: chrome must not have "system titlebar and borders" shown to xembed
 google-chrome &
 
 ## --window-borderless is not compatible with wnck hack

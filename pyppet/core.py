@@ -4,7 +4,7 @@
 # License: BSD
 
 import bpy
-import ctypes, time, threading
+import os, ctypes, time, threading
 import gtk3 as gtk
 import icons
 import Blender
@@ -53,10 +53,9 @@ class BlenderHack( object ):
 	TOO MANY HACKS:
 		. request Ideasman and Ton for proper support for this.
 	'''
-
+	blender_window_ready = False
 	_blender_min_width = 640
 	_blender_min_height = 480
-	blender_window_ready = False
 	_gtk_updated = False
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
@@ -69,7 +68,7 @@ class BlenderHack( object ):
 		self.lock.release()
 
 	def setup_blender_hack(self, context):
-		if not hasattr(self,'lock'): self.lock = threading._allocate_lock()
+		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
 		self.evil_C = Blender.Context( bpy.context )
 		self.context = BlenderContextCopy( context )
 		for area in context.screen.areas:
@@ -82,6 +81,8 @@ class BlenderHack( object ):
 						return True
 		return False
 
+	_image_editor_handle = None
+
 	def update_blender_and_gtk( self ):
 		self._gtk_updated = False
 		## force redraw in VIEW_3D ##
@@ -89,6 +90,17 @@ class BlenderHack( object ):
 			if area.type == 'VIEW_3D':
 				for reg in area.regions:
 					if reg.type == 'WINDOW':
+						reg.tag_redraw()
+						break
+			elif area.type == 'IMAGE_EDITOR' and self.progressive_baking:
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						if not self._image_editor_handle:
+							print('---------setting up image editor callback---------')
+							self._image_editor_handle = reg.callback_add( 
+								self.bake_hack, (reg,), 
+								'POST_VIEW' 	# PRE_VIEW is invalid here
+							)
 						reg.tag_redraw()
 						break
 
@@ -100,6 +112,87 @@ class BlenderHack( object ):
 			while gtk.gtk_events_pending():
 				gtk.gtk_main_iteration()
 			self.lock.release()
+
+	################ BAKE HACK ################
+	progressive_baking = False
+	server = None
+	def bake_hack( self, reg ):
+		self.context = BlenderContextCopy( bpy.context )
+		self.server.update( self.context )	# update http server
+
+
+
+	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
+	BAKE_BYTES = 0
+	## can only be called from inside the ImageEditor redraw callback ##
+	def bake_image( self, name, type='AO', width=64, height=None ):
+		assert type in self.BAKE_MODES
+		if height is None: height=width
+
+		path = '/tmp/%s.%s' %(name,type)
+		restore_active = self.context.active_object
+		restore = []
+		for ob in self.context.selected_objects:
+			ob.select = False
+			restore.append( ob )
+
+		ob = bpy.data.objects[ name ]
+		ob.select = True
+		self.context.scene.objects.active = ob
+		bpy.ops.object.mode_set( mode='EDIT' )
+		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
+		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
+
+		self.context.scene.render.bake_type = type
+		self.context.scene.render.bake_margin = 5
+		self.context.scene.render.use_bake_normalize = True
+		self.context.scene.render.use_bake_selected_to_active = False	# required
+		self.context.scene.render.use_bake_lores_mesh = False		# should be True
+		self.context.scene.render.use_bake_multires = False
+		if type=='DISPLACEMENT':	# can also apply to NORMALS
+			for mod in ob.modifiers:
+				if mod.type == 'MULTIRES':
+					self.context.scene.render.use_bake_multires = True
+
+		time.sleep(0.25)				# SEGFAULT without this sleep
+		#self.context.scene.update()		# no help!? with SEGFAULT
+		bpy.ops.object.bake_image()
+
+		#img = bpy.data.images[-1]
+		#img.file_format = 'jpg'
+		#img.filepath_raw = '/tmp/%s.jpg' %ob.name
+		#img.save()
+		bpy.ops.image.save_as(
+			filepath = path+'.png',
+			check_existing=False,
+		)
+
+		for ob in restore: ob.select=True
+		self.context.scene.objects.active = restore_active
+
+		## 128 color PNG can beat JPG by half ##
+		if type == 'DISPLACEMENT':
+			os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
+			os.system( 'convert %s.png -colors 128 -gamma 0.36 %s.png' %(path,path) )
+		else:
+			os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
+			os.system( 'convert %s.png -colors 128 %s.png' %(path,path) )
+
+		## blender saves png's with high compressision level
+		## for simple textures, the PNG may infact be smaller than the jpeg
+		## check which one is smaller, and send that one, 
+		## Three.js ignores the file extension and loads the data even if a png is called a jpg.
+		pngsize = os.stat( path+'.png' ).st_size
+		jpgsize = os.stat( path+'.jpg' ).st_size
+		if pngsize < jpgsize:
+			print('sending png data', pngsize)
+			self.BAKE_BYTES += pngsize
+			return open( path+'.png', 'rb' ).read()
+		else:
+			print('sending jpg data', jpgsize)
+			self.BAKE_BYTES += jpgsize
+			return open( path+'.jpg', 'rb' ).read()
+
 
 
 class BlenderHackWindows( BlenderHack ): pass	#TODO
@@ -118,13 +211,18 @@ class BlenderHackLinux( BlenderHack ):
 		xid = self.get_window_xid( window_name )
 		xsocket.add_id( xid )
 
-
 	def on_plug_blender(self, args):
 		self.blender_window_ready = True
 		self._blender_xsocket.set_size_request(
 			self._blender_min_width, 
 			self._blender_min_height
 		)
+		gdkwin = self._blender_xsocket.get_plug_window()
+		gdkwin.set_title( 'EMBED' )
+		self.after_on_plug_blender()
+
+	def after_on_plug_blender(self): pass		# overload me
+
 	def on_resize_blender(self,sock,rect):
 		rect = gtk.cairo_rectangle_int()
 		sock.get_allocation( rect )

@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb8, 2012
+# Feb15, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4e'
+VERSION = '1.9.4f'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -3235,10 +3235,10 @@ class PyppetUI( PyppetAPI ):
 		self.blender_container = eb = gtk.EventBox()
 		subV.add1( self.blender_container )
 
-		ex = gtk.Expander('chrome')
-		subV.add2( ex )
+		#ex = gtk.Expander('chrome')
+		#subV.add2( ex )
 		self._chrome_xsocket = gtk.Socket()
-		ex.add( self._chrome_xsocket )
+		subV.add2( self._chrome_xsocket )
 
 		xsocket = self.create_blender_xembed_socket()
 		self.blender_container.add( xsocket )
@@ -3417,6 +3417,14 @@ class PyppetUI( PyppetAPI ):
 
 ##########################################################
 class App( PyppetUI ):
+
+	def after_on_plug_blender(self):
+		bpy.ops.wm.window_duplicate()
+		bpy.ops.screen.screen_set( delta=1 )
+		bpy.ops.screen.screen_set( delta=1 )
+		bpy.ops.screen.screen_set( delta=1 )
+
+
 	def exit(self, arg):
 		self.audio.exit()
 		self.active = False
@@ -3470,102 +3478,13 @@ class App( PyppetUI ):
 		#self.setup_blender_hack()	# moved to BlenderHack in core.py
 
 
-		self.baker_active = False
-		self.baker_region = None
-		self.baker_queue = []
-		self.setup_image_editor_callback( None )
+		#self.baker_active = False
+		#self.baker_region = None
+		#self.baker_queue = []
+		#self.setup_image_editor_callback( None )
+		#self.blender_window_ready = False
+		self.progressive_baking = True
 
-		self.blender_window_ready = False
-
-	def setup_image_editor_callback( self, b ):
-		if self.baker_active: return
-		for area in self.context.screen.areas:
-			if area.type == 'IMAGE_EDITOR':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						print('---------setting up image editor callback---------')
-						self.baker_active = reg.callback_add( self.bake_hack, (reg,), 'POST_VIEW' )	# PRE_VIEW is invalid here
-						self.baker_region = reg
-						break
-
-	def bake_hack( self, reg ):
-		self.context = BlenderContextCopy( bpy.context )
-		self.server.update( self.context )	# update http server
-		if self.baker_queue:	# for debugging
-			req = self.baker_queue.pop()
-			print('bake hack debug', req)
-			self.bake_image( req['name'] )
-
-	## can only be called from inside ImageEditor redraw callback ##
-	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
-	BAKE_BYTES = 0
-	def bake_image( self, name, type='AO', width=64, height=None ):
-		assert type in self.BAKE_MODES
-		if height is None: height=width
-
-		path = '/tmp/%s.%s' %(name,type)
-		restore_active = self.context.active_object
-		restore = []
-		for ob in self.context.selected_objects:
-			ob.select = False
-			restore.append( ob )
-
-		ob = bpy.data.objects[ name ]
-		ob.select = True
-		self.context.scene.objects.active = ob
-		bpy.ops.object.mode_set( mode='EDIT' )
-		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
-		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
-
-		self.context.scene.render.bake_type = type
-		self.context.scene.render.bake_margin = 5
-		self.context.scene.render.use_bake_normalize = True
-		self.context.scene.render.use_bake_selected_to_active = False	# required
-		self.context.scene.render.use_bake_lores_mesh = False		# should be True
-		self.context.scene.render.use_bake_multires = False
-		if type=='DISPLACEMENT':	# can also apply to NORMALS
-			for mod in ob.modifiers:
-				if mod.type == 'MULTIRES':
-					self.context.scene.render.use_bake_multires = True
-
-		time.sleep(0.25)				# SEGFAULT without this sleep
-		#self.context.scene.update()		# no help!? with SEGFAULT
-		bpy.ops.object.bake_image()
-
-		#img = bpy.data.images[-1]
-		#img.file_format = 'jpg'
-		#img.filepath_raw = '/tmp/%s.jpg' %ob.name
-		#img.save()
-		bpy.ops.image.save_as(
-			filepath = path+'.png',
-			check_existing=False,
-		)
-
-		for ob in restore: ob.select=True
-		self.context.scene.objects.active = restore_active
-
-		## 128 color PNG can beat JPG by half ##
-		if type == 'DISPLACEMENT':
-			os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
-			os.system( 'convert %s.png -colors 128 -gamma 0.36 %s.png' %(path,path) )
-		else:
-			os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
-			os.system( 'convert %s.png -colors 128 %s.png' %(path,path) )
-
-		## blender saves png's with high compressision level
-		## for simple textures, the PNG may infact be smaller than the jpeg
-		## check which one is smaller, and send that one, 
-		## Three.js ignores the file extension and loads the data even if a png is called a jpg.
-		pngsize = os.stat( path+'.png' ).st_size
-		jpgsize = os.stat( path+'.jpg' ).st_size
-		if pngsize < jpgsize:
-			print('sending png data', pngsize)
-			self.BAKE_BYTES += pngsize
-			return open( path+'.png', 'rb' ).read()
-		else:
-			print('sending jpg data', jpgsize)
-			self.BAKE_BYTES += jpgsize
-			return open( path+'.jpg', 'rb' ).read()
 
 
 
@@ -3574,7 +3493,7 @@ class App( PyppetUI ):
 	def mainloop(self):
 		while self.active:
 
-			if self.baker_active: self.baker_region.tag_redraw()
+			#if self.baker_active: self.baker_region.tag_redraw()
 			self.update_blender_and_gtk()
 
 			win = Blender.Window( self.context.window )
@@ -3612,7 +3531,7 @@ class App( PyppetUI ):
 			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
 
 
-			if not self.baker_active:
+			if not self._image_editor_handle:
 				# ImageEditor redraw callback will update http-server,
 				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
@@ -4252,7 +4171,6 @@ def try_load_theme( name ):	# not working?
 
 #####################################
 if __name__ == '__main__':
-
 	## TODO deprecate wnck-helper hack ##
 	wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
 	assert os.path.isfile( wnck_helper )
