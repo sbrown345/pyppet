@@ -9,6 +9,7 @@ import gtk3 as gtk
 import icons
 import Blender
 
+
 def get_hsv_color_as_rgb( hsv ):
 	h = ctypes.pointer( ctypes.c_double() )
 	s = ctypes.pointer( ctypes.c_double() )
@@ -219,6 +220,7 @@ class BlenderHackLinux( BlenderHack ):
 		)
 		gdkwin = self._blender_xsocket.get_plug_window()
 		gdkwin.set_title( 'EMBED' )
+		Blender.window_expand()
 		self.after_on_plug_blender()
 
 	def after_on_plug_blender(self): pass		# overload me
@@ -245,7 +247,12 @@ class BlenderHackLinux( BlenderHack ):
 
 
 
-
+	def do_wnck_hack(self):
+		## TODO deprecate wnck-helper hack ##
+		SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
+		assert os.path.isfile( wnck_helper )
+		os.system( wnck_helper )
 
 
 #########################################################

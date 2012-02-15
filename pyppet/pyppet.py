@@ -3126,14 +3126,15 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
-		b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_footer)
-		self.header.pack_start( b, expand=False )
 
 		b = gtk.ToggleButton( icons.LEFT_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_left_tools)
+		self.header.pack_start( b, expand=False )
+
+		b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_footer)
 		self.header.pack_start( b, expand=False )
 
 		b = gtk.ToggleButton( icons.RIGHT_UI ); b.set_relief( gtk.RELIEF_NONE )
@@ -3141,6 +3142,18 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled',self.toggle_right_tools)
 		self.header.pack_start( b, expand=False )
 
+		b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
+		b.connect('toggled',self.toggle_fullscreen)
+		self.header.pack_start( b, expand=False )
+
+
+	def toggle_fullscreen(self,b):
+		if b.get_active():
+			self.window.set_keep_above(True)
+			self.window.fullscreen()
+		else:
+			self.window.set_keep_above(False)
+			self.window.unfullscreen()
 
 	def toggle_overlay(self,b):
 		if b.get_active(): self.window.set_opacity( 0.6 )
@@ -3232,11 +3245,17 @@ class PyppetUI( PyppetAPI ):
 		subV = gtk.VPaned()
 		Hsplit.pack_start( subV )
 
-		self.blender_container = eb = gtk.EventBox()
-		subV.add1( self.blender_container )
 
-		#ex = gtk.Expander('chrome')
-		#subV.add2( ex )
+		note = gtk.Notebook()
+		subV.add1( note )
+
+		self.blender_container = eb = gtk.EventBox()
+		note.append_page( self.blender_container, gtk.Label('default view') )
+
+		self.blender_container2 = eb = gtk.EventBox()
+		note.append_page( eb, gtk.Label('UV editor') )
+
+
 		self._chrome_xsocket = gtk.Socket()
 		subV.add2( self._chrome_xsocket )
 
@@ -3419,10 +3438,27 @@ class PyppetUI( PyppetAPI ):
 class App( PyppetUI ):
 
 	def after_on_plug_blender(self):
+		# change 3 views up, get the UV editor, duplicate window, change back #
+		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
 		bpy.ops.wm.window_duplicate()
-		bpy.ops.screen.screen_set( delta=1 )
-		bpy.ops.screen.screen_set( delta=1 )
-		bpy.ops.screen.screen_set( delta=1 )
+		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
+
+		self._blender_xsocket2 = xsock = gtk.Socket()
+		self.blender_container2.add( xsock )
+		xsock.connect('size-allocate',self.on_resize_blender)	# required
+		#xsock.connect('plug-added', self.on_plug_blender2)	# not required?
+		xsock.show()
+
+		self.do_wnck_hack()
+		self.do_xembed( xsock, 'Blender' )
+		#self.window.maximize()
+		Blender.window_expand()
+
+	def on_plug_blender2(self, args):
+		self._blender_xsocket2.set_size_request(
+			self._blender_min_width, 
+			self._blender_min_height
+		)
 
 
 	def exit(self, arg):
@@ -4171,10 +4207,7 @@ def try_load_theme( name ):	# not working?
 
 #####################################
 if __name__ == '__main__':
-	## TODO deprecate wnck-helper hack ##
-	wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
-	assert os.path.isfile( wnck_helper )
-	os.system( wnck_helper )
+	Pyppet.do_wnck_hack()
 
 	#try_load_theme( 'Clearlooks' )
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop

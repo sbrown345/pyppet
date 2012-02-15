@@ -15,7 +15,7 @@ win.make_below()		# trick allows Pyppet not to be forced always-on-top
 #win.set_geometry(x=x,y=height, width=width, height=height, gravity=1, geometry_mask=4)
 print('SHADING...')
 win.shade()
-
+#print(win,dir(win))
 #time.sleep(10)
 #print('UNSHADING...')
 #win.unshade()
