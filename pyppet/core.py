@@ -83,7 +83,26 @@ class BlenderHackWindows( BlenderHack ): pass	#TODO
 class BlenderHackOSX( BlenderHack ): pass		# TODO
 
 class BlenderHackLinux( BlenderHack ):
-	def Xsocket_resize(self,sock,rect):
+	# ( this is brutal, ideally blender API supports embeding from python )
+	def create_blender_xembed_socket(self):
+		self._blender_xsocket = sock = gtk.Socket()
+		sock.connect('plug-added', self.on_plug_blender)
+		sock.connect('size-allocate',self.on_resize_blender)
+		return sock
+
+	def do_xembed(self, xsocket, window_name='Blender'):
+		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
+		xid = self.get_window_xid( window_name )
+		xsocket.add_id( xid )
+
+
+	def on_plug_blender(self, args):
+		self.blender_window_ready = True
+		self._blender_xsocket.set_size_request(
+			self._blender_min_width, 
+			self._blender_min_height
+		)
+	def on_resize_blender(self,sock,rect):
 		rect = gtk.cairo_rectangle_int()
 		sock.get_allocation( rect )
 		if self.blender_window_ready:
@@ -92,29 +111,6 @@ class BlenderHackLinux( BlenderHack ):
 			self.blender_height = rect.height
 			Blender.window_resize( self.blender_width, self.blender_height )
 
-	def create_xembed_socket(self):
-		self.Xsocket = gtk.Socket()	# the XEMBED hack - TODO MSWindows solution?
-		self.Xsocket.connect('plug-added', self.on_plug_Xsocket)
-		self.Xsocket.connect('size-allocate',self.Xsocket_resize)
-		return self.Xsocket
-
-	def do_embed_blender(self):
-		############## get XID and then Embed Blender ##########
-		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
-		print('ready to xembed...')
-		xid = self.get_window_xid( 'Blender' )
-		print('got blender XID', xid)
-		self.Xsocket.add_id( xid )
-		# ( this is brutal, ideally blender API supports embeding from python )
-
-
-	def on_plug_Xsocket(self, args):
-		print( 'on_plug_Xsocket')
-		self.blender_window_ready = True
-		self.Xsocket.set_size_request(
-			self._blender_min_width, 
-			self._blender_min_height
-		)
 
 	def get_window_xid( self, name ):
 		import os
@@ -319,34 +315,56 @@ class Driver(object):
 
 ################## simple drag'n'drop API ################
 class SimpleDND(object):
-	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )
+	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )		# GTK's confusing API
 
 	def __init__(self):
 		self.dragging = False
-		self.source = None			# the destination may want to use the source widget directly
-		self.object = None
+		self.source_widget = None	# the destination may want to use the source widget directly
+		self.source_object = None	# the destination will likely use this source data
+		self.source_args = None
+
+		## make_source_with_callback - DEPRECATE? ##
 		self._callback = None		# callback the destination should call
 		self._args = None
 
-	def make_source(self, a, ob):
+	def make_source(self, widget, *args):
 		## a should be an gtk.EventBox or have an eventbox as its parent, how strict is this rule? ##
-		a.drag_source_set(
+		widget.drag_source_set(
 			gtk.GDK_BUTTON1_MASK, 
 			self.target, 1, 
 			gtk.GDK_ACTION_COPY
 		)
-		a.connect('drag-begin', self.drag_begin, ob)
-		a.connect('drag-end', self.drag_end)
+		widget.connect('drag-begin', self.drag_begin, args)
+		widget.connect('drag-end', self.drag_end)
 
-	def drag_begin(self, source, c, ob):
+	def drag_begin(self, source, c, args):
 		print('DRAG BEGIN')
 		self.dragging = time.time()		# if dragging went to long may need to force off
-		self.source = source
+		self.source_widget = source
+		if len(args) >= 1: self.source_object = args[0]
+		else: self.source_object = None
+		self.source_args = args
 		self._callback = None
 		self._args = None
-		self.object = ob
 
 
+	def drag_end(self, w,c):
+		print('DRAG END')
+		self.dragging = False
+		self.source_widget = None
+		self.source_object = None
+		self.source_args = None
+		self._callback = None
+		self._args = None
+
+	def make_destination(self, a):
+		a.drag_dest_set(
+			gtk.DEST_DEFAULT_ALL, 
+			self.target, 1, 
+			gtk.GDK_ACTION_COPY
+		)
+
+	###################### DEPRECATE? ##################
 	def make_source_with_callback(self, a, callback, *exargs):
 		a.drag_source_set(
 			gtk.GDK_BUTTON1_MASK, 
@@ -359,25 +377,11 @@ class SimpleDND(object):
 	def drag_begin_with_callback(self, source, c, callback, args):
 		print('DRAG BEGIN')
 		self.dragging = time.time()		# if dragging went to long may need to force off
-		self.source = source
+		self.source_widget = source
+		self.source_object = None
+		self.source_args = None
 		self._callback = callback
 		self._args = args
-		self.object = None
-
-	def drag_end(self, w,c):
-		print('DRAG END')
-		self.dragging = False
-		self.source = None
-		self._callback = None
-		self._args = None
-		self.object = None
-
-	def make_destination(self, a):
-		a.drag_dest_set(
-			gtk.DEST_DEFAULT_ALL, 
-			self.target, 1, 
-			gtk.GDK_ACTION_COPY
-		)
 
 	def callback(self, *args):
 		print('DND doing callback')
@@ -388,7 +392,7 @@ class SimpleDND(object):
 
 DND = SimpleDND()	# singleton
 
-class ExternalDND( SimpleDND ):
+class ExternalDND( SimpleDND ):	# NOT WORKING YET!! #
 	#target = gtk.target_entry_new( 'text/plain',2,gtk.TARGET_OTHER_APP )
 	target = gtk.target_entry_new( 'file://',2,gtk.TARGET_OTHER_APP )
 	#('text/plain', gtk.TARGET_OTHER_APP, 0),	# gnome

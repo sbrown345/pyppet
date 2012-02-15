@@ -1504,7 +1504,7 @@ class Popup( ToolWindow ):
 
 	def cb_drop_driver(self, wid, context, x, y, time, target, path, index, page):
 		print('on drop')
-		output = DND.object
+		output = DND.source_object
 		#driver = output.bind( 'XXX', target=self.object, path=path, index=index )
 		if path.startswith('ode_'):
 			driver = output.bind( 'XXX', target=target, path=path, index=index, max=500 )
@@ -1739,8 +1739,7 @@ class Popup( ToolWindow ):
 
 
 	def cb_drop_joint(self, wid, context, x, y, time, page):
-		#widget = DND.callback( self.object )
-		wrap = DND.object
+		wrap = DND.source_object
 		widget = wrap.attach( self.object )
 		if widget:
 			page.pack_start( widget, expand=False )
@@ -1803,7 +1802,7 @@ class Target(object):
 		ex.set_expanded(True)
 		ex.remove( self.modal )
 
-		output = DND.object
+		output = DND.source_object
 		self.driver = driver = output.bind( 'TARGET', target=self, path='weight', mode='=' )
 		widget = driver.get_widget( expander=False )
 		ex.add( widget )
@@ -2139,7 +2138,7 @@ class AbstractArmature(object):
 	def cb_drop_target(self, wid, context, x, y, time):
 		if not self.active_pose_bone: return
 
-		wrap = DND.object
+		wrap = DND.source_object
 		target = Target( wrap )
 		if self.active_pose_bone not in self.targets: self.targets[ self.active_pose_bone ] = []
 		self.targets[ self.active_pose_bone ].append( target )
@@ -3163,23 +3162,23 @@ class PyppetUI( PyppetAPI ):
 	def drop_on_Xsocket(self, wid, con, x, y, time):
 		ob = self.context.active_object
 
-		if type(DND.object) is bpy.types.Material:
+		if type(DND.source_object) is bpy.types.Material:
 			print('material dropped')
-			mat = DND.object
+			mat = DND.source_object
 			index = 0
 			for index in range( len(ob.data.materials) ):
 				if ob.data.materials[ index ] == mat: break
 			ob.active_material_index = index
 			bpy.ops.object.material_slot_assign()
 			## should be in edit mode, if not then what action? ##
-		elif DND.object == 'WEBCAM':
+		elif DND.source_object == 'WEBCAM':
 			if '_webcam_' not in bpy.data.images:
 				bpy.data.images.new( name='_webcam_', width=240, height=180 )
 			slot = ob.data.materials[0].texture_slots[0]
 			slot.texture.image = bpy.data.images['_webcam_']
 
 
-		elif DND.object == 'KINECT':
+		elif DND.source_object == 'KINECT':
 			if '_kinect_' not in bpy.data.images:
 				bpy.data.images.new( name='_kinect_', width=240, height=180 )
 			slot = ob.data.materials[0].texture_slots[0]
@@ -3233,7 +3232,7 @@ class PyppetUI( PyppetAPI ):
 		self.blender_container = eb = gtk.EventBox()
 		Hsplit.pack_start( self.blender_container )
 
-		xsocket = self.create_xembed_socket()
+		xsocket = self.create_blender_xembed_socket()
 		eb.add( xsocket )
 		DND.make_destination( xsocket )
 		xsocket.connect('drag-drop', self.drop_on_Xsocket)
@@ -3270,7 +3269,7 @@ class PyppetUI( PyppetAPI ):
 		win.connect('destroy', self.exit )
 		win.show_all()
 
-		self.do_embed_blender()		# this must come last
+		self.do_xembed( xsocket, 'Blender' )		# this must come last
 
 
 

@@ -1,3 +1,5 @@
+# run: ~/Blender/blender --python helloworld.py
+
 import os, sys, time
 import bpy
 
@@ -30,11 +32,12 @@ class MyApp( BlenderHackLinux ):
 		self.blender_container = eb = gtk.EventBox()
 		root.pack_start( self.blender_container )
 
-		xsocket = self.create_xembed_socket()
+		xsocket = self.create_blender_xembed_socket()
 		eb.add( xsocket )
 
-		win.show_all()
-		self.do_embed_blender()		# this must come last
+		win.show_all()				# window and all widgets shown first
+		self.do_xembed( xsocket, 'Blender' )	# this must come last
+
 
 	def on_click(self, button):
 		print('you clicked')
