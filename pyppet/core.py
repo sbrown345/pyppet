@@ -772,5 +772,81 @@ class Expander(object):
 	def add( self, child): self.append( child )
 
 
+class RNAWidget( object ):
+	skip = 'rna_type show_in_editmode show_expanded show_on_cage show_viewport show_render'.split()
+
+	def __init__(self, ob):
+		assert hasattr( ob, 'bl_rna' )
+		rna = ob.bl_rna
+
+		props = {}
+		for name in rna.properties.keys():
+			if name not in self.skip:
+				prop = rna.properties[ name ]
+				if not prop.is_readonly and not prop.is_hidden:
+					if prop.type not in props: props[ prop.type ] = {}
+					props[ prop.type ][ name ] = prop
+		#print( props )
+		self.widget = note = gtk.Notebook()
+
+		if 'INT' in props or 'FLOAT' in props or 'ENUM' in props:
+			root = gtk.VBox()
+			note.append_page( root, gtk.Label('settings') )
+
+		for ptype in 'INT FLOAT'.split():
+			if ptype not in props: continue
+			for name in props[ ptype ]:
+				prop = props[ ptype ][name]
+				#prop.identifier is name
+				if not prop.array_length:
+					slider = SimpleSlider( 
+						ob, 
+						name = name,
+						title = prop.name,
+						value = getattr( ob, name ), 
+						min = prop.soft_min, 
+						max = prop.soft_max,
+						tooltip = prop.description,
+					)
+					root.pack_start( slider.widget, expand=False )
+
+		ptype = 'ENUM'
+		if ptype in props:
+			for name in props[ ptype ]:
+				prop = props[ ptype ][name]
+
+				combo = gtk.ComboBoxText()
+				root.pack_start( combo, expand=False )
+
+				attr = getattr(ob,name)
+				for i,type in enumerate( prop.enum_items.keys() ):
+					combo.append('id', type)
+					if type == attr: gtk.combo_box_set_active( combo, i )
+
+				combo.set_tooltip_text( prop.description )
+				#combo.connect('changed', lambda c,s: setattr(s,'blend_type',c.get_active_text()), slot)
+
+		ptype = 'BOOLEAN'
+		if ptype in props:
+			root = gtk.VBox()
+			note.append_page( root, gtk.Label('options') )
+
+			for name in props[ ptype ]:
+				prop = props[ ptype ][name]
+				b = CheckButton( name=prop.name, tooltip=prop.description )
+				b.connect( ob, path=name )
+				root.pack_start( b.widget, expand=False )
+
+
+
+
+
+
+
+
+
+
+
+
 
 

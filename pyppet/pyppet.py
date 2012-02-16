@@ -3954,7 +3954,8 @@ class ToolsUI( object ):
 		root.pack_start( stacker.widget )
 		for mod in ob.modifiers:
 			e = Expander( mod.name )
-			e.add( gtk.Label('testing') )
+			R = RNAWidget( mod )
+			e.add( R.widget )
 			stacker.append( e.widget )
 
 			b = gtk.ToggleButton( icons.VISIBLE_RENDER )
