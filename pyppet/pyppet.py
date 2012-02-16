@@ -3913,14 +3913,11 @@ class ToolsUI( object ):
 		self.engine = Physics.ENGINE
 		self.physics_widget = PhysicsWidget( box, context )
 
-		ex = gtk.Expander( icons.MODIFIERS )
+		self._modifiers_expander = ex = gtk.Expander( icons.MODIFIERS )
 		root.pack_start( ex, expand=False )
-		stacker = VStacker()
-		ex.add( stacker.widget )
-		for i in range(10):
-			e = gtk.EventBox(); f = gtk.Frame(); e.add( f )
-			f.add( gtk.Label('hello%s'%i) )
-			stacker.append( e )
+		self._modifiers_modal = gtk.EventBox()
+		self._modifiers_expander.add( self._modifiers_modal )
+		Pyppet.register( self.update_modifiers )
 
 		ex = gtk.Expander( icons.CONSTRAINTS )
 		root.pack_start( ex, expand=False )
@@ -3929,6 +3926,80 @@ class ToolsUI( object ):
 		root.pack_start( ex, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
+
+
+	def update_modifiers(self, ob):
+		self._modifiers_expander.remove( self._modifiers_modal )
+		self._modifiers_modal = root = gtk.VBox()
+		self._modifiers_expander.add( self._modifiers_modal )
+
+		frame = gtk.Frame()
+		root.pack_start( frame, expand=False )
+		row = gtk.HBox()
+		row.set_border_width(4)
+		frame.add( row )
+
+		combo = gtk.ComboBoxText()
+		row.pack_start( combo )
+		for i,type in enumerate( MODIFIER_TYPES ): combo.append('id', type)
+		gtk.combo_box_set_active( combo, 0 )
+
+		b = gtk.Button('+')
+		b.connect('clicked', self.add_modifier, combo, ob)
+		row.pack_start( b, expand=False )
+
+		stacker = VStacker()
+		stacker.set_callback( self.reorder_modifier, ob )
+		root.pack_start( stacker.widget )
+		for mod in ob.modifiers:
+			e = Expander( mod.type )
+			e.add( gtk.Label('testing') )
+			stacker.append( e.widget )
+
+			b = gtk.ToggleButton( icons.VISIBLE_RENDER )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show in render')
+			b.set_active( mod.show_render )
+			b.connect('toggled', lambda b,m: setattr(m,'show_render',b.get_active()), mod)
+			e.header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.VISIBLE )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show in viewport')
+			b.set_active( mod.show_viewport )
+			b.connect('toggled', lambda b,m: setattr(m,'show_viewport',b.get_active()), mod)
+			e.header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.VISIBLE_EDITMODE )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show in edit-mode')
+			b.set_active( mod.show_in_editmode )
+			b.connect('toggled', lambda b,m: setattr(m,'show_in_editmode',b.get_active()), mod)
+			e.header.pack_start( b, expand=False )
+
+
+
+		self._modifiers_expander.show_all()
+
+	def add_modifier(self,b, combo, ob):
+		mtype = combo.get_active_text()
+		mod = ob.modifiers.new( name=mtype.lower(), type=mtype )
+		self.update_modifiers( ob )
+
+	def reorder_modifier( self, oldindex, newindex, ob ):
+		'''
+		ob.modifiers is missing .insert method!
+		workaround use bpy.ops.object.modifier_move_{up/down}
+		'''
+		name = ob.modifiers[ oldindex ].name
+		delta = oldindex - newindex
+		for i in range( abs(delta) ):
+			if delta < 0:
+				bpy.ops.object.modifier_move_down( modifier=name )
+			else:
+				bpy.ops.object.modifier_move_up( modifier=name )
+
+
 
 
 	def iterate(self, context):

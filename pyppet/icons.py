@@ -1,4 +1,20 @@
-COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕᨟'
+COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
+
+
+#UnicodeEncodeError: 'utf-8' codec can't encode character '\uddbd' in position 0: surrogates not allowed
+def sans_serif( txt ):
+	raw = 'abcdefghijklmnopqrstuvwxyz'
+	font = '𝖺𝖻𝖼𝖽𝖾𝖿𝗀𝗁𝗂𝗃𝗄𝗅𝗆𝗇𝗈𝗉𝗊𝗋𝗌𝗍𝗎𝗏𝗐𝗑𝗒𝗓'
+	s = ''
+	for char in txt:
+		if char in raw: s += font[ raw.index(char) ]
+		else: s += char
+	return s
+
+
+EXPANDER_UP = '⬏'
+EXPANDER_DOWN = '⬎'
+
 BOTTOM_UI = 'ᐁ'
 LEFT_UI = 'ᐘ'
 RIGHT_UI = 'ᐒ'
@@ -69,8 +85,9 @@ SETTINGS = '𝓼𝓮𝓽𝓽𝓲𝓷𝓰𝓼'
 
 CONTACT = 'ⴿ'
 
+VISIBLE_RENDER = '⎊'
+VISIBLE_EDITMODE = '⌗'
 VISIBLE = '⌕'
-
 RESTRICT_SELECTION = '⌖'
 
 DELETE = '✗'

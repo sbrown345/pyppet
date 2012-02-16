@@ -9,6 +9,7 @@ import gtk3 as gtk
 import icons
 import Blender
 
+MODIFIER_TYPES = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRROR', 'REMESH', 'SOLIDIFY', 'UV_PROJECT', 'VERTEX_WEIGHT_EDIT', 'VERTEX_WEIGHT_MIX', 'VERTEX_WEIGHT_PROXIMITY', 'BEVEL', 'BOOLEAN', 'BUILD', 'DECIMATE', 'EDGE_SPLIT', 'MASK', 'SCREW', 'ARMATURE', 'CAST', 'CURVE', 'DISPLACE', 'MESH_DEFORM', 'SHRINKWRAP', 'SIMPLE_DEFORM', 'SMOOTH', 'WARP', 'WAVE', 'CLOTH', 'COLLISION', 'DYNAMIC_PAINT', 'EXPLODE', 'FLUID_SIMULATION', 'OCEAN', 'PARTICLE_INSTANCE', 'PARTICLE_SYSTEM', 'SMOKE', 'SOFT_BODY', 'SURFACE')
 
 def get_hsv_color_as_rgb( hsv ):
 	h = ctypes.pointer( ctypes.c_double() )
@@ -658,20 +659,29 @@ class VStacker( object ):
 	Forget about GtkTreeView!
 	VStack: makes drag and drop reordering simple.
 	'''
-	def __init__(self, padding=3):
+	def __init__(self, callback=None, padding=3):
+		assert padding >= 2	# reording logic fails without a few pixels of padding
+		self.padding = padding
+		self.callback = None
+
 		self.widget = gtk.EventBox()
 		self.root = root = gtk.VBox()
 		self.widget.add( root )
 		DND.make_destination(self.widget)
 		self.widget.connect('drag-drop', self.on_drop)
 		self.children = []
-		assert padding >= 2	# reording logic fails without a few pixels of padding
-		self.padding = padding
+
+		#self.footer = gtk.HBox()
+		#self.root.pack_end( self.footer, expand=False )
 
 	def append( self, widget ):
 		self.children.append( widget )
 		self.root.pack_start( widget, expand=False, padding=self.padding )
 		DND.make_source( widget )
+
+	def set_callback( self, callback, *args ):
+		self.callback = callback
+		self.callback_args = args
 
 	def on_drop(self, widget, context, x,y, time):
 		source = DND.source_widget
@@ -691,12 +701,9 @@ class VStacker( object ):
 
 			elif y > rect.y and y < rect.y+rect.height+(self.padding*2):
 				if y > rect.y+rect.height:
-					print('--dropped after',i)
 					children.append( child )
 					children.append( source )
-
 				else:
-					print('--dropped ON', i)
 					children.append( source )
 					children.append( child )
 
@@ -705,19 +712,51 @@ class VStacker( object ):
 
 		if source not in children: return		# dropped on self, nothing to do
 
-		#(<unknown>:3505): Gtk-CRITICAL **: gtk_box_pack: assertion `GTK_IS_WIDGET (child)' failed
-		#for child in self.children: self.root.remove( child )
-		#for child in children:
-		#	print(child)
-		#	self.root.pack_start( child, expand=False, padding=self.padding )
-
-		#self.root.remove( source )
-		#glist = self.root.get_children()
-		#glist.insert( source, children.index(source) )
-
-		## the correct way is to use reorder_child ##
-		self.root.reorder_child( source, children.index(source) )
+		oldindex = self.children.index( source )
+		newindex = children.index( source )
+		self.root.reorder_child( source, newindex )
 		self.children = children
+		if self.callback:
+			self.callback( oldindex, newindex, *self.callback_args )
+
+class Expander(object):
+	'''
+	Like gtk.Expander but can have extra buttons on header
+	'''
+	def __init__(self, name='', border_width=4):
+		self.widget = gtk.EventBox()
+		frame = gtk.Frame()
+		self.widget.add( frame )
+		self.root = gtk.VBox()
+		frame.add( self.root )
+		self.root.set_border_width( border_width )
+
+		self.header = gtk.HBox()
+		self.root.pack_start( self.header, expand=False )
+
+		self.toggle_button = b = gtk.ToggleButton( icons.EXPANDER_UP )
+		b.set_relief( gtk.RELIEF_NONE )
+		b.connect('toggled', self.toggle)
+		self.header.pack_start( b, expand=False )
+		if name: self.header.pack_start( gtk.Label(name), expand=False )
+		self.header.pack_start( gtk.Label() )
+		self.children = []
+
+	def toggle(self,b):
+		if b.get_active():
+			b.set_label( icons.EXPANDER_DOWN )
+			for child in self.children: child.show()
+		else:
+			b.set_label( icons.EXPANDER_UP )
+			for child in self.children: child.hide()
+
+	def append(self, child):
+		child.show_all()
+		child.set_no_show_all(True)
+		child.hide()
+		self.children.append( child )
+		self.root.pack_start( child, expand=False )
+	def add( self, child): self.append( child )
 
 
 

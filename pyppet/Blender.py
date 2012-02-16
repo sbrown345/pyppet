@@ -55,6 +55,57 @@ import libblender as blender
 
 STARTUP_BLEND = ''
 
+'''
+FROM object_modifier.c
+HEADER: ED_object.h
+
+
+int ED_object_modifier_move_up(ReportList *reports, Object *ob, ModifierData *md)
+{
+	if(md->prev) {
+		ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+
+		if(mti->type!=eModifierTypeType_OnlyDeform) {
+			ModifierTypeInfo *nmti = modifierType_getInfo(md->prev->type);
+
+			if(nmti->flags&eModifierTypeFlag_RequiresOriginalData) {
+				BKE_report(reports, RPT_WARNING, "Cannot move above a modifier requiring original data");
+				return 0;
+			}
+		}
+
+		BLI_remlink(&ob->modifiers, md);
+		BLI_insertlink(&ob->modifiers, md->prev->prev, md);
+	}
+
+	return 1;
+}
+
+int ED_object_modifier_move_down(ReportList *reports, Object *ob, ModifierData *md)
+{
+	if(md->next) {
+		ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+
+		if(mti->flags&eModifierTypeFlag_RequiresOriginalData) {
+			ModifierTypeInfo *nmti = modifierType_getInfo(md->next->type);
+
+			if(nmti->type!=eModifierTypeType_OnlyDeform) {
+				BKE_report(reports, RPT_WARNING, "Cannot move beyond a non-deforming modifier");
+				return 0;
+			}
+		}
+
+		BLI_remlink(&ob->modifiers, md);
+		BLI_insertlink(&ob->modifiers, md->next, md);
+	}
+
+	return 1;
+}
+
+
+'''
+
+
 ## from RE_pipeline.h ##
 #define RE_BAKE_LIGHT				0	/* not listed in rna_scene.c -> can't be enabled! */
 #define RE_BAKE_ALL					1
