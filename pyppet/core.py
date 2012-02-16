@@ -652,3 +652,73 @@ class ToggleButton(object):
 
 class CheckButton( ToggleButton ): _type = 'check'
 
+
+class VStacker( object ):
+	'''
+	Forget about GtkTreeView!
+	VStack: makes drag and drop reordering simple.
+	'''
+	def __init__(self, padding=3):
+		self.widget = gtk.EventBox()
+		self.root = root = gtk.VBox()
+		self.widget.add( root )
+		DND.make_destination(self.widget)
+		self.widget.connect('drag-drop', self.on_drop)
+		self.children = []
+		assert padding >= 2	# reording logic fails without a few pixels of padding
+		self.padding = padding
+
+	def append( self, widget ):
+		self.children.append( widget )
+		self.root.pack_start( widget, expand=False, padding=self.padding )
+		DND.make_source( widget )
+
+	def on_drop(self, widget, context, x,y, time):
+		source = DND.source_widget
+		assert source in self.children
+		children = []
+
+		for i,child in enumerate(self.children):
+			if child is source:
+				continue
+
+			rect = gtk.cairo_rectangle_int()
+			child.get_allocation( rect )
+
+			if i == 0 and y < rect.y:	# insert at top
+				children.append( source )
+				children.append( child )
+
+			elif y > rect.y and y < rect.y+rect.height+(self.padding*2):
+				if y > rect.y+rect.height:
+					print('--dropped after',i)
+					children.append( child )
+					children.append( source )
+
+				else:
+					print('--dropped ON', i)
+					children.append( source )
+					children.append( child )
+
+			else:
+				children.append( child )
+
+		if source not in children: return		# dropped on self, nothing to do
+
+		#(<unknown>:3505): Gtk-CRITICAL **: gtk_box_pack: assertion `GTK_IS_WIDGET (child)' failed
+		#for child in self.children: self.root.remove( child )
+		#for child in children:
+		#	print(child)
+		#	self.root.pack_start( child, expand=False, padding=self.padding )
+
+		#self.root.remove( source )
+		#glist = self.root.get_children()
+		#glist.insert( source, children.index(source) )
+
+		## the correct way is to use reorder_child ##
+		self.root.reorder_child( source, children.index(source) )
+		self.children = children
+
+
+
+

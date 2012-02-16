@@ -3915,6 +3915,12 @@ class ToolsUI( object ):
 
 		ex = gtk.Expander( icons.MODIFIERS )
 		root.pack_start( ex, expand=False )
+		stacker = VStacker()
+		ex.add( stacker.widget )
+		for i in range(10):
+			e = gtk.EventBox(); f = gtk.Frame(); e.add( f )
+			f.add( gtk.Label('hello%s'%i) )
+			stacker.append( e )
 
 		ex = gtk.Expander( icons.CONSTRAINTS )
 		root.pack_start( ex, expand=False )
