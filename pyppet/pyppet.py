@@ -3919,13 +3919,50 @@ class ToolsUI( object ):
 		self._modifiers_expander.add( self._modifiers_modal )
 		Pyppet.register( self.update_modifiers )
 
-		ex = gtk.Expander( icons.CONSTRAINTS )
+		self._cns_expander = ex = gtk.Expander( icons.CONSTRAINTS )
 		root.pack_start( ex, expand=False )
+		self._cns_modal = gtk.EventBox()
+		self._cns_expander.add( self._cns_modal )
+		Pyppet.register( self.update_constraints )
+
 
 		ex = gtk.Expander( icons.MATERIALS )
 		root.pack_start( ex, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
+
+
+	def update_constraints(self, ob):
+		self._cns_expander.remove( self._cns_modal )
+		self._cns_modal = root = gtk.VBox()
+		self._cns_expander.add( self._cns_modal )
+
+		frame = gtk.Frame()
+		root.pack_start( frame, expand=False )
+		row = gtk.HBox()
+		row.set_border_width(4)
+		frame.add( row )
+
+		combo = gtk.ComboBoxText()
+		row.pack_start( combo )
+		for i,type in enumerate( CONSTRAINT_TYPES ): combo.append('id', type)
+		gtk.combo_box_set_active( combo, 0 )
+
+		b = gtk.Button('+')
+		b.connect('clicked', self.add_constraint, combo, ob)
+		row.pack_start( b, expand=False )
+
+		stacker = VStacker()
+		stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		stacker.set_callback( self.reorder_constraint, ob )
+		root.pack_start( stacker.widget )
+		for cns in ob.constraints:
+			e = Expander( cns.name )
+			R = RNAWidget( cns )
+			e.add( R.widget )
+			stacker.append( e.widget )
+
+		self._cns_expander.show_all()
 
 
 	def update_modifiers(self, ob):
@@ -3979,14 +4016,31 @@ class ToolsUI( object ):
 			b.connect('toggled', lambda b,m: setattr(m,'show_in_editmode',b.get_active()), mod)
 			e.header.pack_start( b, expand=False )
 
-
-
 		self._modifiers_expander.show_all()
 
 	def add_modifier(self,b, combo, ob):
 		mtype = combo.get_active_text()
 		mod = ob.modifiers.new( name=mtype.lower(), type=mtype )
 		self.update_modifiers( ob )
+
+	def add_constraint(self,b, combo, ob):
+		mtype = combo.get_active_text()
+		cns = ob.constraints.new( type=mtype )
+		cns.name = mtype.lower()
+		self.update_constraints( ob )
+
+	def reorder_constraint( self, oldindex, newindex, ob ):
+		'''
+		ob.constraint is missing .insert method!
+		workaround use bpy.ops.constraint.move_{up/down}
+		'''
+		name = ob.constraints[ oldindex ].name
+		delta = oldindex - newindex
+		for i in range( abs(delta) ):
+			if delta < 0:
+				bpy.ops.constraint.move_down( constraint=name, owner='OBJECT' )
+			else:
+				bpy.ops.constraint.move_up( constraint=name, owner='OBJECT' )
 
 	def reorder_modifier( self, oldindex, newindex, ob ):
 		'''
