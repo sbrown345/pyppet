@@ -86,8 +86,8 @@ import json
 def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
-
-BG_COLOR = rgb2gdk( 0.44, 0.44, 0.46 )
+BLENDER_GREY = 114.0 / 255.0
+BG_COLOR = rgb2gdk( BLENDER_GREY, BLENDER_GREY, BLENDER_GREY )
 #BG_COLOR = rgb2gdk( 0.94, 0.94, 0.96 )
 BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
 DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
@@ -3949,10 +3949,11 @@ class ToolsUI( object ):
 		row.pack_start( b, expand=False )
 
 		stacker = VStacker()
+		stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		stacker.set_callback( self.reorder_modifier, ob )
 		root.pack_start( stacker.widget )
 		for mod in ob.modifiers:
-			e = Expander( mod.type )
+			e = Expander( mod.name )
 			e.add( gtk.Label('testing') )
 			stacker.append( e.widget )
 

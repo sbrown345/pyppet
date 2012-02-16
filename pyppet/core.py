@@ -71,7 +71,10 @@ class BlenderHack( object ):
 
 	def setup_blender_hack(self, context):
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
-		self.evil_C = Blender.Context( bpy.context )
+
+		self.default_blender_screen = context.screen.name
+
+		self.evil_C = Blender.Context( context )
 		self.context = BlenderContextCopy( context )
 		for area in context.screen.areas:
 			if area.type == 'VIEW_3D':
@@ -87,7 +90,17 @@ class BlenderHack( object ):
 
 	def update_blender_and_gtk( self ):
 		self._gtk_updated = False
+
 		## force redraw in VIEW_3D ##
+		screen = bpy.data.screens[ self.default_blender_screen ]
+		for area in screen.areas:
+			if area.type == 'VIEW_3D':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						reg.tag_redraw()
+						break
+
+		## force redraw in secondary VIEW_3D and UV Editor ##
 		for area in self.context.window.screen.areas:
 			if area.type == 'VIEW_3D':
 				for reg in area.regions:
