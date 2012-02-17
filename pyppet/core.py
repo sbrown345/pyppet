@@ -548,7 +548,7 @@ XDND = ExternalDND()
 
 ############## Simple Driveable Slider ##############
 class SimpleSlider(object):
-	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False, no_show_all=False, tooltip=None):
+	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False, no_show_all=False, tooltip=None, integer=False):
 		if title is not None: self.title = title
 		else: self.title = name.replace('_',' ')
 
@@ -566,8 +566,10 @@ class SimpleSlider(object):
 		if object is not None: value = getattr( object, name )
 		self.adjustment = adjust = gtk.Adjustment( value=value, lower=min, upper=max )
 		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
-		scale.set_digits(2)
 		row.pack_start( scale )
+
+		if integer: scale.set_digits(0)
+		else: scale.set_digits(2)
 
 		if object is not None:
 			adjust.connect(
@@ -578,8 +580,6 @@ class SimpleSlider(object):
 		self.widget.set_border_width( border_width )
 
 		if driveable:
-			#scale.override_color( gtk.STATE_NORMAL, DRIVER_COLOR )
-
 			DND.make_destination( self.widget )
 			self.widget.connect(
 				'drag-drop', self.drop_driver,
@@ -738,7 +738,10 @@ class Expander(object):
 	'''
 	Like gtk.Expander but can have extra buttons on header
 	'''
-	def __init__(self, name='', border_width=4):
+	def __init__(self, name='', border_width=4, full_header_toggle=True):
+		self.name = name
+		self._full_header_toggle = full_header_toggle
+
 		self.widget = gtk.EventBox()
 		frame = gtk.Frame()
 		self.widget.add( frame )
@@ -749,20 +752,33 @@ class Expander(object):
 		self.header = gtk.HBox()
 		self.root.pack_start( self.header, expand=False )
 
-		self.toggle_button = b = gtk.ToggleButton( icons.EXPANDER_UP )
+		if full_header_toggle:
+			self.toggle_button = b = gtk.ToggleButton( '%s  %s' %(icons.EXPANDER_UP,self.name) )
+			self.header.pack_start( b, expand=True )
+			#x = ctypes.pointer( ctypes.c_float() )
+			#y = ctypes.pointer( ctypes.c_float() )
+			#b.get_alignment( x,y )
+			#print('alignment', x.contents.value, y.contents.value)
+			b.set_alignment( 0.0, 0.5 )
+		else:
+			self.toggle_button = b = gtk.ToggleButton( icons.EXPANDER_UP )
+			self.header.pack_start( b, expand=False )
+			if name: self.header.pack_start( gtk.Label(self.name), expand=False )
+			self.header.pack_start( gtk.Label() )
+
 		b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled', self.toggle)
-		self.header.pack_start( b, expand=False )
-		if name: self.header.pack_start( gtk.Label(name), expand=False )
-		self.header.pack_start( gtk.Label() )
+
 		self.children = []
 
 	def toggle(self,b):
 		if b.get_active():
-			b.set_label( icons.EXPANDER_DOWN )
+			if self._full_header_toggle: b.set_label( '%s  %s' %(icons.EXPANDER_DOWN,self.name) )
+			else: b.set_label( icons.EXPANDER_DOWN )
 			for child in self.children: child.show()
 		else:
-			b.set_label( icons.EXPANDER_UP )
+			if self._full_header_toggle: b.set_label( '%s  %s' %(icons.EXPANDER_UP,self.name) )
+			else: b.set_label( icons.EXPANDER_UP )
 			for child in self.children: child.hide()
 
 	def append(self, child):
@@ -788,7 +804,9 @@ class RNAWidget( object ):
 				if not prop.is_readonly and not prop.is_hidden:
 					if prop.type not in props: props[ prop.type ] = {}
 					props[ prop.type ][ name ] = prop
-		#print( props )
+
+		print( props.keys() )
+
 		self.widget = note = gtk.Notebook()
 
 		if 'INT' in props or 'FLOAT' in props or 'ENUM' in props:
@@ -809,6 +827,8 @@ class RNAWidget( object ):
 						min = prop.soft_min, 
 						max = prop.soft_max,
 						tooltip = prop.description,
+						integer = (ptype=='INT'),
+						driveable = (ptype=='FLOAT'),
 					)
 					root.pack_start( slider.widget, expand=False )
 
@@ -826,7 +846,7 @@ class RNAWidget( object ):
 					if type == attr: gtk.combo_box_set_active( combo, i )
 
 				combo.set_tooltip_text( prop.description )
-				#combo.connect('changed', lambda c,s: setattr(s,'blend_type',c.get_active_text()), slot)
+				combo.connect('changed', lambda c,o,n: setattr(o,n,c.get_active_text()), ob, name)
 
 		ptype = 'BOOLEAN'
 		if ptype in props:

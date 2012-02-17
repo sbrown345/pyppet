@@ -3913,12 +3913,14 @@ class ToolsUI( object ):
 		self.engine = Physics.ENGINE
 		self.physics_widget = PhysicsWidget( box, context )
 
+		self._modifiers_pinned = False
 		self._modifiers_expander = ex = gtk.Expander( icons.MODIFIERS )
 		root.pack_start( ex, expand=False )
 		self._modifiers_modal = gtk.EventBox()
 		self._modifiers_expander.add( self._modifiers_modal )
 		Pyppet.register( self.update_modifiers )
 
+		self._cns_pinned = False
 		self._cns_expander = ex = gtk.Expander( icons.CONSTRAINTS )
 		root.pack_start( ex, expand=False )
 		self._cns_modal = gtk.EventBox()
@@ -3933,6 +3935,8 @@ class ToolsUI( object ):
 
 
 	def update_constraints(self, ob):
+		if self._cns_pinned: return
+
 		self._cns_expander.remove( self._cns_modal )
 		self._cns_modal = root = gtk.VBox()
 		self._cns_expander.add( self._cns_modal )
@@ -3942,6 +3946,12 @@ class ToolsUI( object ):
 		row = gtk.HBox()
 		row.set_border_width(4)
 		frame.add( row )
+
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
+		b.set_active( self._cns_pinned )
+		b.connect('toggled', lambda b,s: setattr(s,'_cns_pinned',b.get_active()), self)
+		row.pack_start( b, expand=False )
 
 		combo = gtk.ComboBoxText()
 		row.pack_start( combo )
@@ -3966,6 +3976,8 @@ class ToolsUI( object ):
 
 
 	def update_modifiers(self, ob):
+		if self._modifiers_pinned: return
+
 		self._modifiers_expander.remove( self._modifiers_modal )
 		self._modifiers_modal = root = gtk.VBox()
 		self._modifiers_expander.add( self._modifiers_modal )
@@ -3975,6 +3987,12 @@ class ToolsUI( object ):
 		row = gtk.HBox()
 		row.set_border_width(4)
 		frame.add( row )
+
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
+		b.set_active( self._modifiers_pinned )
+		b.connect('toggled', lambda b,s: setattr(s,'_modifiers_pinned',b.get_active()), self)
+		row.pack_start( b, expand=False )
 
 		combo = gtk.ComboBoxText()
 		row.pack_start( combo )
