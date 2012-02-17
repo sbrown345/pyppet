@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4g'
+VERSION = '1.9.4h'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -3263,14 +3263,20 @@ class PyppetUI( PyppetAPI ):
 		DND.make_source( self.blender_container, 'BLENDER_CONTAINER' )
 		DND.make_source( self.blender_container2, 'BLENDER_CONTAINER' )
 		################# source DND is not working! - TODO research how to make it work ############
+		xsocket = self.create_blender_xembed_socket()
+		self.blender_container.add( xsocket )
 
+
+		################ gnome nautilus - NOT WORKING? ####################
+		#self._nautilus_container = gtk.EventBox()
+		#self._nautilus_xsocket = gtk.Socket()
+		#self._nautilus_container.add( self._nautilus_xsocket )
+		#note.append_page( self._nautilus_container, gtk.Label('file browser') )
+
+		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
 		subV.add2( self._chrome_xsocket )
 
-		xsocket = self.create_blender_xembed_socket()
-		self.blender_container.add( xsocket )
-		#DND.make_destination( xsocket )
-		#xsocket.connect('drag-drop', self.drop_on_Xsocket)
 
 
 		############### ToolsUI ################
@@ -3306,6 +3312,7 @@ class PyppetUI( PyppetAPI ):
 
 		self.do_xembed( xsocket, 'Blender' )		# this must come last
 		self.do_xembed( self._chrome_xsocket, "New Tab - Google Chrome")
+		#self.do_xembed( self._nautilus_xsocket, "Home")
 
 
 
@@ -4019,7 +4026,7 @@ class ToolsUI( object ):
 		stacker.set_callback( self.reorder_constraint, ob )
 		root.pack_start( stacker.widget )
 		for cns in ob.constraints:
-			e = Expander( cns.name )
+			e = Expander( cns.name, insert=gtk.Label(icons.DND) )
 			R = RNAWidget( cns )
 			e.add( R.widget )
 			stacker.append( e.widget )
@@ -4060,7 +4067,7 @@ class ToolsUI( object ):
 		stacker.set_callback( self.reorder_modifier, ob )
 		root.pack_start( stacker.widget )
 		for mod in ob.modifiers:
-			e = Expander( mod.name )
+			e = Expander( mod.name, insert=gtk.Label(icons.DND) )
 			R = RNAWidget( mod )
 			e.add( R.widget )
 			stacker.append( e.widget )

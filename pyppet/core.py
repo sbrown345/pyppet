@@ -738,7 +738,7 @@ class Expander(object):
 	'''
 	Like gtk.Expander but can have extra buttons on header
 	'''
-	def __init__(self, name='', border_width=4, full_header_toggle=True):
+	def __init__(self, name='', border_width=4, full_header_toggle=True, insert=None):
 		self.name = name
 		self._full_header_toggle = full_header_toggle
 
@@ -751,6 +751,9 @@ class Expander(object):
 
 		self.header = gtk.HBox()
 		self.root.pack_start( self.header, expand=False )
+
+		if insert:
+			self.header.pack_start( insert, expand=False )
 
 		if full_header_toggle:
 			self.toggle_button = b = gtk.ToggleButton( '%s  %s' %(icons.EXPANDER_UP,self.name) )
