@@ -1,5 +1,9 @@
 COOL_ICONS = 'ᚗ⤽୭୬ଷපඳශවඉ⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
 
+WIREFRAME = '⬚'
+NAME = '⎁'
+AXIS = '⎋'
+XRAY = '⊗'
 
 #UnicodeEncodeError: 'utf-8' codec can't encode character '\uddbd' in position 0: surrogates not allowed
 def sans_serif( txt ):

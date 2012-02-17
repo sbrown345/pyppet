@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb15, 2012
+# Feb17, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4f'
+VERSION = '1.9.4g'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -3156,7 +3156,7 @@ class PyppetUI( PyppetAPI ):
 			self.window.unfullscreen()
 
 	def toggle_overlay(self,b):
-		if b.get_active(): self.window.set_opacity( 0.6 )
+		if b.get_active(): self.window.set_opacity( 0.8 )
 		else: self.window.set_opacity( 1.0 )
 
 	def toggle_left_tools(self,b):
@@ -3172,7 +3172,7 @@ class PyppetUI( PyppetAPI ):
 		else: self.footer.hide()
 
 
-	def drop_on_Xsocket(self, wid, con, x, y, time):
+	def drop_on_blender_container(self, wid, con, x, y, time):
 		ob = self.context.active_object
 
 		if type(DND.source_object) is bpy.types.Material:
@@ -3249,20 +3249,28 @@ class PyppetUI( PyppetAPI ):
 		note = gtk.Notebook()
 		subV.add1( note )
 
+		################# blender containers #################
 		self.blender_container = eb = gtk.EventBox()
 		note.append_page( self.blender_container, gtk.Label('default view') )
-
 		self.blender_container2 = eb = gtk.EventBox()
 		note.append_page( eb, gtk.Label('UV editor') )
-
+		################# setup destination DND ###############
+		DND.make_destination( self.blender_container )
+		self.blender_container.connect('drag-drop', self.drop_on_blender_container)
+		DND.make_destination( self.blender_container2 )
+		self.blender_container2.connect('drag-drop', self.drop_on_blender_container)
+		################# setup source DND ###################
+		DND.make_source( self.blender_container, 'BLENDER_CONTAINER' )
+		DND.make_source( self.blender_container2, 'BLENDER_CONTAINER' )
+		################# source DND is not working! - TODO research how to make it work ############
 
 		self._chrome_xsocket = gtk.Socket()
 		subV.add2( self._chrome_xsocket )
 
 		xsocket = self.create_blender_xembed_socket()
 		self.blender_container.add( xsocket )
-		DND.make_destination( xsocket )
-		xsocket.connect('drag-drop', self.drop_on_Xsocket)
+		#DND.make_destination( xsocket )
+		#xsocket.connect('drag-drop', self.drop_on_Xsocket)
 
 
 		############### ToolsUI ################
@@ -3303,8 +3311,12 @@ class PyppetUI( PyppetAPI ):
 
 	def update_header(self,ob):
 		self._frame.remove( self._modal )
-		self._modal = root = gtk.HBox()
-		self._frame.add( root )
+		self._modal = eb = gtk.EventBox()
+		self._frame.add( self._modal )
+		root = gtk.HBox()
+		eb.add( root )
+		DND.make_source( eb, ob )
+		root.pack_start( gtk.Label(ob.name), expand=False )
 
 		if ob.type == 'ARMATURE':
 			b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
@@ -3331,13 +3343,6 @@ class PyppetUI( PyppetAPI ):
 
 		else:
 			root.set_border_width(3)
-
-			r,g,b,a = ob.color	# ( mesh: float-array not color-object )
-			gcolor = rgb2gdk(r,g,b)
-			b = gtk.ColorButton(gcolor)
-			b.set_relief( gtk.RELIEF_NONE )
-			root.pack_start( b, expand=False )
-			b.connect('color-set', self.color_set, gcolor, ob )
 
 			root.pack_start( gtk.Label('    '), expand=False )
 
@@ -3394,7 +3399,54 @@ class PyppetUI( PyppetAPI ):
 
 			combo.set_no_show_all(True)
 
-		root.show_all()
+			root.pack_start( gtk.Label() )
+			###################################################
+			b = gtk.ToggleButton( icons.WIREFRAME )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show wireframe')
+			b.set_active(ob.show_wire)
+			b.connect('toggled', lambda b,o: setattr(o,'show_wire',b.get_active()), ob)
+			root.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.NAME )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show name')
+			b.set_active(ob.show_name)
+			b.connect('toggled', lambda b,o: setattr(o,'show_name',b.get_active()), ob)
+			root.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.AXIS )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show axis')
+			b.set_active(ob.show_axis)
+			b.connect('toggled', lambda b,o: setattr(o,'show_axis',b.get_active()), ob)
+			root.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.XRAY )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show xray')
+			b.set_active(ob.show_x_ray)
+			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
+			root.pack_start( b, expand=False )
+
+			combo = gtk.ComboBoxText()
+			root.pack_start( combo, expand=False )
+			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
+				combo.append('id', type)
+				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
+			combo.set_tooltip_text( 'view draw type' )
+			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
+
+			r,g,b,a = ob.color	# ( mesh: float-array not color-object )
+			gcolor = rgb2gdk(r,g,b)
+			b = gtk.ColorButton(gcolor)
+			#b.set_tooltip_text('webGL shader tint')	# GTK wrapper bug - TODO fix me
+			b.set_relief( gtk.RELIEF_NONE )
+			root.pack_start( b, expand=False )
+			b.connect('color-set', self.color_set, gcolor, ob )
+
+
+		self._modal.show_all()
 
 	def color_set( self, button, color, ob ):
 		button.get_color( color )
@@ -3934,8 +3986,8 @@ class ToolsUI( object ):
 		ex.add( self.materials_UI.widget )
 
 
-	def update_constraints(self, ob):
-		if self._cns_pinned: return
+	def update_constraints(self, ob, force_update=False):
+		if self._cns_pinned and not force_update: return
 
 		self._cns_expander.remove( self._cns_modal )
 		self._cns_modal = root = gtk.VBox()
@@ -3975,8 +4027,8 @@ class ToolsUI( object ):
 		self._cns_expander.show_all()
 
 
-	def update_modifiers(self, ob):
-		if self._modifiers_pinned: return
+	def update_modifiers(self, ob, force_update=False):
+		if self._modifiers_pinned and not force_update: return
 
 		self._modifiers_expander.remove( self._modifiers_modal )
 		self._modifiers_modal = root = gtk.VBox()
@@ -4039,18 +4091,19 @@ class ToolsUI( object ):
 	def add_modifier(self,b, combo, ob):
 		mtype = combo.get_active_text()
 		mod = ob.modifiers.new( name=mtype.lower(), type=mtype )
-		self.update_modifiers( ob )
+		self.update_modifiers( ob, force_update=True )
 
 	def add_constraint(self,b, combo, ob):
 		mtype = combo.get_active_text()
 		cns = ob.constraints.new( type=mtype )
 		cns.name = mtype.lower()
-		self.update_constraints( ob )
+		self.update_constraints( ob, force_update=True )
 
 	def reorder_constraint( self, oldindex, newindex, ob ):
 		'''
 		ob.constraint is missing .insert method!
 		workaround use bpy.ops.constraint.move_{up/down}
+		TODO need to force ob to be active object
 		'''
 		name = ob.constraints[ oldindex ].name
 		delta = oldindex - newindex
@@ -4064,6 +4117,7 @@ class ToolsUI( object ):
 		'''
 		ob.modifiers is missing .insert method!
 		workaround use bpy.ops.object.modifier_move_{up/down}
+		TODO need to force ob to be active object
 		'''
 		name = ob.modifiers[ oldindex ].name
 		delta = oldindex - newindex

@@ -755,11 +755,7 @@ class Expander(object):
 		if full_header_toggle:
 			self.toggle_button = b = gtk.ToggleButton( '%s  %s' %(icons.EXPANDER_UP,self.name) )
 			self.header.pack_start( b, expand=True )
-			#x = ctypes.pointer( ctypes.c_float() )
-			#y = ctypes.pointer( ctypes.c_float() )
-			#b.get_alignment( x,y )
-			#print('alignment', x.contents.value, y.contents.value)
-			b.set_alignment( 0.0, 0.5 )
+			b.set_alignment( 0.0, 0.5 )	# align text to the left (default is 0.5, 0.5)
 		else:
 			self.toggle_button = b = gtk.ToggleButton( icons.EXPANDER_UP )
 			self.header.pack_start( b, expand=False )
@@ -809,7 +805,7 @@ class RNAWidget( object ):
 
 		self.widget = note = gtk.Notebook()
 
-		if 'INT' in props or 'FLOAT' in props or 'ENUM' in props:
+		if 'INT' in props or 'FLOAT' in props or 'ENUM' in props or 'POINTER' in props:
 			root = gtk.VBox()
 			note.append_page( root, gtk.Label('settings') )
 
@@ -848,6 +844,21 @@ class RNAWidget( object ):
 				combo.set_tooltip_text( prop.description )
 				combo.connect('changed', lambda c,o,n: setattr(o,n,c.get_active_text()), ob, name)
 
+		ptype = 'POINTER'
+		if ptype in props:
+			for name in props[ ptype ]:
+				prop = props[ ptype ][name]
+				eb = gtk.EventBox(); eb.set_border_width(3)
+				root.pack_start( eb, expand=False )
+				frame = gtk.Frame( prop.name )
+				eb.add( frame )
+				DND.make_destination( eb )
+				label = gtk.Label()
+				eb.connect('drag-drop', self.on_drop, ob, name, label)
+				eb.set_tooltip_text( prop.description )
+				frame.add( label )
+
+
 		ptype = 'BOOLEAN'
 		if ptype in props:
 			root = gtk.VBox()
@@ -860,10 +871,14 @@ class RNAWidget( object ):
 				root.pack_start( b.widget, expand=False )
 
 
-
-
-
-
+	def on_drop(self, widget, gcontext, x,y, time, ob, name, label):
+		print( DND.source_object )
+		if type(DND.source_object) is bpy.types.Object:
+			setattr(ob,name, DND.source_object)
+			if getattr(ob,name) == DND.source_object:
+				label.set_text( DND.source_object.name )
+			else:
+				label.set_text( '<invalid object>' )
 
 
 
