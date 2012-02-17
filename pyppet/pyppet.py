@@ -119,11 +119,17 @@ def restore_selection( state ):
 	for name in state:
 		Pyppet.context.scene.objects[ name ].select = state[name]
 
+
 def dump_collada( name, center=False ):
 	state = save_selection()
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
+
+	ob = ob.copy()
+	ob.parent = None
+	Pyppet.context.scene.objects.link(ob)
 	ob.select = True
+
 	materials = []
 	for i,mat in enumerate(ob.data.materials):
 		materials.append( mat )
@@ -131,27 +137,44 @@ def dump_collada( name, center=False ):
 
 	hack = bpy.data.materials.new(name='tmp')
 	hack.diffuse_color = [0,0,0]
+
+	rem = []
 	for mod in ob.modifiers:
-		mod.show_viewport = False
+		#mod.show_viewport = False
 		if mod.type == 'MULTIRES':
 			hack.diffuse_color.r = 1.0	# ugly way to hide HINTS in the collada
+		if mod.type in ('ARMATURE', 'MULTIRES'):
+			rem.append( mod )
+	for mod in rem:
+		ob.modifiers.remove( mod )	# armature must be removed entirely
+
 	if ob.data.materials: ob.data.materials[0] = hack
 	else: ob.data.materials.append( hack )
 
 	#arm = ob.find_armature()		# armatures not working in Three.js ?
 	#if arm: arm.select = True
+
 	loc = ob.location
 	if center: ob.location = (0,0,0)
+
 	#bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
+	url = '/tmp/%s.dae' %name
 	S = Blender.Scene( Pyppet.context.scene )
-	S.collada_export( '/tmp/dump.dae', True )	# using ctypes collada_export avoids polling issue
-	if center: ob.location = loc
-	restore_selection( state )
+	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
+
+	#if center: ob.location = loc
 
 	for i,mat in enumerate(materials): ob.data.materials[i]=mat
-	for mod in ob.modifiers: mod.show_viewport = True
+	#for mod in ob.modifiers: mod.show_viewport = True
 
-	return open('/tmp/dump.dae','rb').read()
+	Pyppet.context.scene.objects.unlink(ob)
+	ob.user_clear()
+	ob.select=False
+	bpy.data.objects.remove(ob)
+
+
+	restore_selection( state )
+	return open(url,'rb').read()
 #####################################
 
 
@@ -3273,6 +3296,22 @@ class PyppetUI( PyppetAPI ):
 		#self._nautilus_container.add( self._nautilus_xsocket )
 		#note.append_page( self._nautilus_container, gtk.Label('file browser') )
 
+		################ The Gimp ##############
+		if 0:
+			self._gimp_page = gtk.HBox()
+			note.append_page( self._gimp_page, gtk.Label('gimp') )
+			self._gimp_toolbox_xsocket = gtk.Socket()
+			self._gimp_toolbox_xsocket.connect('plug-added', self.on_plug_debug)
+			self._gimp_image_xsocket = gtk.Socket()
+			self._gimp_layers_xsocket = gtk.Socket()
+			eb = gtk.EventBox()
+			eb.add( self._gimp_toolbox_xsocket )
+			self._gimp_page.pack_start( eb, expand=False )
+			self._gimp_page.pack_start( self._gimp_image_xsocket, expand=True )
+			self._gimp_page.pack_start( self._gimp_layers_xsocket, expand=False )
+
+
+
 		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
 		subV.add2( self._chrome_xsocket )
@@ -3313,6 +3352,10 @@ class PyppetUI( PyppetAPI ):
 		self.do_xembed( xsocket, 'Blender' )		# this must come last
 		self.do_xembed( self._chrome_xsocket, "New Tab - Google Chrome")
 		#self.do_xembed( self._nautilus_xsocket, "Home")
+		if 0:
+			self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
+			self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
+			self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
 
 
 
@@ -4030,6 +4073,14 @@ class ToolsUI( object ):
 			R = RNAWidget( cns )
 			e.add( R.widget )
 			stacker.append( e.widget )
+
+			b = gtk.ToggleButton( icons.VISIBLE )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('toggle constraint')
+			b.set_active( not cns.mute )
+			b.connect('toggled', lambda b,c: setattr(c,'mute',not b.get_active()), cns)
+			e.header.pack_start( b, expand=False )
+
 
 		self._cns_expander.show_all()
 

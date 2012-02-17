@@ -228,6 +228,13 @@ class BlenderHackLinux( BlenderHack ):
 		xid = self.get_window_xid( window_name )
 		xsocket.add_id( xid )
 
+	def on_plug_debug(self, xsocket):
+		gdkwin = xsocket.get_plug_window()
+		width = gdkwin.get_width()
+		height = gdkwin.get_height()
+		gdkwin.show()
+		print('gdkwin', width,height)
+
 	def on_plug_blender(self, args):
 		self.blender_window_ready = True
 		self._blender_xsocket.set_size_request(
@@ -812,6 +819,7 @@ class RNAWidget( object ):
 			root = gtk.VBox()
 			note.append_page( root, gtk.Label('settings') )
 
+		N = 0
 		for ptype in 'INT FLOAT'.split():
 			if ptype not in props: continue
 			for name in props[ ptype ]:
@@ -830,6 +838,7 @@ class RNAWidget( object ):
 						driveable = (ptype=='FLOAT'),
 					)
 					root.pack_start( slider.widget, expand=False )
+					N += 1
 
 		ptype = 'ENUM'
 		if ptype in props:
@@ -846,9 +855,14 @@ class RNAWidget( object ):
 
 				combo.set_tooltip_text( prop.description )
 				combo.connect('changed', lambda c,o,n: setattr(o,n,c.get_active_text()), ob, name)
+				N += 1
 
 		ptype = 'POINTER'
 		if ptype in props:
+			if len(props[ptype]) + N >= 8:
+				root = gtk.VBox()
+				note.append_page( root, gtk.Label('objects') )
+
 			for name in props[ ptype ]:
 				prop = props[ ptype ][name]
 				eb = gtk.EventBox(); eb.set_border_width(3)
