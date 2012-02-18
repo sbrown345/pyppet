@@ -126,14 +126,14 @@ def restore_selection( state ):
 		Pyppet.context.scene.objects[ name ].select = state[name]
 
 
-def dump_collada( name, center=False ):
+def dump_collada_base( name, center=False ):
 	state = save_selection()
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
 
 	#ob = ob.copy()	# copy is slower
 	parent = ob.parent
-	ob.parent = None
+	ob.parent = None	# stupid collada exporter!
 	#Pyppet.context.scene.objects.link(ob)
 	ob.select = True
 
@@ -186,6 +186,73 @@ def dump_collada( name, center=False ):
 
 	restore_selection( state )
 	return open(url,'rb').read()
+
+
+bpy.types.Object.UID = IntProperty(
+    name="unique ID", description="unique ID for webGL client", 
+    default=0, min=0, max=2**14)
+
+def get_object_by_UID( uid ):
+	if type(uid) is str: uid = int( uid.replace('_','') )
+	for ob in bpy.data.objects:
+		if ob.UID == uid: return ob
+	print('UID not found', uid)
+	assert 0
+
+def UID( ob ):
+	'''
+	sets and returns simple unique ID for object.
+	note: when merging data, need to check all ID's are unique
+	'''
+	if ob.UID == 0: ob.UID = max( [o.UID for o in bpy.data.objects] ) + 1
+	return ob.UID
+
+def dump_collada( ob, center=False ):
+	name = ob.name
+	state = save_selection()
+	for o in Pyppet.context.scene.objects: o.select = False
+
+	hack = bpy.data.materials.new(name='tmp')
+	hack.diffuse_color = [0,0,0]
+
+	mods = []
+	for mod in ob.modifiers:
+		if mod.type == 'MULTIRES':
+			hack.diffuse_color.r = 1.0	# ugly way to hide HINTS in the collada
+		if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
+			mod.show_viewport = False
+			mods.append( mod )
+
+	############## collaspe modifiers into mesh data #############
+	data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
+	for mod in mods: mod.show_viewport = True  # restore modifiers
+
+	############## clear materials and assign hack material #######
+	for i,mat in enumerate(data.materials): data.materials[ i ] = None
+	if data.materials: data.materials[0] = hack
+	else: data.materials.append( hack )
+
+	############## create temp object for export ############
+	uid = UID( ob )
+	O = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
+	Pyppet.context.scene.objects.link( O )
+	O.matrix_world = ob.matrix_world.copy()
+	O.select = True
+
+	############## dump collada ###########
+	url = '/tmp/%s.dae' %name
+	S = Blender.Scene( Pyppet.context.scene )
+	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
+
+	############## clean up ###########
+	Pyppet.context.scene.objects.unlink(O)
+	O.user_clear()
+	O.select=False
+	bpy.data.objects.remove(O)
+
+	restore_selection( state )
+	return open(url,'rb').read()
+
 #####################################
 
 
@@ -314,7 +381,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 					pak['dist'] = ob.data.distance
 
 				elif ob.type == 'MESH':
-					msg[ 'meshes' ][ ob.name ] = pak
+					msg[ 'meshes' ][ UID(ob) ] = pak
 					specular = None
 					if ob.data.materials:
 						mat = ob.data.materials[0]
@@ -339,7 +406,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 		#if context.active_object and context.active_object.type == 'MESH' and context.active_object.name in msg['meshes']:
 		for ob in streaming_meshes:
 			#ob = context.active_object
-			pak = msg[ 'meshes' ][ ob.name ]
+			pak = msg[ 'meshes' ][ ob.UID ]
 			#pak[ 'selected' ] = True
 
 			mods = []
@@ -350,11 +417,11 @@ class WebSocketServer( websocket.WebSocketServer ):
 			data = ob.to_mesh( context.scene, True, "PREVIEW")
 			for mod in mods: mod.show_viewport = True
 
-			N = len( ob.data.vertices )
-			if N != len( data.vertices ):
-				print('vertex count error - some modifier changed vertex count',ob)
-				return
-
+			#N = len( ob.data.vertices )
+			#if N != len( data.vertices ):
+			#	print('vertex count error - some modifier changed vertex count',ob)
+			#	return
+			N = len( data.vertices )
 			verts = [ 0.0 for i in range(N*3) ]
 			data.vertices.foreach_get( 'co', verts )
 			bpy.data.meshes.remove( data )
@@ -363,8 +430,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 			subsurf = 0
 			for mod in ob.modifiers:
 				if mod.type == 'SUBSURF':
-					subsurf = mod.levels		# mod.render_levels
-					break
+					subsurf += mod.levels		# mod.render_levels
 
 			pak[ 'verts' ] = verts
 			pak[ 'subsurf' ] = subsurf
@@ -551,11 +617,12 @@ class WebServer( object ):
 			name = path.split('/')[-1]
 			if name.endswith('.dae'):
 				start_response('200 OK', [('Content-Type','text/xml; charset=utf-8')])
-				name = name[ : -4 ]
+				uid = name[ : -4 ]
+				ob = get_object_by_UID( uid )
 				if arg == 'center':
-					return [ dump_collada(name,center=True) ]
+					return [ dump_collada(ob,center=True) ]
 				else:
-					return [ dump_collada(name) ]
+					return [ dump_collada(ob) ]
 
 			elif os.path.isfile( url ):
 				data = open( url, 'rb' ).read()
@@ -573,8 +640,9 @@ class WebServer( object ):
 
 		elif path.startswith('/bake/'):
 			print( 'PATH', path, arg)
-			name = path.split('/')[-1][ :-4 ]	# strip ".jpg"
-			data = Pyppet.bake_image( name, *arg.split('|') )
+			uid = path.split('/')[-1][ :-4 ]	# strip ".jpg"
+			ob = get_object_by_UID( uid )
+			data = Pyppet.bake_image( ob, *arg.split('|') )
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]
 

@@ -142,20 +142,20 @@ class BlenderHack( object ):
 	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
 	BAKE_BYTES = 0
 	## can only be called from inside the ImageEditor redraw callback ##
-	def bake_image( self, name, type='AO', width=64, height=None ):
+	def bake_image( self, ob, type='AO', width=64, height=None ):
 		assert type in self.BAKE_MODES
 		if height is None: height=width
 
+		name = ob.name
 		path = '/tmp/%s.%s' %(name,type)
 		restore_active = self.context.active_object
 		restore = []
-		for ob in self.context.selected_objects:
-			ob.select = False
-			restore.append( ob )
-
-		ob = bpy.data.objects[ name ]
+		for o in self.context.selected_objects:
+			o.select = False
+			restore.append( o )
 		ob.select = True
 		self.context.scene.objects.active = ob
+
 		bpy.ops.object.mode_set( mode='EDIT' )
 		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
 		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
