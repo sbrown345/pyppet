@@ -83,6 +83,12 @@ import urllib.parse
 import websocket
 import json
 
+##################### PyRNA ###################
+bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
+
+
+
+#######################################################################
 def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
@@ -125,9 +131,10 @@ def dump_collada( name, center=False ):
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
 
-	ob = ob.copy()
+	#ob = ob.copy()	# copy is slower
+	parent = ob.parent
 	ob.parent = None
-	Pyppet.context.scene.objects.link(ob)
+	#Pyppet.context.scene.objects.link(ob)
 	ob.select = True
 
 	materials = []
@@ -138,15 +145,18 @@ def dump_collada( name, center=False ):
 	hack = bpy.data.materials.new(name='tmp')
 	hack.diffuse_color = [0,0,0]
 
-	rem = []
+	#rem = []
+	mods = []
 	for mod in ob.modifiers:
 		#mod.show_viewport = False
 		if mod.type == 'MULTIRES':
 			hack.diffuse_color.r = 1.0	# ugly way to hide HINTS in the collada
-		if mod.type in ('ARMATURE', 'MULTIRES'):
-			rem.append( mod )
-	for mod in rem:
-		ob.modifiers.remove( mod )	# armature must be removed entirely
+		if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
+			#rem.append( mod )
+			mod.show_viewport = False
+			mods.append( mod )
+	#for mod in rem:
+	#	ob.modifiers.remove( mod )
 
 	if ob.data.materials: ob.data.materials[0] = hack
 	else: ob.data.materials.append( hack )
@@ -162,16 +172,17 @@ def dump_collada( name, center=False ):
 	S = Blender.Scene( Pyppet.context.scene )
 	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
 
-	#if center: ob.location = loc
+	if center: ob.location = loc
 
 	for i,mat in enumerate(materials): ob.data.materials[i]=mat
-	#for mod in ob.modifiers: mod.show_viewport = True
+	for mod in mods: mod.show_viewport = True
+	ob.parent = parent
 
-	Pyppet.context.scene.objects.unlink(ob)
-	ob.user_clear()
-	ob.select=False
-	bpy.data.objects.remove(ob)
-
+	########### copy was not needed ##########
+	#Pyppet.context.scene.objects.unlink(ob)
+	#ob.user_clear()
+	#ob.select=False
+	#bpy.data.objects.remove(ob)
 
 	restore_selection( state )
 	return open(url,'rb').read()
@@ -276,6 +287,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 		for fx in  self.webGL.effects:
 			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
 
+		streaming_meshes = []
 		for ob in context.scene.objects:
 			if ob.type in ('MESH','LAMP'):
 				if ob.type=='MESH' and not ob.data.uv_textures: continue
@@ -319,12 +331,16 @@ class WebSocketServer( websocket.WebSocketServer ):
 							break
 					pak['disp'] = disp
 
+					if ob == context.active_object: pak[ 'selected' ] = True
+					if ob.webgl_stream_mesh or ob == context.active_object:
+						streaming_meshes.append( ob )
 
 		## only stream mesh data of active-selected ##
-		if context.active_object and context.active_object.type == 'MESH' and context.active_object.name in msg['meshes']:
-			ob = context.active_object
+		#if context.active_object and context.active_object.type == 'MESH' and context.active_object.name in msg['meshes']:
+		for ob in streaming_meshes:
+			#ob = context.active_object
 			pak = msg[ 'meshes' ][ ob.name ]
-			pak[ 'selected' ] = True
+			#pak[ 'selected' ] = True
 
 			mods = []
 			for mod in ob.modifiers:
@@ -412,6 +428,7 @@ class WebServer( object ):
 	def close(self): self.httpd.close()
 
 	def init_webserver(self, port=8080, timeout=0.01):
+		self.hires_progressive_textures = False
 		self.httpd_port = port
 		self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
 		self.httpd.timeout = timeout
@@ -451,10 +468,22 @@ class WebServer( object ):
 
 
 
-			########################################################################
+			######################### Pyppet WebGL Client ##############################
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 			h.append( '<script type="text/javascript">' )
 			h.append( 'var HOST = "%s";' %socket.gethostbyname(socket.gethostname()) )
+			if self.hires_progressive_textures:
+				h.append( 'var MAX_PROGRESSIVE_TEXTURE = 2048;' )
+				h.append( 'var MAX_PROGRESSIVE_NORMALS = 1024;' )
+				h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
+				h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
+			else:
+				h.append( 'var MAX_PROGRESSIVE_TEXTURE = 256;' )
+				h.append( 'var MAX_PROGRESSIVE_NORMALS = 128;' )
+				h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 128;' )
+				h.append( 'var MAX_PROGRESSIVE_DEFAULT = 128;' )
+
+
 			h.append( self.CLIENT_SCRIPT )
 			h.append( '</script>' )
 
@@ -3494,6 +3523,13 @@ class PyppetUI( PyppetAPI ):
 			b.set_relief( gtk.RELIEF_NONE )
 			root.pack_start( b, expand=False )
 			b.connect('color-set', self.color_set, gcolor, ob )
+
+			b = gtk.ToggleButton( icons.STREAMING )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('stream mesh to webGL client')
+			b.set_active(ob.webgl_stream_mesh)
+			b.connect('toggled', lambda b,o: setattr(o,'webgl_stream_mesh',b.get_active()), ob)
+			root.pack_start( b, expand=False )
 
 
 		self._modal.show_all()

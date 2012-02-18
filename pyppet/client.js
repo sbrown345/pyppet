@@ -277,20 +277,21 @@ function on_texture_ready( img ) {
 	}
 
 	/////////////////// do progressive loading ////////////////
+	// MAX_PROGRESSIVE_TEXTURE, etc. are defined by the server //
 	size *= 2;
-	if (type=='TEXTURE' && size <= 2048) {
+	if (type=='TEXTURE' && size <= MAX_PROGRESSIVE_TEXTURE) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
-	else if (type=='NORMALS' && size <= 1024) {
+	else if (type=='NORMALS' && size <= MAX_PROGRESSIVE_NORMALS) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
-	else if (type=='DISPLACEMENT' && size <= 512) {
+	else if (type=='DISPLACEMENT' && size <= MAX_PROGRESSIVE_DISPLACEMENT) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
-	else if (size <= 256) {
+	else if (size <= MAX_PROGRESSIVE_DEFAULT) {
 		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
 		setTimeout( request_progressive_texture, 1000 );
 	}
