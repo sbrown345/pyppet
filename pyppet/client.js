@@ -31,11 +31,10 @@ function on_message(e) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
-
 	for (var name in msg['lights']) {
 		var light;
 		var ob = msg['lights'][ name ];
-		name = name.replace('.', '_');
+		//name = name.replace('.', '_');
 
 		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
 			console.log('>> new light');
@@ -87,7 +86,7 @@ function on_message(e) {
 	for (var name in msg['meshes']) {
 		var ob = msg['meshes'][ name ];
 		var raw_name = name;
-		name = name.replace('.', '_');
+		//name = name.replace('.', '_');
 
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];

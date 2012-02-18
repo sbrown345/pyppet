@@ -356,58 +356,55 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		streaming_meshes = []
 		for ob in context.scene.objects:
-			if ob.type in ('MESH','LAMP'):
-				if ob.type=='MESH' and not ob.data.uv_textures: continue
+			if ob.type not in ('MESH','LAMP'): continue
+			if ob.type=='MESH' and not ob.data.uv_textures: continue
 
-				loc, rot, scl = ob.matrix_world.decompose()
-				loc = loc.to_tuple()
-				scl = scl.to_tuple()
+			loc, rot, scl = ob.matrix_world.decompose()
+			loc = loc.to_tuple()
+			scl = scl.to_tuple()
 
-				#x,y,z = rot.to_euler(); rot = (x,y,z)
-				#rot = (rot.w, rot.x, rot.y, rot.z)
-				M = mathutils.Matrix().to_3x3()
-				M.rotate( ob.matrix_world )
-				rot = [ round(x,5) for x in M.to_euler('XYZ') ]
+			#x,y,z = rot.to_euler(); rot = (x,y,z)
+			#rot = (rot.w, rot.x, rot.y, rot.z)
+			M = mathutils.Matrix().to_3x3()
+			M.rotate( ob.matrix_world )
+			rot = [ round(x,5) for x in M.to_euler('XYZ') ]
 
-				pak = { 'pos':loc, 'rot':rot, 'scl':scl }
-				#mat = []
-				#for row in ob.matrix_world: mat += [ round(a,4) for a in row ]
-				#pak['mat'] = mat
+			pak = { 'pos':loc, 'rot':rot, 'scl':scl }
+			#mat = []
+			#for row in ob.matrix_world: mat += [ round(a,4) for a in row ]
+			#pak['mat'] = mat
 
-				if ob.type == 'LAMP':
-					msg[ 'lights' ][ ob.name ] = pak
-					pak['energy'] = ob.data.energy
-					pak['color'] = [ round(a,3) for a in ob.data.color ]
-					pak['dist'] = ob.data.distance
+			if ob.type == 'LAMP':
+				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
+				pak['energy'] = ob.data.energy
+				pak['color'] = [ round(a,3) for a in ob.data.color ]
+				pak['dist'] = ob.data.distance
 
-				elif ob.type == 'MESH':
-					msg[ 'meshes' ][ UID(ob) ] = pak
-					specular = None
-					if ob.data.materials:
-						mat = ob.data.materials[0]
-						specular = mat.specular_hardness
-					pak['color'] = [ round(x,3) for x in ob.color ]
-					pak['spec'] = specular
+			elif ob.type == 'MESH':
+				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
+				specular = None
+				if ob.data.materials:
+					mat = ob.data.materials[0]
+					specular = mat.specular_hardness
+				pak['color'] = [ round(x,3) for x in ob.color ]
+				pak['spec'] = specular
 
-					disp = 1.0
-					pak['disp_bias'] = 0.0
-					for mod in ob.modifiers:
-						if mod.type=='DISPLACE':
-							pak['disp_bias'] = mod.mid_level - 0.5
-							disp = mod.strength
-							break
-					pak['disp'] = disp
+				disp = 1.0
+				pak['disp_bias'] = 0.0
+				for mod in ob.modifiers:
+					if mod.type=='DISPLACE':
+						pak['disp_bias'] = mod.mid_level - 0.5
+						disp = mod.strength
+						break
+				pak['disp'] = disp
 
-					if ob == context.active_object: pak[ 'selected' ] = True
-					if ob.webgl_stream_mesh or ob == context.active_object:
-						streaming_meshes.append( ob )
+				if ob == context.active_object: pak[ 'selected' ] = True
+				if ob.webgl_stream_mesh or ob == context.active_object:
+					streaming_meshes.append( ob )
 
-		## only stream mesh data of active-selected ##
-		#if context.active_object and context.active_object.type == 'MESH' and context.active_object.name in msg['meshes']:
+
 		for ob in streaming_meshes:
-			#ob = context.active_object
-			pak = msg[ 'meshes' ][ ob.UID ]
-			#pak[ 'selected' ] = True
+			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
 
 			mods = []
 			for mod in ob.modifiers:
@@ -417,10 +414,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 			data = ob.to_mesh( context.scene, True, "PREVIEW")
 			for mod in mods: mod.show_viewport = True
 
-			#N = len( ob.data.vertices )
-			#if N != len( data.vertices ):
-			#	print('vertex count error - some modifier changed vertex count',ob)
-			#	return
 			N = len( data.vertices )
 			verts = [ 0.0 for i in range(N*3) ]
 			data.vertices.foreach_get( 'co', verts )

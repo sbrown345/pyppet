@@ -157,6 +157,8 @@ class BlenderHack( object ):
 		self.context.scene.objects.active = ob
 
 		bpy.ops.object.mode_set( mode='EDIT' )
+		bpy.ops.mesh.select_all()
+		bpy.ops.mesh.select_all()
 		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
 		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
 
