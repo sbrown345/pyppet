@@ -3,7 +3,7 @@
 # http://pyppet.blogspot.com
 # License: BSD
 
-import bpy
+import bpy, mathutils
 import os, ctypes, time, threading
 import gtk3 as gtk
 import icons
@@ -903,6 +903,52 @@ class RNAWidget( object ):
 
 
 
+class VectorWidget( object ):
+	def __init__( self, ob, name, title=None, expanded=True ):
+		drivers = Driver.get_drivers(ob.name, name)	# classmethod
+
+		vec = getattr(ob,name)
+
+		if title: ex = gtk.Expander(title)
+		else: ex = gtk.Expander(name)
+		ex.set_expanded( expanded )
+		self.widget = ex
+
+		note = gtk.Notebook(); ex.add( note )
+		note.set_tab_pos( gtk.POS_RIGHT )
+
+		if type(vec) is mathutils.Color:
+			tags = 'rgb'
+			nice = icons.RGB
+		else:
+			tags = 'xyz'
+			nice = icons.XYZ
+
+		for i,axis in enumerate( tags ):
+			a = gtk.Label( nice[axis] )
+			page = gtk.VBox(); page.set_border_width(3)
+			note.append_page( page, a )
+
+			DND.make_destination(a)
+			a.connect(
+				'drag-drop', self.cb_drop_driver,
+				ob, name, i, page
+			)
+
+			for driver in drivers:
+				if driver.target_index == i:
+					page.pack_start( driver.get_widget(), expand=False )
 
 
+	def cb_drop_driver(self, wid, context, x, y, time, target, path, index, page):
+		print('on drop')
+		output = DND.source_object
+		#driver = output.bind( 'XXX', target=self.object, path=path, index=index )
+		if path.startswith('ode_'):
+			driver = output.bind( 'XXX', target=target, path=path, index=index, max=500 )
+		else:
+			driver = output.bind( 'XXX', target=target, path=path, index=index )
+		widget = driver.get_widget()
+		page.pack_start( widget, expand=False )
+		widget.show_all()
 

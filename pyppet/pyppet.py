@@ -86,7 +86,27 @@ import json
 ##################### PyRNA ###################
 bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
 
+bpy.types.Object.UID = IntProperty(
+    name="unique ID", description="unique ID for webGL client", 
+    default=0, min=0, max=2**14)
 
+def get_object_by_UID( uid ):
+	if type(uid) is str: uid = int( uid.replace('_','') )
+	for ob in bpy.data.objects:
+		if ob.UID == uid: return ob
+	print('UID not found', uid)
+	assert 0
+
+def UID( ob ):
+	'''
+	sets and returns simple unique ID for object.
+	note: when merging data, need to check all ID's are unique
+	'''
+	if ob.UID == 0: ob.UID = max( [o.UID for o in bpy.data.objects] ) + 1
+	return ob.UID
+
+def ensure_unique_ids():
+	pass	# TODO
 
 #######################################################################
 def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65535))
@@ -98,6 +118,9 @@ BG_COLOR = rgb2gdk( BLENDER_GREY, BLENDER_GREY, BLENDER_GREY )
 BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
 DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
 
+
+
+################# from bpyengine #######################
 STREAM_BUFFER_SIZE = 2048
 
 def _create_stream_proto():
@@ -114,27 +137,26 @@ def get_object_url(ob):
 	elif ob.remote_path.startswith('/'): url = 'http://%s%s' %(ob.remote_server, ob.remote_path)
 	else: url = 'http://%s/%s' %(ob.remote_server, ob.remote_path)
 	return url
-
+################# end from bpyengine ###################
 
 
 def save_selection():
 	r = {}
 	for ob in Pyppet.context.scene.objects: r[ ob.name ] = ob.select
 	return r
+
 def restore_selection( state ):
 	for name in state:
 		Pyppet.context.scene.objects[ name ].select = state[name]
 
 
-def dump_collada_base( name, center=False ):
+def dump_collada_pure_base_mesh( name, center=False ):
 	state = save_selection()
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
 
-	#ob = ob.copy()	# copy is slower
 	parent = ob.parent
 	ob.parent = None	# stupid collada exporter!
-	#Pyppet.context.scene.objects.link(ob)
 	ob.select = True
 
 	materials = []
@@ -145,18 +167,13 @@ def dump_collada_base( name, center=False ):
 	hack = bpy.data.materials.new(name='tmp')
 	hack.diffuse_color = [0,0,0]
 
-	#rem = []
 	mods = []
 	for mod in ob.modifiers:
-		#mod.show_viewport = False
 		if mod.type == 'MULTIRES':
 			hack.diffuse_color.r = 1.0	# ugly way to hide HINTS in the collada
 		if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
-			#rem.append( mod )
 			mod.show_viewport = False
 			mods.append( mod )
-	#for mod in rem:
-	#	ob.modifiers.remove( mod )
 
 	if ob.data.materials: ob.data.materials[0] = hack
 	else: ob.data.materials.append( hack )
@@ -178,34 +195,10 @@ def dump_collada_base( name, center=False ):
 	for mod in mods: mod.show_viewport = True
 	ob.parent = parent
 
-	########### copy was not needed ##########
-	#Pyppet.context.scene.objects.unlink(ob)
-	#ob.user_clear()
-	#ob.select=False
-	#bpy.data.objects.remove(ob)
-
 	restore_selection( state )
 	return open(url,'rb').read()
 
 
-bpy.types.Object.UID = IntProperty(
-    name="unique ID", description="unique ID for webGL client", 
-    default=0, min=0, max=2**14)
-
-def get_object_by_UID( uid ):
-	if type(uid) is str: uid = int( uid.replace('_','') )
-	for ob in bpy.data.objects:
-		if ob.UID == uid: return ob
-	print('UID not found', uid)
-	assert 0
-
-def UID( ob ):
-	'''
-	sets and returns simple unique ID for object.
-	note: when merging data, need to check all ID's are unique
-	'''
-	if ob.UID == 0: ob.UID = max( [o.UID for o in bpy.data.objects] ) + 1
-	return ob.UID
 
 def dump_collada( ob, center=False ):
 	name = ob.name
@@ -1615,54 +1608,7 @@ class Popup( ToolWindow ):
 
 	def refresh(self): self.object = None	# force reload
 
-	def cb_drop_driver(self, wid, context, x, y, time, target, path, index, page):
-		print('on drop')
-		output = DND.source_object
-		#driver = output.bind( 'XXX', target=self.object, path=path, index=index )
-		if path.startswith('ode_'):
-			driver = output.bind( 'XXX', target=target, path=path, index=index, max=500 )
-		else:
-			driver = output.bind( 'XXX', target=target, path=path, index=index )
-		widget = driver.get_widget()
-		page.pack_start( widget, expand=False )
-		widget.show_all()
 
-
-	def vector_widget( self, ob, name, title=None, expanded=True ):
-		drivers = Driver.get_drivers(ob.name, name)	# classmethod
-
-		vec = getattr(ob,name)
-
-		if title: ex = gtk.Expander(title)
-		else: ex = gtk.Expander(name)
-		ex.set_expanded( expanded )
-
-		note = gtk.Notebook(); ex.add( note )
-		note.set_tab_pos( gtk.POS_RIGHT )
-
-		if type(vec) is mathutils.Color:
-			tags = 'rgb'
-			nice = icons.RGB
-		else:
-			tags = 'xyz'
-			nice = icons.XYZ
-
-		for i,axis in enumerate( tags ):
-			a = gtk.Label( nice[axis] )
-			page = gtk.VBox(); page.set_border_width(3)
-			note.append_page( page, a )
-
-			DND.make_destination(a)
-			a.connect(
-				'drag-drop', self.cb_drop_driver,
-				ob, name, i, page
-			)
-
-			for driver in drivers:
-				if driver.target_index == i:
-					page.pack_start( driver.get_widget(), expand=False )
-
-		return ex
 
 	def update(self, context):
 		if context.active_object and context.active_object.name != self.object:
@@ -1678,177 +1624,9 @@ class Popup( ToolWindow ):
 			self.window.add( self.modal )
 			note.set_tab_pos( gtk.POS_LEFT )
 
-			sw = gtk.ScrolledWindow()
-			note.append_page( sw, gtk.Label(icons.TRANSFORM) )
-			sw.set_policy(True,True)
-			root = gtk.VBox(); root.set_border_width( 6 )
-			sw.add_with_viewport( root )
-			nice = {
-				'location':'Location', 'scale':'Scale', 'rotation_euler':'Rotation',
-			}
-			tags='location scale rotation_euler'.split()
-			for i,tag in enumerate(tags):
-				root.pack_start(
-					self.vector_widget(ob,tag, title=nice[tag], expanded=i is 0), 
-					expand=False
-				)
-
-			if ob.type=='MESH':
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.MATERIAL ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-
-				for m in ob.data.materials:
-					ex = gtk.Expander( m.name ); ex.set_expanded(True)
-					root.pack_start( ex )
-					bx = gtk.VBox(); ex.add( bx )
-
-					for tag in 'diffuse_intensity specular_intensity ambient emit alpha'.split():
-						slider = SimpleSlider( m, name=tag, driveable=True )
-						bx.pack_start( slider.widget, expand=False )
-
-					bx.pack_start(
-						self.vector_widget(m,'diffuse_color', title='diffuse color' ), 
-						expand=True
-					)
-
-
-			elif ob.type=='LAMP':
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.LIGHT ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-
-				for tag in 'energy'.split():
-					slider = SimpleSlider( ob.data, name=tag, driveable=True )
-					root.pack_start( slider.widget, expand=False )
-
-				root.pack_start(
-					self.vector_widget(ob.data,'color' ), 
-					expand=True
-				)
-
-
-
-			########### physics joints: MODELS: Ragdoll, Biped, Rope ############
-			if ob.type=='ARMATURE':
-				if ob.pyppet_model:
-					print('pyppet-model:', ob.pyppet_model)
-					model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
-					label = model.get_widget_label()
-					widget = getattr(model, 'Get%sWidget' %ob.pyppet_model)()
-					note.append_page( widget, label )
-
-					sw = gtk.ScrolledWindow()
-					label = gtk.Label( icons.TARGET )
-					note.append_page( sw, label )
-					sw.set_policy(True,True)
-					root = gtk.VBox(); root.set_border_width( 6 )
-					sw.add_with_viewport( root )
-					root.pack_start( model.get_targets_widget(label) )
-
-
-				else:
-					for mname in Pyppet.MODELS:
-						model = getattr(Pyppet, 'Get%s' %mname)( ob.name )
-						label = model.get_widget_label()
-						widget = getattr(model, 'Get%sWidget' %mname)()
-						note.append_page( widget, label )
-
-
-
-
-			else:
-				############# physics driver forces ##############
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label(icons.FORCES) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-				nice = {
-					'ode_global_force':'Global Force', 'ode_local_force':'Local Force',
-					'ode_global_torque':'Global Torque', 'ode_local_torque':'Local Torque',
-				}
-				tags='ode_local_force ode_local_torque ode_global_force ode_local_torque'.split()
-				for i,tag in enumerate(tags):
-					root.pack_start(
-						self.vector_widget(ob,tag, title=nice[tag], expanded=i is 0), 
-						expand=False
-					)
-
-
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.CONSTANT_FORCES ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-				nice = {
-					'ode_constant_global_force':'Constant Global Force', 
-					'ode_constant_local_force':'Constant Local Force',
-					'ode_constant_global_torque':'Constant Global Torque', 
-					'ode_constant_local_torque':'Constant Local Torque',
-				}
-				tags='ode_constant_global_force ode_constant_local_force ode_constant_global_torque ode_constant_local_torque'.split()
-				for i,tag in enumerate(tags):
-					slider = Slider( ob, tag, min=-420, max=420 )
-					root.pack_start( slider.widget, expand=False )
-
-
-				########### physics config ############
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.GRAVITY ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-
-				b = gtk.CheckButton('%s body active' %icons.BODY )
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_body )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_body',b.get_active()), ob)
-
-				b = gtk.CheckButton('%s enable collision' %icons.COLLISION)
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_collision',b.get_active()), ob)
-
-				b = gtk.CheckButton('%s enable gravity' %icons.GRAVITY)
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_gravity )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_gravity',b.get_active()), ob)
-
-
-
-				root.pack_start( gtk.Label() )
-
-				s = Slider(ob, 'ode_mass', min=0.001, max=10.0)
-				root.pack_start(s.widget, expand=False)
-				s = Slider(ob, 'ode_linear_damping', min=0.0, max=1.0)
-				root.pack_start(s.widget, expand=False)
-				s = Slider(ob, 'ode_angular_damping', min=0.0, max=1.0)
-				root.pack_start(s.widget, expand=False)
-
-				s = Slider(
-					ob, 'ode_force_driver_rate', 
-					title='%s driver rate' %icons.FORCES, 
-					min=0.0, max=1.0
-				)
-				root.pack_start(s.widget, expand=False)
-
-
-				sw = gtk.ScrolledWindow()
-				label = gtk.Label( icons.JOINT )
-				note.append_page( sw, label )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-				DND.make_destination( label )
-				label.connect( 'drag-drop', self.cb_drop_joint, root )
+			########## moved to left tools #########
 
 			self.modal.show_all()
-
 
 
 	def cb_drop_joint(self, wid, context, x, y, time, page):
@@ -3310,25 +3088,15 @@ class PyppetUI( PyppetAPI ):
 			slot = ob.data.materials[0].texture_slots[0]
 			slot.texture.image = bpy.data.images['_kinect_']
 
+	def create_left_tools( self, parent ):
+		self._left_tools = gtk.VBox()
+		self._left_tools.set_border_width( 2 )
+		parent.pack_start( self._left_tools, expand=False )
 
+		ex = gtk.Expander( 'webgl')
+		self._left_tools.pack_start( ex, expand=False )
+		note = gtk.Notebook(); ex.add( note )
 
-	def create_ui(self, context):
-		self._blender_min_width = 640
-		self._blender_min_height = 480
-
-		self.window = win = gtk.Window()
-		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		win.set_title( 'Pyppet '+VERSION )
-		self.root = root = gtk.VBox()
-		win.add( root )
-
-		split = gtk.HBox()
-		root.pack_start( split )
-
-		############ LEFT TOOLS ###########
-		self._left_tools = note = gtk.Notebook()
-		note.set_border_width( 2 )
-		split.pack_start( note, expand=False )
 		widget = self.websocket_server.webGL.get_fx_widget()
 		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
 		page = gtk.VBox()
@@ -3346,6 +3114,272 @@ class PyppetUI( PyppetAPI ):
 
 		self.outlinerUI = OutlinerUI()
 		note.append_page( self.outlinerUI.widget, gtk.Label(icons.OUTLINER) )
+
+		#################### drivers ###################
+		self._left_tools_modals = {}
+
+		ex = gtk.Expander( 'drivers')
+		self._left_tools.pack_start( ex, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'drivers' ] = (ex,note)
+		Pyppet.register( self.update_drivers_widget )
+
+		ex = gtk.Expander( 'forces')
+		self._left_tools.pack_start( ex, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'forces' ] = (ex,note)
+		Pyppet.register( self.update_forces_widget )
+
+		ex = gtk.Expander( 'joints')
+		self._left_tools.pack_start( ex, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'joints' ] = (ex,note)
+		Pyppet.register( self.update_joints_widget )
+
+		ex = gtk.Expander( 'solver')
+		self._left_tools.pack_start( ex, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'solver' ] = (ex,note)
+		Pyppet.register( self.update_solver_widget )
+
+
+	def update_drivers_widget( self, ob ):
+		EX,note = self._left_tools_modals[ 'drivers' ]
+		EX.remove( note )
+		note = gtk.Notebook(); EX.add( note )
+		self._left_tools_modals[ 'drivers' ] = (EX,note)
+
+		############# direct transform ##############
+		root = gtk.VBox(); root.set_border_width( 2 )
+		note.append_page( root, gtk.Label(icons.TRANSFORM) )
+		nice = {'location':'Location', 'scale':'Scale', 'rotation_euler':'Rotation' }
+		tags='location scale rotation_euler'.split()
+		for i,tag in enumerate(tags):
+			root.pack_start(
+				VectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				expand=False
+			)
+
+		############# physics driver forces ##############
+		root = gtk.VBox(); root.set_border_width( 2 )
+		note.append_page( root, gtk.Label(icons.FORCES+'Global') )
+		nice = {
+			'ode_global_force':'Global Force',
+			'ode_global_torque':'Global Torque',
+		}
+		tags='ode_global_force ode_global_torque'.split()
+		for i,tag in enumerate(tags):
+			root.pack_start(
+				VectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				expand=False
+			)
+
+		root = gtk.VBox(); root.set_border_width( 2 )
+		note.append_page( root, gtk.Label(icons.FORCES+'Local') )
+		nice = {
+			'ode_local_force':'Local Force',
+			'ode_local_torque':'Local Torque',
+		}
+		tags='ode_local_force ode_local_torque'.split()
+		for i,tag in enumerate(tags):
+			root.pack_start(
+				VectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				expand=False
+			)
+
+
+		EX.show_all()
+
+	def update_forces_widget( self, ob ):
+		EX,note = self._left_tools_modals[ 'forces' ]
+		EX.remove( note )
+		note = gtk.Notebook(); EX.add( note )
+		self._left_tools_modals[ 'forces' ] = (EX,note)
+
+		root = gtk.VBox(); root.set_border_width( 2 )
+		note.append_page( root, gtk.Label( icons.CONSTANT_FORCES+'Global' ) )
+		nice = {
+			'ode_constant_global_force':'Constant Global Force', 
+			'ode_constant_global_torque':'Constant Global Torque', 
+		}
+		tags='ode_constant_global_force ode_constant_global_torque'.split()
+		for i,tag in enumerate(tags):
+			slider = Slider( ob, tag, min=-420, max=420 )
+			root.pack_start( slider.widget, expand=False )
+
+		root = gtk.VBox(); root.set_border_width( 2 )
+		note.append_page( root, gtk.Label( icons.CONSTANT_FORCES+'Local' ) )
+		nice = {
+			'ode_constant_local_force':'Constant Local Force',
+			'ode_constant_local_torque':'Constant Local Torque',
+		}
+		tags='ode_constant_local_force ode_constant_local_torque'.split()
+		for i,tag in enumerate(tags):
+			slider = Slider( ob, tag, min=-420, max=420 )
+			root.pack_start( slider.widget, expand=False )
+
+		EX.show_all()
+
+	def update_joints_widget( self, ob ):
+		EX,note = self._left_tools_modals[ 'joints' ]
+		EX.remove( note )
+		note = gtk.Notebook(); EX.add( note )
+		self._left_tools_modals[ 'joints' ] = (EX,note)
+
+		sw = gtk.ScrolledWindow()
+		label = gtk.Label( icons.JOINT )
+		note.append_page( sw, label )
+		sw.set_policy(True,True)
+		root = gtk.VBox(); root.set_border_width( 6 )
+		sw.add_with_viewport( root )
+		DND.make_destination( label )
+		#label.connect( 'drag-drop', self.cb_drop_joint, root )
+
+
+		EX.show_all()
+
+	def update_solver_widget( self, ob ):
+		EX,note = self._left_tools_modals[ 'solver' ]
+		EX.remove( note )
+		note = gtk.Notebook(); EX.add( note )
+		self._left_tools_modals[ 'solver' ] = (EX,note)
+
+		########### physics joints: MODELS: Ragdoll, Biped, Rope ############
+		if ob.type=='ARMATURE':
+			if ob.pyppet_model:
+				print('pyppet-model:', ob.pyppet_model)
+				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
+				label = model.get_widget_label()
+				widget = getattr(model, 'Get%sWidget' %ob.pyppet_model)()
+				note.append_page( widget, label )
+
+				sw = gtk.ScrolledWindow()
+				label = gtk.Label( icons.TARGET )
+				note.append_page( sw, label )
+				sw.set_policy(True,True)
+				root = gtk.VBox(); root.set_border_width( 6 )
+				sw.add_with_viewport( root )
+				root.pack_start( model.get_targets_widget(label) )
+
+
+			else:
+				for mname in Pyppet.MODELS:
+					model = getattr(Pyppet, 'Get%s' %mname)( ob.name )
+					label = model.get_widget_label()
+					widget = getattr(model, 'Get%sWidget' %mname)()
+					note.append_page( widget, label )
+
+
+		EX.show_all()
+
+
+	def deprecate():
+			if ob.type=='MESH':
+				sw = gtk.ScrolledWindow()
+				note.append_page( sw, gtk.Label( icons.MATERIAL ) )
+				sw.set_policy(True,True)
+				root = gtk.VBox(); root.set_border_width( 6 )
+				sw.add_with_viewport( root )
+
+				for m in ob.data.materials:
+					ex = gtk.Expander( m.name ); ex.set_expanded(True)
+					root.pack_start( ex )
+					bx = gtk.VBox(); ex.add( bx )
+
+					for tag in 'diffuse_intensity specular_intensity ambient emit alpha'.split():
+						slider = SimpleSlider( m, name=tag, driveable=True )
+						bx.pack_start( slider.widget, expand=False )
+
+					bx.pack_start(
+						self.vector_widget(m,'diffuse_color', title='diffuse color' ), 
+						expand=True
+					)
+
+
+			elif ob.type=='LAMP':
+				sw = gtk.ScrolledWindow()
+				note.append_page( sw, gtk.Label( icons.LIGHT ) )
+				sw.set_policy(True,True)
+				root = gtk.VBox(); root.set_border_width( 6 )
+				sw.add_with_viewport( root )
+
+				for tag in 'energy'.split():
+					slider = SimpleSlider( ob.data, name=tag, driveable=True )
+					root.pack_start( slider.widget, expand=False )
+
+				root.pack_start(
+					self.vector_widget(ob.data,'color' ), 
+					expand=True
+				)
+
+
+
+
+
+
+
+			else:
+
+
+				########### physics config ############
+				sw = gtk.ScrolledWindow()
+				note.append_page( sw, gtk.Label( icons.GRAVITY ) )
+				sw.set_policy(True,True)
+				root = gtk.VBox(); root.set_border_width( 6 )
+				sw.add_with_viewport( root )
+
+				b = gtk.CheckButton('%s body active' %icons.BODY )
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_body )
+				b.connect('toggled', lambda b,o: setattr(o,'ode_use_body',b.get_active()), ob)
+
+				b = gtk.CheckButton('%s enable collision' %icons.COLLISION)
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_collision )
+				b.connect('toggled', lambda b,o: setattr(o,'ode_use_collision',b.get_active()), ob)
+
+				b = gtk.CheckButton('%s enable gravity' %icons.GRAVITY)
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_gravity )
+				b.connect('toggled', lambda b,o: setattr(o,'ode_use_gravity',b.get_active()), ob)
+
+
+
+				root.pack_start( gtk.Label() )
+
+				s = Slider(ob, 'ode_mass', min=0.001, max=10.0)
+				root.pack_start(s.widget, expand=False)
+				s = Slider(ob, 'ode_linear_damping', min=0.0, max=1.0)
+				root.pack_start(s.widget, expand=False)
+				s = Slider(ob, 'ode_angular_damping', min=0.0, max=1.0)
+				root.pack_start(s.widget, expand=False)
+
+				s = Slider(
+					ob, 'ode_force_driver_rate', 
+					title='%s driver rate' %icons.FORCES, 
+					min=0.0, max=1.0
+				)
+				root.pack_start(s.widget, expand=False)
+
+
+
+
+
+	def create_ui(self, context):
+		self._blender_min_width = 640
+		self._blender_min_height = 480
+
+		self.window = win = gtk.Window()
+		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		win.set_title( 'Pyppet '+VERSION )
+		self.root = root = gtk.VBox()
+		win.add( root )
+
+		split = gtk.HBox()
+		root.pack_start( split )
+
+		############ LEFT TOOLS ###########
+		self.create_left_tools( split )
 
 		###############################
 		Vsplit = gtk.VBox()
