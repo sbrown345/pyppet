@@ -15,6 +15,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
 from core import *		# core API
+SimpleSlider = Slider
 
 if sys.platform.startswith('win'):
 	#dll = ctypes.CDLL('')	# this won't work on Windows
@@ -856,91 +857,6 @@ bpy.types.Object.remote_merge_type = EnumProperty(
     description='remote merge type', 
     default='object'
 )
-
-
-
-
-
-
-#########################################################
-
-class Slider(object):
-	def adjust_by_name( self, adj, ob, name): setattr(ob,name, adj.get_value())
-	def adjust_by_index( self, adj, ob, index): ob[index] = adj.get_value()
-
-	def __init__(self, ob, name, title=None, min=None, max=None):
-		self.object = ob
-		self.min = min
-		self.max =max
-		#print(ob.bl_rna.properties.keys() )
-		self.rna = ob.bl_rna.properties[name]
-		self.adjustments = {}
-		attr = getattr( ob, name )
-		if type(attr) is mathutils.Vector or (self.rna.type=='FLOAT' and self.rna.array_length==3):
-			assert self.rna.array_length == 3
-			self.widget = ex = gtk.Expander( title or self.rna.name )
-			ex.set_expanded( True )
-			root = gtk.VBox(); ex.add( root )
-			root.set_border_width(8)
-			root.pack_start( self.make_row(attr, index=0, label='x'), expand=False )
-			root.pack_start( self.make_row(attr, index=1, label='y'), expand=False )
-			root.pack_start( self.make_row(attr, index=2, label='z'), expand=False )
-		elif self.rna.type in ('INT','FLOAT'):
-			self.widget = self.make_row(ob,name, label=title or self.rna.name)
-		else:
-			print('unknown RNA type', self.rna.type)
-
-	def make_row(self, ob, name=None, index=None, label=None):
-		if name is not None: value = getattr(ob,name)
-		elif index is not None: value = ob[index]
-		else: assert 0
-
-		row = gtk.HBox()
-		if label: row.pack_start( gtk.Label(label), expand=False )
-		elif name: row.pack_start( gtk.Label(name.split('ode_')[-1]), expand=False )
-		elif index is not None:
-			if index==0:
-				row.pack_start( gtk.Label('x'), expand=False )
-			elif index==1:
-				row.pack_start( gtk.Label('y'), expand=False )
-			elif index==2:
-				row.pack_start( gtk.Label('z'), expand=False )
-
-		b = gtk.SpinButton()
-		self.adjustments[name] = adj = b.get_adjustment()
-
-		scale = gtk.HScale( adj )
-		#scale.set_value_pos(gtk.POS_RIGHT)
-		row.pack_start( scale )
-		row.pack_start( b, expand=False )
-
-		if self.rna.type == 'FLOAT':
-			scale.set_digits( self.rna.precision )
-			step = 0.1
-		else:
-			scale.set_digits( 0 )
-			step = 1
-
-		if self.min is not None: min = self.min
-		else: min = self.rna.soft_min
-		if self.max is not None: max = self.max
-		else: max = self.rna.soft_max
-		#print(value,min,max,step)
-		adj.configure( 
-			value=value, 
-			lower=min, 
-			upper=max, 
-			step_increment=step,
-			page_increment=0.1,
-			page_size=0.1
-		)
-		#print('CONFIG OK')
-		if name is not None: adj.connect('value-changed', self.adjust_by_name, ob, name)
-		else: adj.connect('value-changed', self.adjust_by_index, ob, index)
-		#print('CONNECT OK')
-		return row
-
-
 
 
 
@@ -3157,7 +3073,7 @@ class PyppetUI( PyppetAPI ):
 		tags='location scale rotation_euler'.split()
 		for i,tag in enumerate(tags):
 			root.pack_start(
-				VectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
 				expand=False
 			)
 
@@ -3171,7 +3087,7 @@ class PyppetUI( PyppetAPI ):
 		tags='ode_global_force ode_global_torque'.split()
 		for i,tag in enumerate(tags):
 			root.pack_start(
-				VectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
 				expand=False
 			)
 
@@ -3184,7 +3100,7 @@ class PyppetUI( PyppetAPI ):
 		tags='ode_local_force ode_local_torque'.split()
 		for i,tag in enumerate(tags):
 			root.pack_start(
-				VectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
 				expand=False
 			)
 
@@ -3205,8 +3121,16 @@ class PyppetUI( PyppetAPI ):
 		}
 		tags='ode_constant_global_force ode_constant_global_torque'.split()
 		for i,tag in enumerate(tags):
-			slider = Slider( ob, tag, min=-420, max=420 )
-			root.pack_start( slider.widget, expand=False )
+			frame = gtk.Frame( nice[tag] )
+			root.pack_start( frame, expand=False )
+			bx = gtk.VBox(); frame.add( bx )
+			for i in range(3):
+				slider = SimpleSlider(
+					ob, tag, title='xyz'[i], 
+					target_index=i, driveable=True,
+					min=-500, max=500,
+				)
+				bx.pack_start( slider.widget, expand=False )
 
 		root = gtk.VBox(); root.set_border_width( 2 )
 		note.append_page( root, gtk.Label( icons.CONSTANT_FORCES+'Local' ) )
@@ -3216,8 +3140,17 @@ class PyppetUI( PyppetAPI ):
 		}
 		tags='ode_constant_local_force ode_constant_local_torque'.split()
 		for i,tag in enumerate(tags):
-			slider = Slider( ob, tag, min=-420, max=420 )
-			root.pack_start( slider.widget, expand=False )
+			frame = gtk.Frame( nice[tag] )
+			root.pack_start( frame, expand=False )
+			bx = gtk.VBox(); frame.add( bx )
+			for i in range(3):
+				slider = SimpleSlider(
+					ob, tag, title='xyz'[i], 
+					target_index=i, driveable=True,
+					min=-500, max=500,
+				)
+				bx.pack_start( slider.widget, expand=False )
+
 
 		EX.show_all()
 
@@ -3348,17 +3281,28 @@ class PyppetUI( PyppetAPI ):
 
 				root.pack_start( gtk.Label() )
 
-				s = Slider(ob, 'ode_mass', min=0.001, max=10.0)
-				root.pack_start(s.widget, expand=False)
-				s = Slider(ob, 'ode_linear_damping', min=0.0, max=1.0)
-				root.pack_start(s.widget, expand=False)
-				s = Slider(ob, 'ode_angular_damping', min=0.0, max=1.0)
+				s = Slider(
+					ob, name='ode_mass', title='mass', 
+					min=0.001, max=10.0,
+				)
 				root.pack_start(s.widget, expand=False)
 
 				s = Slider(
-					ob, 'ode_force_driver_rate', 
+					ob, name='ode_linear_damping', title='linear damping',
+					min=0.0, max=1.0,
+				)
+				root.pack_start(s.widget, expand=False)
+
+				s = Slider(
+					ob, name='ode_angular_damping', title='angular damping',
+					min=0.0, max=1.0,
+				)
+				root.pack_start(s.widget, expand=False)
+
+				s = Slider(
+					ob, name='ode_force_driver_rate', 
 					title='%s driver rate' %icons.FORCES, 
-					min=0.0, max=1.0
+					min=0.0, max=1.0,
 				)
 				root.pack_start(s.widget, expand=False)
 
@@ -4398,9 +4342,15 @@ class PhysicsWidget(object):
 		page = gtk.VBox(); page.set_border_width( 3 )
 		note.append_page( page, gtk.Label('gravity') )
 
-		s = Slider(context.scene.world, 'ode_gravity', title='Gravity')
-		page.pack_start(s.widget, expand=False)
-
+		for i in range(3):
+			s = Slider(
+				context.scene.world, 
+				name='ode_gravity', 
+				title='xyz'[i],
+				target_index=i,
+				min=-20, max=20,
+			)
+			page.pack_start( s.widget, expand=False )
 
 	def update_ui(self,context):
 		#if context.active_object and context.active_object.name != self.selected:

@@ -308,7 +308,7 @@ class DeviceOutput( object ):
 		self.attribute_name = attribute_name	# name of attribute, assumes source is an object
 
 
-	def bind(self, tag, target=None, path=None, index=None, mode='+', min=.0, max=1.0):
+	def bind(self, tag, target=None, path=None, index=None, mode='=', min=.0, max=1.0):
 		key = (tag, target, path, index)
 		if key not in self.drivers:
 			self.drivers[ key ] = Driver(
@@ -557,8 +557,12 @@ XDND = ExternalDND()
 
 
 ############## Simple Driveable Slider ##############
-class SimpleSlider(object):
-	def __init__(self, object=None, name=None, title=None, value=0, min=0, max=1, border_width=2, driveable=False, no_show_all=False, tooltip=None, integer=False):
+class Slider(object):
+	def __init__(self, object=None, name=None, title=None, target_index=None, value=0, min=0, max=1, border_width=2, driveable=True, no_show_all=False, tooltip=None, integer=False):
+		self.min = min
+		self.max = max
+
+
 		if title is not None: self.title = title
 		else: self.title = name.replace('_',' ')
 
@@ -573,7 +577,12 @@ class SimpleSlider(object):
 
 		if tooltip: self.widget.set_tooltip_text( tooltip )
 
-		if object is not None: value = getattr( object, name )
+		if object is not None:
+			if target_index is not None:
+				value = getattr( object, name )[ target_index ]
+			else:
+				value = getattr( object, name )
+
 		self.adjustment = adjust = gtk.Adjustment( value=value, lower=min, upper=max )
 		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
 		row.pack_start( scale )
@@ -582,10 +591,18 @@ class SimpleSlider(object):
 		else: scale.set_digits(2)
 
 		if object is not None:
-			adjust.connect(
-				'value-changed', lambda a,o,n: setattr(o, n, a.get_value()),
-				object, name
-			)
+			if target_index is not None:
+				func = lambda a,o,n,idx: getattr(o, n).__setitem__(idx, a.get_value())
+				adjust.connect(
+					'value-changed', func,
+					object, name, target_index
+				)
+			else:
+				func = lambda a,o,n: setattr(o, n, a.get_value())
+				adjust.connect(
+					'value-changed', func,
+					object, name
+				)
 
 		self.widget.set_border_width( border_width )
 
@@ -593,21 +610,25 @@ class SimpleSlider(object):
 			DND.make_destination( self.widget )
 			self.widget.connect(
 				'drag-drop', self.drop_driver,
-				object, name
+				object, name, target_index,
 			)
 
 		self.widget.show_all()
 		if no_show_all: self.widget.set_no_show_all(True)
 
 
-	def drop_driver(self, wid, context, x, y, time, target, path):
-		print('on drop')
-		output = DND.object
-		if path.startswith('ode_'):
-			driver = output.bind( 'YYY', target=target, path=path, max=500 )
-		else:
-			driver = output.bind( 'YYY', target=target, path=path, min=-2, max=2 )
+	def drop_driver(self, wid, context, x, y, time, target, path, target_index):
+		output = DND.source_object
+		assert isinstance( output, DeviceOutput )
 
+		driver = output.bind( 
+			'YYY', 
+			target=target, 
+			path=path, 
+			index=target_index, 
+			min=self.min, 
+			max=self.max 
+		)
 		self.widget.set_tooltip_text( '%s (%s%s)' %(self.title, icons.DRIVER, driver.name) )
 		self.widget.remove( self.modal )
 		self.modal = driver.get_widget( title='', expander=False )
@@ -671,7 +692,7 @@ class ToggleButton(object):
 
 
 	def drop_driver(self, wid, context, x, y, time):
-		output = DND.object
+		output = DND.source_object
 		self.driver = output.bind( 'UUU', target=self.target, path=self.target_path, index=self.target_index, min=-2, max=2, mode='=' )
 		self.driver.gain = 1.0
 		self.button.set_label( '%s%s' %(icons.DRIVER,self.name.strip()))
@@ -901,10 +922,85 @@ class RNAWidget( object ):
 				label.set_text( '<invalid object>' )
 
 
+class RNASlider(object):		# TODO, make driveable
+	def adjust_by_name( self, adj, ob, name): setattr(ob,name, adj.get_value())
+	def adjust_by_index( self, adj, ob, index): ob[index] = adj.get_value()
+
+	def __init__(self, ob, name, title=None, min=None, max=None):
+		self.object = ob
+		self.min = min
+		self.max =max
+		#print(ob.bl_rna.properties.keys() )
+		self.rna = ob.bl_rna.properties[name]
+		self.adjustments = {}
+		attr = getattr( ob, name )
+		if type(attr) is mathutils.Vector or (self.rna.type=='FLOAT' and self.rna.array_length==3):
+			assert self.rna.array_length == 3
+			self.widget = ex = gtk.Expander( title or self.rna.name )
+			ex.set_expanded( True )
+			root = gtk.VBox(); ex.add( root )
+			root.set_border_width(8)
+			root.pack_start( self.make_row(attr, index=0, label='x'), expand=False )
+			root.pack_start( self.make_row(attr, index=1, label='y'), expand=False )
+			root.pack_start( self.make_row(attr, index=2, label='z'), expand=False )
+		elif self.rna.type in ('INT','FLOAT'):
+			self.widget = self.make_row(ob,name, label=title or self.rna.name)
+		else:
+			print('unknown RNA type', self.rna.type)
+
+	def make_row(self, ob, name=None, index=None, label=None):
+		if name is not None: value = getattr(ob,name)
+		elif index is not None: value = ob[index]
+		else: assert 0
+
+		row = gtk.HBox()
+		if label: row.pack_start( gtk.Label(label), expand=False )
+		elif name: row.pack_start( gtk.Label(name.split('ode_')[-1]), expand=False )
+		elif index is not None:
+			if index==0:
+				row.pack_start( gtk.Label('x'), expand=False )
+			elif index==1:
+				row.pack_start( gtk.Label('y'), expand=False )
+			elif index==2:
+				row.pack_start( gtk.Label('z'), expand=False )
+
+		b = gtk.SpinButton()
+		self.adjustments[name] = adj = b.get_adjustment()
+
+		scale = gtk.HScale( adj )
+		#scale.set_value_pos(gtk.POS_RIGHT)
+		row.pack_start( scale )
+		row.pack_start( b, expand=False )
+
+		if self.rna.type == 'FLOAT':
+			scale.set_digits( self.rna.precision )
+			step = 0.1
+		else:
+			scale.set_digits( 0 )
+			step = 1
+
+		if self.min is not None: min = self.min
+		else: min = self.rna.soft_min
+		if self.max is not None: max = self.max
+		else: max = self.rna.soft_max
+		#print(value,min,max,step)
+		adj.configure( 
+			value=value, 
+			lower=min, 
+			upper=max, 
+			step_increment=step,
+			page_increment=0.1,
+			page_size=0.1
+		)
+		#print('CONFIG OK')
+		if name is not None: adj.connect('value-changed', self.adjust_by_name, ob, name)
+		else: adj.connect('value-changed', self.adjust_by_index, ob, index)
+		#print('CONNECT OK')
+		return row
 
 
 
-class VectorWidget( object ):
+class NotebookVectorWidget( object ):
 	def __init__( self, ob, name, title=None, expanded=True ):
 		drivers = Driver.get_drivers(ob.name, name)	# classmethod
 
