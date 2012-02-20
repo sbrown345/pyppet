@@ -850,7 +850,7 @@ class RNAWidget( object ):
 				prop = props[ ptype ][name]
 				#prop.identifier is name
 				if not prop.array_length:
-					slider = SimpleSlider( 
+					slider = Slider( 
 						ob, 
 						name = name,
 						title = prop.name,
@@ -859,7 +859,7 @@ class RNAWidget( object ):
 						max = prop.soft_max,
 						tooltip = prop.description,
 						integer = (ptype=='INT'),
-						driveable = (ptype=='FLOAT'),
+						#driveable = (ptype=='FLOAT'),
 					)
 					root.pack_start( slider.widget, expand=False )
 					N += 1

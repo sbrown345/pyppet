@@ -4528,35 +4528,11 @@ class WiimotesWidget(object):
 			note.show_all()
 
 
-def try_load_theme( name ):	# not working?
-	themedir = gtk.rc_get_theme_dir()
-	print( 'gtk-rc theme dir', themedir )
-	path = os.path.join( themedir, name )
-	if os.path.isdir( path ):
-		path = os.path.join( path, 'gtk-3.0' )
-		if os.path.isdir( path ):
-			print('has gtk-3.0 theme', path)
-			dark = os.path.join( path, 'gtkrc-dark' )
-
-			settings = gtk.settings_get_default()
-			if os.path.isfile( dark ):
-				print('loading dark theme')
-				gtk.rc_parse( dark )
-			else:
-				path = os.path.join( path, 'gtkrc' )
-				gtk.rc_parse( path )
-				gtk.rc_add_default_file( path )
-
-			#gtk.rc_reset_styles(settings)
-			gtk.rc_reparse_all_for_settings( settings, True )
 
 #####################################
 if __name__ == '__main__':
 	Pyppet.do_wnck_hack()
-
-	#try_load_theme( 'Clearlooks' )
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
-
 	## run pyppet ##
 	Pyppet.mainloop()
 
