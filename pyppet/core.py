@@ -231,6 +231,7 @@ class BlenderHackLinux( BlenderHack ):
 		xsocket.add_id( xid )
 
 	def on_plug_debug(self, xsocket):
+		print('----------on plug debug', xsocket)
 		gdkwin = xsocket.get_plug_window()
 		width = gdkwin.get_width()
 		height = gdkwin.get_height()
@@ -272,12 +273,12 @@ class BlenderHackLinux( BlenderHack ):
 
 
 
-	def do_wnck_hack(self):
+	def do_wnck_hack(self, name='Blender'):
 		## TODO deprecate wnck-helper hack ##
 		SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
 		assert os.path.isfile( wnck_helper )
-		os.system( wnck_helper )
+		os.system( '%s "%s"' %(wnck_helper,name) )
 
 
 #########################################################

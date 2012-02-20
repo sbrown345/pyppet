@@ -13,6 +13,8 @@ gtk.init()
 
 class MyApp( BlenderHackLinux ):
 	def __init__(self):
+		self.do_wnck_hack()
+
 		assert self.setup_blender_hack( bpy.context )
 
 		self.window = win = gtk.Window()
@@ -39,7 +41,7 @@ class MyApp( BlenderHackLinux ):
 		extra_arg = 'hello world (destination)'
 		eb.connect(
 			'drag-drop', self.on_drop,
-			extra_arg,	# more extra args can go here
+			extra_arg,	'another arg' # more extra args can go here
 		)
 
 		xsocket = self.create_blender_xembed_socket()
@@ -52,26 +54,21 @@ class MyApp( BlenderHackLinux ):
 	def on_click(self, button):
 		print('you clicked')
 
-	def on_drop(self, widget, gcontext, x, y, time, extra_arg):
+	def on_drop(self, widget, gcontext, x, y, time, extra_arg, xxx):
 		print( 'this is the widget you dropped on', widget )
 		print( 'this is the widget you dragged from', DND.source_widget)
 		print( 'mouse:', x,y )
 		print( 'extra argument from destination-side', extra_arg )
 		print( 'first extra argument from source-side', DND.source_object )
 		print( 'all extra arguments from source-side', DND.source_args )
-
+		print( 'ANOTHER ARG', xxx)
 
 	def mainloop(self):
 		self.active = True
 		while self.active:
 			self.update_blender_and_gtk()
 
-
-
-## TODO deprecate wnck-helper hack ##
-wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
-assert os.path.isfile( wnck_helper )
-os.system( wnck_helper )
+########################################
 
 app = MyApp()
 app.mainloop()

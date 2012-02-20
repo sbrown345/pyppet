@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb17, 2012
+# Feb20, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4h'
+VERSION = '1.9.4i'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -150,7 +150,7 @@ def restore_selection( state ):
 		Pyppet.context.scene.objects[ name ].select = state[name]
 
 
-def dump_collada_pure_base_mesh( name, center=False ):
+def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 	state = save_selection()
 	for ob in Pyppet.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
@@ -199,6 +199,10 @@ def dump_collada_pure_base_mesh( name, center=False ):
 	return open(url,'rb').read()
 
 
+############ seems a bit funny that this works ############
+SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
+SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
+#######################################################
 
 def dump_collada( ob, center=False ):
 	name = ob.name
@@ -219,6 +223,9 @@ def dump_collada( ob, center=False ):
 	############## collaspe modifiers into mesh data #############
 	data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
 	for mod in mods: mod.show_viewport = True  # restore modifiers
+
+	data.transform( SWAP_MESH )	# flip YZ for Three.js
+	data.calc_normals()
 
 	############## clear materials and assign hack material #######
 	for i,mat in enumerate(data.materials): data.materials[ i ] = None
@@ -330,6 +337,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	_bps_start = None
 	_bps = 0
+	flipMat = mathutils.Matrix(((1,0,0,0),(0,0,1,0),(0,1,0,0),(0,0,0,1)))
+
 	def update( self, context ):
 		if not self.client: return
 		msg = { 
@@ -350,22 +359,13 @@ class WebSocketServer( websocket.WebSocketServer ):
 		streaming_meshes = []
 		for ob in context.scene.objects:
 			if ob.type not in ('MESH','LAMP'): continue
-			if ob.type=='MESH' and not ob.data.uv_textures: continue
+			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
 
-			loc, rot, scl = ob.matrix_world.decompose()
+			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
-
-			#x,y,z = rot.to_euler(); rot = (x,y,z)
-			#rot = (rot.w, rot.x, rot.y, rot.z)
-			M = mathutils.Matrix().to_3x3()
-			M.rotate( ob.matrix_world )
-			rot = [ round(x,5) for x in M.to_euler('XYZ') ]
-
+			rot = (rot.w, rot.x, rot.y, rot.z)
 			pak = { 'pos':loc, 'rot':rot, 'scl':scl }
-			#mat = []
-			#for row in ob.matrix_world: mat += [ round(a,4) for a in row ]
-			#pak['mat'] = mat
 
 			if ob.type == 'LAMP':
 				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
@@ -407,6 +407,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 			data = ob.to_mesh( context.scene, True, "PREVIEW")
 			for mod in mods: mod.show_viewport = True
 
+			data.transform( SWAP_MESH )
 			N = len( data.vertices )
 			verts = [ 0.0 for i in range(N*3) ]
 			data.vertices.foreach_get( 'co', verts )

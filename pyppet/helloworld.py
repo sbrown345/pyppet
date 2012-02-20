@@ -13,12 +13,14 @@ gtk.init()
 
 class MyApp( BlenderHackLinux ):
 	def __init__(self):
+		self.do_wnck_hack()
+
 		assert self.setup_blender_hack( bpy.context )
 
 		self.window = win = gtk.Window()
 		win.connect('destroy', lambda w: setattr(self,'active',False) )
 		win.set_title( 'GtkBlender SDK' )
-		self.root = root = gtk.VBox()
+		self.root = root = gtk.HBox()
 		win.add( root )
 
 		frame = gtk.Frame()
@@ -50,11 +52,7 @@ class MyApp( BlenderHackLinux ):
 
 
 
-
-## TODO deprecate wnck-helper hack ##
-wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
-assert os.path.isfile( wnck_helper )
-os.system( wnck_helper )
+########################################
 
 app = MyApp()
 app.mainloop()
