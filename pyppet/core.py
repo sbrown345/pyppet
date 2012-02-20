@@ -465,6 +465,22 @@ class Driver(object):
 		else:
 			assert 0
 
+##############################################################################
+
+class ToolWindow(object):
+	def __init__(self, title='', x=0, y=0, width=100, height=40, child=None):
+		self.object = None
+		self.window = win = gtk.Window()
+		win.set_title( title )
+		win.move( x, y )
+		win.set_keep_above(True)
+		win.set_skip_pager_hint(True)
+		win.set_skip_taskbar_hint(True)
+		win.set_size_request( width, height )
+		if child:
+			self.root = child
+			win.add( child )
+
 
 
 ################## simple drag'n'drop API ################
@@ -1048,4 +1064,72 @@ class NotebookVectorWidget( object ):
 		widget = driver.get_widget()
 		page.pack_start( widget, expand=False )
 		widget.show_all()
+
+
+#########################################################
+
+_detachable_target_ = gtk.target_entry_new( 'detachable',2,gtk.TARGET_OTHER_APP )	
+def make_detachable( widget ):
+	widget.drag_source_set(
+		gtk.GDK_BUTTON1_MASK, 
+		_detachable_target_, 1, 
+		gtk.GDK_ACTION_COPY
+	)
+	#widget.connect('drag-begin', self.drag_begin, args)
+	widget.connect('drag-end', _on_detach)
+def _on_detach( widget, gcontext ):
+	print(widget, gcontext)
+	parent = widget.get_parent()
+	#parent.remove( widget )
+	gtk.container_remove( parent, widget )
+	w = ToolWindow( child=widget )
+	w.window.show_all()
+
+class DetachableExpander( object ):
+	def __init__(self, name):
+		self.name = name
+		self.detached = False
+		self.widget = gtk.Expander(name)
+
+		###### problem, very hard to click on a button on an expander ####
+		#self.widget.set_label_fill(True)
+		#bx = gtk.HBox()
+		#bx.pack_start( gtk.Label(name), expand=False )
+		#bx.pack_start( gtk.Label() )
+		#self.button = gtk.Button('.')
+		#bx.pack_start( self.button, expand=False )
+		#self.widget.set_label_widget( bx )
+
+		self.widget.drag_source_set(
+			gtk.GDK_BUTTON1_MASK, 
+			_detachable_target_, 1, 
+			gtk.GDK_ACTION_COPY
+		)
+		self.widget.connect('drag-end', self.on_detach)
+
+	def add(self,child):
+		self.child = child
+		self.widget.add( child )
+
+	def remove(self,child):
+		self.widget.remove( child )
+		self.child = None
+
+	def show_all(self): self.widget.show_all()
+
+	def on_detach(self, widget, gcontext):
+		if self.detached: return
+		self.detached = True
+		parent = widget.get_parent()
+		#child = widget.get_children().nth_data(0)	# some bug here
+		#gtk.container_remove( widget, child )
+		gtk.container_remove( parent, widget )
+		self.popup = ToolWindow( title=self.name, child=self.widget )
+		self.widget.set_expanded(True)
+		self.popup.window.show_all()
+
+
+
+
+
 

@@ -1492,19 +1492,7 @@ class Microphone( Audio ):
 
 
 ##############################
-class ToolWindow(object):
-	def __init__(self, title='', x=0, y=0, width=100, height=40, child=None):
-		self.object = None
-		self.window = win = gtk.Window()
-		win.set_title( title )
-		win.move( x, y )
-		win.set_keep_above(True)
-		win.set_skip_pager_hint(True)
-		win.set_skip_taskbar_hint(True)
-		win.set_size_request( width, height )
-		if child:
-			self.root = child
-			win.add( child )
+
 
 
 
@@ -4054,8 +4042,10 @@ class ToolsUI( object ):
 		self.widget = root = gtk.VBox()
 		self.widget.set_size_request( 140, 460 )
 
-		ex = gtk.Expander( icons.DEVICES )
-		root.pack_start( ex, expand=False )
+		#ex = gtk.Expander( icons.DEVICES )
+		#make_detachable( ex )
+		ex = DetachableExpander( icons.DEVICES )
+		root.pack_start( ex.widget, expand=False )
 
 		self.notebook = gtk.Notebook()
 		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
@@ -4084,30 +4074,30 @@ class ToolsUI( object ):
 		widget = Pyppet.audio.microphone.get_analysis_widget()
 		box.pack_start( widget )
 
-		ex = gtk.Expander( icons.PHYSICS )
-		root.pack_start( ex, expand=False )
+		ex = DetachableExpander( icons.PHYSICS )
+		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox()
 		ex.add( box )
 		self.engine = Physics.ENGINE
 		self.physics_widget = PhysicsWidget( box, context )
 
 		self._modifiers_pinned = False
-		self._modifiers_expander = ex = gtk.Expander( icons.MODIFIERS )
-		root.pack_start( ex, expand=False )
+		self._modifiers_expander = ex = DetachableExpander( icons.MODIFIERS )
+		root.pack_start( ex.widget, expand=False )
 		self._modifiers_modal = gtk.EventBox()
 		self._modifiers_expander.add( self._modifiers_modal )
 		Pyppet.register( self.update_modifiers )
 
 		self._cns_pinned = False
-		self._cns_expander = ex = gtk.Expander( icons.CONSTRAINTS )
-		root.pack_start( ex, expand=False )
+		self._cns_expander = ex = DetachableExpander( icons.CONSTRAINTS )
+		root.pack_start( ex.widget, expand=False )
 		self._cns_modal = gtk.EventBox()
 		self._cns_expander.add( self._cns_modal )
 		Pyppet.register( self.update_constraints )
 
 
-		ex = gtk.Expander( icons.MATERIALS )
-		root.pack_start( ex, expand=True )
+		ex = DetachableExpander( icons.MATERIALS )
+		root.pack_start( ex.widget, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
 
