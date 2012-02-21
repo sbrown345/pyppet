@@ -1076,11 +1076,33 @@ class PopupWindow(object):
 		win.set_position( gtk.WIN_POS_MOUSE )
 		win.set_keep_above(True)
 		win.set_skip_pager_hint(True)
-		win.set_skip_taskbar_hint(True)
+		#win.set_skip_taskbar_hint(True)
 		#win.set_size_request( width, height )
 		win.set_deletable(False)
+		win.set_decorated( False )
+		win.set_opacity( 0.8 )
 
-		#win.set_decorated( False )
+		self.root = gtk.EventBox()
+		color = gtk.GdkRGBA(0.85,1.0,0.85,0.1)
+		self.root.override_background_color( gtk.STATE_NORMAL, color )
+		win.add( self.root )
+
+		vbox = gtk.VBox(); self.root.add( vbox )
+		header = gtk.HBox()
+		vbox.pack_start( header, expand=False )
+
+
+		b = gtk.ToggleButton(); b.set_border_width(1)
+		b.set_active(True)
+		b.connect('toggled', lambda b: win.set_keep_above(b.get_active()))
+		header.pack_start( b, expand=False )
+
+		header.pack_start( gtk.Label() )
+
+		b = gtk.ToggleButton(); b.set_border_width(1)
+		b.set_active(True)
+		b.connect('toggled', self.toggle_transparent)
+		header.pack_start( b, expand=False )
 
 		#color = gtk.GdkRGBA(0.0,50000.5,0.3,0.1)
 		#win.override_background_color( gtk.STATE_NORMAL, color )	# not allowed?
@@ -1091,11 +1113,16 @@ class PopupWindow(object):
 		#colormap = screen.get_rgba_colormap()
 		#win.set_colormap(colormap)
 
-		#self.window.add_events( gtk.GDK_BUTTON_PRESS_MASK )
-		#self.window.connect('button-press-event', self.on_press)
+		self.window.add_events( gtk.GDK_BUTTON_PRESS_MASK )
+		self.window.connect('button-press-event', self.on_press)
 		if child:
-			self.root = child
-			win.add( child )
+			child.set_border_width(3)
+			self.child = child
+			vbox.pack_start( child )
+
+	def toggle_transparent(self,button):
+		if button.get_active(): self.window.set_opacity( 0.8 )
+		else: self.window.set_opacity( 1.0 )
 
 	def expose(self, widget, event):
 		gdkwin = self.window.get_window()
@@ -1114,6 +1141,7 @@ class PopupWindow(object):
 				int(event.y_root), 
 				event.time
 			)
+
 
 _detachable_target_ = gtk.target_entry_new( 'detachable',2,gtk.TARGET_OTHER_APP )	
 def make_detachable( widget ):
@@ -1159,7 +1187,8 @@ class DetachableExpander( object ):
 	def on_expand(self,widget):
 		if self.popup:
 			if widget.get_expanded():
-				self.popup.window.resize( 60, 20 )
+				self.popup.window.resize( 80, 20 )
+				#self.popup.window.set_decorated( False )	# gtk bug - not allowed here
 
 	#def on_drag(self, widget, gcontext, x,y, time): print(x,y)
 

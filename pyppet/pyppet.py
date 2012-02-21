@@ -4040,7 +4040,7 @@ class ToolsUI( object ):
 	def __init__(self, lock, context):
 		self.lock = lock
 		self.widget = root = gtk.VBox()
-		self.widget.set_size_request( 140, 460 )
+		#self.widget.set_size_request( 140, 460 )
 
 		#ex = gtk.Expander( icons.DEVICES )
 		#make_detachable( ex )
