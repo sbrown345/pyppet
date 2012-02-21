@@ -119,7 +119,12 @@ BG_COLOR = rgb2gdk( BLENDER_GREY, BLENDER_GREY, BLENDER_GREY )
 BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
 DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
 
-
+def color_set( button, color, ob ):
+	button.get_color( color )
+	r,g,b = gdk2rgb( color )
+	ob.color[0] = r
+	ob.color[1] = g
+	ob.color[2] = b
 
 ################# from bpyengine #######################
 STREAM_BUFFER_SIZE = 2048
@@ -2660,6 +2665,12 @@ class PyppetUI( PyppetAPI ):
 			slot = mat.texture_slots[ i ]
 			if not slot.texture: slot.texture = bpy.data.textures.new(name='%s.TEX%s'%(ob.name,i), type='IMAGE')
 
+			gcolor = rgb2gdk( *slot.color )
+			b = gtk.ColorButton(gcolor)
+			b.set_relief( gtk.RELIEF_NONE )
+			row.pack_start( b, expand=False )
+			b.connect('color-set', color_set, gcolor, slot )
+
 			combo = gtk.ComboBoxText()
 			row.pack_start( combo, expand=False )
 			for i,type in enumerate( 'MIX ADD SUBTRACT OVERLAY MULTIPLY'.split() ):
@@ -3414,7 +3425,7 @@ class PyppetUI( PyppetAPI ):
 			b = gtk.ColorButton( gcolor )
 			b.set_relief( gtk.RELIEF_NONE )
 			root.pack_start( b, expand=False )
-			b.connect('color-set', self.color_set, gcolor, ob.data )
+			b.connect('color-set', color_set, gcolor, ob.data )
 			slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
 			root.pack_start( slider.widget )
 
@@ -3514,14 +3525,6 @@ class PyppetUI( PyppetAPI ):
 			combo.set_tooltip_text( 'view draw type' )
 			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
 
-			r,g,b,a = ob.color	# ( mesh: float-array not color-object )
-			gcolor = rgb2gdk(r,g,b)
-			b = gtk.ColorButton(gcolor)
-			#b.set_tooltip_text('webGL shader tint')	# GTK wrapper bug - TODO fix me
-			b.set_relief( gtk.RELIEF_NONE )
-			root.pack_start( b, expand=False )
-			b.connect('color-set', self.color_set, gcolor, ob )
-
 			b = gtk.ToggleButton( icons.STREAMING )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('stream mesh to webGL client')
@@ -3549,14 +3552,6 @@ class PyppetUI( PyppetAPI ):
 			print('rebake request', ob.name)
 			WebSocketServer.RELOAD_TEXTURES.append( ob.name )
 
-
-
-	def color_set( self, button, color, ob ):
-		button.get_color( color )
-		r,g,b = gdk2rgb( color )
-		ob.color[0] = r
-		ob.color[1] = g
-		ob.color[2] = b
 
 	def toggle_pose_mode(self,button):
 		if button.get_active():
@@ -3907,7 +3902,6 @@ class MaterialsUI(object):
 		self.widget.add( self.root )
 		Pyppet.register( self.on_active_object_changed )
 
-
 	def on_active_object_changed(self, ob, expand_material=None):
 		if ob.type != 'MESH': return
 
@@ -3915,6 +3909,15 @@ class MaterialsUI(object):
 		self.root = root = gtk.VBox()
 		self.widget.add( self.root )
 		root.set_border_width(2)
+
+		ex = gtk.Expander( 'webgl-tint' )
+		root.pack_start( ex, expand=False )
+		hsv = gtk.HSV(); ex.add( hsv )
+		r,g,b,a = ob.color
+		hsv.set_color( *gtk.rgb2hsv(r,g,b) )
+		hsv.connect('changed', self.color_changed, ob, 'color', None)
+
+
 		exs = []
 		for mat in ob.data.materials:
 			ex = gtk.Expander( mat.name ); exs.append( ex )
@@ -3992,14 +3995,14 @@ class MaterialsUI(object):
 		ob.data.materials[ index ] = mat
 		self.on_active_object_changed( ob, expand_material=mat.name )
 
-	def color_set( self, button, color, mat, attr, eventbox ):
-		button.get_color( color )
-		r,g,b = gdk2rgb( color )
-		vec = getattr(mat,attr)
-		vec[0] = r
-		vec[1] = g
-		vec[2] = b
-		if attr == 'diffuse_color': eventbox.modify_bg( gtk.STATE_NORMAL, color )
+	#def color_set( self, button, color, mat, attr, eventbox ):
+	#	button.get_color( color )
+	#	r,g,b = gdk2rgb( color )
+	#	vec = getattr(mat,attr)
+	#	vec[0] = r
+	#	vec[1] = g
+	#	vec[2] = b
+	#	if attr == 'diffuse_color': eventbox.modify_bg( gtk.STATE_NORMAL, color )
 
 	def color_changed( self, hsv, mat, attr, eventbox ):
 		r,g,b = get_hsv_color_as_rgb( hsv )
