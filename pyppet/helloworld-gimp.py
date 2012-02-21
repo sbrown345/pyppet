@@ -1,5 +1,15 @@
 # run: ~/Blender/blender --python helloworld-gimp.py
+'''
+notes:
+	looks like there is a problem that if:
+		. a new image is created and not saved, then,
+		. gimp prompts "do you want to save", but,
+		. the layers tool-window has already been closed, so,
+		. then the next time you reopen gimp,
+		. the layers tools-window is now closed, and
+		. then we can not xembed it!
 
+'''
 import os, sys, time
 import bpy
 
@@ -43,7 +53,6 @@ class MyApp( BlenderHackLinux ):
 		root.add2( self._gimp_page )
 		self._gimp_toolbox_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 180, 480 )
-		#self._gimp_toolbox_xsocket.connect('plug-added', self.on_plug_debug)
 		self._gimp_image_xsocket = gtk.Socket()
 		self._gimp_layers_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 240, 480 )

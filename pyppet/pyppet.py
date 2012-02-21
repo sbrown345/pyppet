@@ -3348,34 +3348,28 @@ class PyppetUI( PyppetAPI ):
 		xsocket = self.create_blender_xembed_socket()
 		self.blender_container.add( xsocket )
 
-
-		################ gnome nautilus - NOT WORKING? ####################
-		#self._nautilus_container = gtk.EventBox()
-		#self._nautilus_xsocket = gtk.Socket()
-		#self._nautilus_container.add( self._nautilus_xsocket )
-		#note.append_page( self._nautilus_container, gtk.Label('file browser') )
-
 		################ The Gimp ##############
-		if 0:
-			self._gimp_page = gtk.HBox()
-			note.append_page( self._gimp_page, gtk.Label('gimp') )
-			self._gimp_toolbox_xsocket = gtk.Socket()
-			self._gimp_toolbox_xsocket.connect('plug-added', self.on_plug_debug)
-			self._gimp_image_xsocket = gtk.Socket()
-			self._gimp_layers_xsocket = gtk.Socket()
-			eb = gtk.EventBox()
-			eb.add( self._gimp_toolbox_xsocket )
-			self._gimp_page.pack_start( eb, expand=False )
-			self._gimp_page.pack_start( self._gimp_image_xsocket, expand=True )
-			self._gimp_page.pack_start( self._gimp_layers_xsocket, expand=False )
+		self._gimp_page = gtk.HBox()
+		note.append_page( self._gimp_page, gtk.Label('GIMP') )
+		self._gimp_toolbox_xsocket = soc = gtk.Socket()
+		soc.set_size_request( 180, 480 )
+		self._gimp_image_xsocket = gtk.Socket()
+		self._gimp_layers_xsocket = soc = gtk.Socket()
+		soc.set_size_request( 240, 480 )
+		self._gimp_page.pack_start( self._gimp_toolbox_xsocket, expand=False )
+		self._gimp_page.pack_start( self._gimp_image_xsocket, expand=True )
+		self._gimp_page.pack_start( self._gimp_layers_xsocket, expand=False )
 
+		################ gnome nautilus ####################
+		self._nautilus_container = gtk.EventBox()
+		self._nautilus_xsocket = gtk.Socket()
+		self._nautilus_container.add( self._nautilus_xsocket )
+		note.append_page( self._nautilus_container, gtk.Label('FILES') )
 
 
 		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
 		subV.add2( self._chrome_xsocket )
-
-
 
 		############### ToolsUI ################
 		self.toolsUI = ToolsUI( self.lock, context )
@@ -3410,11 +3404,12 @@ class PyppetUI( PyppetAPI ):
 
 		self.do_xembed( xsocket, 'Blender' )		# this must come last
 		self.do_xembed( self._chrome_xsocket, "New Tab - Google Chrome")
-		#self.do_xembed( self._nautilus_xsocket, "Home")
-		if 0:
-			self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
-			self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
-			self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
+
+		self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
+		self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
+		self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
+
+		self.do_xembed( self._nautilus_xsocket, "Home")
 
 
 

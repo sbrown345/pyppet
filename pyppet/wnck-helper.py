@@ -5,6 +5,7 @@ import sys
 import wnck
 
 NAME = 'Blender'
+use_startswith = '--use-starts-with' in sys.argv
 use_icon_name = '--use-icon-name' in sys.argv
 if len(sys.argv) >= 1: NAME = sys.argv[-1]
 
@@ -19,8 +20,13 @@ for w in screen.get_windows():
 		print( 'ICON NAME:', w.get_icon_name() )
 		if w.get_icon_name() == NAME:
 			win = w; break
+		elif use_startswith and w.get_icon_name().startswith(NAME):
+			win = w; break
 
-	elif w.get_name() == NAME:
+	else:
+		if w.get_name() == NAME:
+			win = w; break
+		elif use_startswith and w.get_name().startswith( NAME ):
 			win = w; break
 
 if win:
