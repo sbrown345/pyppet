@@ -262,23 +262,32 @@ class BlenderHackLinux( BlenderHack ):
 
 
 	def get_window_xid( self, name ):
-		import os
-		p =os.popen('xwininfo -int -name "%s" ' %name)
+		SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
+		assert os.path.isfile( wnck_helper )
+		#p =os.popen('xwininfo -int -name "%s" ' %name)
+		p =os.popen('%s --use-icon-name "%s" ' %(wnck_helper, name))
 		data = p.read().strip()
 		p.close()
-		if data.startswith('xwininfo: error:'): return None
-		elif data:
-			lines = data.splitlines()
-			return int( lines[0].split()[3] )
+		lines = data.splitlines()
+		for line in lines: print(line)
+		if lines[-1].startswith('XID='):
+			return int( lines[-1].split('=')[-1] )
+
+		#if data.startswith('xwininfo: error:'): return None
+		#elif data:
+		#	lines = data.splitlines()
+		#	return int( lines[0].split()[3] )
 
 
 
 	def do_wnck_hack(self, name='Blender'):
+		print('do_wnck_hack is DEPRECATED')
 		## TODO deprecate wnck-helper hack ##
-		SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
-		assert os.path.isfile( wnck_helper )
-		os.system( '%s "%s"' %(wnck_helper,name) )
+		#SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+		#wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
+		#assert os.path.isfile( wnck_helper )
+		#os.system( '%s "%s"' %(wnck_helper,name) )
 
 
 #########################################################

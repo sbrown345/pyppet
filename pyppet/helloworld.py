@@ -13,14 +13,12 @@ gtk.init()
 
 class MyApp( BlenderHackLinux ):
 	def __init__(self):
-		self.do_wnck_hack()
-
 		assert self.setup_blender_hack( bpy.context )
 
 		self.window = win = gtk.Window()
 		win.connect('destroy', lambda w: setattr(self,'active',False) )
 		win.set_title( 'GtkBlender SDK' )
-		self.root = root = gtk.HBox()
+		self.root = root = gtk.VBox()
 		win.add( root )
 
 		frame = gtk.Frame()
