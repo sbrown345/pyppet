@@ -2998,8 +2998,9 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools.set_border_width( 2 )
 		parent.pack_start( self._left_tools, expand=False )
 
-		ex = gtk.Expander( 'webgl')
-		self._left_tools.pack_start( ex, expand=False )
+		#ex = gtk.Expander( 'webgl')
+		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 
 		widget = self.websocket_server.webGL.get_fx_widget()
@@ -3023,26 +3024,26 @@ class PyppetUI( PyppetAPI ):
 		#################### drivers ###################
 		self._left_tools_modals = {}
 
-		ex = gtk.Expander( 'drivers')
-		self._left_tools.pack_start( ex, expand=False )
+		ex = DetachableExpander( icons.DRIVERS, icons.DRIVERS_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'drivers' ] = (ex,note)
 		Pyppet.register( self.update_drivers_widget )
 
-		ex = gtk.Expander( 'forces')
-		self._left_tools.pack_start( ex, expand=False )
+		ex = DetachableExpander( icons.FORCES, icons.FORCES_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'forces' ] = (ex,note)
 		Pyppet.register( self.update_forces_widget )
 
-		ex = gtk.Expander( 'joints')
-		self._left_tools.pack_start( ex, expand=False )
+		ex = DetachableExpander( icons.JOINTS, icons.JOINTS_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'joints' ] = (ex,note)
 		Pyppet.register( self.update_joints_widget )
 
-		ex = gtk.Expander( 'solver')
-		self._left_tools.pack_start( ex, expand=False )
+		ex = DetachableExpander( icons.PHYSICS_RIG, icons.PHYSICS_RIG_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'solver' ] = (ex,note)
 		Pyppet.register( self.update_solver_widget )
@@ -3322,18 +3323,19 @@ class PyppetUI( PyppetAPI ):
 
 		Hsplit = gtk.HBox()
 		Vsplit.pack_start( Hsplit )
-		subV = gtk.VPaned()
+		subV = gtk.HPaned()
 		Hsplit.pack_start( subV )
 
 
-		note = gtk.Notebook()
+		self.main_notebook = note = gtk.Notebook()
+		note.set_tab_pos( gtk.POS_BOTTOM )
 		subV.add1( note )
 
 		################# blender containers #################
 		self.blender_container = eb = gtk.EventBox()
-		note.append_page( self.blender_container, gtk.Label('default view') )
+		note.append_page( self.blender_container, gtk.Label('DEFAULT') )
 		self.blender_container2 = eb = gtk.EventBox()
-		note.append_page( eb, gtk.Label('UV editor') )
+		note.append_page( eb, gtk.Label('UV') )
 		################# setup destination DND ###############
 		DND.make_destination( self.blender_container )
 		self.blender_container.connect('drag-drop', self.drop_on_blender_container)
@@ -4040,15 +4042,11 @@ class ToolsUI( object ):
 	def __init__(self, lock, context):
 		self.lock = lock
 		self.widget = root = gtk.VBox()
-		#self.widget.set_size_request( 140, 460 )
 
-		#ex = gtk.Expander( icons.DEVICES )
-		#make_detachable( ex )
-		ex = DetachableExpander( icons.DEVICES )
+		ex = DetachableExpander( icons.DEVICES, short_name=icons.DEVICES_ICON )
 		root.pack_start( ex.widget, expand=False )
 
 		self.notebook = gtk.Notebook()
-		#self.notebook.set_tab_pos( gtk.POS_RIGHT )
 		self.notebook.set_size_request( 260,450 )
 		ex.add( self.notebook )
 
@@ -4074,7 +4072,7 @@ class ToolsUI( object ):
 		widget = Pyppet.audio.microphone.get_analysis_widget()
 		box.pack_start( widget )
 
-		ex = DetachableExpander( icons.PHYSICS )
+		ex = DetachableExpander( icons.PHYSICS, short_name=icons.PHYSICS_ICON )
 		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox()
 		ex.add( box )
@@ -4082,21 +4080,27 @@ class ToolsUI( object ):
 		self.physics_widget = PhysicsWidget( box, context )
 
 		self._modifiers_pinned = False
-		self._modifiers_expander = ex = DetachableExpander( icons.MODIFIERS )
+		self._modifiers_expander = ex = DetachableExpander(
+			icons.MODIFIERS, 
+			short_name=icons.MODIFIERS_ICON 
+		)
 		root.pack_start( ex.widget, expand=False )
 		self._modifiers_modal = gtk.EventBox()
 		self._modifiers_expander.add( self._modifiers_modal )
 		Pyppet.register( self.update_modifiers )
 
 		self._cns_pinned = False
-		self._cns_expander = ex = DetachableExpander( icons.CONSTRAINTS )
+		self._cns_expander = ex = DetachableExpander(
+			icons.CONSTRAINTS, 
+			short_name=icons.CONSTRAINTS_ICON 
+		)
 		root.pack_start( ex.widget, expand=False )
 		self._cns_modal = gtk.EventBox()
 		self._cns_expander.add( self._cns_modal )
 		Pyppet.register( self.update_constraints )
 
 
-		ex = DetachableExpander( icons.MATERIALS )
+		ex = DetachableExpander( icons.MATERIALS, short_name=icons.MATERIALS_ICON )
 		root.pack_start( ex.widget, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )

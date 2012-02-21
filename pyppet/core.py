@@ -1143,15 +1143,14 @@ class PopupWindow(object):
 			)
 
 
-_detachable_target_ = gtk.target_entry_new( 'detachable',2,gtk.TARGET_OTHER_APP )	
 def make_detachable( widget ):
 	widget.drag_source_set(
 		gtk.GDK_BUTTON1_MASK, 
 		_detachable_target_, 1, 
 		gtk.GDK_ACTION_COPY
 	)
-	#widget.connect('drag-begin', self.drag_begin, args)
 	widget.connect('drag-end', _on_detach)
+
 def _on_detach( widget, gcontext ):
 	print(widget, gcontext)
 	parent = widget.get_parent()
@@ -1160,37 +1159,38 @@ def _on_detach( widget, gcontext ):
 	w = ToolWindow( child=widget )
 	w.window.show_all()
 
-class DetachableExpander( object ):
-	def __init__(self, name):
-		self.name = name
-		self.detached = False
-		self.popup = False
-		self.widget = gtk.Expander(name)
-		self.widget.connect('activate', self.on_expand)
-		###### problem, very hard to click on a button on an expander ####
-		#self.widget.set_label_fill(True)
-		#bx = gtk.HBox()
-		#bx.pack_start( gtk.Label(name), expand=False )
-		#bx.pack_start( gtk.Label() )
-		#self.button = gtk.Button('.')
-		#bx.pack_start( self.button, expand=False )
-		#self.widget.set_label_widget( bx )
-
+class Detachable( object ):
+	_detachable_target_ = gtk.target_entry_new( 'detachable',2,gtk.TARGET_OTHER_APP )	
+	def make_detachable(self,widget, on_detach):
 		self.widget.drag_source_set(
 			gtk.GDK_BUTTON1_MASK, 
-			_detachable_target_, 1, 
+			self._detachable_target_, 1, 
 			gtk.GDK_ACTION_COPY
 		)
-		self.widget.connect('drag-end', self.on_detach)
-		#self.widget.connect('drag-motion', self.on_drag)	# this is drag motion over me
+		self.widget.connect('drag-end', on_detach)
+
+
+class DetachableExpander( Detachable ):
+
+	def __init__(self, name, short_name=None):
+		self.name = name
+		self.short_name = short_name
+		self.detached = False
+		self.popup = None
+		if short_name is not None:
+			self.widget = gtk.Expander(short_name)
+		else:
+			self.widget = gtk.Expander(name)
+
+		self.widget.connect('activate', self.on_expand)
+		self.make_detachable( self.widget, self.on_detach )
 
 	def on_expand(self,widget):
 		if self.popup:
-			if widget.get_expanded():
-				self.popup.window.resize( 80, 20 )
-				#self.popup.window.set_decorated( False )	# gtk bug - not allowed here
-
-	#def on_drag(self, widget, gcontext, x,y, time): print(x,y)
+			if widget.get_expanded(): self.popup.window.resize( 80, 20 )
+		elif self.short_name is not None:
+			if widget.get_expanded(): widget.set_label(self.short_name)
+			else: widget.set_label(self.name)
 
 
 	def add(self,child):
@@ -1206,9 +1206,8 @@ class DetachableExpander( object ):
 	def on_detach(self, widget, gcontext):
 		if self.detached: return
 		self.detached = True
+		self.widget.set_label( self.name )
 		parent = widget.get_parent()
-		#child = widget.get_children().nth_data(0)	# some bug here
-		#gtk.container_remove( widget, child )
 		gtk.container_remove( parent, widget )
 		self.popup = PopupWindow( title=self.name, child=self.widget )
 		self.widget.set_expanded(True)

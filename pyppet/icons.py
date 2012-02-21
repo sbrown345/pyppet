@@ -1,4 +1,4 @@
-COOL_ICONS = 'ᚗ⤽ଷව⟲⟳⤘⤌⤍⤎⤏⤑⥅⥆ܔⵛⵞⵓ𐎒𐎌𐎋〄ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
+COOL_ICONS = 'ᚗଷව⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒𐎋ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
 
 STREAMING = '𝄏'
 
@@ -65,7 +65,7 @@ SINE_WAVE = '∿'
 TARGET = '⤞'
 
 CONSTANT_FORCES = '⇝'
-FORCES = '⌘'
+
 
 BODY = '⌬'
 
@@ -76,20 +76,35 @@ DND = ' ⎗ '
 MULTIPLY = '⨉'
 SUBTRACT = '−'
 
-DRIVER = '⎆'
+DRIVERS_ICON = DRIVER = '⎆'
+DRIVERS = '𝓭𝓻𝓲𝓿𝓮𝓻𝓼'
+
+FORCES_ICON = '⤽'
+FORCES = '𝓯𝓸𝓻𝓬𝓮𝓼'
 
 WEBCAM = '⍜'
 KINECT = '㉿'
 GAMEPAD = '⚯'
 WIIMOTE = '⍠'
+
+DEVICES_ICON = '⥅'
+DEVICES = '𝓭𝓮𝓿𝓲𝓬𝓮𝓼'
+
+PHYSICS_ICON = '⌘'
 PHYSICS = '𝓹𝓱𝔂𝓼𝓲𝓬𝓼'
 
+MODIFIERS_ICON = '⑇'
 MODIFIERS = '𝓶𝓸𝓭𝓲𝓯𝓲𝓮𝓻𝓼'
+
+CONSTRAINTS_ICON = '⑈'
 CONSTRAINTS = '𝓬𝓸𝓷𝓼𝓽𝓻𝓪𝓲𝓷𝓽𝓼'
+
+MATERIALS_ICON = '▧'
 MATERIALS = '𝓶𝓪𝓽𝓮𝓻𝓲𝓪𝓵𝓼'
+
 SETTINGS = '𝓼𝓮𝓽𝓽𝓲𝓷𝓰𝓼'
 
-CONTACT = 'ⴿ'
+CONTACT = '𐎌'
 
 VISIBLE_RENDER = '⎊'
 VISIBLE_EDITMODE = '⌗'
@@ -98,11 +113,12 @@ RESTRICT_SELECTION = '⌖'
 
 DELETE = '✗'
 
-GRAVITY = '〄'
+GRAVITY = 'ⴿ'
+
+WEBGL = '𝔀𝓮𝓫𝓰𝓵'
+WEBGL_ICON = '〄'
 
 POPUP = '𝛒𝛐𝛒𝛖𝛒'
-
-DEVICES = '𝓭𝓮𝓿𝓲𝓬𝓮𝓼'
 
 UI = '𝗨𝗶'
 
@@ -117,13 +133,15 @@ PYPPET = 'Ⲣⲩⲣⲣⲉⲧ'
 PLAY = '⊳'
 RECORD = '⊚'
 
-RAGDOLL = ''		#☠
+PHYSICS_RIG_ICON = RAGDOLL = '☠'
+PHYSICS_RIG = '𝓹𝓱𝔂𝓼𝓲𝓬𝓼 𝓻𝓲𝓰'
 
 BIPED = 'Ꮬ'
 
 ROPE = '⟅'
 
-JOINT = 'ⵞ'
+JOINTS_ICON = JOINT = 'ⵞ'
+JOINTS = '𝓳𝓸𝓲𝓷𝓽𝓼'
 
 TRANSFORM = '⇨'
 
