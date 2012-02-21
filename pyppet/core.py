@@ -1068,6 +1068,53 @@ class NotebookVectorWidget( object ):
 
 #########################################################
 
+class PopupWindow(object):
+	def __init__(self, title='', width=100, height=40, child=None):
+		self.object = None
+		self.window = win = gtk.Window()
+		win.set_title( title )
+		win.set_position( gtk.WIN_POS_MOUSE )
+		win.set_keep_above(True)
+		win.set_skip_pager_hint(True)
+		win.set_skip_taskbar_hint(True)
+		#win.set_size_request( width, height )
+		win.set_deletable(False)
+
+		#win.set_decorated( False )
+
+		#color = gtk.GdkRGBA(0.0,50000.5,0.3,0.1)
+		#win.override_background_color( gtk.STATE_NORMAL, color )	# not allowed?
+		#win.set_app_paintable(True)	# tell GTK we will paint the background
+		#eb = gtk.EventBox(); win.add( eb )
+		#eb.connect('draw', self.expose)	# looks like expose-event is deprecated?
+		#screen = widget.get_screen()		# this was pygtk only?
+		#colormap = screen.get_rgba_colormap()
+		#win.set_colormap(colormap)
+
+		#self.window.add_events( gtk.GDK_BUTTON_PRESS_MASK )
+		#self.window.connect('button-press-event', self.on_press)
+		if child:
+			self.root = child
+			win.add( child )
+
+	def expose(self, widget, event):
+		gdkwin = self.window.get_window()
+		c = gdkwin.cairo_create()	# segfaults here
+		c.set_source_rgba(0.5, 0.75, 0.5, 0.1)
+		c.set_operator( gtk.cairo_operator['CAIRO_OPERATOR_SOURCE'] )
+		c.paint_with_alpha( 0.5 )
+
+
+	def on_press(self, widget, event):
+		event = gtk.GdkEventButton( pointer=ctypes.c_void_p(event), cast=True )
+		if event.button == 1:
+			self.window.begin_move_drag( 
+				event.button, 
+				int(event.x_root), 	# c_double
+				int(event.y_root), 
+				event.time
+			)
+
 _detachable_target_ = gtk.target_entry_new( 'detachable',2,gtk.TARGET_OTHER_APP )	
 def make_detachable( widget ):
 	widget.drag_source_set(
@@ -1080,7 +1127,7 @@ def make_detachable( widget ):
 def _on_detach( widget, gcontext ):
 	print(widget, gcontext)
 	parent = widget.get_parent()
-	#parent.remove( widget )
+	#parent.remove( widget )		# getting confused with "remove" function in gtk wrapper?
 	gtk.container_remove( parent, widget )
 	w = ToolWindow( child=widget )
 	w.window.show_all()
@@ -1089,8 +1136,9 @@ class DetachableExpander( object ):
 	def __init__(self, name):
 		self.name = name
 		self.detached = False
+		self.popup = False
 		self.widget = gtk.Expander(name)
-
+		self.widget.connect('activate', self.on_expand)
 		###### problem, very hard to click on a button on an expander ####
 		#self.widget.set_label_fill(True)
 		#bx = gtk.HBox()
@@ -1106,6 +1154,15 @@ class DetachableExpander( object ):
 			gtk.GDK_ACTION_COPY
 		)
 		self.widget.connect('drag-end', self.on_detach)
+		#self.widget.connect('drag-motion', self.on_drag)	# this is drag motion over me
+
+	def on_expand(self,widget):
+		if self.popup:
+			if widget.get_expanded():
+				self.popup.window.resize( 60, 20 )
+
+	#def on_drag(self, widget, gcontext, x,y, time): print(x,y)
+
 
 	def add(self,child):
 		self.child = child
@@ -1124,7 +1181,7 @@ class DetachableExpander( object ):
 		#child = widget.get_children().nth_data(0)	# some bug here
 		#gtk.container_remove( widget, child )
 		gtk.container_remove( parent, widget )
-		self.popup = ToolWindow( title=self.name, child=self.widget )
+		self.popup = PopupWindow( title=self.name, child=self.widget )
 		self.widget.set_expanded(True)
 		self.popup.window.show_all()
 
