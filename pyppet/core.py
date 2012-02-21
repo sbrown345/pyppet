@@ -4,7 +4,10 @@
 # License: BSD
 
 import bpy, mathutils
-import os, ctypes, time, threading
+import os, ctypes, time, threading, urllib
+import urllib.request
+import urllib.parse
+
 import gtk3 as gtk
 import icons
 import Blender
@@ -1224,6 +1227,39 @@ class DetachableExpander( Detachable ):
 
 
 
+class FileEntry( object ):
+	## for drag and drop ##
+	def __init__(self, name, callback, *args):
+		self.name = name
+		self.callback = callback
+		self.callback_args = args
+
+		self.widget = bx = gtk.HBox()
+		bx.pack_start( gtk.Label(name), expand=False )
+
+		self.entry = e = gtk.Entry()
+		e.connect('changed', self.changed)
+		bx.pack_start( e, expand=True )
+
+		b = gtk.Button( icons.REFRESH )
+		bx.pack_start( b, expand=False )
+		b.set_relief( gtk.RELIEF_NONE )
+
+		b = gtk.Button( icons.DELETE )
+		b.connect('clicked', self.delete)
+		bx.pack_start( b, expand=False )
+		b.set_relief( gtk.RELIEF_NONE )
+
+	def changed( self, entry ):
+		url = urllib.parse.unquote(entry.get_text()).strip()
+		if url.startswith('file://'): url = url[ 7 : ]
+		if os.path.isfile(url):
+			gtk.editable_set_editable(entry,False)
+			self.callback( url, *self.callback_args )
+
+	def delete(self,button):
+		self.entry.set_text('')
+		gtk.editable_set_editable(self.entry,True)
 
 
 

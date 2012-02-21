@@ -309,10 +309,13 @@ class WebGL(object):
 		return root
 
 #####################
+
 class WebSocketServer( websocket.WebSocketServer ):
 	buffer_size = 8096
 	client = None
 	webGL = WebGL()
+	RELOAD_TEXTURES = []
+
 
 	def start(self):
 		print('--starting websocket server thread--')
@@ -396,6 +399,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 				if ob.webgl_stream_mesh or ob == context.active_object:
 					streaming_meshes.append( ob )
 
+				if ob.name in self.RELOAD_TEXTURES:
+					self.RELOAD_TEXTURES.remove( ob.name )
+					pak[ 'reload_textures' ] = True
 
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
@@ -2596,39 +2602,6 @@ def set_transform( name, pos, rot, set_body=False ):
 
 ######################################################
 
-class FileEntry( object ):
-	## for drag and drop ##
-	def __init__(self, name, callback, *args):
-		self.name = name
-		self.callback = callback
-		self.callback_args = args
-
-		self.widget = bx = gtk.HBox()
-		bx.pack_start( gtk.Label(name), expand=False )
-
-		self.entry = e = gtk.Entry()
-		e.connect('changed', self.changed)
-		bx.pack_start( e, expand=True )
-
-		b = gtk.Button( icons.REFRESH )
-		bx.pack_start( b, expand=False )
-		b.set_relief( gtk.RELIEF_NONE )
-
-		b = gtk.Button( icons.DELETE )
-		b.connect('clicked', self.delete)
-		bx.pack_start( b, expand=False )
-		b.set_relief( gtk.RELIEF_NONE )
-
-	def changed( self, entry ):
-		url = urllib.parse.unquote(entry.get_text()).strip()
-		if url.startswith('file://'): url = url[ 7 : ]
-		if os.path.isfile(url):
-			gtk.editable_set_editable(entry,False)
-			self.callback( url, *self.callback_args )
-
-	def delete(self,button):
-		self.entry.set_text('')
-		gtk.editable_set_editable(self.entry,True)
 
 
 
@@ -3556,8 +3529,27 @@ class PyppetUI( PyppetAPI ):
 			b.connect('toggled', lambda b,o: setattr(o,'webgl_stream_mesh',b.get_active()), ob)
 			root.pack_start( b, expand=False )
 
+			b = gtk.Button( icons.REFRESH )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('rebake textures (webgl)')
+			b.connect('clicked', self.reload_rebake, ob)
+			root.pack_start( b, expand=False )
 
 		self._modal.show_all()
+
+
+	def reload_rebake(self, button, ob ):
+		for mat in ob.data.materials:
+			for slot in mat.texture_slots:
+				if slot and slot.texture and slot.texture.type=='IMAGE' and slot.texture.image:
+					print('image reload', slot.texture.image)
+					slot.texture.image.reload()
+
+		if ob.name not in WebSocketServer.RELOAD_TEXTURES:
+			print('rebake request', ob.name)
+			WebSocketServer.RELOAD_TEXTURES.append( ob.name )
+
+
 
 	def color_set( self, button, color, ob ):
 		button.get_color( color )

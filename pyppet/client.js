@@ -131,6 +131,11 @@ function on_message(e) {
 					vidx++;
 				}
 			}
+
+			if (ob.reload_textures) {
+				reload_progressive_textures( m );
+			}
+
 		}
 		else if (name in Objects == false) {
 			console.log( '>> loading new collada' );
@@ -219,6 +224,19 @@ function on_collada_ready( collada ) {
 }
 
 
+function reload_progressive_textures( ob ) {
+	var name = ob.name;
+	ob.shader.uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
+
+	ob.shader.uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, on_texture_ready );
+
+	ob.shader.uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+
+	ob.shader.uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
+
+}
+
+
 QUEUE = [];
 TEX_LOADING = {};
 function on_texture_ready( img ) {
@@ -273,9 +291,9 @@ function request_progressive_texture() {
 	TEX_LOADING[ url ] = tex;
 }
 
+
 function create_normal_shader( name, displacement ) {
 	// material parameters
-	name = name.replace('_0', '.0');
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
 
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
