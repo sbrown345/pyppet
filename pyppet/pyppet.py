@@ -1703,17 +1703,13 @@ class Bone(object):
 		################ body #################
 		self.shaft = bpy.data.objects.new( name=name, object_data=None )
 		self.shaft.empty_draw_type = 'CUBE'
-		########self.shaft.hide_select = True
+		self.shaft.hide_select = True
 		Pyppet.context.scene.objects.link(self.shaft)
 		m = pbone.matrix.copy()
 		delta = pbone.tail - pbone.head
 		delta *= 0.5
 		length = delta.length
 		x,y,z = pbone.head + delta	# the midpoint
-
-		#m[3][0] = x
-		#m[3][1] = y
-		#m[3][2] = z
 		m[0][3] = x	# blender2.61 style
 		m[1][3] = y
 		m[2][3] = z
@@ -1742,9 +1738,6 @@ class Bone(object):
 		self.tail.empty_draw_size = ebone.tail_radius * 1.75
 		m = pbone.matrix.copy()
 		x,y,z = pbone.tail
-		#m[3][0] = x
-		#m[3][1] = y
-		#m[3][2] = z
 		m[0][3] = x	# blender2.61 style
 		m[1][3] = y
 		m[2][3] = z
@@ -1877,7 +1870,7 @@ class AbstractArmature(object):
 		arm = bpy.data.objects[ self.name ]
 		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
-		Pyppet.popup.refresh()
+		Pyppet.refresh_selected = True
 
 		#self.primary_joints = {}
 		#self.breakable_joints = []
@@ -2044,10 +2037,10 @@ class Biped( AbstractArmature ):
 			return self.get_create_widget()
 
 
-		sw = gtk.ScrolledWindow()
-		sw.set_policy(True,True)
-		root = gtk.VBox(); root.set_border_width( 6 )
-		sw.add_with_viewport( root )
+		#sw = gtk.ScrolledWindow()
+		#sw.set_policy(True,True)
+		root = gtk.VBox(); root.set_border_width( 2 )
+		#sw.add_with_viewport( root )
 
 		widget = self.get_widget()
 		root.pack_start( widget, expand=False )
@@ -2078,7 +2071,7 @@ class Biped( AbstractArmature ):
 				slider = SimpleSlider( self, name=tag, min=0, max=50 )
 			box.pack_start( slider.widget, expand=False )
 
-		return sw
+		return root
 
 
 	def reset(self):
@@ -2512,14 +2505,16 @@ class PyppetAPI( BlenderHackLinux ):
 	def register(self, func):
 		self.on_active_object_changed_callbacks.append( func )
 
-
+	refresh_selected = False
 	def update_callbacks(self):
-		if self.context.active_object and self.context.active_object.name != self.selected:
+		if (self.context.active_object and self.context.active_object.name != self.selected) or self.refresh_selected:
 			self.selected = self.context.active_object.name
 			ob = bpy.data.objects[ self.selected ]
 
 			for func in self.on_active_object_changed_callbacks:
 				func( ob )
+
+			self.refresh_selected = False
 
 
 	########### recording/baking ###########
@@ -3155,13 +3150,15 @@ class PyppetUI( PyppetAPI ):
 		EX.show_all()
 
 	def update_solver_widget( self, ob ):
-		EX,note = self._left_tools_modals[ 'solver' ]
-		EX.remove( note )
-		note = gtk.Notebook(); EX.add( note )
-		self._left_tools_modals[ 'solver' ] = (EX,note)
 
 		########### physics joints: MODELS: Ragdoll, Biped, Rope ############
 		if ob.type=='ARMATURE':
+			EX,note = self._left_tools_modals[ 'solver' ]
+			EX.remove( note )
+			note = gtk.Notebook(); EX.add( note )
+			self._left_tools_modals[ 'solver' ] = (EX,note)
+
+
 			if ob.pyppet_model:
 				print('pyppet-model:', ob.pyppet_model)
 				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
@@ -3173,7 +3170,7 @@ class PyppetUI( PyppetAPI ):
 				label = gtk.Label( icons.TARGET )
 				note.append_page( sw, label )
 				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
+				root = gtk.VBox(); root.set_border_width( 2 )
 				sw.add_with_viewport( root )
 				root.pack_start( model.get_targets_widget(label) )
 
@@ -3186,7 +3183,7 @@ class PyppetUI( PyppetAPI ):
 					note.append_page( widget, label )
 
 
-		EX.show_all()
+			EX.show_all()
 
 
 	def deprecate():
@@ -3326,7 +3323,7 @@ class PyppetUI( PyppetAPI ):
 
 		################# blender containers #################
 		self.blender_container = eb = gtk.EventBox()
-		note.append_page( self.blender_container, gtk.Label('DEFAULT') )
+		note.append_page( self.blender_container, gtk.Label('VIEW3D') )
 		self.blender_container2 = eb = gtk.EventBox()
 		note.append_page( eb, gtk.Label('UV') )
 		################# setup destination DND ###############
