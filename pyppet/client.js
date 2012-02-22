@@ -7,7 +7,7 @@ var DISP_SCALE_MAGIC = 1.0;
 
 var SELECTED = null;
 
-var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: true, wireframeLinewidth:4 });
+var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: true, wireframeLinewidth:2 });
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;

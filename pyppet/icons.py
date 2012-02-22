@@ -1,5 +1,7 @@
 COOL_ICONS = 'ᚗଷව⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒𐎋ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
 
+DROP_HERE = '𝘥𝘳𝘰𝘱-𝘩𝘦𝘳𝘦'
+
 STREAMING = '𝄏'
 
 WIREFRAME = '⬚'
@@ -25,7 +27,8 @@ BOTTOM_UI = 'ᐁ'
 LEFT_UI = 'ᐘ'
 RIGHT_UI = 'ᐒ'
 
-OUTLINER = '￼'
+OUTLINER = '𝓸𝓾𝓽𝓵𝓲𝓷𝓮𝓻'
+OUTLINER_ICON = '⑆'
 
 TOOLS = '𝙩𝙤𝙤𝙡𝙨'
 

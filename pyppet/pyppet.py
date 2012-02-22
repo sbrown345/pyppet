@@ -346,7 +346,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	_bps_start = None
 	_bps = 0
-	flipMat = mathutils.Matrix(((1,0,0,0),(0,0,1,0),(0,1,0,0),(0,0,0,1)))
 
 	def update( self, context ):
 		if not self.client: return
@@ -402,7 +401,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 				if ob == context.active_object: pak[ 'selected' ] = True
 				if ob.webgl_stream_mesh or ob == context.active_object:
-					streaming_meshes.append( ob )
+					if len(ob.data.vertices) < 2000:
+						streaming_meshes.append( ob )
 
 				if ob.name in self.RELOAD_TEXTURES:
 					self.RELOAD_TEXTURES.remove( ob.name )
@@ -1545,12 +1545,6 @@ class Popup( ToolWindow ):
 			self.modal.show_all()
 
 
-	def cb_drop_joint(self, wid, context, x, y, time, page):
-		wrap = DND.source_object
-		widget = wrap.attach( self.object )
-		if widget:
-			page.pack_start( widget, expand=False )
-			widget.show_all()
 
 
 
@@ -2986,7 +2980,15 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools.set_border_width( 2 )
 		parent.pack_start( self._left_tools, expand=False )
 
-		#ex = gtk.Expander( 'webgl')
+		#################### outliner ##################
+
+		self.outlinerUI = OutlinerUI()
+		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
+		ex.add( self.outlinerUI.widget )
+
+
+		#################### webgl #####################
 		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON )
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
@@ -3006,8 +3008,6 @@ class PyppetUI( PyppetAPI ):
 			page.pack_start( slider.widget, expand=False )
 		note.append_page(page, gtk.Label( icons.CAMERA) )
 
-		self.outlinerUI = OutlinerUI()
-		note.append_page( self.outlinerUI.widget, gtk.Label(icons.OUTLINER) )
 
 		#################### drivers ###################
 		self._left_tools_modals = {}
@@ -3132,22 +3132,32 @@ class PyppetUI( PyppetAPI ):
 		EX.show_all()
 
 	def update_joints_widget( self, ob ):
-		EX,note = self._left_tools_modals[ 'joints' ]
-		EX.remove( note )
-		note = gtk.Notebook(); EX.add( note )
-		self._left_tools_modals[ 'joints' ] = (EX,note)
+		EX,root = self._left_tools_modals[ 'joints' ]
+		EX.remove( root )
+		root = gtk.VBox(); EX.add( root )
+		self._left_tools_modals[ 'joints' ] = (EX,root)
 
-		sw = gtk.ScrolledWindow()
-		label = gtk.Label( icons.JOINT )
-		note.append_page( sw, label )
-		sw.set_policy(True,True)
-		root = gtk.VBox(); root.set_border_width( 6 )
-		sw.add_with_viewport( root )
-		DND.make_destination( label )
-		#label.connect( 'drag-drop', self.cb_drop_joint, root )
+		root.set_border_width( 2 )
 
+		eb = gtk.EventBox(); root.pack_start( eb, expand=False )
+		DND.make_destination( eb )
+		eb.connect( 'drag-drop', self.cb_drop_joint, root )
+		eb.add( gtk.Label( icons.DROP_HERE ) )
+		eb.set_tooltip_text( 'drag and drop new child here' )
+
+		for widget in get_joint_widgets( ob ):
+			root.pack_start( widget, expand=False )
 
 		EX.show_all()
+
+
+	def cb_drop_joint(self, wid, context, x, y, time, page):
+		wrap = DND.source_object
+		widget = wrap.attach( self.selected )	# makes self.selected the joint-parent
+		if widget:
+			page.pack_start( widget, expand=False )
+			widget.show_all()
+
 
 	def update_solver_widget( self, ob ):
 
@@ -3760,23 +3770,36 @@ Pyppet = App()
 
 
 ########## Cache for OutlinerUI and Joint functions ##########
+
+def get_joint_widgets( parent ):
+	r = []
+	if parent.name in ObjectWrapper.OBJECTS:
+		w = ObjectWrapper.OBJECTS[ parent.name ]
+		for name in w.children:
+			r.append( w.get_joint_widget(name) )
+	return r
+
 class ObjectWrapper( object ):
+	OBJECTS = {}
 	def __init__(self, ob):
 		self.name = ob.name
 		self.type = ob.type
 		self.parents = {}
 		self.children = {}
+		ObjectWrapper.OBJECTS[ self.name ] = self
 
-	def attach(self, child):
+	def attach(self, parent):
 		'''
 		. from Gtk-Outliner drag parent to active-object,
 		. active-object becomes child using ODE joint
 		. pivot is relative to parent.
 		'''
+		assert parent != self.name		# can not attach to thy-self
 
-		parent = bpy.data.objects[ self.name ]
-		child = bpy.data.objects[ child ]
+		parent = bpy.data.objects[ parent ]
+		child = bpy.data.objects[ self.name ]
 
+		### store data here? 
 		cns = child.constraints.new('RIGID_BODY_JOINT')		# cheating
 		cns.show_expanded = False
 		cns.target = parent			# draws dotted connecting line in blender (not safe outside of bpy.context)
@@ -3790,10 +3813,12 @@ class ObjectWrapper( object ):
 		cw = ENGINE.get_wrapper(child)
 		pw = ENGINE.get_wrapper(parent)
 		joint = cw.new_joint( pw, name=parent.name )
+		#joint = pw.new_joint( cw, name=self.name )
 
-		self.children[ child.name ] = joint		# TODO support multiple joints per child
-
-		return self.get_joint_widget( child.name )
+		#self.children[ child.name ] = joint		# TODO support multiple joints per child
+		P = ObjectWrapper.OBJECTS[ parent.name ]
+		P.children[ child.name ] = joint
+		return P.get_joint_widget( child.name )
 
 
 	############### joint widget ###########
@@ -3853,8 +3878,9 @@ class OutlinerUI( object ):
 		self.meshes = {}
 
 		self.widget = sw = gtk.ScrolledWindow()
+		sw.set_size_request( 180, 640 )
 		self.lister = box = gtk.VBox()
-		box.set_border_width(6)
+		box.set_border_width(2)
 		sw.add_with_viewport( box )
 		sw.set_policy(True,False)
 

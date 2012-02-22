@@ -1,14 +1,22 @@
-Pyppet2 - Feb17 2012
+Pyppet2 - Feb22, 2012
 by The Blender Research Lab. (Philippines)
 http://pyppet.blogspot.com
 License: BSD
 
 ======================================================
-Requires:
+Pyppet Requires:
 	Linux
 	Blender2.6.1
 	GTK3
 	ODE
+	OpenCV
+	Python-Wnck
+
+GTK/Blender SDK Requires:
+	Linux
+	Blender2.6.1
+	GTK3
+	Python-Wnck
 
 ======================================================
 Basic Usage:
