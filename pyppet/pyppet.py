@@ -1703,16 +1703,21 @@ class Bone(object):
 		################ body #################
 		self.shaft = bpy.data.objects.new( name=name, object_data=None )
 		self.shaft.empty_draw_type = 'CUBE'
-		self.shaft.hide_select = True
+		########self.shaft.hide_select = True
 		Pyppet.context.scene.objects.link(self.shaft)
 		m = pbone.matrix.copy()
 		delta = pbone.tail - pbone.head
 		delta *= 0.5
 		length = delta.length
 		x,y,z = pbone.head + delta	# the midpoint
-		m[3][0] = x
-		m[3][1] = y
-		m[3][2] = z
+
+		#m[3][0] = x
+		#m[3][1] = y
+		#m[3][2] = z
+		m[0][3] = x	# blender2.61 style
+		m[1][3] = y
+		m[2][3] = z
+
 		self.rest_height = z				# used by biped solver
 		avg = (ebone.head_radius + ebone.tail_radius) / 2.0
 		self.shaft.matrix_world = m
@@ -1737,9 +1742,13 @@ class Bone(object):
 		self.tail.empty_draw_size = ebone.tail_radius * 1.75
 		m = pbone.matrix.copy()
 		x,y,z = pbone.tail
-		m[3][0] = x
-		m[3][1] = y
-		m[3][2] = z
+		#m[3][0] = x
+		#m[3][1] = y
+		#m[3][2] = z
+		m[0][3] = x	# blender2.61 style
+		m[1][3] = y
+		m[2][3] = z
+
 		self.tail.matrix_world = m
 
 		#### make ODE bodies ####
@@ -1842,8 +1851,8 @@ class AbstractArmature(object):
 
 		stretch  = gtk.CheckButton('stretch-to constraints')
 		breakable = gtk.CheckButton('breakable joints')
-		break_thresh = SimpleSlider( name='breaking threshold', value=200, min=0.01, max=420 )
-		damage_thresh = SimpleSlider( name='damage threshold', value=150, min=0.01, max=420 )
+		break_thresh = SimpleSlider( name='joint breaking threshold', value=200, min=0.01, max=420 )
+		damage_thresh = SimpleSlider( name='joint damage threshold', value=150, min=0.01, max=420 )
 
 		b = gtk.Button('create')
 		row.pack_start( b, expand=False )
@@ -3034,45 +3043,45 @@ class PyppetUI( PyppetAPI ):
 
 
 	def update_drivers_widget( self, ob ):
-		EX,note = self._left_tools_modals[ 'drivers' ]
-		EX.remove( note )
-		note = gtk.Notebook(); EX.add( note )
-		self._left_tools_modals[ 'drivers' ] = (EX,note)
+		EX,root = self._left_tools_modals[ 'drivers' ]
+		EX.remove( root )
+		root = gtk.VBox(); EX.add( root )
+		self._left_tools_modals[ 'drivers' ] = (EX,root)
 
 		############# direct transform ##############
-		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label(icons.TRANSFORM) )
 		nice = {'location':'Location', 'scale':'Scale', 'rotation_euler':'Rotation' }
 		tags='location scale rotation_euler'.split()
 		for i,tag in enumerate(tags):
 			root.pack_start(
-				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=False).widget, 
 				expand=False
 			)
 
 		############# physics driver forces ##############
-		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label(icons.FORCES+'Global') )
+		note = gtk.Notebook(); root.pack_start( note, expand=False )
+
+		page = gtk.VBox(); page.set_border_width( 2 )
+		note.append_page( page, gtk.Label('Global') )
 		nice = {
 			'ode_global_force':'Global Force',
 			'ode_global_torque':'Global Torque',
 		}
 		tags='ode_global_force ode_global_torque'.split()
 		for i,tag in enumerate(tags):
-			root.pack_start(
+			page.pack_start(
 				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
 				expand=False
 			)
 
-		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label(icons.FORCES+'Local') )
+		page = gtk.VBox(); page.set_border_width( 2 )
+		note.append_page( page, gtk.Label('Local') )
 		nice = {
 			'ode_local_force':'Local Force',
 			'ode_local_torque':'Local Torque',
 		}
 		tags='ode_local_force ode_local_torque'.split()
 		for i,tag in enumerate(tags):
-			root.pack_start(
+			page.pack_start(
 				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
 				expand=False
 			)
@@ -3087,7 +3096,7 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools_modals[ 'forces' ] = (EX,note)
 
 		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label( icons.CONSTANT_FORCES+'Global' ) )
+		note.append_page( root, gtk.Label( 'Global' ) )
 		nice = {
 			'ode_constant_global_force':'Constant Global Force', 
 			'ode_constant_global_torque':'Constant Global Torque', 
@@ -3106,7 +3115,7 @@ class PyppetUI( PyppetAPI ):
 				bx.pack_start( slider.widget, expand=False )
 
 		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label( icons.CONSTANT_FORCES+'Local' ) )
+		note.append_page( root, gtk.Label( 'Local' ) )
 		nice = {
 			'ode_constant_local_force':'Constant Local Force',
 			'ode_constant_local_torque':'Constant Local Torque',
@@ -3336,10 +3345,10 @@ class PyppetUI( PyppetAPI ):
 		self._gimp_page = gtk.HBox()
 		note.append_page( self._gimp_page, gtk.Label('GIMP') )
 		self._gimp_toolbox_xsocket = soc = gtk.Socket()
-		soc.set_size_request( 180, 480 )
+		soc.set_size_request( 170, 560 )
 		self._gimp_image_xsocket = gtk.Socket()
 		self._gimp_layers_xsocket = soc = gtk.Socket()
-		soc.set_size_request( 240, 480 )
+		soc.set_size_request( 240, 560 )
 		self._gimp_page.pack_start( self._gimp_toolbox_xsocket, expand=False )
 		self._gimp_page.pack_start( self._gimp_image_xsocket, expand=True )
 		self._gimp_page.pack_start( self._gimp_layers_xsocket, expand=False )
