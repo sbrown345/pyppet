@@ -116,19 +116,26 @@ function on_message(e) {
 				}
 			}
 
-			if (ob.verts && USE_MODIFIERS) {
-				m.dirty_modifiers = true;
-				m.subsurf = ob.subsurf;
-				m.geometry_base.computeCentroids();
-				//m.geometry_base.computeFaceNormals();
-				//m.geometry_base.computeVertexNormals();
-				var vidx=0;
-				for (var i=0; i <= ob.verts.length-3; i += 3) {
-					var v = m.geometry_base.vertices[ vidx ].position;
-					v.x = ob.verts[ i ];
-					v.y = ob.verts[ i+2 ];
-					v.z = -ob.verts[ i+1 ];
-					vidx++;
+			if (USE_MODIFIERS) {
+				if (m.subsurf != ob.subsurf) {
+					m.dirty_modifiers = true;
+					m.subsurf = ob.subsurf;
+				}
+
+				if (ob.verts) {
+					m.dirty_modifiers = true;
+
+					var vidx=0;
+					for (var i=0; i <= ob.verts.length-3; i += 3) {
+						var v = m.geometry_base.vertices[ vidx ].position;
+						v.x = ob.verts[ i ];
+						v.y = ob.verts[ i+2 ];
+						v.z = -ob.verts[ i+1 ];
+						vidx++;
+					}
+					m.geometry_base.computeCentroids();
+					//m.geometry_base.computeFaceNormals();
+					//m.geometry_base.computeVertexNormals();
 				}
 			}
 

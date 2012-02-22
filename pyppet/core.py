@@ -833,7 +833,11 @@ class Expander(object):
 		if b.get_active():
 			if self._full_header_toggle: b.set_label( '%s  %s' %(icons.EXPANDER_DOWN,self.name) )
 			else: b.set_label( icons.EXPANDER_DOWN )
-			for child in self.children: child.show()
+			for child in self.children:
+				child.set_no_show_all(False)
+				child.show_all()
+				child.set_no_show_all(True)
+
 		else:
 			if self._full_header_toggle: b.set_label( '%s  %s' %(icons.EXPANDER_UP,self.name) )
 			else: b.set_label( icons.EXPANDER_UP )
@@ -1125,8 +1129,8 @@ class PopupWindow(object):
 		#colormap = screen.get_rgba_colormap()
 		#win.set_colormap(colormap)
 
-		self.window.add_events( gtk.GDK_BUTTON_PRESS_MASK )
-		self.window.connect('button-press-event', self.on_press)
+		self.root.add_events( gtk.GDK_BUTTON_PRESS_MASK )
+		self.root.connect('button-press-event', self.on_press)
 		if child:
 			child.set_border_width(3)
 			self.child = child
@@ -1136,7 +1140,7 @@ class PopupWindow(object):
 		if button.get_active(): self.window.set_opacity( 0.8 )
 		else: self.window.set_opacity( 1.0 )
 
-	def expose(self, widget, event):
+	def expose(self, widget, event):		# NOT WORKING
 		gdkwin = self.window.get_window()
 		c = gdkwin.cairo_create()	# segfaults here
 		c.set_source_rgba(0.5, 0.75, 0.5, 0.1)

@@ -4,7 +4,7 @@
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4j'
+VERSION = '1.9.4k'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -316,7 +316,8 @@ class WebGL(object):
 #####################
 
 class WebSocketServer( websocket.WebSocketServer ):
-	buffer_size = 8096
+	MAX_VERTS = 2000
+	buffer_size = 8096*2
 	client = None
 	webGL = WebGL()
 	RELOAD_TEXTURES = []
@@ -401,12 +402,18 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 				if ob == context.active_object: pak[ 'selected' ] = True
 				if ob.webgl_stream_mesh or ob == context.active_object:
-					if len(ob.data.vertices) < 2000:
+					if len(ob.data.vertices) < self.MAX_VERTS:
 						streaming_meshes.append( ob )
 
 				if ob.name in self.RELOAD_TEXTURES:
 					self.RELOAD_TEXTURES.remove( ob.name )
 					pak[ 'reload_textures' ] = True
+
+				subsurf = 0
+				for mod in ob.modifiers:
+					if mod.type == 'SUBSURF':
+						subsurf += mod.levels		# mod.render_levels
+				pak[ 'subsurf' ] = subsurf
 
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
@@ -426,13 +433,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 			bpy.data.meshes.remove( data )
 			verts = [ round(a,3) for a in verts ]	# optimize!
 
-			subsurf = 0
-			for mod in ob.modifiers:
-				if mod.type == 'SUBSURF':
-					subsurf += mod.levels		# mod.render_levels
+
 
 			pak[ 'verts' ] = verts
-			pak[ 'subsurf' ] = subsurf
 
 
 
@@ -2795,18 +2798,6 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
 
-		frame2 = gtk.Frame()
-		bx.pack_start( frame2, expand=False )
-		box = gtk.HBox(); box.set_border_width(4)
-		frame2.add( box )
-		box.pack_start( gtk.Label('physics'), expand=False )
-		s = gtk.Switch()
-		s.connect('button-press-event', self.cb_toggle_physics )
-		s.set_tooltip_text( 'toggle physics' )
-		box.pack_start( s, expand=False )
-		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
-		box.pack_start( b, expand=False )
 
 		root.pack_start( self.get_playback_widget() )
 
@@ -2882,9 +2873,19 @@ class PyppetUI( PyppetAPI ):
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
 
-		frame = gtk.Frame(); self.header.pack_start( frame, expand=False )
-		box = gtk.HBox(); box.set_border_width(4)
-		frame.add( box )
+
+		frame2 = gtk.Frame()
+		self.header.pack_start( frame2, expand=False )
+		box = gtk.HBox(); box.set_border_width(2)
+		frame2.add( box )
+		s = gtk.Switch()
+		s.connect('button-press-event', self.cb_toggle_physics )
+		s.set_tooltip_text( 'toggle physics' )
+		box.pack_start( s, expand=False )
+		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
+		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
+		box.pack_start( b, expand=False )
+
 
 		#self.popup = Popup()
 		#b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
@@ -3043,17 +3044,33 @@ class PyppetUI( PyppetAPI ):
 		root = gtk.VBox(); EX.add( root )
 		self._left_tools_modals[ 'drivers' ] = (EX,root)
 
+
 		############# direct transform ##############
+		ex = Expander( 'direct transform' )
+		root.pack_start( ex.widget, expand=False )
+		#bx = gtk.VBox(); ex.add( bx )
 		nice = {'location':'Location', 'scale':'Scale', 'rotation_euler':'Rotation' }
 		tags='location scale rotation_euler'.split()
 		for i,tag in enumerate(tags):
-			root.pack_start(
+			ex.append(
 				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=False).widget, 
-				expand=False
+				#expand=False
 			)
 
 		############# physics driver forces ##############
-		note = gtk.Notebook(); root.pack_start( note, expand=False )
+		ex = Expander('force drivers')
+		root.pack_start( ex.widget, expand=False )
+
+		s = Slider(
+			ob, name='ode_force_driver_rate', 
+			title='additive-driver falloff', 
+			min=0.0, max=1.0,
+		)
+		ex.append(s.widget)
+
+
+		note = gtk.Notebook()
+		ex.append( note )
 
 		page = gtk.VBox(); page.set_border_width( 2 )
 		note.append_page( page, gtk.Label('Global') )
@@ -3080,7 +3097,6 @@ class PyppetUI( PyppetAPI ):
 				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
 				expand=False
 			)
-
 
 		EX.show_all()
 
@@ -3283,12 +3299,6 @@ class PyppetUI( PyppetAPI ):
 				)
 				root.pack_start(s.widget, expand=False)
 
-				s = Slider(
-					ob, name='ode_force_driver_rate', 
-					title='%s driver rate' %icons.FORCES, 
-					min=0.0, max=1.0,
-				)
-				root.pack_start(s.widget, expand=False)
 
 
 
@@ -3800,10 +3810,10 @@ class ObjectWrapper( object ):
 		child = bpy.data.objects[ self.name ]
 
 		### store data here? 
-		cns = child.constraints.new('RIGID_BODY_JOINT')		# cheating
-		cns.show_expanded = False
-		cns.target = parent			# draws dotted connecting line in blender (not safe outside of bpy.context)
-		cns.child = None			# child is None
+		#cns = child.constraints.new('RIGID_BODY_JOINT')		# cheating
+		#cns.show_expanded = False
+		#cns.target = parent			# draws dotted connecting line in blender
+		#cns.child = None			# child is None
 
 		if parent.name not in ENGINE.bodies:
 			parent.ode_use_body = True
@@ -3813,9 +3823,6 @@ class ObjectWrapper( object ):
 		cw = ENGINE.get_wrapper(child)
 		pw = ENGINE.get_wrapper(parent)
 		joint = cw.new_joint( pw, name=parent.name )
-		#joint = pw.new_joint( cw, name=self.name )
-
-		#self.children[ child.name ] = joint		# TODO support multiple joints per child
 		P = ObjectWrapper.OBJECTS[ parent.name ]
 		P.children[ child.name ] = joint
 		return P.get_joint_widget( child.name )
