@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb20, 2012
+# Feb22, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4i'
+VERSION = '1.9.4j'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -2892,14 +2892,14 @@ class PyppetUI( PyppetAPI ):
 		box = gtk.HBox(); box.set_border_width(4)
 		frame.add( box )
 
-		self.popup = Popup()
-		b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled',self.popup.toggle_popup)
-		box.pack_start( b, expand=False )
+		#self.popup = Popup()
+		#b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
+		#b.connect('toggled',self.popup.toggle_popup)
+		#box.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled',self.toggle_overlay)
-		box.pack_start( b, expand=False )
+		#b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
+		#b.connect('toggled',self.toggle_overlay)
+		#box.pack_start( b, expand=False )
 
 		self.header.pack_start( gtk.Label() )
 
@@ -2916,7 +2916,7 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled',self.toggle_left_tools)
 		self.header.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
+		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_footer)
 		self.header.pack_start( b, expand=False )
@@ -3260,11 +3260,6 @@ class PyppetUI( PyppetAPI ):
 
 				root.pack_start( gtk.Label() )
 
-				s = Slider(
-					ob, name='ode_mass', title='mass', 
-					min=0.001, max=10.0,
-				)
-				root.pack_start(s.widget, expand=False)
 
 				s = Slider(
 					ob, name='ode_linear_damping', title='linear damping',
@@ -3343,7 +3338,8 @@ class PyppetUI( PyppetAPI ):
 		note.append_page( self._gimp_page, gtk.Label('GIMP') )
 		self._gimp_toolbox_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 170, 560 )
-		self._gimp_image_xsocket = gtk.Socket()
+		self._gimp_image_xsocket = soc = gtk.Socket()
+		soc.set_size_request( 320, 560 )
 		self._gimp_layers_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 240, 560 )
 		self._gimp_page.pack_start( self._gimp_toolbox_xsocket, expand=False )
@@ -3391,6 +3387,7 @@ class PyppetUI( PyppetAPI ):
 
 		win.connect('destroy', self.exit )
 		win.show_all()
+		self._bottom_toggle_button.set_active(False)
 
 		self.do_xembed( xsocket, 'Blender' )		# this must come last
 		self.do_xembed( self._chrome_xsocket, "New Tab - Google Chrome")
@@ -3442,21 +3439,33 @@ class PyppetUI( PyppetAPI ):
 
 			g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
 			g.set_no_show_all(True)
-			if ob.ode_use_body: g.show()
-			else: g.hide()
+
+			Mslider = Slider(
+				ob, name='ode_mass', title='', tooltip='mass',
+				min=0.001, max=10.0, no_show_all=True,
+			)
+
+			if ob.ode_use_body:
+				g.show()
+				Mslider.widget.show()
+			else:
+				g.hide()
+				Mslider.widget.hide()
 
 			b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('toggle body physics')
 			root.pack_start( b, expand=False )
 			b.set_active( ob.ode_use_body )
-			b.connect('toggled', self.toggle_body, g)
+			b.connect('toggled', self.toggle_body, g, Mslider.widget)
 
 			g.set_tooltip_text('toggle gravity')
 			root.pack_start( g, expand=False )
 			g.set_active( ob.ode_use_gravity )
 			g.connect('toggled', self.toggle_gravity)
 
-			root.pack_start( gtk.Label('    '), expand=False )
+			root.pack_start(Mslider.widget, expand=True)
+
+			root.pack_start( gtk.Label(' | '), expand=False )
 
 
 			combo = gtk.ComboBoxText()
@@ -3567,6 +3576,7 @@ class PyppetUI( PyppetAPI ):
 
 	def toggle_gravity(self, b):
 		for ob in self.context.selected_objects: ob.ode_use_gravity = b.get_active()
+
 	def toggle_collision(self, b, combo, fslider, bslider):
 		for ob in self.context.selected_objects: ob.ode_use_collision = b.get_active()
 		if b.get_active():
@@ -3578,10 +3588,14 @@ class PyppetUI( PyppetAPI ):
 			fslider.hide()
 			bslider.hide()
 
-	def toggle_body(self, b, gravity_button):
+	def toggle_body(self, b, gravity_button, mass_slider):
 		for ob in self.context.selected_objects: ob.ode_use_body = b.get_active()
-		if b.get_active(): gravity_button.show()
-		else: gravity_button.hide()
+		if b.get_active():
+			gravity_button.show()
+			mass_slider.show()
+		else:
+			gravity_button.hide()
+			mass_slider.hide()
 
 	def change_collision_type(self,combo, ob):
 		type = combo.get_active_text()
@@ -3702,7 +3716,7 @@ class App( PyppetUI ):
 			self.update_callbacks()	# updates UI on active object changed
 			self.toolsUI.iterate( self.context )
 			self.outlinerUI.iterate( self.context )
-			self.popup.update( self.context )
+			#self.popup.update( self.context )
 
 			models = self.entities.values()
 			for mod in models: mod.update_ui( self.context )
