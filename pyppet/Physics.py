@@ -1,9 +1,10 @@
 ## Ode Physics Addon for Blender
-## by Brett Hart, Fed 4th 2011
+## by Brett Hart, Feb 22, 2011
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
 import os, sys, time, ctypes
+import threading
 import bpy, mathutils
 from bpy.props import *
 from random import *
@@ -121,14 +122,33 @@ bpy.types.World.ode_angular_damping = FloatProperty(
 
 
 class OdeSingleton(object):
-	def reset( self ): [ ob.reset() for ob in self.objects.values() ]
-	def start(self): self.active=True; self.reset(); print('starting ODE physics...')
-	def stop(self): self.active=False; self.reset(); print('stopping ODE physics.')
+	def reset( self ):
+		if self.threaded: self.lock.acquire()
+		[ ob.reset() for ob in self.objects.values() ]
+		if self.threaded: self.lock.release()
+
+	def start(self):
+		print('starting ODE physics...')
+		self._iterations = 0
+		self._start_time = time.time()
+		self.active=True
+		self.reset()
+		if self.threaded: self.start_thread()
+
+	def stop(self):
+		print('stopping ODE physics.')
+		self.active=False; self.reset()
+		seconds = time.time() - self._start_time
+		print('--iterations:', self._iterations)
+		print('--seconds:', seconds)
+		print('--average:', seconds / self._iterations)
+
+
 	def exit(self): ode.CloseODE()
 	def toggle_pause(self,switch):
 		self.paused = switch
 
-	def __init__(self):
+	def __init__(self, lock=None):
 		self.active = False
 		self.paused = False
 		ode.InitODE()
@@ -144,14 +164,26 @@ class OdeSingleton(object):
 		self.bodies = {}
 		self._tmp_joints = []
 
+		self.rate = 1.0 / 30
+		self.lock = lock
+
+		if lock:
+			self.threaded = True
+		else:
+			self.threaded = False
+
+		self._iterations = 0
+
 	def get_wrapper(self, ob):
 		if ob.name not in self.objects: self.objects[ ob.name ] = Object( ob, self.world, self.space )
 		return self.objects[ ob.name ]
 
 	def sync( self, context, now, recording=False ):
 		if not self.active: return
-
+		print('main sync.......')
 		if context.active_object and context.active_object.name in self.objects:
+			if self.threaded: self.lock.acquire()
+
 			obj = self.objects[ context.active_object.name ]
 			body = obj.body
 			if body:
@@ -167,34 +199,66 @@ class OdeSingleton(object):
 					body.SetPosition( x2, y2, z2 )
 					if not self.paused: body.AddForce( dx, dy, dz )
 
+			if self.threaded: self.lock.release()
+
 		if self.paused: return
 
 		fast = []	# avoids dict lookups below
+		if self.threaded: self.lock.acquire()
 		for ob in bpy.data.objects:
 			if ob.name not in self.objects: self.objects[ ob.name ] = Object( ob, self.world, self.space )
 			obj = self.objects[ ob.name ]
 			obj.sync( ob )		# gets new settings, calls AddForce etc...
 			fast.append( (obj,ob) )
+		if self.threaded: self.lock.release()
+		print('objects sync complete')
 
 		fps = context.scene.game_settings.fps
-		rate = 1.0 / fps
+		self.rate = rate = 1.0 / fps
 
-
-		ode.SpaceCollide( self.space, None, self.near_callback )
-		#print( '------------- space collide complete -------------' )
-		self.world.QuickStep( rate )
-		#print( '------------- quick step complete -------------' )
-		ode.JointGroupEmpty( self.joint_group )
-		#print( '------------- joint group empty complete -------------', self._tmp_joints )
+		if not self.threaded:
+			ode.SpaceCollide( self.space, None, self.near_callback )
+			#print( '------------- space collide complete -------------' )
+			self.world.QuickStep( rate )
+			#print( '------------- quick step complete -------------' )
+			ode.JointGroupEmpty( self.joint_group )
+			#print( '------------- joint group empty complete -------------', self._tmp_joints )
+			self._iterations += 1
 
 		if fast:		# updates blender object for display
+			if self.threaded: self.lock.acquire()
+
 			for obj, bo in fast: obj.update( bo, now, recording )
 
+			if self.threaded: self.lock.release()
+		print('objects updated.')
+
+	def start_thread(self):
+		threading._start_new_thread(
+			self.loop, ()
+		)
+
+	def loop(self):
+		print('------starting ODE thread-----')
+		while self.active:
+			self.lock.acquire()
+			print('doing space collide')
+			ode.SpaceCollide( self.space, None, self.near_callback )
+			print('space collide done - quick step')
+			self.world.QuickStep( self.rate )
+			print('quick step done - empty group')
+			ode.JointGroupEmpty( self.joint_group )
+			print('group empty done.')
+			self.lock.release()
+			time.sleep(0.01)
+			self._iterations += 1
+
+		print('------exit ODE thread------')
 
 
 	PYOBJP = ctypes.POINTER(ctypes.py_object)
 	def near_callback( self, data, geom1, geom2 ):
-		#print( 'near callback', geom1, geom2 )	# geom1,2 are lowlevel pointers, not wrapper objects
+		print( 'near callback', geom1, geom2 )	# geom1,2 are lowlevel pointers, not wrapper objects
 		body1 = ode.GeomGetBody( geom1 )
 		body2 = ode.GeomGetBody( geom2 )
 		_b1 = _b2 = None
@@ -202,7 +266,9 @@ class OdeSingleton(object):
 		except ValueError: pass
 		try: _b2 = body2.POINTER.contents
 		except ValueError: pass
-		if not _b1 and not _b2: return
+		if not _b1 and not _b2:
+			print('geom2geom')
+			return
 
 		ptr1 = ctypes.cast( ode.GeomGetData( geom1 ), self.PYOBJP )
 		ob1 = ptr1.contents.value
@@ -210,7 +276,7 @@ class OdeSingleton(object):
 		ob2 = ptr2.contents.value
 
 		dContactGeom = ode.ContactGeom.CSTRUCT		# get the raw ctypes struct
-
+		print('performing ode.Collide')
 		geoms = (dContactGeom * 32)()
 		geoms_ptr = ctypes.pointer( geoms )
 		touching = ode.Collide( 
@@ -220,10 +286,10 @@ class OdeSingleton(object):
 			geoms_ptr,
 			ctypes.sizeof( dContactGeom )
 		)
-
-		bo1 = bpy.data.objects[ ob1.name ]
-		bo2 = bpy.data.objects[ ob2.name ]
-
+		print('going to crash?')
+		#bo1 = bpy.data.objects[ ob1.name ]
+		#bo2 = bpy.data.objects[ ob2.name ]
+		print('made it....')
 		dContact = ode.Contact.CSTRUCT			# get the raw ctypes struct
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
@@ -233,8 +299,8 @@ class OdeSingleton(object):
 			#con.surface.mu = 100.0
 			con.geom = g
 
-			con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
-			con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
+			#con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
+			#con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
 
 			## user callbacks ##
 			dojoint = True
@@ -249,9 +315,10 @@ class OdeSingleton(object):
 				joint = ode.JointCreateContact( self.world, self.joint_group, ctypes.pointer(con) )
 				joint.Attach( body1, body2 )
 				#print('friction', con.surface.mu)
+		print('collision done')
 
-
-ENGINE = OdeSingleton()
+LOCK = threading._allocate_lock()
+ENGINE = OdeSingleton( lock=LOCK )
 ActivePhysics = ENGINE
 
 
@@ -418,6 +485,35 @@ JOINT_TYPES = list(Joint.Types.keys())
 
 ####################### object wrapper ######################
 class Object( object ):
+	'''
+	safe blender wrapper object
+	'''
+	def __init__( self, bo, world, space, lock=None ):
+		self.world = world
+		self.space = space
+		self.name = bo.name
+		self.type = bo.type
+		self.lock = lock
+		self.config = cfg = {}
+		self.recbuffer = []
+		self.body = None
+		self.geom = None
+		self.geomtype = None
+		self.joints = {}
+		self.alive = True
+		self.transform = None	# used to set a transform directly, format: (pos,quat)
+		self.save_transform( bo )
+
+	def save_transform(self, bo):
+		self.start_matrix = bo.matrix_world.copy()
+		x,y,z = bo.matrix_world.to_translation()
+		self.start_position = (x,y,z)
+		w,x,y,z = bo.matrix_world.to_quaternion()
+		self.start_rotation = (w,x,y,z)
+		x,y,z = bo.matrix_world.to_scale()
+		self.start_scale = (x,y,z)
+
+
 	def pop_joint( self, name ): return self.joints.pop(name)
 	def change_joint_type( self, name, type ): self.joints[name].set_type(type)
 	def new_joint(self, other, name='default', type='fixed'):
@@ -466,13 +562,17 @@ class Object( object ):
 
 	def toggle_collision(self, switch):
 		if not switch and self.geom:
+			if self.lock: self.lock.acquire()
 			self.geom.Destroy()
 			self.geom = None
 			print('destroyed geom')
+			if self.lock: self.lock.release()
 		elif switch:
 			self.reset_collision_type()
 
 	def reset_collision_type(self):
+		if self.lock: self.lock.acquire()
+
 		if self.geom:
 			self.geom.Destroy()
 			self.geom = None
@@ -506,6 +606,8 @@ class Object( object ):
 			self._geom_set_data_pointer = ctypes.pointer( ctypes.py_object(self) )
 			geom.SetData( self._geom_set_data_pointer )
 
+		if self.lock: self.lock.release()
+
 	def toggle_body(self, switch):
 		if switch:
 			if not self.body:
@@ -537,32 +639,6 @@ class Object( object ):
 			self.body = None
 			self.clear_body_config()
 			print( 'body destroyed' )
-
-
-
-	def __init__( self, bo, world, space ):	# do not hold reference to ob?
-		self.world = world
-		self.space = space
-		self.name = bo.name
-		self.type = bo.type
-		self.config = cfg = {}
-		self.recbuffer = []
-		self.body = None
-		self.geom = None
-		self.geomtype = None
-		self.joints = {}
-		self.alive = True
-		self.transform = None	# used to set a transform directly, format: (pos,quat)
-		self.save_transform( bo )
-
-	def save_transform(self, bo):
-		self.start_matrix = bo.matrix_world.copy()
-		x,y,z = bo.matrix_world.to_translation()
-		self.start_position = (x,y,z)
-		w,x,y,z = bo.matrix_world.to_quaternion()
-		self.start_rotation = (w,x,y,z)
-		x,y,z = bo.matrix_world.to_scale()
-		self.start_scale = (x,y,z)
 
 
 	def reset(self):

@@ -3718,8 +3718,6 @@ class App( PyppetUI ):
 
 	def mainloop(self):
 		while self.active:
-
-			#if self.baker_active: self.baker_region.tag_redraw()
 			self.update_blender_and_gtk()
 
 			win = Blender.Window( self.context.window )
@@ -3736,7 +3734,6 @@ class App( PyppetUI ):
 			self.update_callbacks()	# updates UI on active object changed
 			self.toolsUI.iterate( self.context )
 			self.outlinerUI.iterate( self.context )
-			#self.popup.update( self.context )
 
 			models = self.entities.values()
 			for mod in models: mod.update_ui( self.context )
@@ -3755,7 +3752,6 @@ class App( PyppetUI ):
 				self._rec_current_time_label.set_text( 'seconds: %s' %round(now,2) )
 			if self.preview: self.update_preview( now )
 			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
-
 
 			if not self._image_editor_handle:
 				# ImageEditor redraw callback will update http-server,
