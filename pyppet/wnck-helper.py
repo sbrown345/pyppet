@@ -34,5 +34,5 @@ if win:
 	win.shade()
 	print( 'XID=%s' %win.get_xid() )
 
-
+screen.force_update()
 

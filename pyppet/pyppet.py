@@ -1729,7 +1729,7 @@ class Bone(object):
 
 		################# tail ###############
 		self.tail = bpy.data.objects.new(name='TAIL.'+name,object_data=None)
-		#self.tail.show_x_ray = True
+		self.tail.show_x_ray = True
 		Pyppet.context.scene.objects.link( self.tail )
 		self.tail.empty_draw_type = 'SPHERE'
 		self.tail.empty_draw_size = ebone.tail_radius * 1.75
@@ -1834,6 +1834,7 @@ class AbstractArmature(object):
 		self.targets = {}		# bone name : [ Targets ]
 		self.created = False
 		self._targets_widget = None
+		self._active_bone_widget = None
 
 	def get_create_widget(self):
 		root = gtk.VBox()
@@ -1962,20 +1963,12 @@ class AbstractArmature(object):
 		self._targets_widget.connect( 'drag-drop', self.cb_drop_target )
 		return self._targets_widget
 
-	def update_targets_widget(self, bone):
-		if not self._targets_widget: return
-		self._targets_widget.set_label( bone.name )
-		self._targets_widget.remove( self._modal )
-		self._modal = root = gtk.VBox()
-		self._targets_widget.add( root )
-
-		root.set_border_width(6)
-		if bone.name in self.targets:
-			for target in self.targets[ bone.name ]:
-				root.pack_start( target.get_widget(), expand=True )
-		root.show_all()
-
-
+	def get_active_bone_widget(self):
+		container = gtk.EventBox()
+		child = gtk.HBox()
+		self._active_bone_widget = (container,child)
+		container.add( child )
+		return container
 
 	def update_ui( self, context ):
 		if not context.active_pose_bone and self.active_pose_bone:
@@ -1990,11 +1983,13 @@ class AbstractArmature(object):
 			self.rig[ bone.name ].show()
 
 			self.update_targets_widget( bone )
+			self.update_active_bone_widget( bone )
 
 	def heal_broken_joints(self,b):
 		for B in self.rig.values():
 			for joint in B.breakable_joints:
 				if joint.broken: joint.restore()
+
 	def get_widget(self):
 		root = gtk.HBox()
 		b = gtk.Button('heal joints')
@@ -2009,6 +2004,43 @@ class AbstractArmature(object):
 		for B in self.rig.values():
 			for w in B.get_wrapper_objects():
 				w.save_transform()
+
+
+	def update_targets_widget(self, bone):
+		if not self._targets_widget: return
+		self._targets_widget.set_label( bone.name )
+		self._targets_widget.remove( self._modal )
+		self._modal = root = gtk.VBox()
+		self._targets_widget.add( root )
+
+		root.set_border_width(6)
+		if bone.name in self.targets:
+			for target in self.targets[ bone.name ]:
+				root.pack_start( target.get_widget(), expand=True )
+		root.show_all()
+
+
+	def update_active_bone_widget(self, bone):
+		B = self.rig[ bone.name ]
+		print(B)
+		bo = B.tail
+		print(bo)
+		container,root = self._active_bone_widget
+		container.remove( root )
+		root = gtk.HBox()
+		container.add( root )
+		self._active_bone_widget = (container,root)
+
+		root.pack_start( gtk.Label(bone.name), expand=False )
+
+		slider = SimpleSlider(
+			bo, name='ode_constant_global_force', title='',
+			tooltip='lift', 
+			target_index=2,
+			min=-100, max=500,
+		)
+		root.pack_start( slider.widget )
+		root.show_all()
 
 class Rope( AbstractArmature ):
 	ICON = icons.ROPE
@@ -2249,7 +2281,7 @@ class Biped( AbstractArmature ):
 		delta = y - self.smooth_motion_rate
 		self.smooth_motion_rate += delta*0.1
 		motion_rate = abs( self.smooth_motion_rate )
-		print('mrate', motion_rate)
+		#print('mrate', motion_rate)
 		if self.smooth_motion_rate < -0.2: moving = 'FORWARD'
 		elif self.smooth_motion_rate > 0.2: moving = 'BACKWARD'
 
@@ -2352,6 +2384,7 @@ class Biped( AbstractArmature ):
 			for v in hand_swing_targets: v.x += 0.1
 
 		if step_left:
+			print('step LEFT')
 			rad = euler.z - math.radians(90+self.primary_heading)
 			cx = math.sin( -rad )
 			cy = math.cos( -rad )
@@ -2361,6 +2394,7 @@ class Biped( AbstractArmature ):
 			v.z = .0
 			self.left_foot_loc = v
 		if step_right:
+			print('step RIGHT')
 			rad = euler.z + math.radians(90+self.primary_heading)
 			cx = math.sin( -rad )
 			cy = math.cos( -rad )
@@ -2369,6 +2403,8 @@ class Biped( AbstractArmature ):
 			v.y = y+cy
 			v.z = .0
 			self.right_foot_loc = v
+
+		if not step_left or step_right: print('no STEP')
 
 
 		#################### falling ####################
@@ -3441,11 +3477,18 @@ class PyppetUI( PyppetAPI ):
 			b.set_active( self.context.mode=='POSE' )
 			b.connect('toggled', self.toggle_pose_mode)
 
+			root.pack_start( gtk.Label() )
+
 			if ob.name not in self.entities:
 				biped = self.GetBiped( ob )
-				b = gtk.Button( icons.BIPED ); b.set_relief( gtk.RELIEF_NONE )
+				b = gtk.Button( 'create Biped' ); b.set_relief( gtk.RELIEF_NONE )
 				root.pack_start( b, expand=False )
 				b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
+			else:
+				model = self.entities[ ob.name ]
+				root.pack_start( model.get_active_bone_widget() )
+
+
 
 		elif ob.type=='LAMP':
 			r,g,b = ob.data.color
@@ -3458,6 +3501,7 @@ class PyppetUI( PyppetAPI ):
 			root.pack_start( slider.widget )
 
 		else:
+			print(ob, ob.name)
 			root.set_border_width(3)
 
 			root.pack_start( gtk.Label('    '), expand=False )
