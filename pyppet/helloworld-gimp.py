@@ -23,9 +23,6 @@ gtk.init()
 
 class MyApp( BlenderHackLinux ):
 	def __init__(self):
-		self.do_wnck_hack('Blender')
-		self.do_wnck_hack('Toolbox')
-
 		assert self.setup_blender_hack( bpy.context )
 
 		self.window = win = gtk.Window()
@@ -76,6 +73,7 @@ class MyApp( BlenderHackLinux ):
 
 	def on_click(self, button):
 		print('you clicked')
+		os.system('gimp /home/brett/Pictures/oldhouse.xcf')
 
 
 	def mainloop(self):

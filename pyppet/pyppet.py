@@ -1954,12 +1954,12 @@ class AbstractArmature(object):
 		widget.show_all()
 
 
-	def get_targets_widget(self, label):
+	def get_targets_widget(self):
 		self._targets_widget = gtk.Frame('selected bone')
 		self._modal = gtk.Label('targets')
 		self._targets_widget.add( self._modal )
-		DND.make_destination( label )
-		label.connect( 'drag-drop', self.cb_drop_target )
+		DND.make_destination( self._targets_widget )
+		self._targets_widget.connect( 'drag-drop', self.cb_drop_target )
 		return self._targets_widget
 
 	def update_targets_widget(self, bone):
@@ -1968,10 +1968,11 @@ class AbstractArmature(object):
 		self._targets_widget.remove( self._modal )
 		self._modal = root = gtk.VBox()
 		self._targets_widget.add( root )
+
 		root.set_border_width(6)
 		if bone.name in self.targets:
 			for target in self.targets[ bone.name ]:
-				root.pack_start( target.get_widget(), expand=False )
+				root.pack_start( target.get_widget(), expand=True )
 		root.show_all()
 
 
@@ -2042,7 +2043,7 @@ class Biped( AbstractArmature ):
 		widget = self.get_widget()
 		root.pack_start( widget, expand=False )
 
-		slider = SimpleSlider( self, name='primary_heading', min=-180, max=180, driveable=True )
+		slider = SimpleSlider( self, name='primary_heading', title='heading', min=-180, max=180 )
 		root.pack_start( slider.widget, expand=False )
 
 		#slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
@@ -3181,27 +3182,31 @@ class PyppetUI( PyppetAPI ):
 		if ob.type=='ARMATURE':
 			EX,note = self._left_tools_modals[ 'solver' ]
 			EX.remove( note )
-			note = gtk.Notebook(); EX.add( note )
-			self._left_tools_modals[ 'solver' ] = (EX,note)
 
 
 			if ob.pyppet_model:
-				print('pyppet-model:', ob.pyppet_model)
-				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
-				label = model.get_widget_label()
-				widget = getattr(model, 'Get%sWidget' %ob.pyppet_model)()
-				note.append_page( widget, label )
+				root = gtk.VBox(); EX.add( root )
+				root.set_border_width(3)
+				self._left_tools_modals[ 'solver' ] = (EX,root)
 
-				sw = gtk.ScrolledWindow()
-				label = gtk.Label( icons.TARGET )
-				note.append_page( sw, label )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 2 )
-				sw.add_with_viewport( root )
-				root.pack_start( model.get_targets_widget(label) )
+				print('pyppet-model:', ob.pyppet_model)
+				ex = Expander( ob.pyppet_model )
+				root.pack_start( ex.widget, expand=False )
+				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
+				#label = model.get_widget_label()
+				widget = getattr(model, 'Get%sWidget' %ob.pyppet_model)()
+				ex.add( widget )
+
+				widget = model.get_targets_widget()
+				ex = Expander( 'dynamic targets' )
+				ex.add( widget )
+				root.pack_start( ex.widget, expand=True )
 
 
 			else:
+				note = gtk.Notebook(); EX.add( note )
+				self._left_tools_modals[ 'solver' ] = (EX,note)
+
 				for mname in Pyppet.MODELS:
 					model = getattr(Pyppet, 'Get%s' %mname)( ob.name )
 					label = model.get_widget_label()
@@ -3469,7 +3474,7 @@ class PyppetUI( PyppetAPI ):
 				g.show()
 				Mslider.widget.show()
 			else:
-				g.hide()
+				g.hide()	# can't be in pose-mode bug! TODO fix me
 				Mslider.widget.hide()
 
 			b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )

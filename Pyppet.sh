@@ -3,7 +3,7 @@
 google-chrome &
 ## assumes that Nautilus opens with window named "Home"
 nautilus &
-gimp &
+gimp --no-splash &
 
 ## --window-borderless is not compatible with wnck hack
 #~/Blender2.6/blender --window-borderless --python ./pyppet.py

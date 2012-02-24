@@ -1,5 +1,5 @@
 ## Ode Physics Addon for Blender
-## by Brett Hart, Feb 22, 2011
+## by Brett Hart, Feb 23, 2011
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
@@ -180,7 +180,7 @@ class OdeSingleton(object):
 
 	def sync( self, context, now, recording=False ):
 		if not self.active: return
-		print('main sync.......')
+
 		if context.active_object and context.active_object.name in self.objects:
 			if self.threaded: self.lock.acquire()
 
@@ -211,27 +211,22 @@ class OdeSingleton(object):
 			obj.sync( ob )		# gets new settings, calls AddForce etc...
 			fast.append( (obj,ob) )
 		if self.threaded: self.lock.release()
-		print('objects sync complete')
 
 		fps = context.scene.game_settings.fps
 		self.rate = rate = 1.0 / fps
 
 		if not self.threaded:
 			ode.SpaceCollide( self.space, None, self.near_callback )
-			#print( '------------- space collide complete -------------' )
 			self.world.QuickStep( rate )
-			#print( '------------- quick step complete -------------' )
 			ode.JointGroupEmpty( self.joint_group )
-			#print( '------------- joint group empty complete -------------', self._tmp_joints )
 			self._iterations += 1
 
 		if fast:		# updates blender object for display
-			if self.threaded: self.lock.acquire()
 
+			#if self.threaded: self.lock.acquire()		# ODE is read-only thread-safe
 			for obj, bo in fast: obj.update( bo, now, recording )
+			#if self.threaded: self.lock.release()
 
-			if self.threaded: self.lock.release()
-		print('objects updated.')
 
 	def start_thread(self):
 		threading._start_new_thread(
@@ -241,24 +236,22 @@ class OdeSingleton(object):
 	def loop(self):
 		print('------starting ODE thread-----')
 		while self.active:
+			T = time.time()
 			self.lock.acquire()
-			print('doing space collide')
 			ode.SpaceCollide( self.space, None, self.near_callback )
-			print('space collide done - quick step')
 			self.world.QuickStep( self.rate )
-			print('quick step done - empty group')
 			ode.JointGroupEmpty( self.joint_group )
-			print('group empty done.')
 			self.lock.release()
-			time.sleep(0.01)
 			self._iterations += 1
+			if time.time() - T <= 0.01:
+				time.sleep(0.01)
 
 		print('------exit ODE thread------')
 
 
 	PYOBJP = ctypes.POINTER(ctypes.py_object)
 	def near_callback( self, data, geom1, geom2 ):
-		print( 'near callback', geom1, geom2 )	# geom1,2 are lowlevel pointers, not wrapper objects
+		#print( 'near callback', geom1, geom2 )	# geom1,2 are lowlevel pointers, not wrapper objects
 		body1 = ode.GeomGetBody( geom1 )
 		body2 = ode.GeomGetBody( geom2 )
 		_b1 = _b2 = None
@@ -267,7 +260,6 @@ class OdeSingleton(object):
 		try: _b2 = body2.POINTER.contents
 		except ValueError: pass
 		if not _b1 and not _b2:
-			print('geom2geom')
 			return
 
 		ptr1 = ctypes.cast( ode.GeomGetData( geom1 ), self.PYOBJP )
@@ -276,7 +268,6 @@ class OdeSingleton(object):
 		ob2 = ptr2.contents.value
 
 		dContactGeom = ode.ContactGeom.CSTRUCT		# get the raw ctypes struct
-		print('performing ode.Collide')
 		geoms = (dContactGeom * 32)()
 		geoms_ptr = ctypes.pointer( geoms )
 		touching = ode.Collide( 
@@ -286,10 +277,10 @@ class OdeSingleton(object):
 			geoms_ptr,
 			ctypes.sizeof( dContactGeom )
 		)
-		print('going to crash?')
-		#bo1 = bpy.data.objects[ ob1.name ]
+
+		#bo1 = bpy.data.objects[ ob1.name ]		# not thread-safe
 		#bo2 = bpy.data.objects[ ob2.name ]
-		print('made it....')
+
 		dContact = ode.Contact.CSTRUCT			# get the raw ctypes struct
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
@@ -299,8 +290,14 @@ class OdeSingleton(object):
 			#con.surface.mu = 100.0
 			con.geom = g
 
+			## not thread-safe! ##
 			#con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
 			#con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
+
+			## get "friction" and "bounce" settings from wrapper objects ##
+			con.surface.mu = (ob1._friction + ob2._friction) * 100
+			con.surface.bounce = ob1._bounce + ob2._bounce
+
 
 			## user callbacks ##
 			dojoint = True
@@ -315,7 +312,6 @@ class OdeSingleton(object):
 				joint = ode.JointCreateContact( self.world, self.joint_group, ctypes.pointer(con) )
 				joint.Attach( body1, body2 )
 				#print('friction', con.surface.mu)
-		print('collision done')
 
 LOCK = threading._allocate_lock()
 ENGINE = OdeSingleton( lock=LOCK )
@@ -489,6 +485,9 @@ class Object( object ):
 	safe blender wrapper object
 	'''
 	def __init__( self, bo, world, space, lock=None ):
+		self._friction = 0.0	# internal use only
+		self._bounce = 0.0	# internal use only
+
 		self.world = world
 		self.space = space
 		self.name = bo.name
@@ -697,6 +696,11 @@ class Object( object ):
 		cfg = self.config
 		body = self.body
 		geom = self.geom
+
+		## to make things thread-safe we need to copy these attributes from pyRNA ##
+		self._friction = ob.ode_friction
+		self._bounce = ob.ode_bounce
+
 
 		pos,rot,scl = ob.matrix_world.decompose()
 		px,py,pz = pos
