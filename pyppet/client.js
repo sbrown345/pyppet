@@ -36,7 +36,6 @@ function on_message(e) {
 	for (var name in msg['lights']) {
 		var light;
 		var ob = msg['lights'][ name ];
-		//name = name.replace('.', '_');
 
 		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
 			console.log('>> new light');

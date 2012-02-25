@@ -2114,6 +2114,21 @@ class Biped( AbstractArmature ):
 		widget = self.get_widget()
 		root.pack_start( widget, expand=False )
 
+		b = CheckButton('auto step: left foot')
+		b.connect( self, 'auto_left_step' )
+		root.pack_start( b.widget, expand=False )
+		b = CheckButton('auto step: right foot')
+		b.connect( self, 'auto_right_step' )
+		root.pack_start( b.widget, expand=False )
+
+		b = CheckButton('force step: left foot')
+		b.connect( self, 'force_left_step' )
+		root.pack_start( b.widget, expand=False )
+		b = CheckButton('force step: right foot')
+		b.connect( self, 'force_right_step' )
+		root.pack_start( b.widget, expand=False )
+
+
 		slider = SimpleSlider( self, name='primary_heading', title='heading', min=-180, max=180 )
 		root.pack_start( slider.widget, expand=False )
 
@@ -2126,18 +2141,22 @@ class Biped( AbstractArmature ):
 		ex = gtk.Expander( 'Standing' )
 		root.pack_start( ex, expand=False )
 		box = gtk.VBox(); ex.add( box )
-		for tag in 'when_standing_foot_target_goal_weight when_standing_head_lift when_standing_foot_step_far_lift when_standing_foot_step_near_pull'.split():
-			slider = SimpleSlider( self, name=tag, min=0, max=200 )
+		for tag in 'when_standing_head_lift when_standing_foot_target_goal_weight when_standing_foot_step_far_lift when_standing_foot_step_near_pull'.split():
+			slider = Slider( self, name=tag, title=tag[14:], min=0, max=200 )
 			box.pack_start( slider.widget, expand=False )
+
+		slider = Slider( self, name='when_standing_foot_step_near_far_thresh', title='foot-step near/far threshold', min=0.01, max=5 )
+		box.pack_start( slider.widget, expand=False )
+
 
 		ex = gtk.Expander( 'Falling' )
 		root.pack_start( ex, expand=False )
 		box = gtk.VBox(); ex.add( box )
 		for tag in 'when_falling_and_hands_down_lift_head_by_tilt_factor when_falling_pull_hands_down_by_tilt_factor when_falling_head_curl when_falling_hand_target_goal_weight'.split():
 			if tag=='when_falling_hand_target_goal_weight':
-				slider = SimpleSlider( self, name=tag, min=0, max=200 )
+				slider = Slider( self, name=tag, min=0, max=200 )
 			else:
-				slider = SimpleSlider( self, name=tag, min=0, max=50 )
+				slider = Slider( self, name=tag, min=0, max=50 )
 			box.pack_start( slider.widget, expand=False )
 
 		return root
@@ -2150,6 +2169,11 @@ class Biped( AbstractArmature ):
 
 	def setup(self):
 		print('making biped...')
+
+		self.auto_left_step = False
+		self.auto_right_step = False
+		self.force_left_step = False
+		self.force_right_step = False
 
 		self.solver_objects = []
 		self.smooth_motion_rate = 0.0
@@ -2173,7 +2197,9 @@ class Biped( AbstractArmature ):
 		self.when_standing_foot_target_goal_weight = 100.0
 		self.when_standing_head_lift = 100.0				# magic - only when foot touches ground lift head
 		self.when_standing_foot_step_far_lift = 10			# if foot is far from target lift it up
-		self.when_standing_foot_step_near_pull = 10		# if foot is near from target pull it down
+		self.when_standing_foot_step_near_pull = 10			# if foot is near from target pull it down
+		self.when_standing_foot_step_near_far_thresh = 0.1
+
 
 		self.when_falling_and_hands_down_lift_head_by_tilt_factor = 4.0
 		self.when_falling_pull_hands_down_by_tilt_factor = 10.0
@@ -2236,8 +2262,8 @@ class Biped( AbstractArmature ):
 		self.helper_setup_foot( self.left_foot, self.left_toe )
 		self.helper_setup_foot( self.right_foot, self.right_toe, flip=True )
 
-		self.helper_setup_hand( self.left_hand, self.left_foot )
-		self.helper_setup_hand( self.right_hand, self.right_foot )
+		if self.left_hand: self.helper_setup_hand( self.left_hand, self.left_foot )
+		if self.right_hand: self.helper_setup_hand( self.right_hand, self.right_foot )
 
 
 	def helper_setup_hand( self, hand, foot ):
@@ -2399,13 +2425,14 @@ class Biped( AbstractArmature ):
 
 
 		hand_swing_targets = []
-		v = self.left_hand.biped_solver['swing-target'].location
-		hand_swing_targets.append( v )
-		v.x = -( self.left_foot.biped_solver['target'].location.x )
-
-		v = self.right_hand.biped_solver['swing-target'].location
-		hand_swing_targets.append( v )
-		v.x = -( self.right_foot.biped_solver['target'].location.x )
+		if self.left_hand:
+			v = self.left_hand.biped_solver['swing-target'].location
+			hand_swing_targets.append( v )
+			v.x = -( self.left_foot.biped_solver['target'].location.x )
+		if self.right_hand:
+			v = self.right_hand.biped_solver['swing-target'].location
+			hand_swing_targets.append( v )
+			v.x = -( self.right_foot.biped_solver['target'].location.x )
 
 		v = self.left_foot.biped_solver['target'].location
 		if v.x < 0:		# if foot moving backward only pull on heel/foot
@@ -2423,7 +2450,7 @@ class Biped( AbstractArmature ):
 		if moving == 'BACKWARD':	# hands forward if moving backwards
 			for v in hand_swing_targets: v.x += 0.1
 
-		if step_left:
+		if (step_left and self.auto_left_step) or self.force_left_step:
 			print('step LEFT')
 			rad = euler.z - math.radians(90+self.primary_heading)
 			cx = math.sin( -rad )
@@ -2433,7 +2460,7 @@ class Biped( AbstractArmature ):
 			v.y = y+cy
 			v.z = .0
 			self.left_foot_loc = v
-		if step_right:
+		if (step_right and self.auto_right_step) or self.force_right_step:
 			print('step RIGHT')
 			rad = euler.z + math.radians(90+self.primary_heading)
 			cx = math.sin( -rad )
@@ -2471,6 +2498,7 @@ class Biped( AbstractArmature ):
 			#		target.weight += 1
 
 			for hand in (self.left_hand, self.right_hand):
+				if not hand: continue
 				self.head.add_local_torque( -self.when_falling_head_curl, 0, 0 )
 				u = self.when_falling_pull_hands_down_by_tilt_factor * tilt
 				hand.add_force( 0,0, -u )
@@ -2515,9 +2543,9 @@ class Biped( AbstractArmature ):
 			v2 = self.left_foot_loc.copy()
 			v1.z = .0; v2.z = .0
 			dist = (v1 - v2).length
-			if dist > 0.5:
+			if dist > self.when_standing_foot_step_near_far_thresh:
 				foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
-			elif dist < 0.25:
+			elif dist < self.when_standing_foot_step_near_far_thresh:
 				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
 
 			foot = self.right_foot
@@ -2527,9 +2555,9 @@ class Biped( AbstractArmature ):
 			v2 = self.right_foot_loc.copy()
 			v1.z = .0; v2.z = .0
 			dist = (v1 - v2).length
-			if dist > 0.5:
+			if dist > self.when_standing_foot_step_near_far_thresh:
 				foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
-			elif dist < 0.25:
+			elif dist < self.when_standing_foot_step_near_far_thresh:
 				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
 
 

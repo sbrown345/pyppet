@@ -682,7 +682,7 @@ class ToggleButton(object):
 
 		self.box.pack_start( self.button, expand=False )
 
-		self.button.connect('button-press-event', self.on_click )
+		self.button.connect('button-release-event', self.on_click )
 
 		self.driver = False
 		if driveable:
