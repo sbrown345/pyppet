@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb22, 2012
+# Feb26, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.4k'
+VERSION = '1.9.5a'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -2633,6 +2633,7 @@ class PyppetAPI( BlenderHackLinux ):
 	######################################
 	def reset( self ):
 		self.selected = None
+		self.edit_mode = None
 		self.on_active_object_changed_callbacks = []
 		self.reset_models()
 
@@ -2641,7 +2642,8 @@ class PyppetAPI( BlenderHackLinux ):
 
 	refresh_selected = False
 	def update_callbacks(self):
-		if (self.context.active_object and self.context.active_object.name != self.selected) or self.refresh_selected:
+		if (self.context.mode != self.edit_mode) or (self.context.active_object and self.context.active_object.name != self.selected) or self.refresh_selected:
+			self.edit_mode = self.context.mode
 			self.selected = self.context.active_object.name
 			ob = bpy.data.objects[ self.selected ]
 
@@ -3573,9 +3575,11 @@ class PyppetUI( PyppetAPI ):
 		root = gtk.HBox()
 		eb.add( root )
 		DND.make_source( eb, ob )
-		root.pack_start( gtk.Label(ob.name), expand=False )
+		root.set_border_width(2)
 
 		if ob.type == 'ARMATURE':
+			root.pack_start( gtk.Label(ob.name), expand=False )
+
 			b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('toggle pose mode')
 			root.pack_start( b, expand=False )
@@ -3611,6 +3615,7 @@ class PyppetUI( PyppetAPI ):
 
 
 		elif ob.type=='LAMP':
+			root.pack_start( gtk.Label(ob.name), expand=False )
 			r,g,b = ob.data.color
 			gcolor = rgb2gdk(r,g,b)
 			b = gtk.ColorButton( gcolor )
@@ -3620,10 +3625,85 @@ class PyppetUI( PyppetAPI ):
 			slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
 			root.pack_start( slider.widget )
 
-		else:
-			print(ob, ob.name)
-			root.set_border_width(3)
+		elif ob.type == 'MESH' and self.context.mode=='EDIT_MESH':
+			b = gtk.Button( 'merge' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.merge())
 
+			b = gtk.Button( 'split' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.split())
+
+			root.pack_start( gtk.Label() )
+
+			b = gtk.Button( 'subdivide' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.subdivide())
+
+			b = gtk.Button( 'seam' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.mark_seam())
+
+			b = gtk.Button( 'unseam' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.mark_seam(clear=True))
+
+			b = gtk.Button( 'sharp' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.mark_sharp())
+
+			b = gtk.Button( 'unsharp' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.mark_sharp(clear=True))
+
+			b = gtk.Button( 'flip edge' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.edge_rotate())
+
+			#b = gtk.Button( 'slide' )
+			#root.pack_start( b, expand=False )
+			#b.connect('clicked', lambda b: bpy.ops.mesh.edge_slide())
+
+			b = gtk.Button( 'loop' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.loop_multi_select())
+
+			b = gtk.Button( 'ring' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.loop_multi_select(ring=True))
+
+			root.pack_start( gtk.Label() )
+
+			b = gtk.Button( 'extrude' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.extrude_faces_move())
+
+			b = gtk.Button( 'make' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.edge_face_add())
+
+			b = gtk.Button( 'fill' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.fill())
+
+			b = gtk.Button( 'triangulate' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.quads_convert_to_tris())
+
+			b = gtk.Button( 'quadragulate' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.tris_convert_to_quads())
+
+			b = gtk.Button( 'smooth' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.faces_shade_smooth())
+
+			b = gtk.Button( 'flat' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.faces_shade_flat())
+
+		else:
+			root.pack_start( gtk.Label(ob.name), expand=False )
 			root.pack_start( gtk.Label('    '), expand=False )
 
 			g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
