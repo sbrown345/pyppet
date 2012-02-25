@@ -1596,53 +1596,84 @@ class Target(object):
 			create boolean mod on target, set cutting
 
 	'''
-	def __init__(self,ob, weight=0.0, x=1.0, y=1.0, z=1.0):
+	def __init__(self,ob, weight=0.0, raw_power=1.0, normalized_power=0.0, x=1.0, y=1.0, z=1.0):
 		self.name = ob.name				# could change target on the fly by scripting
-		if ob.type=='ARMATURE': pass		# could target nearest rule
+		if ob.type=='ARMATURE': pass		# could target nearest bone as rule
 		self.weight = weight
+		self.raw_power = raw_power
+		self.norm_power = normalized_power
 		self.driver = None
 		self.xmult = x
 		self.ymult = y
 		self.zmult = z
+		self._modal = None
+		self.dynamic = False
 
 	def get_widget(self):
 		ex = gtk.Expander( 'Target: %s' %self.name )
 		DND.make_destination( ex )
 		ex.connect( 'drag-drop', self.cb_drop_target_driver )
+		self.rebuild_widget( ex )
+		return ex
+
+	def rebuild_widget(self,ex):
+		if self._modal: ex.remove( self._modal )
+		self._modal = root = gtk.VBox()
+		ex.add( root )
+
 		if self.driver:
 			widget = self.driver.get_widget( expander=False )
-			self.modal = widget
-			ex.add( widget )
+			root.pack_start( widget, expand=False )
+		elif self.dynamic:
+			root.pack_start( gtk.Label( '(dynamic weight)' ), expand=False )
 		else:
-			slider = SimpleSlider( self, name='weight', value=self.weight, min=.0, max=100 )
-			self.modal = slider.widget
-			ex.add( slider.widget )
+			slider = Slider( self, name='weight', title=icons.WEIGHT, tooltip='weight', min=.0, max=100, driveable=False )
+			root.pack_start( slider.widget, expand=False )
 
-		return ex
+		slider = Slider( self, name='raw_power', title=icons.RAW_POWER, tooltip='raw power', min=.0, max=2 )
+		root.pack_start( slider.widget, expand=False )
+
+		slider = Slider( self, name='norm_power', title=icons.NORMALIZED_POWER, tooltip='normalized power', min=.0, max=10 )
+		root.pack_start( slider.widget, expand=False )
+
+		ex.show_all()
 
 	def cb_drop_target_driver(self, ex, context, x, y, time):
 		ex.set_expanded(True)
-		ex.remove( self.modal )
-
 		output = DND.source_object
 		self.driver = driver = output.bind( 'TARGET', target=self, path='weight', mode='=' )
-		widget = driver.get_widget( expander=False )
-		ex.add( widget )
-		widget.show_all()
+		#widget = driver.get_widget( expander=False )
+		#ex.add( widget )
+		#widget.show_all()
+		self.rebuild_widget(ex)
+
 
 	def update(self, projectiles):
+		'''
+		un-normalized delta reaches target and sticks, but can use too much force if far away.
+		normalized delta is constant in force, but always overshoots target.
+		'''
 		target = bpy.data.objects[ self.name ]
 		vec = target.matrix_world.to_translation()
-		m = self.weight
+		W = self.weight
+
 		for p in projectiles:
-			x,y,z = vec - p.matrix_world.to_translation()	# if not normalized reaches target and stays there, but too much force when far
-			#x,y,z = (vec - p.matrix_world.to_translation()).normalize() # if normalized overshoots target
-			w = ENGINE.get_wrapper(p)
-			w.body.AddForce( 
-				x*m*self.xmult, 
-				y*m*self.ymult, 
-				z*m*self.zmult, 
+			delta = vec - p.matrix_world.to_translation()
+			x1,y1,z1 = delta
+			x2,y2,z2 = delta.normalized()
+
+			x = (x1*self.raw_power) + (x2*self.norm_power)
+			y = (y1*self.raw_power) + (y2*self.norm_power)
+			z = (z1*self.raw_power) + (z2*self.norm_power)
+
+
+			wrap = ENGINE.get_wrapper(p)
+			wrap.body.AddForce( 
+				x * self.xmult * W, 
+				y * self.ymult * W, 
+				z * self.zmult * W, 
 			)
+
 
 
 class Bone(object):
@@ -1956,6 +1987,7 @@ class AbstractArmature(object):
 
 	def create_target( self, name, ob, weight=1.0, x=1.0, y=1.0, z=1.0 ):
 		target = Target( ob, weight=weight, x=x, y=y, z=z )
+		target.dynamic = True
 		if name not in self.targets: self.targets[ name ] = []
 		self.targets[ name ].append( target )
 		return target
@@ -2141,7 +2173,7 @@ class Biped( AbstractArmature ):
 		b.connect( self, 'auto_right_step' )
 		box.pack_start( b.widget, expand=False )
 
-		b = ToggleButton('force step: left foot')
+		b = CheckButton('force step: left foot')
 		b.connect( self, 'force_left_step' )
 		box.pack_start( b.widget, expand=False )
 		b = CheckButton('force step: right foot')

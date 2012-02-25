@@ -1,5 +1,9 @@
 COOL_ICONS = 'ᚗଷව⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒𐎋ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
 
+WEIGHT = '⥤'
+RAW_POWER = '⥴'
+NORMALIZED_POWER = '⥵'
+
 PROGRESSIVE_TEXTURES = 'ᨖ'
 
 DROP_HERE = '𝘥𝘳𝘰𝘱-𝘩𝘦𝘳𝘦'
