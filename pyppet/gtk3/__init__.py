@@ -98,17 +98,21 @@ class _rpythonic_meta_(object):
 			for parent in self._rpythonic_parent_classes_:
 				if hasattr( parent, name ):
 					method = getattr( parent, name )	# should check if it really is an unbound method
-					func = parent._rpythonic_unbound_lookup_[ method ]
-					n = func.name
-					if len(func.argnames) > 1:
-						argnames = func.argnames[ 1 : ]
-						a = ',' + '=None,'.join( argnames ) + '=None'
-						b = ','.join( argnames )
-					else: a = b = ''
-					lamb = eval( 'lambda self %s: %s( self.POINTER, %s )' %(a,n,b) )
-					setattr( self.__class__, name, lamb )
-					#return lamb	# this would return the unbound lambda, must call getattr again
-					return getattr( self, name )
+					if method in parent._rpythonic_unbound_lookup_:
+						func = parent._rpythonic_unbound_lookup_[ method ]
+						print('func:', func, func.name)
+						n = func.name
+						if len(func.argnames) > 1:
+							argnames = func.argnames[ 1 : ]
+							a = ',' + '=None,'.join( argnames ) + '=None'
+							b = ','.join( argnames )
+						else: a = b = ''
+						lamb = eval( 'lambda self %s: %s( self.POINTER, %s )' %(a,n,b) )
+						setattr( self.__class__, name, lamb )
+						#return lamb	# this would return the unbound lambda, must call getattr again
+						return getattr( self, name )
+					else:
+						continue
 
 			## last resort, load from global name space ##
 			G = globals()

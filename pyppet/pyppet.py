@@ -2105,37 +2105,19 @@ class Biped( AbstractArmature ):
 		if not self.created:
 			return self.get_create_widget()
 
-
-		#sw = gtk.ScrolledWindow()
-		#sw.set_policy(True,True)
 		root = gtk.VBox(); root.set_border_width( 2 )
-		#sw.add_with_viewport( root )
 
 		widget = self.get_widget()
 		root.pack_start( widget, expand=False )
 
-		b = CheckButton('auto step: left foot')
-		b.connect( self, 'auto_left_step' )
-		root.pack_start( b.widget, expand=False )
-		b = CheckButton('auto step: right foot')
-		b.connect( self, 'auto_right_step' )
-		root.pack_start( b.widget, expand=False )
 
-		b = CheckButton('force step: left foot')
-		b.connect( self, 'force_left_step' )
-		root.pack_start( b.widget, expand=False )
-		b = CheckButton('force step: right foot')
-		b.connect( self, 'force_right_step' )
-		root.pack_start( b.widget, expand=False )
-
-
-		slider = SimpleSlider( self, name='primary_heading', title='heading', min=-180, max=180 )
+		slider = Slider( self, name='primary_heading', title='heading', min=-180, max=180 )
 		root.pack_start( slider.widget, expand=False )
 
 		#slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
 		#root.pack_start( slider.widget, expand=False )
 
-		slider = SimpleSlider( self, name='standing_height_threshold', min=.0, max=1.0 )
+		slider = Slider( self, name='standing_height_threshold', min=.0, max=1.0 )
 		root.pack_start( slider.widget, expand=False )
 
 		ex = gtk.Expander( 'Standing' )
@@ -2147,6 +2129,24 @@ class Biped( AbstractArmature ):
 
 		slider = Slider( self, name='when_standing_foot_step_near_far_thresh', title='foot-step near/far threshold', min=0.01, max=5 )
 		box.pack_start( slider.widget, expand=False )
+
+		ex = gtk.Expander( 'Stepping' )
+		root.pack_start( ex, expand=False )
+		box = gtk.VBox(); ex.add( box )
+
+		b = CheckButton('auto step: left foot')
+		b.connect( self, 'auto_left_step' )
+		box.pack_start( b.widget, expand=False )
+		b = CheckButton('auto step: right foot')
+		b.connect( self, 'auto_right_step' )
+		box.pack_start( b.widget, expand=False )
+
+		b = ToggleButton('force step: left foot')
+		b.connect( self, 'force_left_step' )
+		box.pack_start( b.widget, expand=False )
+		b = CheckButton('force step: right foot')
+		b.connect( self, 'force_right_step' )
+		box.pack_start( b.widget, expand=False )
 
 
 		ex = gtk.Expander( 'Falling' )
@@ -2471,7 +2471,7 @@ class Biped( AbstractArmature ):
 			v.z = .0
 			self.right_foot_loc = v
 
-		if not step_left or step_right: print('no STEP')
+		#if not step_left or step_right: print('no STEP')
 
 
 		#################### falling ####################
@@ -3560,6 +3560,21 @@ class PyppetUI( PyppetAPI ):
 			else:
 				model = self.entities[ ob.name ]
 				#root.pack_start( model.get_active_bone_widget() )
+
+			b = gtk.ToggleButton( icons.XRAY )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show xray')
+			b.set_active(ob.show_x_ray)
+			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
+			root.pack_start( b, expand=False )
+
+			combo = gtk.ComboBoxText()
+			root.pack_start( combo, expand=False )
+			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
+				combo.append('id', type)
+				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
+			combo.set_tooltip_text( 'view draw type' )
+			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
 
 
 

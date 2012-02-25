@@ -29,6 +29,15 @@ class MyApp( BlenderHackLinux ):
 		button.connect('clicked', self.on_click)
 		frame.add( button )
 
+		b = gtk.ToggleButton('testing')
+		root.pack_start( b, expand=False )
+		b.set_label('yyy')
+
+
+		b = gtk.CheckButton('testing')
+		root.pack_start( b, expand=False )
+		b.set_label('xxx')
+
 		self.blender_container = eb = gtk.EventBox()
 		root.pack_start( self.blender_container )
 
