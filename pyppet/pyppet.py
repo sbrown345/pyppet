@@ -85,7 +85,17 @@ import websocket
 import json
 
 ##################### PyRNA ###################
+bpy.types.Object.webgl_progressive_textures = BoolProperty( 
+	name='use progressive texture loading in webGL client', 
+	default=False 
+)
+
 bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
+
+bpy.types.Object.webgl_normal_map = FloatProperty(
+    name="normal map scale", description="normal map scale for webGL client", 
+    default=0.75)
+
 
 bpy.types.Object.UID = IntProperty(
     name="unique ID", description="unique ID for webGL client", 
@@ -220,8 +230,13 @@ def dump_collada( ob, center=False ):
 
 	mods = []
 	for mod in ob.modifiers:
+
+		## hijacked color to pass some hints to Three.js ##
 		if mod.type == 'MULTIRES':
-			hack.diffuse_color.r = 1.0	# ugly way to hide HINTS in the collada
+			hack.diffuse_color.r = 1.0
+		if mod.type == 'ARMATURE':
+			hack.diffuse_color.g = 1.0
+
 		if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
 			mod.show_viewport = False
 			mods.append( mod )
@@ -415,6 +430,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 						subsurf += mod.levels		# mod.render_levels
 				pak[ 'subsurf' ] = subsurf
 
+				pak['ptex'] = ob.webgl_progressive_textures
+				pak['norm'] = ob.webgl_normal_map
+
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
 
@@ -496,7 +514,7 @@ class WebServer( object ):
 	def close(self): self.httpd.close()
 
 	def init_webserver(self, port=8080, timeout=0.01):
-		self.hires_progressive_textures = False
+		self.hires_progressive_textures = True
 		self.httpd_port = port
 		self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
 		self.httpd.timeout = timeout
@@ -1965,7 +1983,7 @@ class AbstractArmature(object):
 
 	def get_active_bone_widget(self):
 		container = gtk.EventBox()
-		child = gtk.HBox()
+		child = gtk.VBox()
 		self._active_bone_widget = (container,child)
 		container.add( child )
 		return container
@@ -2022,24 +2040,45 @@ class AbstractArmature(object):
 
 	def update_active_bone_widget(self, bone):
 		B = self.rig[ bone.name ]
-		print(B)
-		bo = B.tail
-		print(bo)
+		bo = B.tail	# tail is a blender object
 		container,root = self._active_bone_widget
 		container.remove( root )
-		root = gtk.HBox()
+		root = gtk.VBox()
 		container.add( root )
 		self._active_bone_widget = (container,root)
 
 		root.pack_start( gtk.Label(bone.name), expand=False )
 
-		slider = SimpleSlider(
-			bo, name='ode_constant_global_force', title='',
-			tooltip='lift', 
+		slider = Slider(
+			bo, name='ode_constant_global_force', title='lift',
+			tooltip='global force on Z', 
 			target_index=2,
 			min=-100, max=500,
 		)
 		root.pack_start( slider.widget )
+
+		ex = gtk.Expander( 'Local Force' )
+		root.pack_start( ex, expand=False )
+		bx = gtk.VBox(); ex.add( bx )
+		for i in range(3):
+			slider = Slider(
+				bo, 'ode_constant_local_force', title='xyz'[i], 
+				target_index=i,
+				min=-500, max=500,
+			)
+			bx.pack_start( slider.widget, expand=False )
+
+		ex = gtk.Expander( 'Local Torque' )
+		root.pack_start( ex, expand=False )
+		bx = gtk.VBox(); ex.add( bx )
+		for i in range(3):
+			slider = Slider(
+				bo, 'ode_constant_local_torque', title='xyz'[i], 
+				target_index=i,
+				min=-500, max=500,
+			)
+			bx.pack_start( slider.widget, expand=False )
+
 		root.show_all()
 
 class Rope( AbstractArmature ):
@@ -2166,6 +2205,7 @@ class Biped( AbstractArmature ):
 				x,y,z = B.get_location()
 				if x > 0: self.left_hand = B
 				elif x < 0: self.right_hand = B
+				else: print( 'WARN: hand at zero X ->', name)
 
 			elif 'chest' in name:
 				self.chest = self.rig[ name ]
@@ -3233,6 +3273,11 @@ class PyppetUI( PyppetAPI ):
 				widget = getattr(model, 'Get%sWidget' %ob.pyppet_model)()
 				ex.add( widget )
 
+				widget = model.get_active_bone_widget()
+				ex = Expander( 'selected bone' )
+				ex.add( widget )
+				root.pack_start( ex.widget, expand=False )
+
 				widget = model.get_targets_widget()
 				ex = Expander( 'dynamic targets' )
 				ex.add( widget )
@@ -3486,7 +3531,7 @@ class PyppetUI( PyppetAPI ):
 				b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
 			else:
 				model = self.entities[ ob.name ]
-				root.pack_start( model.get_active_bone_widget() )
+				#root.pack_start( model.get_active_bone_widget() )
 
 
 
@@ -3538,8 +3583,8 @@ class PyppetUI( PyppetAPI ):
 
 
 			combo = gtk.ComboBoxText()
-			Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, driveable=True, border_width=0, no_show_all=True, tooltip='friction' )
-			Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, driveable=True, border_width=0, no_show_all=True, tooltip='bounce' )
+			Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, border_width=0, no_show_all=True, tooltip='friction' )
+			Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, border_width=0, no_show_all=True, tooltip='bounce' )
 
 			b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('toggle collision')
@@ -3609,6 +3654,8 @@ class PyppetUI( PyppetAPI ):
 			combo.set_tooltip_text( 'view draw type' )
 			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
 
+			root.pack_start( gtk.Label() )
+
 			b = gtk.ToggleButton( icons.STREAMING )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('stream mesh to webGL client')
@@ -3616,11 +3663,22 @@ class PyppetUI( PyppetAPI ):
 			b.connect('toggled', lambda b,o: setattr(o,'webgl_stream_mesh',b.get_active()), ob)
 			root.pack_start( b, expand=False )
 
+			b = gtk.ToggleButton( icons.PROGRESSIVE_TEXTURES )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('use progressive texture loading (webgl)')
+			b.set_active(ob.webgl_progressive_textures)
+			b.connect('toggled', lambda b,o: setattr(o,'webgl_progressive_textures',b.get_active()), ob)
+			root.pack_start( b, expand=False )
+
+			slider = SimpleSlider( ob, name='webgl_normal_map', title='', max=5.0, border_width=0, tooltip='normal map scale' )
+			root.pack_start( slider.widget )
+
 			b = gtk.Button( icons.REFRESH )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('rebake textures (webgl)')
 			b.connect('clicked', self.reload_rebake, ob)
 			root.pack_start( b, expand=False )
+
 
 		self._modal.show_all()
 

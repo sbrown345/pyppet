@@ -1,5 +1,7 @@
 COOL_ICONS = 'ᚗଷව⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒𐎋ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
 
+PROGRESSIVE_TEXTURES = 'ᨖ'
+
 DROP_HERE = '𝘥𝘳𝘰𝘱-𝘩𝘦𝘳𝘦'
 
 STREAMING = '𝄏'

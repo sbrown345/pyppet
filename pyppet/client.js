@@ -7,7 +7,9 @@ var DISP_SCALE_MAGIC = 1.0;
 
 var SELECTED = null;
 
-var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ color: 0x000000, wireframe: true, wireframeLinewidth:2 });
+var WIRE_MATERIAL = new THREE.MeshLambertMaterial(
+	{ color: 0x000000, wireframe: true, wireframeLinewidth:1, polygonOffset:true, polygonOffsetFactor:1 }
+);
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
@@ -90,6 +92,9 @@ function on_message(e) {
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
 			if (ob.selected) { SELECTED = m; }
+
+			m.has_progressive_textures = ob.ptex;
+			m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
 			m.position.x = ob.pos[0];
 			m.position.y = ob.pos[1];
@@ -203,16 +208,26 @@ function on_collada_ready( collada ) {
 	console.log( '>> collada loaded' );
 	dbugdae = collada;
 	mesh = collada.scene.children[0];
-	mesh.useQuaternion = true;
+	mesh.useQuaternion = true;			// ensure Quaternion
 	mesh.geometry.computeTangents();		// requires UV's
-
+	mesh.has_progressive_textures = false;	// enabled from websocket stream
 	mesh._material_ = mesh.material;
-	var displacement = false;
+
+	// hijack material color to pass info from blender //
 	if (mesh.material.color.r) {
-		displacement = true;
 		mesh.multires = true;
+		mesh.has_displacement = true;
+	} else {
+		mesh.multires = false;
+		mesh.has_displacement = false;
 	}
-	mesh.shader = mesh.material = create_normal_shader( mesh.name, displacement );
+	if (mesh.material.color.g) {	// mesh deformed with an armature will not have AO
+		mesh.has_AO = true;
+	} else {
+		mesh.has_AO = false;
+	}
+
+	mesh.shader = mesh.material = create_normal_shader( mesh.name, mesh.has_displacement, mesh.has_AO );
 
 	if (USE_SHADOWS) {
 		mesh.castShadow = true;
@@ -237,9 +252,17 @@ function reload_progressive_textures( ob ) {
 
 	ob.shader.uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, on_texture_ready );
 
-	ob.shader.uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+	if (ob.has_AO) {
+		ob.shader.uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+	}
 
 	ob.shader.uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
+
+	if (ob.has_displacement) {
+		ob.shader.uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture(
+			'/bake/'+name+'.jpg?DISPLACEMENT|256', undefined, on_texture_ready 
+		);
+	}
 
 }
 
@@ -254,7 +277,7 @@ function on_texture_ready( img ) {
 	var a = url.split('/');
 	var name = a[ a.length-1 ];
 	name = name.substring( 0, name.length-4 );
-	ob = Objects[ name.replace( '.0', '_0') ];
+	ob = Objects[ name ];
 
 	if (img.attributes['src'].nodeValue in TEX_LOADING) {		// only assign texture when ready
 		var tex = TEX_LOADING[ img.attributes['src'].nodeValue ];
@@ -272,23 +295,25 @@ function on_texture_ready( img ) {
 	}
 
 	/////////////////// do progressive loading ////////////////
-	// MAX_PROGRESSIVE_TEXTURE, etc. are defined by the server //
-	size *= 2;
-	if (type=='TEXTURE' && size <= MAX_PROGRESSIVE_TEXTURE) {
-		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
-		setTimeout( request_progressive_texture, 1000 );
-	}
-	else if (type=='NORMALS' && size <= MAX_PROGRESSIVE_NORMALS) {
-		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
-		setTimeout( request_progressive_texture, 1000 );
-	}
-	else if (type=='DISPLACEMENT' && size <= MAX_PROGRESSIVE_DISPLACEMENT) {
-		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
-		setTimeout( request_progressive_texture, 1000 );
-	}
-	else if (size <= MAX_PROGRESSIVE_DEFAULT) {
-		QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
-		setTimeout( request_progressive_texture, 1000 );
+	if (ob.has_progressive_textures) {
+		// MAX_PROGRESSIVE_TEXTURE, etc. are defined by the server //
+		size *= 2;
+		if (type=='TEXTURE' && size <= MAX_PROGRESSIVE_TEXTURE) {
+			QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+			setTimeout( request_progressive_texture, 1000 );
+		}
+		else if (type=='NORMALS' && size <= MAX_PROGRESSIVE_NORMALS) {
+			QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+			setTimeout( request_progressive_texture, 1000 );
+		}
+		else if (type=='DISPLACEMENT' && size <= MAX_PROGRESSIVE_DISPLACEMENT) {
+			QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+			setTimeout( request_progressive_texture, 1000 );
+		}
+		else if (size <= MAX_PROGRESSIVE_DEFAULT) {
+			QUEUE.push( '/bake/'+name+'.jpg?'+type+'|'+size );
+			setTimeout( request_progressive_texture, 1000 );
+		}
 	}
 }
 
@@ -299,21 +324,25 @@ function request_progressive_texture() {
 }
 
 
-function create_normal_shader( name, displacement ) {
+function create_normal_shader( name, displacement, AO ) {
 	// material parameters
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
-
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-
 	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
 	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, on_texture_ready );
-	uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+	if (AO) {
+		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+	}
 	uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
-	uniforms[ "enableAO" ].value = true;
+	if (AO) {
+		uniforms[ "enableAO" ].value = true;
+	} else {
+		uniforms[ "enableAO" ].value = false;
+	}
 	uniforms[ "enableDiffuse" ].value = true;
 	uniforms[ "enableSpecular" ].value = true;
 	uniforms[ "enableReflection" ].value = false;
