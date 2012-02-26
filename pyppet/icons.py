@@ -1,4 +1,11 @@
-COOL_ICONS = 'ᚗଷව⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒𐎋ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
+COOL_ICONS = 'ᚗଷ⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
+
+ACTIVE_BONE = '𝓪𝓬𝓽𝓲𝓿𝓮 𝓫𝓸𝓷𝓮'
+ACTIVE_BONE_ICON = '𐎋'
+
+DYNAMIC_TARGETS = '𝓭𝔂𝓷𝓪𝓶𝓲𝓬 𝓽𝓪𝓻𝓰𝓮𝓽𝓼'
+DYNAMIC_TARGETS_ICON = 'ව'
+
 
 WEIGHT = '⥤'
 RAW_POWER = '⥴'

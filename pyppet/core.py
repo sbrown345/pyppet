@@ -844,13 +844,16 @@ class Expander(object):
 			else: b.set_label( icons.EXPANDER_UP )
 			for child in self.children: child.hide()
 
-	def append(self, child):
+
+	def add( self, child): self.append( child, expand=False )
+	def pack_start(self, child, expand=True ): self.append( child, expand )
+	def append(self, child, expand=True):
 		child.show_all()
 		child.set_no_show_all(True)
 		child.hide()
 		self.children.append( child )
-		self.root.pack_start( child, expand=False )
-	def add( self, child): self.append( child )
+		self.root.pack_start( child, expand=expand )
+
 
 
 class RNAWidget( object ):

@@ -2143,28 +2143,39 @@ class Ragdoll( AbstractArmature ):
 class Biped( AbstractArmature ):
 	ICON = icons.BIPED
 	def GetBipedWidget(self):
-		if not self.created:
-			return self.get_create_widget()
+		if not self.created: return self.get_create_widget()
 
-		root = gtk.VBox(); root.set_border_width( 2 )
+		root = gtk.VBox()
 
+		ex = Expander('Settings')
+		root.pack_start(ex.widget, expand=False)
 		widget = self.get_widget()
-		root.pack_start( widget, expand=False )
+		ex.pack_start( widget, expand=False )
 
+		b = CheckButton( 'flip knee', tooltip='reverse knee direction' )
+		b.connect( self, 'flip_knee' )
+		ex.append( b.widget )
 
 		slider = Slider( self, name='primary_heading', title='heading', min=-180, max=180 )
-		root.pack_start( slider.widget, expand=False )
+		ex.pack_start( slider.widget, expand=False )
 
 		#slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
 		#root.pack_start( slider.widget, expand=False )
 
 		slider = Slider( self, name='standing_height_threshold', min=.0, max=1.0 )
-		root.pack_start( slider.widget, expand=False )
+		ex.pack_start( slider.widget, expand=False )
 
-		ex = gtk.Expander( 'Standing' )
-		root.pack_start( ex, expand=False )
+		ex = Expander( 'When Standing' )
+		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox(); ex.add( box )
-		for tag in 'when_standing_head_lift when_standing_foot_step_far_lift when_standing_foot_step_near_pull'.split():
+
+		slider = Slider( self, name='when_standing_head_lift', title='head lift', max=500 )
+		box.pack_start( slider.widget, expand=False )
+
+		s = Slider( self, name='leg_flex', title='leg flex', min=-100, max=400 )
+		box.pack_start( s.widget, expand=False )
+
+		for tag in 'when_standing_foot_step_far_lift when_standing_foot_step_near_pull'.split():
 			slider = Slider( self, name=tag, title=tag[14:], min=0, max=200 )
 			box.pack_start( slider.widget, expand=False )
 
@@ -2172,35 +2183,33 @@ class Biped( AbstractArmature ):
 		box.pack_start( slider.widget, expand=False )
 
 		################## stepping #################
-		ex = gtk.Expander( 'Stepping' )
-		root.pack_start( ex, expand=False )
+		ex = Expander( 'Foot Stepping' )
+		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox(); ex.add( box )
 
 		row = gtk.HBox(); box.pack_start( row, expand=False )
-		row.pack_start( gtk.Label('auto-step:'), expand=False )
-		b = CheckButton('left foot')
+		row.pack_start( gtk.Label('auto-step:') )
+		b = CheckButton('left')
 		b.connect( self, 'auto_left_step' )
 		row.pack_start( b.widget, expand=False )
-		b = CheckButton('right foot')
+		b = CheckButton('right')
 		b.connect( self, 'auto_right_step' )
 		row.pack_start( b.widget, expand=False )
 
 		row = gtk.HBox(); box.pack_start( row, expand=False )
-		row.pack_start( gtk.Label('force-step:'), expand=False )
-		b = CheckButton('left foot')
+		row.pack_start( gtk.Label('force-step:') )
+		b = CheckButton('left')
 		b.connect( self, 'force_left_step' )
 		row.pack_start( b.widget, expand=False )
-		b = CheckButton('right foot')
+		b = CheckButton('right')
 		b.connect( self, 'force_right_step' )
 		row.pack_start( b.widget, expand=False )
 
-		s = Slider( self, name='when_standing_foot_target_goal_weight', title='foot-step target goal weight', min=0.0, max=200 )
+		s = Slider( self, name='when_standing_foot_target_goal_weight', title='goal weight', min=0.0, max=200 )
 		box.pack_start( s.widget, expand=False )
 
-		s = Slider( self, name='when_stepping_leg_flex', title='leg flex', min=-400, max=400 )
+		s = Slider( self, name='when_stepping_leg_flex', title='on-step leg flex', min=-100, max=400 )
 		box.pack_start( s.widget, expand=False )
-
-
 
 		s = Slider(
 			title='step power %s'%icons.RAW_POWER, 
@@ -2215,9 +2224,33 @@ class Biped( AbstractArmature ):
 		)
 		box.pack_start( s.widget, expand=False )
 
+		################ turn motion ##############
+
+		ex = Expander( 'Foot Dance' )
+		root.pack_start( ex.widget, expand=False )
+
+		s = Slider( self, name='on_motion_back_step', title='back step', max=2.0 )
+		ex.append( s.widget )
+
+		s = Slider( self, name='on_motion_back_step_rate_factor', title='back step rate factor', max=1.0 )
+		ex.append( s.widget )
+
+		s = Slider( self, name='on_motion_forward_step', title='forward step', max=2.0 )
+		ex.append( s.widget )
+
+		s = Slider( self, name='on_motion_fast_forward_thresh', title='fast forward threshold', max=10.0 )
+		ex.append( s.widget )
+
+		s = Slider( self, name='on_motion_fast_forward_step', title='fast forward step', max=2.0 )
+		ex.append( s.widget )
+
+		s = Slider( self, name='on_motion_fast_forward_step_rate_factor', title='fast forward step rate factor', max=1.0 )
+		ex.append( s.widget )
+
+
 		################## falling #####################
-		ex = gtk.Expander( 'Falling' )
-		root.pack_start( ex, expand=False )
+		ex = Expander( 'When Falling' )
+		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox(); ex.add( box )
 		for tag in 'when_falling_and_hands_down_lift_head_by_tilt_factor when_falling_pull_hands_down_by_tilt_factor when_falling_head_curl when_falling_hand_target_goal_weight'.split():
 			if tag=='when_falling_hand_target_goal_weight':
@@ -2282,9 +2315,19 @@ class Biped( AbstractArmature ):
 		self.right_foot_loc = None
 
 		############################## solver basic options ##############################
+		self.flip_knee = False
+		self.leg_flex = 50
+
+		self.on_motion_back_step = 0.5
+		self.on_motion_back_step_rate_factor = 0.25
+		self.on_motion_forward_step = 0.2
+		self.on_motion_fast_forward_thresh = 2.0
+		self.on_motion_fast_forward_step = 0.5
+		self.on_motion_fast_forward_step_rate_factor = 0.25
+
 		self.standing_height_threshold = 0.75
 		self.when_standing_foot_target_goal_weight = 100.0
-		self.when_standing_head_lift = 150.0			# magic - only when foot touches ground lift head
+		self.when_standing_head_lift = 250.0			# magic - only when foot touches ground lift head
 		self.when_standing_foot_step_far_lift = 80		# if foot is far from target lift it up
 		self.when_standing_foot_step_near_pull = 10	# if foot is near from target pull it down
 		self.when_standing_foot_step_near_far_thresh = 0.25
@@ -2405,6 +2448,8 @@ class Biped( AbstractArmature ):
 		foot.biped_solver[ 'target' ] = ob
 
 		ob.empty_draw_type = 'SINGLE_ARROW'
+		ob.empty_draw_size = 2.5
+
 		Pyppet.context.scene.objects.link( ob )
 		ob.parent = foot.shadow_parent
 
@@ -2412,21 +2457,19 @@ class Biped( AbstractArmature ):
 		self.foot_solver_targets.append( target )	# standing or falling modifies all foot targets
 		foot.biped_solver[ 'TARGET' ] = target
 
-		target = self.create_target( foot.name, self.pelvis.shaft, weight=0, z=.0 )	# pull feet to hip when fallen
-		foot.biped_solver[ 'TARGET:pelvis' ] = target
+		target = self.create_target( foot.name, self.pelvis.shaft, weight=0, z=.0 )
+		foot.biped_solver[ 'TARGET:pelvis' ] = target		# pull feet to hip when fallen
 
-
-		cns = ob.constraints.new('TRACK_TO')		# points on the Y
-		cns.target = self.pelvis.tail
+		cns = ob.constraints.new('TRACK_TO')
+		cns.target = self.pelvis.shaft
 		cns.track_axis = 'TRACK_Z'
 		cns.up_axis = 'UP_Y'
 		cns.use_target_z = True
 
-
 		if toe:
 			target = self.create_target( toe.name, ob, weight=30, z=.0 )
-			self.foot_solver_targets.append( target )
 			toe.biped_solver['TARGET'] = target
+			self.foot_solver_targets.append( target )
 
 
 
@@ -2497,17 +2540,19 @@ class Biped( AbstractArmature ):
 
 		if turning == 'LEFT':
 			if moving == 'BACKWARD':
-				self.left_foot.shadow.location.x = -(motion_rate * 0.25)
-				self.right_foot.shadow.location.x = -0.5
+				self.left_foot.shadow.location.x = -(motion_rate * self.on_motion_back_step_rate_factor)
+				self.right_foot.shadow.location.x = -self.on_motion_back_step
 
 			elif moving == 'FORWARD':
 				self.left_foot.shadow.location.x = 0.1
-				self.right_foot.shadow.location.x = 0.2
-				if motion_rate > 2:
+				self.right_foot.shadow.location.x = self.on_motion_forward_step
+				if motion_rate > self.on_motion_fast_forward_thresh:
 					if random() > 0.8:
 						step_right = True
 						self.left_foot.shadow.location.x = -(motion_rate * 0.25)
-					self.right_foot.shadow.location.x = motion_rate * 0.25
+					self.right_foot.shadow.location.x = motion_rate * self.on_motion_fast_forward_step_rate_factor
+					self.right_foot.shadow.location.x += self.on_motion_fast_forward_step
+
 
 			if not step_right and random() > 0.2:
 				if random() > 0.1: step_left = True
@@ -2515,17 +2560,18 @@ class Biped( AbstractArmature ):
 
 		elif turning == 'RIGHT':
 			if moving == 'BACKWARD':
-				self.right_foot.shadow.location.x = -(motion_rate * 0.25)
-				self.left_foot.shadow.location.x = -0.5
+				self.right_foot.shadow.location.x = -(motion_rate * self.on_motion_back_step_rate_factor)
+				self.left_foot.shadow.location.x = -self.on_motion_back_step
 
 			elif moving == 'FORWARD':
 				self.right_foot.shadow.location.x = 0.1
-				self.left_foot.shadow.location.x = 0.2
-				if motion_rate > 2:
+				self.left_foot.shadow.location.x = self.on_motion_forward_step
+				if motion_rate > self.on_motion_fast_forward_thresh:
 					if random() > 0.8:
 						step_left = True
 						self.right_foot.shadow.location.x = -(motion_rate * 0.25)
-					self.left_foot.shadow.location.x = motion_rate * 0.25
+					self.left_foot.shadow.location.x = motion_rate * self.on_motion_fast_forward_step_rate_factor
+					self.left_foot.shadow.location.x += self.on_motion_fast_forward_step
 
 			if not step_left and random() > 0.2:
 				if random() > 0.1: step_right = True
@@ -2587,13 +2633,23 @@ class Biped( AbstractArmature ):
 			elif dist < self.when_standing_foot_step_near_far_thresh:
 				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
 
-			foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
-			foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+			if self.flip_knee:
+				foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+			else:
+				foot.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+
 		else:
 			foot = self.left_foot
-			foot.parent.add_local_torque( self.when_stepping_leg_flex*0.1, 0, 0 )
-			foot.parent.add_local_torque( -self.when_stepping_leg_flex*0.5, 0, 0 )
-			foot.parent.parent.add_local_torque( self.when_stepping_leg_flex*0.25, 0, 0 )
+			if self.flip_knee:
+				foot.parent.add_local_torque( self.leg_flex*0.25, 0, 0 )
+				foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
+			else:
+				foot.parent.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+				foot.parent.add_local_torque( self.leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
 
 		if (step_right and self.auto_right_step) or self.force_right_step:
@@ -2619,13 +2675,23 @@ class Biped( AbstractArmature ):
 			elif dist < self.when_standing_foot_step_near_far_thresh:
 				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
 
-			foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
-			foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+			if self.flip_knee:
+				foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+			else:
+				foot.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+
 		else:
 			foot = self.right_foot
-			foot.parent.add_local_torque( self.when_stepping_leg_flex*0.1, 0, 0 )
-			foot.parent.add_local_torque( -self.when_stepping_leg_flex*0.5, 0, 0 )
-			foot.parent.parent.add_local_torque( self.when_stepping_leg_flex*0.25, 0, 0 )
+			if self.flip_knee:
+				foot.parent.add_local_torque( self.leg_flex*0.25, 0, 0 )
+				foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
+			else:
+				foot.parent.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+				foot.parent.add_local_torque( self.leg_flex, 0, 0 )
+				foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
 
 		#if not step_left or step_right: print('no STEP')
@@ -3276,6 +3342,18 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools_modals[ 'solver' ] = (ex,note)
 		Pyppet.register( self.update_solver_widget )
 
+		ex = DetachableExpander( icons.ACTIVE_BONE, icons.ACTIVE_BONE_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'active-bone' ] = (ex,note)
+		Pyppet.register( self.update_bone_widget )
+
+		ex = DetachableExpander( icons.DYNAMIC_TARGETS, icons.DYNAMIC_TARGETS_ICON )
+		self._left_tools.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'dynamic-targets' ] = (ex,note)
+		Pyppet.register( self.update_dynamic_targets_widget )
+
 
 	def update_drivers_widget( self, ob ):
 		EX,root = self._left_tools_modals[ 'drivers' ]
@@ -3427,23 +3505,9 @@ class PyppetUI( PyppetAPI ):
 				root.set_border_width(3)
 				self._left_tools_modals[ 'solver' ] = (EX,root)
 
-				print('pyppet-model:', ob.pyppet_model)
-				ex = Expander( ob.pyppet_model )
-				root.pack_start( ex.widget, expand=False )
 				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
-				#label = model.get_widget_label()
 				widget = getattr(model, 'Get%sWidget' %ob.pyppet_model)()
-				ex.add( widget )
-
-				widget = model.get_active_bone_widget()
-				ex = Expander( 'selected bone' )
-				ex.add( widget )
-				root.pack_start( ex.widget, expand=False )
-
-				widget = model.get_targets_widget()
-				ex = Expander( 'dynamic targets' )
-				ex.add( widget )
-				root.pack_start( ex.widget, expand=True )
+				root.pack_start( widget )
 
 
 			else:
@@ -3457,6 +3521,32 @@ class PyppetUI( PyppetAPI ):
 					note.append_page( widget, label )
 
 
+			EX.show_all()
+
+	def update_bone_widget(self,ob):
+		if ob.type=='ARMATURE':
+			EX,note = self._left_tools_modals[ 'active-bone' ]
+			EX.remove( note )
+			if ob.pyppet_model:
+				root = gtk.VBox(); EX.add( root )
+				root.set_border_width(3)
+				self._left_tools_modals[ 'active-bone' ] = (EX,root)
+				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
+				widget = model.get_active_bone_widget()
+				root.pack_start( widget, expand=False )
+			EX.show_all()
+
+	def update_dynamic_targets_widget(self,ob):
+		if ob.type=='ARMATURE':
+			EX,note = self._left_tools_modals[ 'dynamic-targets' ]
+			EX.remove( note )
+			if ob.pyppet_model:
+				root = gtk.VBox(); EX.add( root )
+				root.set_border_width(3)
+				self._left_tools_modals[ 'dynamic-targets' ] = (EX,root)
+				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
+				widget = model.get_targets_widget()
+				root.pack_start( widget, expand=False )
 			EX.show_all()
 
 
