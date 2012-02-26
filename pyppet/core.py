@@ -586,7 +586,7 @@ XDND = ExternalDND()
 
 ############## Simple Driveable Slider ##############
 class Slider(object):
-	def __init__(self, object=None, name=None, title=None, target_index=None, value=0, min=0, max=1, border_width=2, driveable=True, no_show_all=False, tooltip=None, integer=False):
+	def __init__(self, object=None, name=None, title=None, target_index=None, value=0, min=0, max=1, border_width=2, driveable=True, no_show_all=False, tooltip=None, integer=False, callback=None):
 		self.min = min
 		self.max = max
 
@@ -618,7 +618,8 @@ class Slider(object):
 		if integer: scale.set_digits(0)
 		else: scale.set_digits(2)
 
-		if object is not None:
+		if callback: adjust.connect( 'value-changed', callback )
+		elif object is not None:
 			if target_index is not None:
 				func = lambda a,o,n,idx: getattr(o, n).__setitem__(idx, a.get_value())
 				adjust.connect(
