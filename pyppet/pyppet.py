@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb26, 2012
+# Feb27, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -1837,10 +1837,27 @@ class Bone(object):
 		#self.primary_joints[ ebone.name ] = {'body':joint}
 
 
+		if self.head:	# must come before STRETCH_TO
+			cns = pbone.constraints.new('COPY_LOCATION')
+			cns.target = self.head
+
+			## bind body to head ##
+			parent = ENGINE.get_wrapper( self.head )
+			child = ENGINE.get_wrapper( self.shaft )
+			joint = child.new_joint(
+				parent, 
+				name='ROOT.'+parent.name,
+				type='ball'
+			)
+			#self.primary_joints[ ebone.name ]['head'] = joint
+
+
+
 		if stretch:
-			cns = pbone.constraints.new('STRETCH_TO')
+			self.stretch_to_constraint = cns = pbone.constraints.new('STRETCH_TO')
 			cns.target = self.tail
 			#cns.bulge = 1.5
+			self.ik = None
 
 		else:
 			self.ik = cns = pbone.constraints.new('IK')
@@ -1860,19 +1877,6 @@ class Bone(object):
 			cns.up_axis = 'UP_Z'
 
 
-		if self.head:
-			cns = pbone.constraints.new('COPY_LOCATION')
-			cns.target = self.head
-
-			## bind body to head ##
-			parent = ENGINE.get_wrapper( self.head )
-			child = ENGINE.get_wrapper( self.shaft )
-			joint = child.new_joint(
-				parent, 
-				name='ROOT.'+parent.name,
-				type='ball'
-			)
-			#self.primary_joints[ ebone.name ]['head'] = joint
 
 		if self.armature.parent:
 			for ob in self.get_objects():
@@ -1924,7 +1928,7 @@ class AbstractArmature(object):
 		break_thresh = SimpleSlider( name='joint breaking threshold', value=200, min=0.01, max=420 )
 		damage_thresh = SimpleSlider( name='joint damage threshold', value=150, min=0.01, max=420 )
 
-		b = gtk.Button('create')
+		b = gtk.Button('create %s' %self.__class__.__name__)
 		row.pack_start( b, expand=False )
 		b.connect(
 			'clicked',
@@ -1984,8 +1988,9 @@ class AbstractArmature(object):
 		for name in self.rig:
 			child = self.rig[name]
 
-			child.ik.pole_target = child.pole	# blender bug?
-			child.ik.pole_angle = math.radians( -90 )
+			if child.ik:
+				child.ik.pole_target = child.pole
+				child.ik.pole_angle = math.radians( -90 )
 
 			if child.parent_name:
 				parent = self.rig[ child.parent_name ]
