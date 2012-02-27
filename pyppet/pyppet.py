@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb27, 2012
+# Feb28, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -1866,17 +1866,6 @@ class Bone(object):
 			#cns.use_stretch = stretch
 			#cns.pole_target = self.pole		# creates invalid state - blender bug?
 
-		if 0:
-			#cns = pbone.constraints.new('LOCKED_TRACK')
-			#cns.target = self.pole
-			#cns.track_axis = 'TRACK_Z'
-			#cns.lock_axis = 'LOCK_Y'
-			cns = pbone.constraints.new('TRACK_TO')
-			cns.target = self.pole
-			cns.track_axis = 'TRACK_Y'
-			cns.up_axis = 'UP_Z'
-
-
 
 		if self.armature.parent:
 			for ob in self.get_objects():
@@ -1918,6 +1907,17 @@ class AbstractArmature(object):
 		self.created = False
 		self._targets_widget = None
 		self._active_bone_widget = None
+		self.broken = []
+
+	def any_ancestors_broken(self, child):
+		broken = []
+		self._get_ancestors_broken(child, broken)
+		return len(broken)
+
+	def _get_ancestors_broken(self, child, broken):		# recursive
+		if child in self.broken: broken.append( child )
+		if child.parent: self._get_ancestors_broken( child.parent, broken )
+
 
 	def get_create_widget(self):
 		root = gtk.VBox()
@@ -2010,7 +2010,10 @@ class AbstractArmature(object):
 		for bname in self.targets:
 			for target in self.targets[bname]:
 				#target.driver.update()	# DriverManager.update takes care of this
-				target.update( self.rig[ bname ].get_objects() )
+				B = self.rig[ bname ]
+				if B not in self.broken:
+					target.update( self.rig[ bname ].get_objects() )
+
 		for B in self.rig.values():
 			for joint in B.breakable_joints:
 				if joint.broken: continue
@@ -2018,7 +2021,9 @@ class AbstractArmature(object):
 				if stress > joint.breaking_threshold:
 					joint.break_joint()
 					print('-----breaking joint stress', stress)
-				if stress > joint.damage_threshold:
+					if B not in self.broken: self.broken.append( B )
+
+				elif stress > joint.damage_threshold:
 					joint.damage(0.5)
 					print('-----damage joint stress', stress)
 
@@ -2074,6 +2079,7 @@ class AbstractArmature(object):
 
 	def heal_broken_joints(self,b):
 		for B in self.rig.values():
+			if B in self.broken: self.broken.remove( B )
 			for joint in B.breakable_joints:
 				if joint.broken: joint.restore()
 
@@ -2664,33 +2670,47 @@ class Biped( AbstractArmature ):
 			## lift feet ##
 			foot = self.left_foot
 			v1 = foot.get_location().copy()
-			if standing and v1.z < 0.1: self.head.add_force( 0,0, head_lift*0.5 )
+			if standing and v1.z < 0.1:
+				if self.head not in self.broken:
+					self.head.add_force( 0,0, head_lift*0.5 )
 
 			v2 = self.left_foot_loc.copy()
 			v1.z = .0; v2.z = .0
 			dist = (v1 - v2).length
 			if dist > self.when_standing_foot_step_near_far_thresh:
-				foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
+				if foot not in self.broken:
+					foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
 			elif dist < self.when_standing_foot_step_near_far_thresh:
-				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
+				if foot not in self.broken:
+					foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
 
 			if self.flip_knee:
-				foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
 			else:
-				foot.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
 
 		else:
 			foot = self.left_foot
 			if self.flip_knee:
-				foot.parent.add_local_torque( self.leg_flex*0.25, 0, 0 )
-				foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
+				if foot not in self.broken:
+					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
 			else:
-				foot.parent.add_local_torque( -self.leg_flex*0.25, 0, 0 )
-				foot.parent.add_local_torque( self.leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
+				if foot not in self.broken:
+					foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
 
 		if (step_right and self.auto_right_step) or self.force_right_step:
@@ -2706,33 +2726,47 @@ class Biped( AbstractArmature ):
 
 			foot = self.right_foot
 			v1 = foot.get_location().copy()
-			if standing and v1.z < 0.1: self.head.add_force( 0,0, head_lift*0.5 )
+			if standing and v1.z < 0.1:
+				if self.head not in self.broken:
+					self.head.add_force( 0,0, head_lift*0.5 )
 
 			v2 = self.right_foot_loc.copy()
 			v1.z = .0; v2.z = .0
 			dist = (v1 - v2).length
 			if dist > self.when_standing_foot_step_near_far_thresh:
-				foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
+				if foot not in self.broken:
+					foot.add_force( 0, 0, self.when_standing_foot_step_far_lift)
 			elif dist < self.when_standing_foot_step_near_far_thresh:
-				foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
+				if foot not in self.broken:
+					foot.add_force( 0, 0, -self.when_standing_foot_step_near_pull)
 
 			if self.flip_knee:
-				foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
 			else:
-				foot.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( -self.when_stepping_leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( self.when_stepping_leg_flex, 0, 0 )
 
 		else:
 			foot = self.right_foot
 			if self.flip_knee:
-				foot.parent.add_local_torque( self.leg_flex*0.25, 0, 0 )
-				foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
+				if foot not in self.broken:
+					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
 			else:
-				foot.parent.add_local_torque( -self.leg_flex*0.25, 0, 0 )
-				foot.parent.add_local_torque( self.leg_flex, 0, 0 )
-				foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
+				if foot not in self.broken:
+					foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+				if foot.parent not in self.broken:
+					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
+				if foot.parent.parent not in self.broken:
+					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
 
 		#if not step_left or step_right: print('no STEP')
@@ -2745,8 +2779,8 @@ class Biped( AbstractArmature ):
 				for foot in (self.left_foot, self.right_foot):
 					target = foot.biped_solver[ 'TARGET:pelvis' ]
 					if target.weight < 50: target.weight += 1.0
-
-					foot.add_local_torque( -30, 0, 0 )
+					if foot not in self.broken:
+						foot.add_local_torque( -30, 0, 0 )
 
 			else:
 				for foot in (self.left_foot, self.right_foot):
@@ -2762,7 +2796,8 @@ class Biped( AbstractArmature ):
 			#		target.weight += 1
 
 			for hand in (self.left_hand, self.right_hand):
-				if not hand: continue
+				if not hand or hand in self.broken: continue
+
 				self.head.add_local_torque( -self.when_falling_head_curl, 0, 0 )
 				u = self.when_falling_pull_hands_down_by_tilt_factor * tilt
 				hand.add_force( 0,0, -u )
@@ -2797,8 +2832,8 @@ class Biped( AbstractArmature ):
 			for toe in ( self.left_toe, self.right_toe ):
 				x,y,z = toe.get_location()
 				if z < self.toe_height_standing_threshold or z < toe.rest_height:
-					self.head.add_force( 0,0, head_lift*0.5 )
-
+					if self.head not in self.broken and not self.any_ancestors_broken(toe):
+						self.head.add_force( 0,0, head_lift*0.5 )
 
 
 

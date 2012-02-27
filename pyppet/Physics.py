@@ -366,6 +366,12 @@ class Joint( object ):
 		self.settings = ['type', 'breaking_threshold']	# for loading/saving TODO - or just save all simple py types?
 		self.feedback = ode.JointFeedback()
 		self.set_type( type )	# must be last
+		self._on_broken_callback = None	# user callback
+		self._on_broken_args = None
+
+	def set_on_broken_callback( self, func, *args ):
+		self._on_broken_callback = func
+		self._on_broken_args = args
 
 	def get_stress(self):
 		s = []
@@ -380,8 +386,10 @@ class Joint( object ):
 		else:
 			self.broken = True
 			ode.JointDisable( self.joint )
-			for joint in self.slaves:
-				joint.break_joint()
+			for joint in self.slaves: joint.break_joint()
+			if self._on_broken_callback:
+				self._on_broken_callback( *self._on_broken_args )
+
 
 	def restore(self):
 		if self.broken:
