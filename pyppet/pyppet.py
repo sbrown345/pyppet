@@ -1732,7 +1732,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False):
+	def __init__(self, arm, name, stretch=False, object_data=None):
 		self.armature = arm
 		self.name = name
 		self.head = None
@@ -1759,9 +1759,15 @@ class Bone(object):
 
 
 		################ body #################
-		self.shaft = bpy.data.objects.new( name=name, object_data=None )
-		self.shaft.empty_draw_type = 'CUBE'
+		self.shaft = bpy.data.objects.new( name=name, object_data=object_data )
 		self.shaft.hide_select = True
+		if object_data:
+			self.shaft.draw_type = 'WIRE'
+			self.bullet_collision = self.shaft.modifiers.new(name='RIG', type='COLLISION' )
+		else:
+			self.shaft.empty_draw_type = 'CUBE'
+			self.bullet_collision = None
+
 		Pyppet.context.scene.objects.link(self.shaft)
 		m = pbone.matrix.copy()
 		delta = pbone.tail - pbone.head
@@ -1784,25 +1790,34 @@ class Bone(object):
 		################ pole-target (up-vector) ##############
 		self.pole = bpy.data.objects.new( name='POLE.'+name, object_data=None )
 		#self.pole.empty_draw_type = 'CUBE'
-		#self.pole.hide_select = True
+		self.pole.hide_select = True
 		Pyppet.context.scene.objects.link(self.pole)
 		self.pole.location.z = -10.0
 		self.pole.parent = self.shaft
 
 
 		################# tail ###############
-		self.tail = bpy.data.objects.new(name='TAIL.'+name,object_data=None)
+		self.tail = bpy.data.objects.new(name='TAIL.'+name,object_data=object_data)
 		self.tail.show_x_ray = True
 		Pyppet.context.scene.objects.link( self.tail )
-		self.tail.empty_draw_type = 'SPHERE'
-		self.tail.empty_draw_size = ebone.tail_radius * 1.75
 		m = pbone.matrix.copy()
 		x,y,z = pbone.tail
 		m[0][3] = x	# blender2.61 style
 		m[1][3] = y
 		m[2][3] = z
-
 		self.tail.matrix_world = m
+		self.tail.scale = [ ebone.tail_radius * 1.75 ] * 3
+		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
+
+		if object_data:
+			self.tail.draw_type = 'WIRE'
+			self.bullet_collision2 = self.tail.modifiers.new(name='RIG', type='COLLISION' )
+
+		else:
+			self.tail.empty_draw_type = 'SPHERE'
+			#self.tail.empty_draw_size = ebone.tail_radius * 1.75
+
+
 
 		#### make ODE bodies ####
 		if self.head: self.head.ode_use_body = True
@@ -1958,9 +1973,11 @@ class AbstractArmature(object):
 				bone.use_inherit_rotation = False
 				bone.use_inherit_scale = False
 
-
+		cube = create_cube()
 		for name in arm.pose.bones.keys():
-			self.rig[ name ] = Bone(arm,name, stretch=stretch)
+			self.rig[ name ] = Bone(arm,name, stretch=stretch, object_data=cube.data)
+		Pyppet.context.scene.objects.unlink(cube)
+		cube.user_clear()
 
 
 		## bind body to tail of parent ##
@@ -2827,15 +2844,16 @@ class PyppetAPI( BlenderHackLinux ):
 
 	refresh_selected = False
 	def update_callbacks(self):
-		if (self.context.mode != self.edit_mode) or (self.context.active_object and self.context.active_object.name != self.selected) or self.refresh_selected:
-			self.edit_mode = self.context.mode
-			self.selected = self.context.active_object.name
-			ob = bpy.data.objects[ self.selected ]
+		if self.context.active_object:
+			if (self.context.mode != self.edit_mode) or (self.context.active_object.name != self.selected) or self.refresh_selected:
+				self.edit_mode = self.context.mode
+				self.selected = self.context.active_object.name
+				ob = bpy.data.objects[ self.selected ]
 
-			for func in self.on_active_object_changed_callbacks:
-				func( ob )
+				for func in self.on_active_object_changed_callbacks:
+					func( ob )
 
-			self.refresh_selected = False
+				self.refresh_selected = False
 
 
 	########### recording/baking ###########
@@ -3127,12 +3145,16 @@ class PyppetUI( PyppetAPI ):
 
 		return frame
 
+	def toggle_blender_anim_playback( self, b ):
+		if b.get_active(): bpy.ops.screen.animation_play()
+		else: bpy.ops.screen.animation_cancel()
+
 	def get_playback_widget(self):
 		frame = gtk.Frame()
 		root = gtk.HBox(); frame.add( root )
 
 		b = gtk.ToggleButton( icons.PLAY )
-		b.connect('toggled', lambda b: bpy.ops.screen.animation_play() )
+		b.connect('toggled', self.toggle_blender_anim_playback)
 		root.pack_start( b, expand=False )
 
 		b = gtk.SpinButton()
@@ -3210,15 +3232,10 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
 		box.pack_start( b, expand=False )
 
-
-		#self.popup = Popup()
-		#b = gtk.ToggleButton( icons.POPUP ); b.set_relief( gtk.RELIEF_NONE )
-		#b.connect('toggled',self.popup.toggle_popup)
-		#box.pack_start( b, expand=False )
-
-		#b = gtk.ToggleButton( icons.OVERLAY ); b.set_relief( gtk.RELIEF_NONE )
-		#b.connect('toggled',self.toggle_overlay)
-		#box.pack_start( b, expand=False )
+		b = gtk.CheckButton()
+		b.connect('toggled', lambda b: setattr(self,'playback_blender_anim',b.get_active()))
+		b.set_tooltip_text('playback blender animation when physics is on')
+		box.pack_start( b, expand=False )
 
 		self.header.pack_start( gtk.Label() )
 
@@ -4147,15 +4164,23 @@ class App( PyppetUI ):
 		else: self.toggle_physics(True)
 
 	def toggle_physics(self,switch):
+		self.physics_running = switch
 		if switch:
 			ENGINE.start()
+			if self.playback_blender_anim:
+				bpy.ops.screen.animation_play()
 		else:
 			ENGINE.stop()
 			for e in self.entities.values(): e.reset()
+			if self.playback_blender_anim:
+				bpy.ops.screen.animation_cancel()
 
 
 	def __init__(self):
 		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
+
+		self.playback_blender_anim = False
+		self.physics_running = False
 
 		self.reset()		# PyppetAPI Public
 		self.register( self.update_header ) # listen to active object change
@@ -4185,14 +4210,6 @@ class App( PyppetUI ):
 		self.camera_aperture = 0.15
 		self.camera_maxblur = 1.0
 
-		#self.setup_blender_hack()	# moved to BlenderHack in core.py
-
-
-		#self.baker_active = False
-		#self.baker_region = None
-		#self.baker_queue = []
-		#self.setup_image_editor_callback( None )
-		#self.blender_window_ready = False
 		self.progressive_baking = True
 
 
@@ -4208,6 +4225,10 @@ class App( PyppetUI ):
 			# grabcursor on click and drag (view3d only)
 			#print(win, win.winid, win.grabcursor, win.windowstate, win.modalcursor)
 			self.context.blender_has_cursor = bool( win.grabcursor )
+
+			if self.physics_running and self.context.scene.frame_current==1:
+				if self.context.screen.is_animation_playing:
+					clear_cloth_caches()
 
 			DriverManager.update()
 			self.audio.update()		# updates gtk widgets
@@ -4837,7 +4858,7 @@ class PhysicsWidget(object):
 		page = gtk.VBox(); page.set_border_width( 3 )
 		note.append_page( page, gtk.Label('settings') )
 
-		s = SimpleSlider(scn.game_settings, name='fps', title='FPS', max=120, tooltip='frames per second', driveable=True)
+		s = SimpleSlider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second', driveable=True)
 		page.pack_start(s.widget, expand=False)
 
 		s = SimpleSlider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction', driveable=True)

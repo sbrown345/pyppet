@@ -16,6 +16,28 @@ MODIFIER_TYPES = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRROR', '
 
 CONSTRAINT_TYPES = ('COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE', 'COPY_TRANSFORMS', 'DAMPED_TRACK', 'LOCKED_TRACK', 'TRACK_TO', 'LIMIT_DISTANCE', 'LIMIT_LOCATION', 'LIMIT_ROTATION', 'LIMIT_SCALE', 'MAINTAIN_VOLUME', 'TRANSFORM', 'CLAMP_TO', 'IK', 'SPLINE_IK', 'STRETCH_TO', 'ACTION', 'CHILD_OF', 'FLOOR', 'FOLLOW_PATH', 'PIVOT', 'RIGID_BODY_JOINT', 'SCRIPT', 'SHRINKWRAP', 'CAMERA_SOLVER', 'OBJECT_SOLVER', 'FOLLOW_TRACK')
 
+def clear_cloth_caches():
+	for ob in bpy.data.objects:
+		if ob.type=='MESH':
+			for mod in ob.modifiers:
+				if mod.type=='CLOTH':
+					print('clearing cloth cache:', ob.name)
+					mod.show_viewport = False
+					mod.show_viewport = True
+
+
+def create_cube():
+	_obs_ = bpy.data.objects.keys()
+	bpy.ops.mesh.primitive_cube_add()
+	cube = None
+	for name in bpy.data.objects.keys():
+		if name not in _obs_:
+			cube = bpy.data.objects[ name ]
+			break
+	assert cube
+	return cube
+
+
 def get_hsv_color_as_rgb( hsv ):
 	h = ctypes.pointer( ctypes.c_double() )
 	s = ctypes.pointer( ctypes.c_double() )
