@@ -85,6 +85,11 @@ import websocket
 import json
 
 ##################### PyRNA ###################
+bpy.types.Object.webgl_lens_flare_scale = FloatProperty(
+    name="lens flare scale", description="size of lens flare for webGL client", 
+    default=1.0)
+
+
 bpy.types.Object.webgl_progressive_textures = BoolProperty( 
 	name='use progressive texture loading in webGL client', 
 	default=False 
@@ -396,6 +401,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				pak['energy'] = ob.data.energy
 				pak['color'] = [ round(a,3) for a in ob.data.color ]
 				pak['dist'] = ob.data.distance
+				pak['scale'] = ob.webgl_lens_flare_scale
 
 			elif ob.type == 'MESH':
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
@@ -3835,7 +3841,10 @@ class PyppetUI( PyppetAPI ):
 			b.set_relief( gtk.RELIEF_NONE )
 			root.pack_start( b, expand=False )
 			b.connect('color-set', color_set, gcolor, ob.data )
-			slider = SimpleSlider( ob.data, name='energy', title='', max=5.0, driveable=True, border_width=0 )
+			slider = Slider( ob.data, name='energy', title='', max=5.0, border_width=0, tooltip='light energy' )
+			root.pack_start( slider.widget )
+
+			slider = Slider( ob, name='webgl_lens_flare_scale', title='', max=2.0, border_width=0, tooltip='lens flare scale' )
 			root.pack_start( slider.widget )
 
 		elif ob.type == 'MESH' and self.context.mode=='EDIT_MESH':

@@ -82,6 +82,11 @@ function on_message(e) {
 		light.position.y = ob.pos[1];
 		light.position.z = ob.pos[2];
 
+		for (var i=0; i < light.flare.lensFlares.length; i ++) {
+			var flare = light.flare.lensFlares[ i ];
+			flare.scale = ob.scale;
+		}
+
 	}
 
 	for (var name in msg['meshes']) {
