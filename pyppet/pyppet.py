@@ -2156,34 +2156,44 @@ class Biped( AbstractArmature ):
 		b.connect( self, 'flip_knee' )
 		ex.append( b.widget )
 
-		slider = Slider( self, name='primary_heading', title='heading', min=-180, max=180 )
+		slider = Slider( self, name='primary_heading', title='heading', min=-180, max=180, tooltip='direction character faces' )
 		ex.pack_start( slider.widget, expand=False )
 
-		#slider = SimpleSlider( self, name='stance', min=-1, max=1, driveable=True )
-		#root.pack_start( slider.widget, expand=False )
-
-		slider = Slider( self, name='standing_height_threshold', min=.0, max=1.0 )
+		slider = Slider( self, name='stance', max=10, tooltip='distance legs will spead apart' )
 		ex.pack_start( slider.widget, expand=False )
 
-		ex = Expander( 'When Standing' )
+		slider = Slider(
+			self, name='standing_height_threshold', title='standing thresh', max=1.0, 
+			tooltip='adjust how much height will be used to determine if the character is standing'
+		)
+		ex.pack_start( slider.widget, expand=False )
+
+		ex = Expander( 'Standing Solver' )
 		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox(); ex.add( box )
 
 		slider = Slider( self, name='when_standing_head_lift', title='head lift', max=500 )
 		box.pack_start( slider.widget, expand=False )
 
-		s = Slider( self, name='leg_flex', title='leg flex', min=-100, max=400 )
+		slider = Slider(
+			self, name='toe_height_standing_threshold', title='head lift - threshold', max=1.0,
+			tooltip='if the "toe" of the foot is below this height then head lift becomes active',
+		)
+		box.pack_start( slider.widget, expand=False )
+
+
+		s = Slider( self, name='leg_flex', title='leg flex', min=-100, max=400, tooltip='standing muscle tension' )
 		box.pack_start( s.widget, expand=False )
 
 		for tag in 'when_standing_foot_step_far_lift when_standing_foot_step_near_pull'.split():
 			slider = Slider( self, name=tag, title=tag[14:], min=0, max=200 )
 			box.pack_start( slider.widget, expand=False )
 
-		slider = Slider( self, name='when_standing_foot_step_near_far_thresh', title='foot-step near/far threshold', min=0.01, max=5 )
+		slider = Slider( self, name='when_standing_foot_step_near_far_thresh', title='foot-step near/far', min=0.01, max=5 )
 		box.pack_start( slider.widget, expand=False )
 
 		################## stepping #################
-		ex = Expander( 'Foot Stepping' )
+		ex = Expander( 'Stepping Solver' )
 		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox(); ex.add( box )
 
@@ -2208,7 +2218,7 @@ class Biped( AbstractArmature ):
 		s = Slider( self, name='when_standing_foot_target_goal_weight', title='goal weight', min=0.0, max=200 )
 		box.pack_start( s.widget, expand=False )
 
-		s = Slider( self, name='when_stepping_leg_flex', title='on-step leg flex', min=-100, max=400 )
+		s = Slider( self, name='when_stepping_leg_flex', title='on-step leg flex', min=-100, max=400, tooltip='leg contraction on step' )
 		box.pack_start( s.widget, expand=False )
 
 		s = Slider(
@@ -2226,7 +2236,7 @@ class Biped( AbstractArmature ):
 
 		################ turn motion ##############
 
-		ex = Expander( 'Foot Dance' )
+		ex = Expander( 'Dancing Solver' )
 		root.pack_start( ex.widget, expand=False )
 
 		s = Slider( self, name='on_motion_back_step', title='back step', max=2.0 )
@@ -2249,7 +2259,7 @@ class Biped( AbstractArmature ):
 
 
 		################## falling #####################
-		ex = Expander( 'When Falling' )
+		ex = Expander( 'Falling Solver' )
 		root.pack_start( ex.widget, expand=False )
 		box = gtk.VBox(); ex.add( box )
 		for tag in 'when_falling_and_hands_down_lift_head_by_tilt_factor when_falling_pull_hands_down_by_tilt_factor when_falling_head_curl when_falling_hand_target_goal_weight'.split():
@@ -2271,8 +2281,8 @@ class Biped( AbstractArmature ):
 		x,y,z = self.pelvis.start_location
 
 		rad = -math.radians(self.primary_heading+90)
-		cx = math.sin( -rad )
-		cy = math.cos( -rad )
+		cx = math.sin( -rad ) * self.stance
+		cy = math.cos( -rad ) * self.stance
 		v = self.left_foot.shadow_parent.location
 		v.x = x+cx
 		v.y = y+cy
@@ -2280,8 +2290,8 @@ class Biped( AbstractArmature ):
 		self.left_foot_loc = v
 
 		rad = math.radians(self.primary_heading+90)
-		cx = math.sin( -rad )
-		cy = math.cos( -rad )
+		cx = math.sin( -rad ) * self.stance
+		cy = math.cos( -rad ) * self.stance
 		v = self.right_foot.shadow_parent.location
 		v.x = x+cx
 		v.y = y+cy
@@ -2317,6 +2327,9 @@ class Biped( AbstractArmature ):
 		############################## solver basic options ##############################
 		self.flip_knee = False
 		self.leg_flex = 50
+		self.stance = 1.0
+		self.toe_height_standing_threshold = 0.1
+
 
 		self.on_motion_back_step = 0.5
 		self.on_motion_back_step_rate_factor = 0.25
@@ -2612,8 +2625,8 @@ class Biped( AbstractArmature ):
 		if (step_left and self.auto_left_step) or self.force_left_step:
 			print('step LEFT')
 			rad = euler.z - math.radians(self.primary_heading+90)
-			cx = math.sin( -rad )
-			cy = math.cos( -rad )
+			cx = math.sin( -rad ) * self.stance
+			cy = math.cos( -rad ) * self.stance
 			v = self.left_foot.shadow_parent.location
 			v.x = x+cx
 			v.y = y+cy
@@ -2655,8 +2668,8 @@ class Biped( AbstractArmature ):
 		if (step_right and self.auto_right_step) or self.force_right_step:
 			print('step RIGHT')
 			rad = euler.z + math.radians(self.primary_heading+90)
-			cx = math.sin( -rad )
-			cy = math.cos( -rad )
+			cx = math.sin( -rad ) * self.stance
+			cy = math.cos( -rad ) * self.stance
 			v = self.right_foot.shadow_parent.location
 			v.x = x+cx
 			v.y = y+cy
@@ -2752,11 +2765,11 @@ class Biped( AbstractArmature ):
 			#	target.weight *= 0.9
 
 
+			## MAGIC: if the toes are touching the ground, lift up the head ##
 			for toe in ( self.left_toe, self.right_toe ):
 				x,y,z = toe.get_location()
-				if z < 0.1:
+				if z < self.toe_height_standing_threshold or z < toe.rest_height:
 					self.head.add_force( 0,0, head_lift*0.5 )
-
 
 
 
@@ -3528,12 +3541,11 @@ class PyppetUI( PyppetAPI ):
 			EX,note = self._left_tools_modals[ 'active-bone' ]
 			EX.remove( note )
 			if ob.pyppet_model:
-				root = gtk.VBox(); EX.add( root )
-				root.set_border_width(3)
+				root = gtk.Frame(); EX.add( root )
 				self._left_tools_modals[ 'active-bone' ] = (EX,root)
 				model = getattr(Pyppet, 'Get%s' %ob.pyppet_model)( ob.name )
 				widget = model.get_active_bone_widget()
-				root.pack_start( widget, expand=False )
+				root.add( widget )
 			EX.show_all()
 
 	def update_dynamic_targets_widget(self,ob):
@@ -3694,15 +3706,26 @@ class PyppetUI( PyppetAPI ):
 		################ The Gimp ##############
 		self._gimp_page = gtk.HBox()
 		note.append_page( self._gimp_page, gtk.Label('GIMP') )
+
 		self._gimp_toolbox_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 170, 560 )
 		self._gimp_image_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 320, 560 )
 		self._gimp_layers_xsocket = soc = gtk.Socket()
 		soc.set_size_request( 240, 560 )
-		self._gimp_page.pack_start( self._gimp_toolbox_xsocket, expand=False )
-		self._gimp_page.pack_start( self._gimp_image_xsocket, expand=True )
-		self._gimp_page.pack_start( self._gimp_layers_xsocket, expand=False )
+
+		eb = gtk.EventBox()
+		eb.add( self._gimp_toolbox_xsocket )
+		self._gimp_page.pack_start( eb, expand=False )
+
+		eb = gtk.EventBox()
+		eb.add( self._gimp_image_xsocket )
+		self._gimp_page.pack_start( eb, expand=True )
+
+		eb = gtk.EventBox()
+		eb.add( self._gimp_layers_xsocket )
+		self._gimp_page.pack_start( eb, expand=False )
+
 
 		################ gnome nautilus ####################
 		self._nautilus_container = gtk.EventBox()
