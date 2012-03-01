@@ -4978,7 +4978,10 @@ class PhysicsWidget(object):
 		page = gtk.VBox(); page.set_border_width( 3 )
 		note.append_page( page, gtk.Label('settings') )
 
-		s = Slider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second')
+		#s = Slider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second')
+		#page.pack_start(s.widget, expand=False)
+
+		s = Slider(scn.world, name='ode_speed', title='speed', min=0.01, max=1.0, tooltip='physics speed')
 		page.pack_start(s.widget, expand=False)
 
 		s = Slider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction')

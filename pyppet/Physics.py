@@ -1,5 +1,5 @@
 ## Ode Physics Addon for Blender
-## by Brett Hart, Feb 23, 2011
+## by Brett Hart, March 1st, 2011
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
@@ -68,6 +68,8 @@ bpy.types.Object.ode_global_torque = FloatVectorProperty( name='local torque' )
 bpy.types.Object.ode_local_torque = FloatVectorProperty( name='local torque' )
 #################################################################
 bpy.types.Object.ode_force_driver_rate = FloatProperty( name='force driver rate', default=0.420, min=.0, max=1.0 )
+
+bpy.types.World.ode_speed = FloatProperty( 'physics speed', min=0.01, max=1.0, default=0.05 )
 
 
 def _set_gravity(world,context):
@@ -189,7 +191,7 @@ class OdeSingleton(object):
 		self._tmp_joints = []
 
 		self.substeps = 4
-		self.rate = 1.0 / 30
+		self.rate = 1.0 / 20
 		self.lock = lock
 
 		if lock:
@@ -249,12 +251,13 @@ class OdeSingleton(object):
 			obj.sync( ob )		# gets new settings, calls AddForce etc...
 			fast.append( (obj,ob) )
 
-		fps = context.scene.game_settings.fps
-		self.rate = rate = 1.0 / fps
+		#fps = context.scene.game_settings.fps
+		#self.rate = rate = 1.0 / fps
+		self.rate = context.scene.world.ode_speed
 
 		if not self.threaded:
 			ode.SpaceCollide( self.space, None, self.near_callback )
-			self.world.QuickStep( rate )
+			self.world.QuickStep( self.rate )
 			ode.JointGroupEmpty( self.joint_group )
 			self._iterations += 1
 
@@ -294,10 +297,10 @@ class OdeSingleton(object):
 		state = []
 		while self.active:
 			T = time.time()
-			self.lock.acquire()
 
-			#print('pending contact joints', len(self._pending_contact_joints))
-			#while self._pending_contact_joints:
+			[ wrap.sync_from_ode_thread() for wrap in self.objects.values() ]
+
+			self.lock.acquire()
 
 			if 0:
 				state = list( self._collision_state )
@@ -793,6 +796,7 @@ class Object( object ):
 		self.joints = {}
 		self.alive = True
 		self.transform = None	# used to set a transform directly, format: (pos,quat)
+		self._blender_transform = None	# used by geom-only objects
 		self.save_transform( bo )
 
 	def save_transform(self, bo):
@@ -971,15 +975,41 @@ class Object( object ):
 			if key not in 'use_ghost collision_bounds_type'.split():
 				self.config.pop( key )
 
+	def sync_from_ode_thread(self):
+		'''
+		do updates that are only safe from the ODE thread
+		'''
+		if self.geom and not self.body and self._blender_transform:
+			geom = self.geom
+			pos,rot,scl = self._blender_transform
+			px,py,pz = pos
+			rw,rx,ry,rz = rot
+			sx,sy,sz = scl
+			geom.SetPosition( px, py, pz )
+			geom.SetQuaternion( (rw,rx,ry,rz) )
+			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():
+				sradius = ((sx+sy+sz) / 3.0) *0.5
+				cradius = ((sx+sy)/2.0) * 0.5
+				length = sz
+				if self.geomtype == 'BOX': geom.BoxSetLengths( sx, sy, sz )
+				elif self.geomtype == 'SPHERE': geom.SphereSetRadius( sradius )
+				elif self.geomtype == 'CAPSULE': geom.CapsuleSetParams( sradius, length )
+				elif self.geomtype == 'CYLINDER': geom.CylinderSetParams( sradius, length )
+
+		elif self.body and self.transform:	# used by preview playback
+			pos,rot = self.transform
+			x,y,z = pos
+			self.body.SetPosition( x, y, z )
+			w,x,y,z = rot
+			self.body.SetQuaternion( (w,x,y,z) )
+
 	def sync( self, ob ):		# pre-sync, called before physics update
 		cfg = self.config
 		body = self.body
-		geom = self.geom
 
 		## to make things thread-safe we need to copy these attributes from pyRNA ##
 		self._friction = ob.ode_friction
 		self._bounce = ob.ode_bounce
-
 
 		pos,rot,scl = ob.matrix_world.decompose()
 		px,py,pz = pos
@@ -987,20 +1017,15 @@ class Object( object ):
 		sx,sy,sz = scl
 		if ob.type == 'MESH': sx,sy,sz = ob.dimensions
 
+		self._blender_transform = ( (px,py,pz), (rw,rx,ry,rz), (sx,sy,sz) )
+
 		LIMIT = 10000	# this should be camera far range
 		if abs(px) > LIMIT or abs(py) > LIMIT or abs(pz) > LIMIT:
 			if self.alive and body: body.Disable()
 			self.alive = False
 		if not self.alive: return
 
-		if self.transform and body:	# used by preview playback
-			pos,rot = self.transform
-			x,y,z = pos
-			body.SetPosition( x, y, z )
-			w,x,y,z = rot
-			body.SetQuaternion( (w,x,y,z) )
-
-		elif body:				# apply constant forces
+		if body and not self.transform:				# apply constant forces
 			x,y,z = ob.ode_local_force
 			if x or y or z: body.AddRelForce( x,y,z )
 			x,y,z = ob.ode_global_force
@@ -1024,18 +1049,6 @@ class Object( object ):
 			if x or y or z: body.AddRelTorque( x,y,z )
 			x,y,z = ob.ode_constant_global_torque
 			if x or y or z: body.AddTorque( x,y,z )
-
-		elif geom and not body and False:	 ## bodyless geoms should always get updates from blender
-			geom.SetPosition( px, py, pz )
-			geom.SetQuaternion( (rw,rx,ry,rz) )
-			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():
-				sradius = ((sx+sy+sz) / 3.0) *0.5
-				cradius = ((sx+sy)/2.0) * 0.5
-				length = sz
-				if self.geomtype == 'BOX': geom.BoxSetLengths( sx, sy, sz )
-				elif self.geomtype == 'SPHERE': geom.SphereSetRadius( sradius )
-				elif self.geomtype == 'CAPSULE': geom.CapsuleSetParams( sradius, length )
-				elif self.geomtype == 'CYLINDER': geom.CylinderSetParams( sradius, length )
 
 
 	def update( self, ob, now=None, recording=False ):
