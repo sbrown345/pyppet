@@ -3,6 +3,10 @@
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
+DEFAULT_ERP = 0.95
+DEFAULT_CFM = 0.15
+
+
 import os, sys, time, ctypes
 import threading
 import bpy, mathutils
@@ -33,7 +37,7 @@ bpy.types.Object.ode_use_gravity = BoolProperty(
 )
 
 bpy.types.Object.ode_mass = FloatProperty( 
-	name='body mass', default=1.0,
+	name='body mass', default=0.5,
 	update=lambda self, con: ENGINE.get_wrapper(self).set_mass(self.ode_mass)
 )
 
@@ -78,11 +82,11 @@ def _set_gravity(world,context):
 bpy.types.World.ode_gravity = FloatVectorProperty( 'gravity', min=-20, max=20, default=(.0,.0,-9.810), update=_set_gravity )
 
 bpy.types.World.ode_ERP = FloatProperty(
-	'error reduction param', min=.0, max=1.0, default=0.2,
+	'error reduction param', min=.0, max=1.0, default=DEFAULT_ERP,
 	update= lambda w,c: _None( ENGINE.world.SetERP(w.ode_ERP) )
 )
 bpy.types.World.ode_CFM = FloatProperty(
-	'constant force mixing', min=.00001, max=10.0, default=.00001,
+	'constant force mixing', min=.00001, max=10.0, default=DEFAULT_CFM,
 	update= lambda w,c: _None( ENGINE.world.SetCFM(w.ode_CFM) )
 )
 bpy.types.World.ode_quickstep_iterations = IntProperty( 'quick step iterations', min=1, max=64, default=20 )
@@ -167,6 +171,9 @@ class OdeSingleton(object):
 		self.paused = False
 		ode.InitODE()
 		self.world = ode.WorldCreate()
+		self.world.SetERP( DEFAULT_ERP )
+		self.world.SetCFM( DEFAULT_CFM )
+
 		self.collision_world = ode.WorldCreate()
 
 		self.world.SetGravity(.0,.0,-9.810)
@@ -296,7 +303,7 @@ class OdeSingleton(object):
 
 		state = []
 		while self.active:
-			T = time.time()
+			start = time.time()
 
 			[ wrap.sync_from_ode_thread() for wrap in self.objects.values() ]
 
@@ -329,8 +336,9 @@ class OdeSingleton(object):
 
 			self.lock.release()
 			self._iterations += 1
-			#if time.time() - T <= 0.01:		# can reach 100fps without sleep or collision
-			#	time.sleep(0.01)
+			dt = time.time() - start
+			if dt <= 0.03:
+				time.sleep(0.03- dt)
 
 		print('------exit ODE thread------')
 
@@ -639,7 +647,7 @@ class Joint( object ):
 	
 	Params = 'ERP CFM LoStop HiStop Vel FMax FudgeFactor Bounce StopERP StopCFM SuspensionERP SuspensionCFM'.split()
 
-	def __init__(self, parent, child, name, type):
+	def __init__(self, parent, child, name, type, axis1=(1.0,.0,.0), axis2=(.0,1.0,.0) ):
 		self.parent = parent
 		self.child = child
 		self.name = name
@@ -651,9 +659,56 @@ class Joint( object ):
 		self.slaves = []		# sub-joints
 		self.settings = ['type', 'breaking_threshold']	# for loading/saving TODO - or just save all simple py types?
 		self.feedback = ode.JointFeedback()
-		self.set_type( type )	# must be last
+
+		self.axis1 = axis1
+		self.axis2 = axis2
+
 		self._on_broken_callback = None	# user callback
 		self._on_broken_args = None
+
+		self.set_type( type )	# must be last
+
+	def set_type( self, type ):
+		self.type = type					# nice name
+		self.dtype = Joint.Types[type]		# ode name
+		self._set_func = getattr( ode, 'JointSet%sParam'%self.dtype )
+		self._get_func = getattr( ode, 'JointGet%sParam'%self.dtype )
+
+		if self.joint: ode.JointDestroy(self.joint)
+		world = self.parent.world
+		func = getattr(ode, 'JointCreate%s'%self.dtype)
+		self.joint = j = func( world )
+		ode.JointAttach( j, self.parent.body, self.child.body )
+
+		x,y,z = self.parent.body.GetPosition()
+
+		if type == 'fixed': ode.JointSetFixed( j )
+		elif type == 'angular-motor': pass
+		elif type == 'linear-motor': pass
+		elif type == 'planar': pass
+		elif type == 'slider': pass
+
+		elif type == 'ball': ode.JointSetBallAnchor(self.joint, x,y,z )
+		elif type == 'hinge': ode.JointSetHingeAnchor(self.joint, x,y,z )
+		elif type == 'universal':
+			print('setting universal joint anchor', x,y,z)
+			ode.JointSetUniversalAnchor(self.joint, x,y,z )
+			ode.JointSetUniversalAxis1( self.joint, *self.axis1 )
+			ode.JointSetUniversalAxis2( self.joint, *self.axis2 )
+
+		elif type == 'dual-hinge':
+			print('setting hinge2 joint anchor', x,y,z)
+			ode.JointSetHinge2Anchor(self.joint, x,y,z )
+		elif type == 'PR': ode.JointSetPRAnchor(self.joint, x,y,z )
+		elif type == 'PU': ode.JointSetPUAnchor(self.joint, x,y,z )
+		elif type == 'piston': ode.JointSetPistonAnchor(self.joint, x,y,z )
+		else:
+			print('ERROR: unknown joint type', type)
+			assert 0
+
+		ode.JointSetFeedback( self.joint, self.feedback )
+
+
 
 	def set_on_broken_callback( self, func, *args ):
 		self._on_broken_callback = func
@@ -708,42 +763,6 @@ class Joint( object ):
 		if switch: ode.JointEnable( self.joint )
 		else: ode.JointDisable( self.joint )
 
-	def set_type( self, type ):
-		self.type = type					# nice name
-		self.dtype = Joint.Types[type]		# ode name
-		self._set_func = getattr( ode, 'JointSet%sParam'%self.dtype )
-		self._get_func = getattr( ode, 'JointGet%sParam'%self.dtype )
-
-		if self.joint: ode.JointDestroy(self.joint)
-		world = self.parent.world
-		func = getattr(ode, 'JointCreate%s'%self.dtype)
-		self.joint = j = func( world )
-		ode.JointAttach( j, self.parent.body, self.child.body )
-
-		x,y,z = self.parent.body.GetPosition()
-
-		if type == 'fixed': ode.JointSetFixed( j )
-		elif type == 'angular-motor': pass
-		elif type == 'linear-motor': pass
-		elif type == 'planar': pass
-		elif type == 'slider': pass
-
-		elif type == 'ball': ode.JointSetBallAnchor(self.joint, x,y,z )
-		elif type == 'hinge': ode.JointSetHingeAnchor(self.joint, x,y,z )
-		elif type == 'universal':
-			print('setting universal joint anchor', x,y,z)
-			ode.JointSetUniversalAnchor(self.joint, x,y,z )
-		elif type == 'dual-hinge':
-			print('setting hinge2 joint anchor', x,y,z)
-			ode.JointSetHinge2Anchor(self.joint, x,y,z )
-		elif type == 'PR': ode.JointSetPRAnchor(self.joint, x,y,z )
-		elif type == 'PU': ode.JointSetPUAnchor(self.joint, x,y,z )
-		elif type == 'piston': ode.JointSetPistonAnchor(self.joint, x,y,z )
-		else:
-			print('ERROR: unknown joint type', type)
-			assert 0
-
-		ode.JointSetFeedback( self.joint, self.feedback )
 
 	def set_param( self, param, *args ):
 		assert param in Joint.Params

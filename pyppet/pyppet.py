@@ -1877,15 +1877,26 @@ class Bone(object):
 		self.parent = parent	# Bone
 		parent = ENGINE.get_wrapper( parent.tail )
 
-		## bind body to tail of parent ##
 		child = ENGINE.get_wrapper( self.shaft )
-		subjoint = child.new_joint( parent, name='FIXED2PT.'+parent.name, type='fixed' )
+		subjoint = child.new_joint( parent, name='MAGIC-FIXED.'+parent.name, type='fixed' )
+		#subjoint.set_param('CFM', 0.5)
+
+		jtype = 'universal'
+		if '{' in self.name and '}' in self.name: jtype = self.name.split('{')[-1].split('}')[0]
+		print('set-parent joint type:', jtype)
 
 		if self.head:	# if head, bind head to tail of parent #
 			child = ENGINE.get_wrapper( self.head )
-			joint = child.new_joint( parent, name='H2PT.'+parent.name, type='fixed' )
-			self.breakable_joints.append( joint )
-			joint.slaves.append( subjoint )
+			joint = child.new_joint( parent, name='H2PT.'+parent.name, type=jtype )
+		else:
+			## bind body to tail of parent ##
+			child = ENGINE.get_wrapper( self.shaft )
+			joint = child.new_joint( parent, name='FIXED2PT.'+parent.name, type=jtype )
+
+
+		joint.slaves.append( subjoint )
+		self.breakable_joints.append( joint )
+
 
 
 	def set_weakness( self, break_thresh, damage_thresh ):
@@ -1946,9 +1957,24 @@ class AbstractArmature(object):
 		return root
 
 
+	def build_bones(self, bone, data):
+		if bone.use_connect or not bone.parent:
+			name = bone.name
+			self.rig[ name ] = Bone(
+				self.armature,
+				name, 
+				stretch=self.stretchable,
+				object_data=data,
+			)
+			for child in bone.children: self.build_bones( child, data )
+
+
 	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None):
 		self.created = True
-		arm = bpy.data.objects[ self.name ]
+		self.stretchable = stretch
+		self.breakable = breakable
+
+		self.armature = arm = bpy.data.objects[ self.name ]
 		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
 		Pyppet.refresh_selected = True
@@ -1977,9 +2003,22 @@ class AbstractArmature(object):
 				bone.use_inherit_rotation = False
 				bone.use_inherit_scale = False
 
+
 		cube = create_cube()
-		for name in arm.pose.bones.keys():
-			self.rig[ name ] = Bone(arm,name, stretch=stretch, object_data=cube.data)
+		for bone in arm.data.bones:
+			if not bone.parent:
+				self.build_bones( bone, cube.data )
+
+		#for name in arm.pose.bones.keys():
+		#	#bone = arm.pose.bones[ name ]
+		#	#print( bone, dir(bone) )
+		#	ebone = arm.data.bones[ name ]
+		#	print( ebone, dir(ebone))
+		#	for child in ebone.children: print(child)
+		#	#print( ebone.children )
+		#	if ebone.use_connect or not ebone.parent:
+		#		self.rig[ name ] = Bone(arm,name, stretch=stretch, object_data=cube.data)
+
 		Pyppet.context.scene.objects.unlink(cube)
 		cube.user_clear()
 
@@ -1992,7 +2031,7 @@ class AbstractArmature(object):
 				child.ik.pole_target = child.pole
 				child.ik.pole_angle = math.radians( -90 )
 
-			if child.parent_name:
+			if child.parent_name and child.parent_name in self.rig:
 				parent = self.rig[ child.parent_name ]
 				child.set_parent( parent )
 
@@ -2429,7 +2468,8 @@ class Biped( AbstractArmature ):
 
 			self.solver_objects.append( self.rig[name] )
 
-		assert self.head and self.pelvis
+		assert self.pelvis
+		assert self.head
 		if not self.chest:
 			self.head = self.chest
 
@@ -2467,7 +2507,7 @@ class Biped( AbstractArmature ):
 		ob.empty_draw_size = 0.1
 		Pyppet.context.scene.objects.link( ob )
 		ob.parent = foot.biped_solver['target-parent']
-		target = self.create_target( hand.name, ob, weight=30, z=-0.1 )
+		target = self.create_target( hand.name, ob, weight=30, z=0.0 )
 		self.hand_solver_targets.append( target )
 
 
@@ -2873,6 +2913,7 @@ class Biped( AbstractArmature ):
 
 			## MAGIC: if the toes are touching the ground, lift up the head ##
 			for toe in ( self.left_toe, self.right_toe ):
+				if not toe: continue
 				x,y,z = toe.get_location()
 				if z < self.toe_height_standing_threshold or z < toe.rest_height:
 					if head_is_attached and not self.any_ancestors_broken(toe):
@@ -4981,7 +5022,7 @@ class PhysicsWidget(object):
 		#s = Slider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second')
 		#page.pack_start(s.widget, expand=False)
 
-		s = Slider(scn.world, name='ode_speed', title='speed', min=0.01, max=1.0, tooltip='physics speed')
+		s = Slider(scn.world, name='ode_speed', title='speed', min=0.01, max=0.1, tooltip='physics speed')
 		page.pack_start(s.widget, expand=False)
 
 		s = Slider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction')
