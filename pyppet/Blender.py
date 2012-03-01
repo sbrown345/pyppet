@@ -219,13 +219,12 @@ def window_resize( x, y ):
 	blender.wm_window_raise( win )
 
 
-def iterate(C, lock=None, draw=True):
-	if lock: lock.acquire()
+def iterate(C, draw=True):
 	blender.wm_window_process_events(C)	# might sleep 5ms if no events
 	blender.wm_event_do_handlers(C)
 	blender.wm_event_do_notifiers(C)
-	if lock: lock.release()
 	if draw: blender.wm_draw_update(C)
+
 
 def WM_main(C):		# from wm.c
 	while True:

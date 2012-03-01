@@ -115,45 +115,49 @@ class BlenderHack( object ):
 
 	_image_editor_handle = None
 
-	def update_blender_and_gtk( self ):
+	def update_blender_and_gtk( self, drop_frame=False ):
 		self._gtk_updated = False
 
-		## force redraw in VIEW_3D ##
-		screen = bpy.data.screens[ self.default_blender_screen ]
-		for area in screen.areas:
-			if area.type == 'VIEW_3D':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						reg.tag_redraw()
-						break
+		if not drop_frame:
+			## force redraw in VIEW_3D ##
+			screen = bpy.data.screens[ self.default_blender_screen ]
+			for area in screen.areas:
+				if area.type == 'VIEW_3D':
+					for reg in area.regions:
+						if reg.type == 'WINDOW':
+							reg.tag_redraw()
+							break
 
-		## force redraw in secondary VIEW_3D and UV Editor ##
-		for area in self.context.window.screen.areas:
-			if area.type == 'VIEW_3D':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						reg.tag_redraw()
-						break
-			elif area.type == 'IMAGE_EDITOR' and self.progressive_baking:
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						if not self._image_editor_handle:
-							print('---------setting up image editor callback---------')
-							self._image_editor_handle = reg.callback_add( 
-								self.bake_hack, (reg,), 
-								'POST_VIEW' 	# PRE_VIEW is invalid here
-							)
-						reg.tag_redraw()
-						break
+			## force redraw in secondary VIEW_3D and UV Editor ##
+			for area in self.context.window.screen.areas:
+				if area.type == 'VIEW_3D':
+					for reg in area.regions:
+						if reg.type == 'WINDOW':
+							reg.tag_redraw()
+							break
+				elif area.type == 'IMAGE_EDITOR' and self.progressive_baking:
+					for reg in area.regions:
+						if reg.type == 'WINDOW':
+							if not self._image_editor_handle:
+								print('---------setting up image editor callback---------')
+								self._image_editor_handle = reg.callback_add( 
+									self.bake_hack, (reg,), 
+									'POST_VIEW' 	# PRE_VIEW is invalid here
+								)
+							reg.tag_redraw()
+							break
 
-		Blender.iterate( self.evil_C)
+
+		Blender.iterate( self.evil_C, draw=not drop_frame)
 
 		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
-			print('WARN: 3D view is not shown - this is dangerous')
+			#print('WARN: 3D view is not shown - this is dangerous')
 			self.lock.acquire()
 			while gtk.gtk_events_pending():
 				gtk.gtk_main_iteration()
 			self.lock.release()
+
+
 
 	################ BAKE HACK ################
 	progressive_baking = False

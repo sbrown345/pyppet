@@ -2429,7 +2429,9 @@ class Biped( AbstractArmature ):
 
 			self.solver_objects.append( self.rig[name] )
 
-		assert self.head and self.chest and self.pelvis
+		assert self.head and self.pelvis
+		if not self.chest:
+			self.head = self.chest
 
 		for o in self.solver_objects:
 			o.biped_solver = {}
@@ -4247,6 +4249,10 @@ class App( PyppetUI ):
 	def toggle_physics(self,switch):
 		self.physics_running = switch
 		if switch:
+			self.blender_start_time = time.time()
+			self.blender_good_frames = 0
+			self.blender_dropped_frames = 0
+
 			ENGINE.start()
 			if self.playback_blender_anim:
 				bpy.ops.screen.animation_play()
@@ -4256,6 +4262,12 @@ class App( PyppetUI ):
 			if self.playback_blender_anim:
 				bpy.ops.screen.animation_cancel()
 
+			print('--blender good frames:', self.blender_good_frames)
+			print('--blender dropped frames:', self.blender_dropped_frames)
+			frames = self.blender_good_frames + self.blender_dropped_frames
+			delta = (time.time() - self.blender_start_time) / float(frames)
+			print('--blender average time per frame:', delta )
+			print('--blender FPS:', 1.0 / delta )
 
 	def __init__(self):
 		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
@@ -4293,14 +4305,51 @@ class App( PyppetUI ):
 
 		self.progressive_baking = True
 
-
+		self.blender_good_frames = 0
+		self.blender_dropped_frames = 0
+		self._mainloop_prev_time = time.time()
 
 
 	####################################################
 
 	def mainloop(self):
+		drops = 0
 		while self.active:
-			self.update_blender_and_gtk()
+			drop_frame = False
+			if self.physics_running:
+				dt = 1.0 / ( time.time() - self._mainloop_prev_time )
+				self._mainloop_prev_time = time.time()
+
+				if drops > 15:	# force redraw
+					drops = 0
+					self.update_blender_and_gtk()
+					self.blender_good_frames += 1
+
+				elif dt < 10:
+					drop_frame = True
+					drops += 1
+					self.update_blender_and_gtk( drop_frame=True )
+					self.blender_dropped_frames += 1
+				else:
+					self.update_blender_and_gtk()
+					self.blender_good_frames += 1
+			else:
+				self.update_blender_and_gtk()
+
+			DriverManager.update()
+			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
+
+			now = time.time() - self._rec_start_time
+			if self.wave_playing:
+				self.wave_speaker.update()
+				#print('wave time', self.wave_speaker.seconds)
+				self._wave_time_label.set_text(
+					'seconds: %s' %round(self.wave_speaker.seconds,2)
+				)
+				## use wave time if play on record is true ##
+				if self.play_wave_on_record: now = self.wave_speaker.seconds
+
+			if drop_frame: continue
 
 			win = Blender.Window( self.context.window )
 			# grabcursor on click and drag (view3d only)
@@ -4311,7 +4360,6 @@ class App( PyppetUI ):
 				if self.context.screen.is_animation_playing:
 					clear_cloth_caches()
 
-			DriverManager.update()
 			self.audio.update()		# updates gtk widgets
 
 			if self.context.scene.frame_current != int(self._current_frame_adjustment.get_value()):
@@ -4324,25 +4372,16 @@ class App( PyppetUI ):
 			models = self.entities.values()
 			for mod in models: mod.update_ui( self.context )
 
-			now = time.time() - self._rec_start_time
-			if self.wave_playing:
-				self.wave_speaker.update()
-				#print('wave time', self.wave_speaker.seconds)
-				self._wave_time_label.set_text(
-					'seconds: %s' %round(self.wave_speaker.seconds,2)
-				)
-				## use wave time if play on record is true ##
-				if self.play_wave_on_record: now = self.wave_speaker.seconds
 
 			if self.recording or self.preview:
 				self._rec_current_time_label.set_text( 'seconds: %s' %round(now,2) )
 			if self.preview: self.update_preview( now )
-			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
 
 			if not self._image_editor_handle:
 				# ImageEditor redraw callback will update http-server,
 				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
+
 
 			self.client.update( self.context )
 			self.websocket_server.update( self.context )
@@ -4939,14 +4978,19 @@ class PhysicsWidget(object):
 		page = gtk.VBox(); page.set_border_width( 3 )
 		note.append_page( page, gtk.Label('settings') )
 
-		s = SimpleSlider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second', driveable=True)
+		s = Slider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second')
 		page.pack_start(s.widget, expand=False)
 
-		s = SimpleSlider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction', driveable=True)
+		s = Slider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction')
 		page.pack_start(s.widget, expand=False)
 
-		s = SimpleSlider(scn.world, name='ode_CFM', title='CFM', max=5, tooltip='joint constant mixing force', driveable=True)
+		s = Slider(scn.world, name='ode_CFM', title='CFM', max=5, tooltip='joint constant mixing force')
 		page.pack_start(s.widget, expand=False)
+
+		## TODO - above was a bad idea, scn.world should not use callback driven RNA ##
+		s = Slider(ENGINE, name='substeps', title='sub-steps', min=1, max=10, integer=True, tooltip='number of sub-steps (more steps yeild higher performance at the cost of acurate high-speed collisions')
+		page.pack_start(s.widget, expand=False)
+
 
 		page = gtk.VBox(); page.set_border_width( 3 )
 		note.append_page( page, gtk.Label('damping') )
