@@ -2964,7 +2964,8 @@ class Biped( AbstractArmature ):
 		x,y,z = head.get_location()
 		if z > head.rest_height: return
 		delta = head.rest_height - z
-		#force *= delta
+		if delta < 1.0: force *= delta + 0.25	## Extra Magic ##
+
 		head.add_force( 0,0, force )
 		if head.parent:
 			head.parent.add_force( 0,0, force*0.75 )
