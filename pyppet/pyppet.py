@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# Feb28, 2012
+# March 2nd, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -2418,7 +2418,9 @@ class Biped( AbstractArmature ):
 		self.chest = None
 		self.pelvis = None
 		self.left_foot = self.right_foot = None
-		self.left_toe = self.right_toe = None
+		self.left_toes = []
+		self.right_toes = []
+
 		self.left_hand = self.right_hand = None
 		self.foot_solver_targets = []
 		self.hand_solver_targets = []
@@ -2471,8 +2473,8 @@ class Biped( AbstractArmature ):
 			elif 'toe' in _name:
 				B = self.rig[ name ]
 				x,y,z = B.get_location()
-				if x > 0: self.left_toe = B
-				elif x < 0: self.right_toe = B
+				if x > 0: self.left_toes.append( B )
+				elif x < 0: self.right_toes.append( B )
 
 			elif 'hand' in _name:
 				B = self.rig[ name ]
@@ -2510,8 +2512,8 @@ class Biped( AbstractArmature ):
 		cns.use_target_z = True
 
 		## foot and hand solvers ##
-		self.helper_setup_foot( self.left_foot, self.left_toe )
-		self.helper_setup_foot( self.right_foot, self.right_toe, flip=True )
+		self.helper_setup_foot( self.left_foot, toes=self.left_toes )
+		self.helper_setup_foot( self.right_foot, toes=self.right_toes, flip=True )
 
 		if self.left_hand: self.helper_setup_hand( self.left_hand, self.left_foot )
 		if self.right_hand: self.helper_setup_hand( self.right_hand, self.right_foot )
@@ -2533,7 +2535,7 @@ class Biped( AbstractArmature ):
 		self.hand_solver_targets.append( target )
 
 
-	def helper_setup_foot( self, foot, toe=None, flip=False ):
+	def helper_setup_foot( self, foot, toes=[], flip=False ):
 		ob = bpy.data.objects.new(
 			name='RING.%s'%foot.name,
 			object_data=None
@@ -2579,13 +2581,12 @@ class Biped( AbstractArmature ):
 		cns.up_axis = 'UP_Y'
 		cns.use_target_z = True
 
-		if toe:
+		foot.toes = []
+		for toe in toes:
+			foot.toes.append( toe )
 			target = self.create_target( toe.name, ob, weight=30, z=.0 )
 			toe.biped_solver['TARGET'] = target
 			self.foot_solver_targets.append( target )
-			foot.toe = toe
-		else:
-			foot.toe = None
 
 
 
@@ -2776,7 +2777,8 @@ class Biped( AbstractArmature ):
 			foot = self.left_foot
 
 			foot.biped_solver[ 'TARGET' ].zmult = 0.0
-			if foot.toe: foot.toe.biped_solver[ 'TARGET' ].zmult = 0.0
+			for toe in foot.toes:
+				toe.biped_solver[ 'TARGET' ].zmult = 0.0
 
 			if not self.any_ancestors_broken(foot):
 
@@ -2806,7 +2808,8 @@ class Biped( AbstractArmature ):
 			foot = self.left_foot
 
 			foot.biped_solver[ 'TARGET' ].zmult = 1.0
-			if foot.toe: foot.toe.biped_solver[ 'TARGET' ].zmult = 1.0
+			for toe in foot.toes:
+				toe.biped_solver[ 'TARGET' ].zmult = 1.0
 
 			if not self.any_ancestors_broken(foot):
 
@@ -2838,7 +2841,8 @@ class Biped( AbstractArmature ):
 			foot = self.right_foot
 
 			foot.biped_solver[ 'TARGET' ].zmult = 0.0
-			if foot.toe: foot.toe.biped_solver[ 'TARGET' ].zmult = 0.0
+			for toe in foot.toes:
+				toe.biped_solver[ 'TARGET' ].zmult = 0.0
 
 			if not self.any_ancestors_broken(foot):
 
@@ -2869,7 +2873,8 @@ class Biped( AbstractArmature ):
 			foot = self.right_foot
 
 			foot.biped_solver[ 'TARGET' ].zmult = 1.0
-			if foot.toe: foot.toe.biped_solver[ 'TARGET' ].zmult = 1.0
+			for toe in foot.toes:
+				toe.biped_solver[ 'TARGET' ].zmult = 1.0
 
 			if not self.any_ancestors_broken(foot):
 
@@ -2941,6 +2946,13 @@ class Biped( AbstractArmature ):
 					target = foot.parent.biped_solver[ 'TARGET:chest' ]
 					target.weight *= 0.9
 
+				## MAGIC: if the toes are touching the ground, lift up the head ##
+				for toe in foot.toes:
+					x,y,z = toe.get_location()
+					if z < self.toe_height_standing_threshold or z < toe.rest_height:
+						if head_is_attached and not self.any_ancestors_broken(toe):
+							self.apply_head_lift( head_lift*0.5 )
+
 
 			for target in self.foot_solver_targets:
 				if target.weight < self.when_standing_foot_target_goal_weight:
@@ -2949,15 +2961,6 @@ class Biped( AbstractArmature ):
 			#for target in self.hand_solver_targets:	# reduce hand plant force
 			#	target.weight *= 0.9
 
-
-			## MAGIC: if the toes are touching the ground, lift up the head ##
-			for toe in ( self.left_toe, self.right_toe ):
-				if not toe: continue
-				x,y,z = toe.get_location()
-				if z < self.toe_height_standing_threshold or z < toe.rest_height:
-					if head_is_attached and not self.any_ancestors_broken(toe):
-						#self.head.add_force( 0,0, head_lift*0.5 )
-						self.apply_head_lift( head_lift*0.5 )
 
 	def apply_head_lift( self, force ):
 		head = self.head
