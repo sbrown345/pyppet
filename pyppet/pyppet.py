@@ -2407,6 +2407,7 @@ class Biped( AbstractArmature ):
 
 	def reset(self):
 		x,y,z = self.pelvis.start_location
+		self.pelvis.shadow.location = (x,y,z)
 
 		rad = -math.radians(self.primary_heading+90)
 		cx = math.sin( -rad ) * self.stance
@@ -2533,7 +2534,7 @@ class Biped( AbstractArmature ):
 		self.pelvis.shadow = ob
 		Pyppet.context.scene.objects.link( ob )
 		ob.empty_draw_type = 'SINGLE_ARROW'
-		ob.empty_draw_size = 2.0
+		ob.empty_draw_size = 5.0
 
 		cns = ob.constraints.new('TRACK_TO')		# points on the Y
 		cns.target = self.head.shaft
@@ -2683,7 +2684,10 @@ class Biped( AbstractArmature ):
 			y += dy * 0.1
 
 		ob = self.pelvis.shadow
-		ob.location = (x,y,-0.5)
+		if random() > 0.99: ob.location = (x,y,-0.5)
+		Xcenter = ob.location.x
+		Ycenter = ob.location.y
+
 		loc,rot,scale = ob.matrix_world.decompose()
 		euler = rot.to_euler()
 
@@ -2713,7 +2717,7 @@ class Biped( AbstractArmature ):
 					self.right_foot.shadow.location.x += self.on_motion_fast_forward_step
 
 
-			if not step_right and random() > 0.2:
+			if not step_right and random() > 0.99:
 				if random() > 0.1: step_left = True
 				else: step_right = True
 
@@ -2732,7 +2736,7 @@ class Biped( AbstractArmature ):
 					self.left_foot.shadow.location.x = motion_rate * self.on_motion_fast_forward_step_rate_factor
 					self.left_foot.shadow.location.x += self.on_motion_fast_forward_step
 
-			if not step_left and random() > 0.2:
+			if not step_left and random() > 0.99:
 				if random() > 0.1: step_right = True
 				else: step_left = True
 
@@ -2791,15 +2795,16 @@ class Biped( AbstractArmature ):
 
 
 
-
+		force_right_step = False
 		if (step_left and self.auto_left_step) or self.force_left_step:
 			print('step LEFT')
+			force_right_step = True
 			rad = euler.z - math.radians(self.primary_heading+90)
 			cx = math.sin( -rad ) * self.stance
 			cy = math.cos( -rad ) * self.stance
 			v = self.left_foot.shadow_parent.location
-			v.x = x+cx
-			v.y = y+cy
+			v.x = Xcenter + cx
+			v.y = Ycenter + cy
 			v.z = .0
 			self.left_foot_loc = v
 
@@ -2836,11 +2841,6 @@ class Biped( AbstractArmature ):
 
 		else:
 			foot = self.left_foot
-
-			foot.biped_solver[ 'TARGET' ].zmult = 1.0
-			for toe in foot.toes:
-				toe.biped_solver[ 'TARGET' ].zmult = 1.0
-
 			if not self.any_ancestors_broken(foot):
 
 				## MAGIC: lift head ##
@@ -2856,15 +2856,19 @@ class Biped( AbstractArmature ):
 					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
+				foot.biped_solver[ 'TARGET' ].zmult = 1.0
+				for toe in foot.toes:
+					toe.biped_solver[ 'TARGET' ].zmult = 1.0
+					toe.add_force( 0,0, -30 )
 
-		if (step_right and self.auto_right_step) or self.force_right_step:
+		if (step_right and self.auto_right_step) or self.force_right_step or force_right_step:
 			print('step RIGHT')
 			rad = euler.z + math.radians(self.primary_heading+90)
 			cx = math.sin( -rad ) * self.stance
 			cy = math.cos( -rad ) * self.stance
 			v = self.right_foot.shadow_parent.location
-			v.x = x+cx
-			v.y = y+cy
+			v.x = Xcenter + cx
+			v.y = Ycenter + cy
 			v.z = .0
 			self.right_foot_loc = v
 
@@ -2901,11 +2905,6 @@ class Biped( AbstractArmature ):
 
 		else:
 			foot = self.right_foot
-
-			foot.biped_solver[ 'TARGET' ].zmult = 1.0
-			for toe in foot.toes:
-				toe.biped_solver[ 'TARGET' ].zmult = 1.0
-
 			if not self.any_ancestors_broken(foot):
 
 				## MAGIC: lift head ##
@@ -2922,6 +2921,10 @@ class Biped( AbstractArmature ):
 					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
+				foot.biped_solver[ 'TARGET' ].zmult = 1.0
+				for toe in foot.toes:
+					toe.biped_solver[ 'TARGET' ].zmult = 1.0
+					toe.add_force( 0,0,-30 )
 
 		#if not step_left or step_right: print('no STEP')
 
