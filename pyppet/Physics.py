@@ -671,6 +671,8 @@ class Joint( object ):
 	def set_type( self, type ):
 		self.type = type					# nice name
 		self.dtype = Joint.Types[type]		# ode name
+
+		## Sneaky - get the get/set funcs dynamically based on what joint type we are ##
 		self._set_func = getattr( ode, 'JointSet%sParam'%self.dtype )
 		self._get_func = getattr( ode, 'JointGet%sParam'%self.dtype )
 
@@ -765,6 +767,10 @@ class Joint( object ):
 
 
 	def set_param( self, param, *args ):
+		'''
+		automatically sets param for all axes:
+			eg. ERP, ERP1, ERP2, ERP3
+		'''
 		assert param in Joint.Params
 		print('setting joint param', param, args)
 		if param not in self.settings: self.settings.append( param )
@@ -787,7 +793,8 @@ class Joint( object ):
 
 	def get_param(self, param):
 		assert param in Joint.Params
-		return self._get_func( self.joint, ode.ParamERP )
+		P = getattr(ode, 'Param%s'%param)
+		return self._get_func( self.joint, P )
 
 JOINT_TYPES = list(Joint.Types.keys())
 

@@ -1732,7 +1732,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, object_data=None):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None):
 		self.armature = arm
 		self.name = name
 		self.head = None
@@ -1740,7 +1740,11 @@ class Bone(object):
 		self.tail = None
 		self.stretch = stretch
 		self.breakable_joints = []
+		self.fixed_parent_joint = None
+		self.parent_joint = None
 		self.parent = None
+		self.tension_CFM = tension_CFM
+		self.tension_ERP = tension_ERP
 
 		ebone = arm.data.bones[ name ]
 		pbone = arm.pose.bones[ name ]
@@ -1877,25 +1881,26 @@ class Bone(object):
 		self.parent = parent	# Bone
 		parent = ENGINE.get_wrapper( parent.tail )
 
-		child = ENGINE.get_wrapper( self.shaft )
-		subjoint = child.new_joint( parent, name='MAGIC-FIXED.'+parent.name, type='fixed' )
-		#subjoint.set_param('CFM', 0.5)
-
 		jtype = 'universal'
 		if '{' in self.name and '}' in self.name: jtype = self.name.split('{')[-1].split('}')[0]
 		print('set-parent joint type:', jtype)
 
 		if self.head:	# if head, bind head to tail of parent #
 			child = ENGINE.get_wrapper( self.head )
-			joint = child.new_joint( parent, name='H2PT.'+parent.name, type=jtype )
-		else:
-			## bind body to tail of parent ##
+			self.parent_joint = child.new_joint( parent, name='head2parent.'+parent.name, type=jtype )
+
+		else:			## bind body to tail of parent ##
 			child = ENGINE.get_wrapper( self.shaft )
-			joint = child.new_joint( parent, name='FIXED2PT.'+parent.name, type=jtype )
+			self.parent_joint = child.new_joint( parent, name='body2parent.'+parent.name, type=jtype )
 
 
-		joint.slaves.append( subjoint )
-		self.breakable_joints.append( joint )
+		self.fixed_parent_joint = joint = child.new_joint( parent, name='MAGIC-FIXED.'+parent.name, type='fixed' )
+		joint.set_param( 'CFM', self.tension_CFM )
+		joint.set_param( 'ERP', self.tension_ERP )
+
+
+		self.parent_joint.slaves.append( self.fixed_parent_joint )
+		self.breakable_joints.append( self.parent_joint )
 
 
 
@@ -1920,6 +1925,9 @@ class AbstractArmature(object):
 		self._active_bone_widget = None
 		self.broken = []
 
+		self.tension_CFM = 0.5
+		self.tension_ERP = 0.5
+
 	def any_ancestors_broken(self, child):
 		broken = []
 		self._get_ancestors_broken(child, broken)
@@ -1929,6 +1937,14 @@ class AbstractArmature(object):
 		if child in self.broken: broken.append( child )
 		if child.parent: self._get_ancestors_broken( child.parent, broken )
 
+	def adjust_rig_tension(self, adj, mode):
+		assert mode in ('CFM', 'ERP')
+		if mode == 'CFM': self.tension_CFM = adj.get_value()
+		else: self.tension_ERP = adj.get_value()
+
+		for B in self.rig.values():
+			if B.fixed_parent_joint:
+				B.fixed_parent_joint.set_param(mode, adj.get_value())
 
 	def get_create_widget(self):
 		root = gtk.VBox()
@@ -1936,8 +1952,8 @@ class AbstractArmature(object):
 
 		stretch  = gtk.CheckButton('stretch-to constraints')
 		breakable = gtk.CheckButton('breakable joints')
-		break_thresh = SimpleSlider( name='joint breaking threshold', value=200, min=0.01, max=420 )
-		damage_thresh = SimpleSlider( name='joint damage threshold', value=150, min=0.01, max=420 )
+		break_thresh = Slider( name='joint breaking threshold', value=200, min=0.01, max=420 )
+		damage_thresh = Slider( name='joint damage threshold', value=150, min=0.01, max=420 )
 
 		b = gtk.Button('create %s' %self.__class__.__name__)
 		row.pack_start( b, expand=False )
@@ -1964,6 +1980,8 @@ class AbstractArmature(object):
 				self.armature,
 				name, 
 				stretch=self.stretchable,
+				tension_CFM = self.tension_CFM,
+				tension_ERP = self.tension_ERP,
 				object_data=data,
 			)
 			for child in bone.children: self.build_bones( child, data )
@@ -2003,22 +2021,10 @@ class AbstractArmature(object):
 				bone.use_inherit_rotation = False
 				bone.use_inherit_scale = False
 
-
+		## build rig from roots ##
 		cube = create_cube()
 		for bone in arm.data.bones:
-			if not bone.parent:
-				self.build_bones( bone, cube.data )
-
-		#for name in arm.pose.bones.keys():
-		#	#bone = arm.pose.bones[ name ]
-		#	#print( bone, dir(bone) )
-		#	ebone = arm.data.bones[ name ]
-		#	print( ebone, dir(ebone))
-		#	for child in ebone.children: print(child)
-		#	#print( ebone.children )
-		#	if ebone.use_connect or not ebone.parent:
-		#		self.rig[ name ] = Bone(arm,name, stretch=stretch, object_data=cube.data)
-
+			if not bone.parent: self.build_bones( bone, cube.data )
 		Pyppet.context.scene.objects.unlink(cube)
 		cube.user_clear()
 
@@ -2128,13 +2134,28 @@ class AbstractArmature(object):
 				if joint.broken: joint.restore()
 
 	def get_widget(self):
-		root = gtk.HBox()
+		root = gtk.VBox()
+
+		row = gtk.HBox()
+		root.pack_start( row, expand=False )
 		b = gtk.Button('heal joints')
 		b.connect('clicked', self.heal_broken_joints)
-		root.pack_start( b, expand=False )
+		row.pack_start( b, expand=False )
 		b = gtk.Button('reset transform')
 		b.connect('clicked', self.save_transform)
-		root.pack_start( b, expand=False )
+		row.pack_start( b, expand=False )
+
+		frame = gtk.Frame('rig parent/child tension')
+		root.pack_start( frame, expand=False )
+		bx = gtk.VBox(); frame.add( bx )
+		s = Slider( title='ERP', value=self.tension_ERP, tooltip='joint error reduction (springy)' )
+		s.connect( self.adjust_rig_tension, 'ERP' )
+		bx.pack_start( s.widget, expand=False )
+
+		s = Slider( title='CFM', value=self.tension_CFM, max=100, tooltip='joint constant force mixing (stretch)' )
+		s.connect( self.adjust_rig_tension, 'CFM' )
+		bx.pack_start( s.widget, expand=False )
+
 		return root
 
 	def save_transform(self, button):

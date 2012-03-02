@@ -677,7 +677,7 @@ class Slider(object):
 		assert isinstance( output, DeviceOutput )
 
 		driver = output.bind( 
-			'YYY', 
+			'SLIDER', 
 			target=target, 
 			path=path, 
 			index=target_index, 
@@ -689,6 +689,12 @@ class Slider(object):
 		self.modal = driver.get_widget( title='', expander=False )
 		self.widget.add( self.modal )
 		self.modal.show_all()
+
+	def connect( self, callback, *args ):
+		if args:
+			self.adjustment.connect( 'value-changed', callback, *args )
+		else:
+			self.adjustment.connect( 'value-changed', callback )
 
 
 ###########################################################
