@@ -1692,6 +1692,17 @@ class Bone(object):
 	contains at least two physics bodies: shaft and tail
 	head is optional
 	'''
+
+	def save_transform(self):
+		for bo in (self.head, self.shaft, self.tail):
+			if not bo: continue
+			wrap = ENGINE.get_wrapper( bo )
+			wrap.save_transform( bo )
+
+		x,y,z = self.shaft.matrix_world.to_translation()
+		self.start_location = (x,y,z)
+		self.rest_height = z				# used by biped solver
+
 	def get_location(self):
 		return self.shaft.matrix_world.to_translation()
 	def hide(self):
@@ -1912,7 +1923,7 @@ class Bone(object):
 
 class AbstractArmature(object):
 	def reset(self): pass	# for overloading
-	def get_widget_label(self): return gtk.Label( self.ICON )	# can be overloaded, label may need to be a drop target
+	def get_widget_label(self): return gtk.Label( self.ICON )	# label may need to be a drop target
 
 	def __init__(self,name):
 		self.name = name
@@ -1992,6 +2003,11 @@ class AbstractArmature(object):
 		self.breakable = breakable
 
 		self.armature = arm = bpy.data.objects[ self.name ]
+		self.spawn_location = arm.location.to_tuple()
+		arm.location.x = 0.0
+		arm.location.y = 0.0
+		arm.location.z = 0.0
+
 		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
 		Pyppet.refresh_selected = True
@@ -2046,6 +2062,22 @@ class AbstractArmature(object):
 				b.set_weakness( break_thresh, damage_thresh )
 
 		self.setup()
+
+		## restore spawn point ##
+		self.armature_root = root = bpy.data.objects.new(
+			name='ARM-ROOT.%s'%self.name,
+			object_data=None
+		)
+		Pyppet.context.scene.objects.link( root )
+		self.armature.parent = root
+		root.empty_draw_type = 'CONE'
+		for b in self.rig.values():
+			for ob in b.get_objects():
+				ob.parent = root
+		root.location = self.spawn_location
+		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
+
+		self.save_transform()
 
 	def setup(self): pass	# override
 
@@ -2147,7 +2179,7 @@ class AbstractArmature(object):
 		frame = gtk.Frame('rig parent/child tension')
 		root.pack_start( frame, expand=False )
 		bx = gtk.VBox(); frame.add( bx )
-		s = Slider( title='ERP', value=self.tension_ERP, tooltip='joint error reduction (springy)' )
+		s = Slider( title='ERP', value=self.tension_ERP, tooltip='joint error reduction' )
 		s.connect( self.adjust_rig_tension, 'ERP' )
 		bx.pack_start( s.widget, expand=False )
 
@@ -2157,10 +2189,8 @@ class AbstractArmature(object):
 
 		return root
 
-	def save_transform(self, button):
-		for B in self.rig.values():
-			for w in B.get_wrapper_objects():
-				w.save_transform()
+	def save_transform(self, button=None):
+		for B in self.rig.values(): B.save_transform()
 
 
 	def update_targets_widget(self, bone):
