@@ -1898,7 +1898,6 @@ class Bone(object):
 		joint.set_param( 'CFM', self.tension_CFM )
 		joint.set_param( 'ERP', self.tension_ERP )
 
-
 		self.parent_joint.slaves.append( self.fixed_parent_joint )
 		self.breakable_joints.append( self.parent_joint )
 
@@ -1925,8 +1924,8 @@ class AbstractArmature(object):
 		self._active_bone_widget = None
 		self.broken = []
 
-		self.tension_CFM = 0.5
-		self.tension_ERP = 0.5
+		self.tension_CFM = 0.05
+		self.tension_ERP = 0.85
 
 	def any_ancestors_broken(self, child):
 		broken = []
@@ -2152,7 +2151,7 @@ class AbstractArmature(object):
 		s.connect( self.adjust_rig_tension, 'ERP' )
 		bx.pack_start( s.widget, expand=False )
 
-		s = Slider( title='CFM', value=self.tension_CFM, max=100, tooltip='joint constant force mixing (stretch)' )
+		s = Slider( title='CFM', value=self.tension_CFM, tooltip='joint constant force mixing (stretch)' )
 		s.connect( self.adjust_rig_tension, 'CFM' )
 		bx.pack_start( s.widget, expand=False )
 
@@ -2317,7 +2316,7 @@ class Biped( AbstractArmature ):
 		s = Slider( self, name='when_standing_foot_target_goal_weight', title='goal weight', min=0.0, max=200 )
 		box.pack_start( s.widget, expand=False )
 
-		s = Slider( self, name='when_stepping_leg_flex', title='on-step leg flex', min=-100, max=400, tooltip='leg contraction on step' )
+		s = Slider( self, name='when_stepping_leg_flex', title='leg flex', min=-10, max=400, tooltip='leg contraction on step' )
 		box.pack_start( s.widget, expand=False )
 
 		s = Slider(
@@ -2447,7 +2446,7 @@ class Biped( AbstractArmature ):
 		self.when_standing_foot_step_near_pull = 10	# if foot is near from target pull it down
 		self.when_standing_foot_step_near_far_thresh = 0.25
 
-		self.when_stepping_leg_flex = 200
+		self.when_stepping_leg_flex = 50
 
 		self.when_falling_and_hands_down_lift_head_by_tilt_factor = 4.0
 		self.when_falling_pull_hands_down_by_tilt_factor = 10.0
@@ -2491,11 +2490,11 @@ class Biped( AbstractArmature ):
 
 		assert self.pelvis
 		assert self.head
-		if not self.chest:
-			self.head = self.chest
+		assert self.chest
 
-		for o in self.solver_objects:
-			o.biped_solver = {}
+		#for o in self.solver_objects:
+		#	o.biped_solver = {}
+		for B in self.rig.values(): B.biped_solver = {}
 
 
 		ob = bpy.data.objects.new(name='PELVIS-SHADOW',object_data=None)
@@ -2516,6 +2515,8 @@ class Biped( AbstractArmature ):
 
 		if self.left_hand: self.helper_setup_hand( self.left_hand, self.left_foot )
 		if self.right_hand: self.helper_setup_hand( self.right_hand, self.right_foot )
+
+		self.head_center_target = self.create_target( self.head.name, self.pelvis.shaft, weight=100, z=0.0 )
 
 
 	def helper_setup_hand( self, hand, foot ):
@@ -2568,8 +2569,9 @@ class Biped( AbstractArmature ):
 		self.foot_solver_targets.append( target )	# standing or falling modifies all foot targets
 		foot.biped_solver[ 'TARGET' ] = target
 
-		target = self.create_target( foot.name, self.pelvis.shaft, weight=0, z=.0 )
-		foot.biped_solver[ 'TARGET:pelvis' ] = target		# pull feet to hip when fallen
+		if foot.parent:	# pull leg to chest when fallen
+			target = self.create_target( foot.parent.name, self.chest.shaft, weight=0, z=.0 )
+			foot.parent.biped_solver[ 'TARGET:chest' ] = target
 
 		cns = ob.constraints.new('TRACK_TO')
 		cns.target = self.pelvis.shaft
@@ -2782,7 +2784,8 @@ class Biped( AbstractArmature ):
 				v1 = foot.get_location().copy()
 				if standing and v1.z < 0.1:
 					if head_is_attached:
-						self.head.add_force( 0,0, head_lift*0.5 )
+						#self.head.add_force( 0,0, head_lift*0.5 )
+						self.apply_head_lift( head_lift*0.5 )
 
 				v2 = self.left_foot_loc.copy()
 				v1.z = .0; v2.z = .0
@@ -2806,6 +2809,11 @@ class Biped( AbstractArmature ):
 			if foot.toe: foot.toe.biped_solver[ 'TARGET' ].zmult = 1.0
 
 			if not self.any_ancestors_broken(foot):
+
+				## MAGIC: lift head ##
+				if head_is_attached and standing and foot.get_location().z < 0.1:
+					self.apply_head_lift( head_lift*0.5 )
+
 				if self.flip_knee:
 					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
@@ -2838,7 +2846,8 @@ class Biped( AbstractArmature ):
 				v1 = foot.get_location().copy()
 				if standing and v1.z < 0.1:
 					if head_is_attached:
-						self.head.add_force( 0,0, head_lift*0.5 )
+						#self.head.add_force( 0,0, head_lift*0.5 )
+						self.apply_head_lift( head_lift*0.5 )
 
 				v2 = self.right_foot_loc.copy()
 				v1.z = .0; v2.z = .0
@@ -2863,6 +2872,12 @@ class Biped( AbstractArmature ):
 			if foot.toe: foot.toe.biped_solver[ 'TARGET' ].zmult = 1.0
 
 			if not self.any_ancestors_broken(foot):
+
+				## MAGIC: lift head ##
+				if head_is_attached and standing and foot.get_location().z < 0.1:
+					self.apply_head_lift( head_lift*0.5 )
+
+
 				if self.flip_knee:
 					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
@@ -2881,19 +2896,21 @@ class Biped( AbstractArmature ):
 
 			if current_pelvis_height < 0.2:
 				for foot in (self.left_foot, self.right_foot):
-					target = foot.biped_solver[ 'TARGET:pelvis' ]
-					if target.weight < 50: target.weight += 1.0
-					if foot not in self.broken:
-						foot.add_local_torque( -30, 0, 0 )
+					if foot not in self.broken: foot.add_local_torque( -30, 0, 0 )
+
+					if foot.parent:
+						target = foot.parent.biped_solver[ 'TARGET:chest' ]
+						if target.weight < 50: target.weight += 1.0
 
 			else:
 				for foot in (self.left_foot, self.right_foot):
-					target = foot.biped_solver[ 'TARGET:pelvis' ]
-					target.weight *= 0.9
+					if foot.parent:
+						target = foot.parent.biped_solver[ 'TARGET:chest' ]
+						target.weight *= 0.9
 
 
 			for target in self.foot_solver_targets:	# reduce foot step force
-				target.weight *= 0.9
+				target.weight *= 0.99
 
 			#for target in self.hand_solver_targets:	# increase hand plant force
 			#	if target.weight < self.when_falling_hand_target_goal_weight:
@@ -2920,8 +2937,9 @@ class Biped( AbstractArmature ):
 		elif standing:
 
 			for foot in (self.left_foot, self.right_foot):
-				target = foot.biped_solver[ 'TARGET:pelvis' ]
-				target.weight *= 0.9
+				if foot.parent:
+					target = foot.parent.biped_solver[ 'TARGET:chest' ]
+					target.weight *= 0.9
 
 
 			for target in self.foot_solver_targets:
@@ -2938,8 +2956,24 @@ class Biped( AbstractArmature ):
 				x,y,z = toe.get_location()
 				if z < self.toe_height_standing_threshold or z < toe.rest_height:
 					if head_is_attached and not self.any_ancestors_broken(toe):
-						self.head.add_force( 0,0, head_lift*0.5 )
+						#self.head.add_force( 0,0, head_lift*0.5 )
+						self.apply_head_lift( head_lift*0.5 )
 
+	def apply_head_lift( self, force ):
+		head = self.head
+		x,y,z = head.get_location()
+		if z > head.rest_height: return
+		delta = head.rest_height - z
+		#force *= delta
+		head.add_force( 0,0, force )
+		if head.parent:
+			head.parent.add_force( 0,0, force*0.75 )
+			if head.parent.parent:
+				head.parent.parent.add_force( 0,0, force*0.5 )
+				if head.parent.parent.parent:
+					head.parent.parent.parent.add_force( 0,0, force*0.25 )
+					if head.parent.parent.parent.parent:
+						head.parent.parent.parent.parent.add_force( 0,0, force*0.125 )
 
 
 ##########################################################

@@ -134,6 +134,8 @@ class OdeSingleton(object):
 		if self.threaded: self.lock.release()
 
 	def start(self):
+		self.active = False
+		time.sleep(1)	# ensure thread is done
 		print('starting ODE physics...')
 		self._iterations = 0
 		self._collision_iterations = 0
@@ -161,6 +163,7 @@ class OdeSingleton(object):
 			fps = 1.0/avg
 			print('--ODE COLLISION FPS:', fps)
 
+		time.sleep(1)
 
 	def exit(self): ode.CloseODE()
 	def toggle_pause(self,switch):
@@ -197,7 +200,7 @@ class OdeSingleton(object):
 		self.bodies = {}
 		self._tmp_joints = []
 
-		self.substeps = 4
+		self.substeps = 5
 		self.rate = 1.0 / 20
 		self.lock = lock
 
