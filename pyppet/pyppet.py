@@ -237,12 +237,13 @@ def dump_collada( ob, center=False ):
 	for mod in ob.modifiers:
 
 		## hijacked color to pass some hints to Three.js ##
-		if mod.type == 'MULTIRES':
-			hack.diffuse_color.r = 1.0
+		#if mod.type == 'MULTIRES':
+		#	hack.diffuse_color.r = 1.0
 		if mod.type == 'ARMATURE':
 			hack.diffuse_color.g = 1.0
 
-		if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
+		#if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
+		if mod.type in ('ARMATURE', 'SUBSURF') and mod.show_viewport:
 			mod.show_viewport = False
 			mods.append( mod )
 
@@ -444,7 +445,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 			mods = []
 			for mod in ob.modifiers:
-				if mod.type in ('SUBSURF','MULTIRES') and mod.show_viewport:
+				#if mod.type in ('SUBSURF','MULTIRES') and mod.show_viewport:
+				if mod.type in ('SUBSURF',) and mod.show_viewport:
 					mods.append( mod )
 			for mod in mods: mod.show_viewport = False
 			data = ob.to_mesh( context.scene, True, "PREVIEW")
@@ -514,15 +516,28 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 
 #####################
+import socketserver
+class ForkingWebServer( socketserver.ForkingMixIn, wsgiref.simple_server.WSGIServer ):
+	''' forking is a bad idea '''
+	pass
+def make_forking_server( host, port, callback ):
+	server = ForkingWebServer((host, port), wsgiref.simple_server.WSGIRequestHandler)
+	server.set_app(callback)
+	return server
+
 class WebServer( object ):
 	CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 
 	def close(self): self.httpd.close()
 
-	def init_webserver(self, port=8080, timeout=0.01):
+	def init_webserver(self, port=8080, forking=False, timeout=0):
 		self.hires_progressive_textures = True
 		self.httpd_port = port
-		self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+		if forking:
+			self.httpd = make_forking_server( self.host, self.httpd_port, self.httpd_reply )
+		else:
+			self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+
 		self.httpd.timeout = timeout
 		self.THREE = None
 		path = os.path.join(SCRIPT_DIR, 'javascripts/Three.js')
@@ -778,7 +793,7 @@ class Server( WebServer ):
 	def update(self, context):
 		## first do http ##
 		self.httpd.handle_request()
-		self.write_streams()
+		#self.write_streams()
 
 	def write_streams(self):	# to clients (peers)
 		for client in self.clients:

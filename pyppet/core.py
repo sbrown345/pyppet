@@ -174,7 +174,7 @@ class BlenderHack( object ):
 	def bake_image( self, ob, type='AO', width=64, height=None ):
 		assert type in self.BAKE_MODES
 		if height is None: height=width
-
+		print('---------- baking image ->', ob.name)
 		name = ob.name
 		path = '/tmp/%s.%s' %(name,type)
 		restore_active = self.context.active_object
@@ -185,10 +185,16 @@ class BlenderHack( object ):
 		ob.select = True
 		self.context.scene.objects.active = ob
 
+		for face in ob.data.faces: face.select = True
+
 		bpy.ops.object.mode_set( mode='EDIT' )
-		bpy.ops.mesh.select_all()
-		bpy.ops.mesh.select_all()
-		bpy.ops.image.new( name='baked', width=int(width), height=int(height) )
+		## must ensure that all faces are selected ##
+		#bpy.ops.mesh.select_all()
+		#bpy.ops.mesh.select_all()
+		bpy.ops.image.new(
+			name='_%s_(%s %sx%s)' %(ob.name,type,width,height), 
+			width=int(width), height=int(height) 
+		)
 		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
 
 		self.context.scene.render.bake_type = type
@@ -203,8 +209,9 @@ class BlenderHack( object ):
 					self.context.scene.render.use_bake_multires = True
 
 		time.sleep(0.25)				# SEGFAULT without this sleep
-		#self.context.scene.update()		# no help!? with SEGFAULT
-		bpy.ops.object.bake_image()
+		#self.context.scene.update()		# not required
+		res = bpy.ops.object.bake_image()
+		print('bpy.ops.object.bake_image', res)
 
 		#img = bpy.data.images[-1]
 		#img.file_format = 'jpg'
