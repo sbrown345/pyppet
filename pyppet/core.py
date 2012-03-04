@@ -191,13 +191,9 @@ class BlenderHack( object ):
 			ob.select = True
 			self.context.scene.objects.active = ob
 
-			#for face in ob.data.faces:		# faces need to be selected inorder for TRICK to work
-			#	#if not face.select: face.select = True
-			#	face.select = True
-
 			## TRICK, enter edit-mode and create a new image, this sets it as active in the ImageEditor
 			bpy.ops.object.mode_set( mode='EDIT' )
-			bpy.ops.mesh.select_all( action='SELECT' )
+			bpy.ops.mesh.select_all( action='SELECT' )	# ensure all faces selected
 			bpy.ops.image.new(
 				name='_%s_(%s %sx%s)' %(ob.name,type,width,height), 
 				width=int(width), height=int(height) 

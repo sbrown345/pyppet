@@ -1758,7 +1758,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True):
 		self.armature = arm
 		self.name = name
 		self.head = None
@@ -1771,6 +1771,7 @@ class Bone(object):
 		self.parent = None
 		self.tension_CFM = tension_CFM
 		self.tension_ERP = tension_ERP
+		self.collision = collision
 
 		ebone = arm.data.bones[ name ]
 		pbone = arm.pose.bones[ name ]
@@ -1815,7 +1816,8 @@ class Bone(object):
 		self.shaft.matrix_world = m
 		self.shaft.scale = (avg, length*0.6, avg)	# set scale in local space
 		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
-		self.shaft.ode_use_collision = True		# needs matrix_world to be in sync before this is set
+		if self.collision:
+			self.shaft.ode_use_collision = True	# needs matrix_world to be in sync before this is set
 
 		################ pole-target (up-vector) ##############
 		self.pole = bpy.data.objects.new( name='POLE.'+name, object_data=None )
@@ -1998,8 +2000,12 @@ class AbstractArmature(object):
 		return root
 
 
-	def build_bones(self, bone, data):
-		if bone.use_connect or not bone.parent:
+	def build_bones(self, bone, data=None, broken_chain=False):
+
+		if not bone.use_connect and bone.parent: broken_chain = True
+
+		if bone.use_connect or not bone.parent or self.use_bone_in_rig(bone):
+
 			name = bone.name
 			self.rig[ name ] = Bone(
 				self.armature,
@@ -2007,9 +2013,13 @@ class AbstractArmature(object):
 				stretch=self.stretchable,
 				tension_CFM = self.tension_CFM,
 				tension_ERP = self.tension_ERP,
-				object_data=data,
+				object_data = data,
+				collision = not broken_chain or not bone.children
 			)
-			for child in bone.children: self.build_bones( child, data )
+			for child in bone.children: self.build_bones( child, data, broken_chain )
+
+	def use_bone_in_rig( self, bone ): return False	# overload
+
 
 
 	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None):
@@ -2123,8 +2133,8 @@ class AbstractArmature(object):
 					joint.damage(0.5)
 					print('-----damage joint stress', stress)
 
-	def create_target( self, name, ob, weight=1.0, x=1.0, y=1.0, z=1.0 ):
-		target = Target( ob, weight=weight, x=x, y=y, z=z )
+	def create_target( self, name, ob, **kw ):
+		target = Target( ob, **kw )
 		target.dynamic = True
 		if name not in self.targets: self.targets[ name ] = []
 		self.targets[ name ].append( target )
@@ -2442,6 +2452,9 @@ class Biped( AbstractArmature ):
 		v.z = .0
 		self.right_foot_loc = v
 
+	def use_bone_in_rig( self, bone ):
+		if bone.name.startswith('toe'): return True
+		else: return False
 
 	def setup(self):
 		print('making biped...')
@@ -2518,9 +2531,10 @@ class Biped( AbstractArmature ):
 
 			elif 'toe' in _name:
 				B = self.rig[ name ]
-				x,y,z = B.get_location()
-				if x > 0: self.left_toes.append( B )
-				elif x < 0: self.right_toes.append( B )
+				if B.collision:
+					x,y,z = B.get_location()
+					if x > 0: self.left_toes.append( B )
+					elif x < 0: self.right_toes.append( B )
 
 			elif 'hand' in _name:
 				B = self.rig[ name ]
@@ -2540,10 +2554,7 @@ class Biped( AbstractArmature ):
 		assert self.head
 		assert self.chest
 
-		#for o in self.solver_objects:
-		#	o.biped_solver = {}
 		for B in self.rig.values(): B.biped_solver = {}
-
 
 		ob = bpy.data.objects.new(name='PELVIS-SHADOW',object_data=None)
 		self.pelvis.shadow = ob
@@ -2613,7 +2624,12 @@ class Biped( AbstractArmature ):
 		Pyppet.context.scene.objects.link( ob )
 		ob.parent = foot.shadow_parent
 
-		target = self.create_target( foot.name, ob, weight=30, z=.0 )
+		target = self.create_target(
+			foot.name, ob, weight=30, 
+			raw_power=float(len(toes)), 
+			normalized_power=0.5, 
+			z=.0 
+		)
 		self.foot_solver_targets.append( target )	# standing or falling modifies all foot targets
 		foot.biped_solver[ 'TARGET' ] = target
 
@@ -2634,6 +2650,7 @@ class Biped( AbstractArmature ):
 			toe.biped_solver['TARGET'] = target
 			self.foot_solver_targets.append( target )
 
+		print('FOOT TOES', foot.toes)
 
 
 	def update(self, context):
@@ -2995,11 +3012,16 @@ class Biped( AbstractArmature ):
 					target.weight *= 0.9
 
 				## MAGIC: if the toes are touching the ground, lift up the head ##
+				toes = []
 				for toe in foot.toes:
 					x,y,z = toe.get_location()
 					if z < self.toe_height_standing_threshold or z < toe.rest_height:
 						if head_is_attached and not self.any_ancestors_broken(toe):
-							self.apply_head_lift( head_lift*0.5 )
+							toes.append( toe )
+
+				if not toes: continue
+				force = head_lift / float(len(toes))
+				self.apply_head_lift( force*0.5 )
 
 
 			for target in self.foot_solver_targets:
