@@ -171,67 +171,74 @@ class BlenderHack( object ):
 	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
 	BAKE_BYTES = 0
 	## can only be called from inside the ImageEditor redraw callback ##
-	def bake_image( self, ob, type='AO', width=64, height=None ):
+	def bake_image( self, ob, type='AO', size=64, refresh=False ):
 		assert type in self.BAKE_MODES
-		if height is None: height=width
-		print('---------- baking image ->', ob.name)
+		width = height = size
 		name = ob.name
-		path = '/tmp/%s.%s' %(name,type)
-		restore_active = self.context.active_object
-		restore = []
-		for o in self.context.selected_objects:
-			o.select = False
-			restore.append( o )
-		ob.select = True
-		self.context.scene.objects.active = ob
+		path = '/tmp/%s.%s.%s' %(name,size,type)
 
-		for face in ob.data.faces: face.select = True
+		if not refresh and os.path.isfile(path+'.png'):
+			print('FAST CACHE RETURN')
 
-		bpy.ops.object.mode_set( mode='EDIT' )
-		## must ensure that all faces are selected ##
-		#bpy.ops.mesh.select_all()
-		#bpy.ops.mesh.select_all()
-		bpy.ops.image.new(
-			name='_%s_(%s %sx%s)' %(ob.name,type,width,height), 
-			width=int(width), height=int(height) 
-		)
-		bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
+		if refresh or not os.path.isfile(path+'.png'):
+			print('---------- baking image ->', ob.name)
 
-		self.context.scene.render.bake_type = type
-		self.context.scene.render.bake_margin = 5
-		self.context.scene.render.use_bake_normalize = True
-		self.context.scene.render.use_bake_selected_to_active = False	# required
-		self.context.scene.render.use_bake_lores_mesh = False		# should be True
-		self.context.scene.render.use_bake_multires = False
-		if type=='DISPLACEMENT':	# can also apply to NORMALS
-			for mod in ob.modifiers:
-				if mod.type == 'MULTIRES':
-					self.context.scene.render.use_bake_multires = True
+			restore_active = self.context.active_object
+			restore = []
+			for o in self.context.selected_objects:
+				o.select = False
+				restore.append( o )
+			ob.select = True
+			self.context.scene.objects.active = ob
 
-		time.sleep(0.25)				# SEGFAULT without this sleep
-		#self.context.scene.update()		# not required
-		res = bpy.ops.object.bake_image()
-		print('bpy.ops.object.bake_image', res)
+			#for face in ob.data.faces:		# faces need to be selected inorder for TRICK to work
+			#	#if not face.select: face.select = True
+			#	face.select = True
 
-		#img = bpy.data.images[-1]
-		#img.file_format = 'jpg'
-		#img.filepath_raw = '/tmp/%s.jpg' %ob.name
-		#img.save()
-		bpy.ops.image.save_as(
-			filepath = path+'.png',
-			check_existing=False,
-		)
+			## TRICK, enter edit-mode and create a new image, this sets it as active in the ImageEditor
+			bpy.ops.object.mode_set( mode='EDIT' )
+			bpy.ops.mesh.select_all( action='SELECT' )
+			bpy.ops.image.new(
+				name='_%s_(%s %sx%s)' %(ob.name,type,width,height), 
+				width=int(width), height=int(height) 
+			)
+			bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
 
-		for ob in restore: ob.select=True
-		self.context.scene.objects.active = restore_active
+			self.context.scene.render.bake_type = type
+			self.context.scene.render.bake_margin = 5
+			self.context.scene.render.use_bake_normalize = True
+			self.context.scene.render.use_bake_selected_to_active = False	# required
+			self.context.scene.render.use_bake_lores_mesh = False		# should be True
+			self.context.scene.render.use_bake_multires = False
+			if type=='DISPLACEMENT':	# can also apply to NORMALS
+				for mod in ob.modifiers:
+					if mod.type == 'MULTIRES':
+						self.context.scene.render.use_bake_multires = True
 
-		## 128 color PNG can beat JPG by half ##
-		if type == 'DISPLACEMENT':
-			os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
-			os.system( 'convert %s.png -colors 128 -gamma 0.36 %s.png' %(path,path) )
-		else:
-			os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
-			os.system( 'convert %s.png -colors 128 %s.png' %(path,path) )
+			time.sleep(0.25)				# SEGFAULT without this sleep
+			self.context.scene.update()		# not required
+			res = bpy.ops.object.bake_image()
+			print('bpy.ops.object.bake_image', res)
+
+			#img = bpy.data.images[-1]
+			#img.file_format = 'jpg'
+			#img.filepath_raw = '/tmp/%s.jpg' %ob.name
+			#img.save()
+			bpy.ops.image.save_as(
+				filepath = path+'.png',
+				check_existing=False,
+			)
+
+			for ob in restore: ob.select=True
+			self.context.scene.objects.active = restore_active
+
+			## 128 color PNG can beat JPG by half ##
+			if type == 'DISPLACEMENT':
+				os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
+				os.system( 'convert %s.png -colors 128 -gamma 0.36 %s.png' %(path,path) )
+			else:
+				os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
+				os.system( 'convert %s.png -colors 128 %s.png' %(path,path) )
 
 		## blender saves png's with high compressision level
 		## for simple textures, the PNG may infact be smaller than the jpeg

@@ -252,19 +252,19 @@ function on_collada_ready( collada ) {
 
 function reload_progressive_textures( ob ) {
 	var name = ob.name;
-	ob.shader.uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
+	ob.shader.uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64|True', undefined, on_texture_ready );
 
-	ob.shader.uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, on_texture_ready );
+	ob.shader.uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128|True', undefined, on_texture_ready );
 
 	if (ob.has_AO) {
-		ob.shader.uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+		ob.shader.uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64|True', undefined, on_texture_ready );
 	}
 
-	ob.shader.uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
+	//ob.shader.uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64|True', undefined, on_texture_ready );
 
 	if (ob.has_displacement) {
 		ob.shader.uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture(
-			'/bake/'+name+'.jpg?DISPLACEMENT|256', undefined, on_texture_ready 
+			'/bake/'+name+'.jpg?DISPLACEMENT|256|True', undefined, on_texture_ready 
 		);
 	}
 
@@ -339,7 +339,7 @@ function create_normal_shader( name, displacement, AO ) {
 	if (AO) {
 		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
 	}
-	uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
+	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
 	if (AO) {
@@ -348,7 +348,7 @@ function create_normal_shader( name, displacement, AO ) {
 		uniforms[ "enableAO" ].value = false;
 	}
 	uniforms[ "enableDiffuse" ].value = true;
-	uniforms[ "enableSpecular" ].value = true;
+	uniforms[ "enableSpecular" ].value = false;
 	uniforms[ "enableReflection" ].value = false;
 
 	uniforms[ "uDiffuseColor" ].value.setHex( diffuse );
