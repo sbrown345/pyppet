@@ -1816,6 +1816,8 @@ class Bone(object):
 		self.shaft.matrix_world = m
 		self.shaft.scale = (avg, length*0.6, avg)	# set scale in local space
 		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
+
+		self.shaft.ode_use_body = True
 		if self.collision:
 			self.shaft.ode_use_collision = True	# needs matrix_world to be in sync before this is set
 
@@ -1853,7 +1855,6 @@ class Bone(object):
 
 		#### make ODE bodies ####
 		if self.head: self.head.ode_use_body = True
-		if self.shaft: self.shaft.ode_use_body = True
 		if self.tail: self.tail.ode_use_body = True
 
 
@@ -2004,7 +2005,7 @@ class AbstractArmature(object):
 
 		if not bone.use_connect and bone.parent: broken_chain = True
 
-		if bone.use_connect or not bone.parent or self.use_bone_in_rig(bone):
+		if bone.use_connect or not bone.parent or self.use_bone_in_rig(bone) or self.breakable:
 
 			name = bone.name
 			self.rig[ name ] = Bone(
@@ -2014,7 +2015,7 @@ class AbstractArmature(object):
 				tension_CFM = self.tension_CFM,
 				tension_ERP = self.tension_ERP,
 				object_data = data,
-				collision = not broken_chain or not bone.children
+				collision = not broken_chain or not bone.children or self.breakable
 			)
 			for child in bone.children: self.build_bones( child, data, broken_chain )
 
@@ -2062,11 +2063,11 @@ class AbstractArmature(object):
 				bone.use_inherit_scale = False
 
 		## build rig from roots ##
-		cube = create_cube()
+		#cube = create_cube()
 		for bone in arm.data.bones:
-			if not bone.parent: self.build_bones( bone, cube.data )
-		Pyppet.context.scene.objects.unlink(cube)
-		cube.user_clear()
+			if not bone.parent: self.build_bones( bone )
+		#Pyppet.context.scene.objects.unlink(cube)
+		#cube.user_clear()
 
 
 		## bind body to tail of parent ##
@@ -3129,12 +3130,12 @@ class PyppetAPI( BlenderHackLinux ):
 			if name not in self._rec_current_objects:
 				self._rec_inactive_objects.append( name )
 
-		if self.play_wave_on_record:
+		if self.play_wave_on_record and self.wave_speaker:
 			self.start_wave()
 
 	def end_record(self):
 		self.recording = False
-		if self.play_wave_on_record: self.stop_wave()
+		if self.play_wave_on_record and self.wave_speaker: self.stop_wave()
 		for name in ENGINE.objects:
 			w = ENGINE.objects[ name ]
 			w.transform = None
@@ -3142,8 +3143,8 @@ class PyppetAPI( BlenderHackLinux ):
 
 
 
-	def update_physics(self, now):
-		ENGINE.sync( self.context, now, self.recording )
+	def update_physics(self, now, drop_frame=False):
+		ENGINE.sync( self.context, now, self.recording, drop_frame=drop_frame )
 		models = self.entities.values()
 		for mod in models:
 			mod.update( self.context )
@@ -3174,11 +3175,11 @@ class PyppetAPI( BlenderHackLinux ):
 
 	def bake_animation(self,button):
 		self.context.scene.frame_current = 1
-		step = 1.0 / float(self.context.scene.render.fps)
+		step = 1.0 / float(self.context.scene.render.fps / 3.0)
 		now = 0.0
 		done = False
 		while not done:
-			self.context.scene.frame_current += 1
+			self.context.scene.frame_current += 3
 			done = self.update_preview( now )
 			now += step
 			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
@@ -3339,11 +3340,13 @@ class PyppetUI( PyppetAPI ):
 
 	def start_wave(self):
 		self.wave_playing = True
-		self.wave_speaker.play()
+		if self.wave_speaker:
+			self.wave_speaker.play()
 
 	def stop_wave(self):
 		self.wave_playing = False
-		self.wave_speaker.stop()
+		if self.wave_speaker:
+			self.wave_speaker.stop()
 
 	def open_wave(self, url):
 		if url.lower().endswith('.wav'):
@@ -4451,6 +4454,7 @@ class App( PyppetUI ):
 
 		self.play_wave_on_record = True
 		self.wave_playing = False
+		self.wave_speaker = None
 
 		self._rec_start_time = time.time()
 		self._rec_objects = {}	# recording buffers
@@ -4481,21 +4485,23 @@ class App( PyppetUI ):
 
 
 	####################################################
-
 	def mainloop(self):
 		drops = 0
 		while self.active:
+			now = time.time()
 			drop_frame = False
+			dt = 1.0 / ( now - self._mainloop_prev_time )
+			self._mainloop_prev_time = now
+			#print('FPS', dt)
+
 			if self.physics_running:
-				dt = 1.0 / ( time.time() - self._mainloop_prev_time )
-				self._mainloop_prev_time = time.time()
 
 				if drops > 15:	# force redraw
 					drops = 0
 					self.update_blender_and_gtk()
 					self.blender_good_frames += 1
 
-				elif dt < 10:
+				elif dt < 25.0:
 					drop_frame = True
 					drops += 1
 					self.update_blender_and_gtk( drop_frame=True )
@@ -4506,18 +4512,20 @@ class App( PyppetUI ):
 			else:
 				self.update_blender_and_gtk()
 
-			DriverManager.update()
-			if ENGINE.active and not ENGINE.paused: self.update_physics( now )
+			now = now - self._rec_start_time
 
-			now = time.time() - self._rec_start_time
-			if self.wave_playing:
+			if self.wave_playing and self.wave_speaker:
 				self.wave_speaker.update()
 				#print('wave time', self.wave_speaker.seconds)
 				self._wave_time_label.set_text(
 					'seconds: %s' %round(self.wave_speaker.seconds,2)
 				)
 				## use wave time if play on record is true ##
-				if self.play_wave_on_record: now = self.wave_speaker.seconds
+				if self.play_wave_on_record:
+					now = self.wave_speaker.seconds
+
+			DriverManager.update()
+			if ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
 
 			if drop_frame: continue
 
@@ -4547,14 +4555,15 @@ class App( PyppetUI ):
 				self._rec_current_time_label.set_text( 'seconds: %s' %round(now,2) )
 			if self.preview: self.update_preview( now )
 
+
 			if not self._image_editor_handle:
 				# ImageEditor redraw callback will update http-server,
 				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
 
-
-			self.client.update( self.context )
+			#self.client.update( self.context )
 			self.websocket_server.update( self.context )
+
 
 
 ######## Pyppet Singleton #########
@@ -5371,6 +5380,4 @@ if __name__ == '__main__':
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 	## run pyppet ##
 	Pyppet.mainloop()
-
-
 

@@ -128,6 +128,11 @@ bpy.types.World.ode_angular_damping = FloatProperty(
 
 
 class OdeSingleton(object):
+	'''
+	each geom in self.space will be tested with ode.SpaceCollide2 against self.subspace,
+	SubSpace geoms will not collide with eachother,
+	if SubSpace contains nested spaces, they can collide?
+	'''
 	def reset( self ):
 		if self.threaded: self.lock.acquire()
 		[ ob.reset() for ob in self.objects.values() ]
@@ -182,22 +187,35 @@ class OdeSingleton(object):
 		self.world.SetGravity(.0,.0,-9.810)
 		#self.world.SetQuickStepNumIterations(24)
 
+		#self.bodyless_space = ode.SimpleSpaceCreate()
+
 		if space_type == 'HASH':		# not any faster with the biped solver alone
 			print('creating Hash space')
+			#self.space = ode.HashSpaceCreate( self.bodyless_space )
 			self.space = ode.HashSpaceCreate()
 			## 2**-4 = 0.0625
 			## 2**6 = 64
 			self.space.HashSpaceSetLevels( -4, 6 )	# 2**min, 2**max
 
+			self.subspace = ode.HashSpaceCreate()
+			self.subspace.HashSpaceSetLevels( -4, 6 )
+
 		else:
 			print( '--creating Simple space' )
 			self.space = ode.SimpleSpaceCreate()
+			self.subspace = ode.SimpleSpaceCreate()
+
+		self.bodyless_space = self.space
+		#ode.SpaceSetSublevel( self.space, 2 )
 
 		#self.space = ode.QuadTreeSpaceCreate(None, center4, extents4, depth)
 		print( self.space )
 		self.joint_group = ode.JointGroupCreate( 0 )		# max size (returns low-level pointer)
 		self.objects = {}
 		self.bodies = {}
+		self.bodyless_geoms = {}
+		self.body_geoms = {}
+
 		self._tmp_joints = []
 
 		self.substeps = 5
@@ -219,7 +237,7 @@ class OdeSingleton(object):
 		if ob.name not in self.objects: self.objects[ ob.name ] = Object( ob, self.world, self.space )
 		return self.objects[ ob.name ]
 
-	def sync( self, context, now, recording=False ):
+	def sync( self, context, now, recording=False, drop_frame=False ):
 		if not self.active: return
 
 		if context.active_object and context.active_object.name in self.objects and False:
@@ -248,6 +266,7 @@ class OdeSingleton(object):
 		for ob in bpy.data.objects:
 			if ob.name not in self.objects: create.append( ob.name )
 		if create:
+			print('creating new physics objects')
 			if self.threaded: self.lock.acquire()
 			for name in create:
 				ob = bpy.data.objects[ name ]
@@ -272,37 +291,20 @@ class OdeSingleton(object):
 			self._iterations += 1
 
 
-		if fast:		# updates blender object for display
-			#if self.threaded: self.lock.acquire()		# ODE is read-only thread-safe
+		if fast and not drop_frame:		# updates blender object for display - SLOW
 			for obj, bo in fast: obj.update( bo, now, recording )
-			#if self.threaded: self.lock.release()
 
 
 	def start_thread(self):
-		self._collision_ready = True
-
 		threading._start_new_thread(
 			self.loop, ()
 		)
-
-		if 0:
-			threading._start_new_thread(
-				self.collision_loop, ()
-			)
-
-			threading._start_new_thread(
-				self.gloop, ()
-			)
 
 
 
 
 	def loop(self):
 		print('------starting ODE thread-----')
-
-		while self.active and not self._collision_ready:
-			time.sleep(1)
-			print('waiting for first collision update...')
 
 		state = []
 		while self.active:
@@ -313,23 +315,35 @@ class OdeSingleton(object):
 			self.lock.acquire()
 
 			if 0:
-				state = list( self._collision_state )
-				if state:
-					print('collision state', len(state))
-					if len(state) < 10000:	# ODE will crash if more than 10K
-						for w1,w2,contact in state:
-							#w1, w2, contact = self._pending_contact_joints.pop()
-							joint = ode.JointCreateContact( self.world, self.joint_group, ctypes.pointer(contact) )
-							joint.Attach( w1.body, w2.body )
-					state = self._collision_state = []
+				ode.SpaceCollide( self.space, None, self.near_callback_sync )
 			else:
-				#ode.SpaceCollide( self.space, None, self.near_callback_sync )
 
 				self._pending_near = []
+				## 25fps ##
 				ode.SpaceCollide( self.space, None, self.near_callback_sync_fast )
 				while self._pending_near:
 					geom1, geom2 = self._pending_near.pop()
 					self.do_collision( geom1, geom2 )
+
+				## 27fps ##
+				if 0:
+					for geom in self.bodyless_geoms.values():
+						ode.SpaceCollide2( geom, self.space, None,  self.near_callback_sync_fast)
+					while self._pending_near:
+						geom1, geom2 = self._pending_near.pop()
+						self.do_collision( geom1, geom2 )
+
+
+				#ode.SpaceCollide2( self.bodyless_space, self.space, None, self.near_callback_sync_fast )
+
+				## 26fps ##
+				if 0:
+					for geom1 in self.bodyless_geoms.values():
+						#print('geom1:', geom1)
+						for geom2 in self.body_geoms.values():
+							self.do_collision( geom1, geom2 )
+							#print('---testing:', geom2)
+
 
 
 			rate = self.rate / float(self.substeps)
@@ -345,60 +359,8 @@ class OdeSingleton(object):
 
 		print('------exit ODE thread------')
 
-	def gloop(self):
-
-		while self.active and not self._collision_iterations:
-			time.sleep(1)
-
-		print('------starting ODE collision thread-----')
-		while self.active:
-			self._pending_contact_joints = []
-
-			near = list( self._near_state )
-			print('near state', len(near))
-			while near:
-				geom1, geom2 = near.pop()
-				self.check_collision( geom1, geom2 )
-			self._collision_state = self._pending_contact_joints
-			self._collision_ready = True
-			time.sleep(0.03)
-
-		print('------exit ODE collision thread------')
 
 
-	def collision_loop(self):
-		print('------starting ODE collision (near-check) thread-----')
-		while self.active:
-			self._pending_near = []
-
-			wraps = list(self.objects.values())	# dict could change size durring iteration
-			for wrap in wraps:
-				if wrap.collision_body:
-					body = wrap.collision_body
-					body.SetPosition( *wrap.position )
-					body.SetQuaternion( wrap.rotation )
-
-
-			#T = time.time()
-			#self.lock.acquire()
-			ode.SpaceCollide( self.space, None, self.near_callback )
-			#rate = self.rate / float(self.substeps)
-			#for i in range(int(self.substeps)): self.world.QuickStep( rate )
-			#ode.JointGroupEmpty( self.joint_group )
-			#self.lock.release()
-
-
-			#near = list( self._pending_near )
-			#while near:
-			#	geom1, geom2 = near.pop()
-			#	self.check_collision( geom1, geom2 )
-
-			self._near_state = self._pending_near
-			self._collision_iterations += 1
-			#if time.time() - T <= 0.01:		# can reach 100fps without sleep or collision
-			#	time.sleep(0.01)
-
-		print('------exit ODE collision (near-check) thread------')
 
 	def near_callback( self, data, geom1, geom2 ):
 		#if (geom1,geom2) in self._pending_near: print('1,2 already in')
@@ -549,6 +511,7 @@ class OdeSingleton(object):
 				self._pending_contact_joints.append( (ob1, ob2, con) )
 
 	def do_collision( self, geom1, geom2 ):
+		#print('doing collision', geom1, geom2)
 		body1 = ode.GeomGetBody( geom1 )
 		body2 = ode.GeomGetBody( geom2 )
 		_b1 = _b2 = None
@@ -558,6 +521,8 @@ class OdeSingleton(object):
 		except ValueError: pass
 		if not _b1 and not _b2:
 			return
+
+		if ode.GeomIsSpace(geom1) or ode.GeomIsSpace(geom2): return
 
 		ptr1 = ctypes.cast( ode.GeomGetData( geom1 ), self.PYOBJP )
 		ob1 = ptr1.contents.value
@@ -913,14 +878,20 @@ class Object( object ):
 
 		T = ob.game.collision_bounds_type
 		if T in 'BOX SPHERE CAPSULE CYLINDER'.split():		#TODO: CONVEX_HULL, TRIANGLE_MESH
+			self.geomtype = T
+			print( '>>>new geom', T, self.name )
+
 			sradius = ((sx+sy+sz) / 3.0) *0.5
 			cradius = ((sx+sy)/2.0) * 0.5
 			length = sz
-			self.geomtype = T
-			if T == 'BOX': self.geom = ode.CreateBox( self.space, sx, sy, sz )
-			elif T == 'SPHERE': self.geom = ode.CreateSphere( self.space, sradius )
-			elif T == 'CAPSULE': self.geom = ode.CreateCapsule( self.space, cradius, length )
-			elif T == 'CYLINDER': self.geom = ode.CreateCylinder( self.space, cradius, length )
+
+			if self.body: space = self.space
+			else: space = ENGINE.bodyless_space
+
+			if T == 'BOX': self.geom = ode.CreateBox( space, sx, sy, sz )
+			elif T == 'SPHERE': self.geom = ode.CreateSphere( space, sradius )
+			elif T == 'CAPSULE': self.geom = ode.CreateCapsule( space, cradius, length )
+			elif T == 'CYLINDER': self.geom = ode.CreateCylinder( space, cradius, length )
 			#elif T == 'CONVEX_HULL': self.geom = ode.CreateConvex( self.space, planes, numplanes, points, numpoints, polys )
 			geom = self.geom
 			geom.SetPosition( px, py, pz )
@@ -929,11 +900,23 @@ class Object( object ):
 				print('<<<geom setting body>>>')
 				#geom.SetBody( self.collision_body )
 				geom.SetBody( self.body )
+				ENGINE.body_geoms[ self.name ] = self.geom
+			else:
+				print('<<<bodyless geom>>>')
+				ENGINE.bodyless_geoms[ self.name ] = self.geom
 
-			print( '>>>created new geom', T, self.name )
 			## this is safe ##
 			self._geom_set_data_pointer = ctypes.pointer( ctypes.py_object(self) )
 			geom.SetData( self._geom_set_data_pointer )
+
+			## not working? ##
+			#ode.GeomSetCollideBits( self.geom, ctypes.c_ulong(int(randint(0,320000))) )
+			#ode.GeomSetCategoryBits( self.geom, ctypes.c_ulong(int(randint(0,320000))) )
+			#bits = ode.GeomGetCategoryBits( self.geom )
+			#print('>>>category bits', bits)
+			#bits = ode.GeomGetCollideBits( self.geom )
+			#print('>>>collide bits', bits)
+
 
 		if self.lock: self.lock.release()
 
@@ -1080,7 +1063,7 @@ class Object( object ):
 			if x or y or z: body.AddTorque( x,y,z )
 
 
-	def update( self, ob, now=None, recording=False ):
+	def update( self, ob, now=None, recording=False ):	# why is this slow?
 		body = self.body
 		if not body or not self.alive: return
 
@@ -1107,7 +1090,6 @@ class Object( object ):
 		sx,sy,sz = ob.scale		# save scale
 		ob.matrix_world = m
 		ob.scale = (sx,sy,sz)	# restore scale (in local space)
-		#ob.location = body.GetPosition()	# this won't work, setting matrix_world is magic
 
 
 ## DEPRECATED ##
