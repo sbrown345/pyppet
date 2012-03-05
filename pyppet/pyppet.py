@@ -2003,10 +2003,10 @@ class AbstractArmature(object):
 
 
 	def build_bones(self, bone, data=None, broken_chain=False):
+		connected = self.bone_info[bone.name]['connected']
+		if not connected and bone.parent: broken_chain = True
 
-		if not bone.use_connect and bone.parent: broken_chain = True
-
-		if bone.use_connect or not bone.parent or self.use_bone_in_rig(bone) or self.breakable:
+		if connected or not bone.parent or self.use_bone_in_rig(bone):
 
 			name = bone.name
 			self.rig[ name ] = Bone(
@@ -2016,7 +2016,7 @@ class AbstractArmature(object):
 				tension_CFM = self.tension_CFM,
 				tension_ERP = self.tension_ERP,
 				object_data = data,
-				collision = not broken_chain or not bone.children or self.breakable
+				collision = not broken_chain or not bone.children
 			)
 			for child in bone.children: self.build_bones( child, data, broken_chain )
 
@@ -2044,9 +2044,12 @@ class AbstractArmature(object):
 		self.initial_break_thresh = break_thresh
 		self.initial_damage_thresh = damage_thresh
 
-		## TODO armature offset
-		parent_matrix = arm.matrix_world.copy()
-		imatrix = parent_matrix.inverted()
+		## collect bone info ##
+		self.bone_info = {}
+		for bone in arm.data.bones:
+			print(bone,dir(bone))
+			self.bone_info[ bone.name ] = info = {}
+			info['connected'] = bone.use_connect
 
 		if breakable:
 			print('making breakable',arm)
@@ -3182,10 +3185,11 @@ class PyppetAPI( BlenderHackLinux ):
 		else: return False
 
 	def bake_animation(self,button):
-		for ob in self.context.scene.objects:
-			if ob.name in ENGINE.objects:
-				ob.hide_select = False
-				ob.select = True
+		for name in self._rec_current_objects:
+			ob = bpy.data.objects[ name ]
+			ob.hide_select = False
+			ob.select = True
+			ob.rotation_mode = 'QUATERNION'	# prevents flipping
 
 		self.context.scene.frame_current = 1
 		step = 1.0 / float(self.context.scene.render.fps / 3.0)
@@ -3201,15 +3205,11 @@ class PyppetAPI( BlenderHackLinux ):
 
 
 def set_transform( name, pos, rot, set_body=False ):
-	print('set-transform', name)
 	ob = bpy.data.objects[name]
 	q = mathutils.Quaternion()
 	qw,qx,qy,qz = rot
 	q.w = qw; q.x=qx; q.y=qy; q.z=qz
-
-	e = q.to_euler( 'XYZ', ob.matrix_world.to_euler() )	# no flipping
-	m = e.to_matrix().to_4x4()
-
+	m = q.to_matrix().to_4x4()
 	x,y,z = pos
 	m[0][3] = x; m[1][3] = y; m[2][3] = z
 	x,y,z = ob.scale	# save scale

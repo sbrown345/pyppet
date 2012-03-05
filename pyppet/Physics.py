@@ -297,11 +297,7 @@ class OdeSingleton(object):
 
 
 	def start_thread(self):
-		threading._start_new_thread(
-			self.loop, ()
-		)
-
-
+		threading._start_new_thread( self.loop, () )
 
 
 	def loop(self):
@@ -697,7 +693,11 @@ class Joint( object ):
 		if self.broken: print('WARN: joint already broken')
 		else:
 			self.broken = True
+
+			if ENGINE.lock: ENGINE.lock.acquire()
 			ode.JointDisable( self.joint )
+			if ENGINE.lock: ENGINE.lock.release()
+
 			for joint in self.slaves: joint.break_joint()
 			if self._on_broken_callback:
 				self._on_broken_callback( *self._on_broken_args )
@@ -1078,15 +1078,16 @@ class Object( object ):
 		self.position = (x,y,z)			# thread-safe to read
 		self.rotation = (qw,qx,qy,qz)	# thread-safe to read
 
-		q = mathutils.Quaternion()
-		q.w = qw; q.x=qx; q.y=qy; q.z=qz
-		e = q.to_euler( 'XYZ', ob.matrix_world.to_euler() )
-		q = e.to_quaternion()
 
 		if recording and not self.transform:	# do not record if using direct transform
-			self.recbuffer.append( (now, (x,y,z), (q.w,q.x,q.y,q.z)) )
+			self.recbuffer.append( (now, (x,y,z), (qw,qx,qy,qz)) )
 
 		if update_blender:		# slow because it triggers a DAG update?
+			q = mathutils.Quaternion()
+			q.w = qw; q.x=qx; q.y=qy; q.z=qz
+			#e = q.to_euler( 'XYZ', ob.matrix_world.to_euler() )
+			#q = e.to_quaternion()
+
 			m = q.to_matrix().to_4x4()
 			m[0][3] = x	# blender2.61 style
 			m[1][3] = y
