@@ -2005,8 +2005,9 @@ class AbstractArmature(object):
 	def build_bones(self, bone, data=None, broken_chain=False):
 		connected = self.bone_info[bone.name]['connected']
 		if not connected and bone.parent: broken_chain = True
-
-		if connected or not bone.parent or self.use_bone_in_rig(bone):
+		ik = self.bone_info[bone.name]['ik-chain']
+		deform = self.bone_info[bone.name]['deform']
+		if (connected or not bone.parent or self.use_bone_in_rig(bone)) and not ik and deform:
 
 			name = bone.name
 			self.rig[ name ] = Bone(
@@ -2047,13 +2048,20 @@ class AbstractArmature(object):
 		## collect bone info ##
 		self.bone_info = {}
 		for bone in arm.data.bones:
-			print(bone,dir(bone))
 			self.bone_info[ bone.name ] = info = {}
 			info['connected'] = bone.use_connect
+			info['deform'] = bone.use_deform
+			pbone = arm.pose.bones[ bone.name ]
+			info['ik-chain'] = pbone.is_in_ik_chain
+			info['ik-target'] = None
+			for cns in pbone.constraints:
+				if cns.type == 'IK':
+					info['ik-target'] = cns.target
 
 		if breakable:
 			print('making breakable',arm)
-			bpy.context.scene.objects.active = arm        # arm needs to be in edit mode to get to .edit_bones
+			# arm needs to be in edit mode to get to .edit_bones
+			bpy.context.scene.objects.active = arm
 			bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
 			bpy.ops.object.mode_set(mode='EDIT', toggle=False)
 			for bone in arm.data.edit_bones:
@@ -2457,9 +2465,9 @@ class Biped( AbstractArmature ):
 		v.z = .0
 		self.right_foot_loc = v
 
-	def use_bone_in_rig( self, bone ):
-		if bone.name.startswith('toe'): return True
-		else: return False
+	#def use_bone_in_rig( self, bone ):
+	#	if bone.name.startswith('toe'): return True
+	#	else: return False
 
 	def setup(self):
 		print('making biped...')
