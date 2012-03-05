@@ -291,8 +291,9 @@ class OdeSingleton(object):
 			self._iterations += 1
 
 
-		if fast and not drop_frame:		# updates blender object for display - SLOW
-			for obj, bo in fast: obj.update( bo, now, recording )
+		if fast:
+			for obj, bo in fast:
+				obj.update( bo, now, recording, update_blender=not drop_frame )
 
 
 	def start_thread(self):
@@ -1063,7 +1064,7 @@ class Object( object ):
 			if x or y or z: body.AddTorque( x,y,z )
 
 
-	def update( self, ob, now=None, recording=False ):	# why is this slow?
+	def update( self, ob, now=None, recording=False, update_blender=False ):
 		body = self.body
 		if not body or not self.alive: return
 
@@ -1080,16 +1081,17 @@ class Object( object ):
 		if recording and not self.transform:	# do not record if using direct transform
 			self.recbuffer.append( (now, (x,y,z), (qw,qx,qy,qz)) )
 
-		q = mathutils.Quaternion()
-		q.w = qw; q.x=qx; q.y=qy; q.z=qz
+		if update_blender:		# slow because it triggers a DAG update?
+			q = mathutils.Quaternion()
+			q.w = qw; q.x=qx; q.y=qy; q.z=qz
 
-		m = q.to_matrix().to_4x4()
-		m[0][3] = x	# blender2.61 style
-		m[1][3] = y
-		m[2][3] = z
-		sx,sy,sz = ob.scale		# save scale
-		ob.matrix_world = m
-		ob.scale = (sx,sy,sz)	# restore scale (in local space)
+			m = q.to_matrix().to_4x4()
+			m[0][3] = x	# blender2.61 style
+			m[1][3] = y
+			m[2][3] = z
+			sx,sy,sz = ob.scale		# save scale
+			ob.matrix_world = m
+			ob.scale = (sx,sy,sz)	# restore scale (in local space)
 
 
 ## DEPRECATED ##

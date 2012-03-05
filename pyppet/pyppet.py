@@ -3111,12 +3111,19 @@ class PyppetAPI( BlenderHackLinux ):
 
 
 	########### recording/baking ###########
-	def start_record(self):
+	def start_record(self, selected_only=False):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
 		self._rec_start_time = time.time()
 		self._rec_current_objects = []
-		for ob in self.context.selected_objects:
+
+		objects = []
+		if selected_only:
+			for ob in self.context.selected_objects: objects.append( ob )
+		else:
+			for ob in self.context.scene.objects: objects.append( ob )
+
+		for ob in objects:
 			if ob.name in ENGINE.objects:
 				print('record setup on object', ob.name)
 				ob.animation_data_clear()
@@ -3174,6 +3181,11 @@ class PyppetAPI( BlenderHackLinux ):
 		else: return False
 
 	def bake_animation(self,button):
+		for ob in self.context.scene.objects:
+			if ob.name in ENGINE.objects:
+				ob.hide_select = False
+				ob.select = True
+
 		self.context.scene.frame_current = 1
 		step = 1.0 / float(self.context.scene.render.fps / 3.0)
 		now = 0.0
@@ -3208,9 +3220,10 @@ def set_transform( name, pos, rot, set_body=False ):
 
 
 class PyppetUI( PyppetAPI ):
-	def toggle_record( self, button ):
-		if button.get_active(): self.start_record()
+	def toggle_record( self, button, selected_only ):
+		if button.get_active(): self.start_record( selected_only.get_active() )
 		else: self.end_record()
+
 	def toggle_preview( self, button ):
 		self.preview = button.get_active()
 		if self.preview:
@@ -3377,9 +3390,14 @@ class PyppetUI( PyppetAPI ):
 		root = gtk.VBox(); frame.add( root )
 
 		bx = gtk.HBox(); root.pack_start( bx )
+
+		c = gtk.CheckButton('selected')
+		c.set_tooltip_text('only record selected objects')
+		bx.pack_start( c, expand=False )
+
 		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
 		b.set_tooltip_text('record selected objects')
-		b.connect('toggled', self.toggle_record )
+		b.connect('toggled', self.toggle_record, c )
 		bx.pack_start( b, expand=False )
 
 		self._rec_preview_button = b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
@@ -4496,12 +4514,12 @@ class App( PyppetUI ):
 
 			if self.physics_running:
 
-				if drops > 15:	# force redraw
-					drops = 0
-					self.update_blender_and_gtk()
-					self.blender_good_frames += 1
+				#if drops > 15:	# force redraw
+				#	drops = 0
+				#	self.update_blender_and_gtk()
+				#	self.blender_good_frames += 1
 
-				elif dt < 25.0:
+				if dt < 25.0:
 					drop_frame = True
 					drops += 1
 					self.update_blender_and_gtk( drop_frame=True )
