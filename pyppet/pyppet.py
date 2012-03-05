@@ -1792,6 +1792,7 @@ class Bone(object):
 		################ body #################
 		self.shaft = bpy.data.objects.new( name=name, object_data=object_data )
 		self.shaft.hide_select = True
+		self.shaft.rotation_mode = 'QUATERNION'
 		if object_data:
 			self.shaft.draw_type = 'WIRE'
 			self.bullet_collision = self.shaft.modifiers.new(name='RIG', type='COLLISION' )
@@ -3124,7 +3125,7 @@ class PyppetAPI( BlenderHackLinux ):
 			for ob in self.context.scene.objects: objects.append( ob )
 
 		for ob in objects:
-			if ob.name in ENGINE.objects:
+			if ob.name in ENGINE.objects and ENGINE.objects[ob.name].body:
 				print('record setup on object', ob.name)
 				ob.animation_data_clear()
 				self._rec_objects[ ob.name ] = buff = []
@@ -3164,7 +3165,7 @@ class PyppetAPI( BlenderHackLinux ):
 
 		for name in self._rec_objects:
 			buff = self._rec_objects[name]
-			print('updating %s: %s' %(name,len(buff)))
+			#print('updating %s: %s' %(name,len(buff)))
 			for i,F in enumerate(buff):
 				if F[0] < now: continue
 				frame_time, pos, rot = F
@@ -3194,6 +3195,7 @@ class PyppetAPI( BlenderHackLinux ):
 			self.context.scene.frame_current += 3
 			done = self.update_preview( now )
 			now += step
+			self.context.scene.update()
 			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
 		print('Finished baking animation')
 
@@ -3204,7 +3206,10 @@ def set_transform( name, pos, rot, set_body=False ):
 	q = mathutils.Quaternion()
 	qw,qx,qy,qz = rot
 	q.w = qw; q.x=qx; q.y=qy; q.z=qz
-	m = q.to_matrix().to_4x4()
+
+	e = q.to_euler( 'XYZ', ob.matrix_world.to_euler() )	# no flipping
+	m = e.to_matrix().to_4x4()
+
 	x,y,z = pos
 	m[0][3] = x; m[1][3] = y; m[2][3] = z
 	x,y,z = ob.scale	# save scale
