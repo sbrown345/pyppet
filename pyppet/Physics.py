@@ -3,7 +3,7 @@
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
-DEFAULT_ERP = 0.85
+DEFAULT_ERP = 0.3	# collision bounce gains energy if this is too high
 DEFAULT_CFM = 0.15
 
 
@@ -453,15 +453,15 @@ class OdeSingleton(object):
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
 			con = dContact()
-			#con.surface.mode = ode.ContactBounce	# pyode default (ContactBounce sucks)
-			con.surface.mode = ode.ContactSoftERP	# ContactSoftERP is better
 			con.geom = g
-
-			## get "friction" and "bounce" settings from wrapper objects ##
 			con.surface.mu = (ob1._friction + ob2._friction) * 100
-			#con.surface.bounce = ob1._bounce + ob2._bounce
-			#con.surface.bounce = 0.0
-			con.surface.soft_erp = ob1._bounce + ob2._bounce
+
+			if ob1._hard or ob2._hard:	# bounce can gain energy if global ERP is too high
+				con.surface.mode = ode.ContactBounce
+				con.surface.bounce = ob1._bounce + ob2._bounce
+			else:
+				con.surface.mode = ode.ContactSoftERP
+				con.surface.soft_erp = ob1._bounce + ob2._bounce
 
 			info = {'location':g.pos, 'normal':g.normal, 'depth':g.depth}
 			ob1._touching[ ob2.name ] = info
@@ -675,6 +675,7 @@ class Object( object ):
 	def __init__( self, bo, world, space, lock=None ):
 		self._friction = 0.0	# internal use only
 		self._bounce = 0.0	# internal use only
+		self._hard = True	# internal use only
 
 		self.world = world
 		self.space = space

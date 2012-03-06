@@ -1758,7 +1758,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, disable_collision_with_other_bones=True):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, disable_collision_with_other_bones=False):
 		self.armature = arm
 		self.name = name
 		self.head = None
@@ -1915,8 +1915,15 @@ class Bone(object):
 		self.parent = parent	# Bone
 		parent = ENGINE.get_wrapper( parent.tail )
 
-		jtype = 'universal'
-		if '{' in self.name and '}' in self.name: jtype = self.name.split('{')[-1].split('}')[0]
+		types = []
+		if '{' in self.name and '}' in self.name:
+			a = self.name.split('{')[-1].split('}')[0]
+			for t in a.strip().split():		# allow multiple joint types
+				types.append( t )
+
+		if not types: types.append( 'universal' )
+
+		jtype = types[0]
 		print('set-parent joint type:', jtype)
 
 		child = ENGINE.get_wrapper( self.shaft )
@@ -1933,6 +1940,16 @@ class Bone(object):
 			child = ENGINE.get_wrapper( self.head )
 			joint = child.new_joint( parent, name='head2parent.'+parent.name, type=jtype )
 			self.parent_joint.slaves.append( joint )
+
+		## extra joints ##
+		if len(types) > 1:
+			for i, jtype in enumerate(types[1:]):
+				joint = child.new_joint(
+					parent,
+					name='ex.%s.%s'(parent.name,i),
+					type=jtype 
+				)
+				self.parent_joint.slaves.append( joint )
 
 
 
