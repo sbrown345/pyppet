@@ -3,7 +3,7 @@
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
-DEFAULT_ERP = 0.95
+DEFAULT_ERP = 0.85
 DEFAULT_CFM = 0.15
 
 
@@ -23,7 +23,7 @@ def _None(arg): return None		# stupid rule, why should the func have to return N
 #################### pyRNA ##################
 bpy.types.Object.ode_friction = FloatProperty( name='body friction', default=0.5 )
 
-bpy.types.Object.ode_bounce = FloatProperty( name='body bounce', default=0.05 )
+bpy.types.Object.ode_bounce = FloatProperty( name='body bounce', default=0.025 )
 
 bpy.types.Object.ode_use_body = BoolProperty( 
 	name='use physics body', default=False, 
@@ -382,9 +382,6 @@ class OdeSingleton(object):
 			ctypes.sizeof( dContactGeom )
 		)
 
-		#bo1 = bpy.data.objects[ ob1.name ]		# not thread-safe
-		#bo2 = bpy.data.objects[ ob2.name ]
-
 		dContact = ode.Contact.CSTRUCT			# get the raw ctypes struct
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
@@ -393,10 +390,6 @@ class OdeSingleton(object):
 			#con.surface.bounce = 0.1			# pyode default
 			#con.surface.mu = 100.0
 			con.geom = g
-
-			## not thread-safe! ##
-			#con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
-			#con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
 
 			## get "friction" and "bounce" settings from wrapper objects ##
 			con.surface.mu = (ob1._friction + ob2._friction) * 100
@@ -460,12 +453,15 @@ class OdeSingleton(object):
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
 			con = dContact()
-			con.surface.mode = ode.ContactBounce	# pyode default
+			#con.surface.mode = ode.ContactBounce	# pyode default (ContactBounce sucks)
+			con.surface.mode = ode.ContactSoftERP	# ContactSoftERP is better
 			con.geom = g
 
 			## get "friction" and "bounce" settings from wrapper objects ##
 			con.surface.mu = (ob1._friction + ob2._friction) * 100
-			con.surface.bounce = ob1._bounce + ob2._bounce
+			#con.surface.bounce = ob1._bounce + ob2._bounce
+			#con.surface.bounce = 0.0
+			con.surface.soft_erp = ob1._bounce + ob2._bounce
 
 			info = {'location':g.pos, 'normal':g.normal, 'depth':g.depth}
 			ob1._touching[ ob2.name ] = info

@@ -1946,6 +1946,9 @@ class Bone(object):
 class AbstractArmature(object):
 	def reset(self): pass	# for overloading
 	def get_widget_label(self): return gtk.Label( self.ICON )	# label may need to be a drop target
+	def get_bones_upstream(self, child, lst):
+		lst.append( child )
+		if child.parent: self.get_bones_upstream( child.parent, lst )
 
 	def __init__(self,name):
 		self.name = name
@@ -2357,6 +2360,9 @@ class Biped( AbstractArmature ):
 		slider = Slider( self, name='when_standing_foot_step_near_far_thresh', title='foot-step near/far', min=0.01, max=5 )
 		box.pack_start( slider.widget, expand=False )
 
+		slider = Slider( self, name='toe_downward_pull', title='toes down', min=0.0, max=200 )
+		box.pack_start( slider.widget, expand=False )
+
 		################## stepping #################
 		ex = Expander( 'Stepping Solver' )
 		root.pack_start( ex.widget, expand=False )
@@ -2492,6 +2498,8 @@ class Biped( AbstractArmature ):
 		self.left_toes = []
 		self.right_toes = []
 
+		self.left_shoulder = self.right_shoulder = None
+
 		self.left_hand = self.right_hand = None
 		self.foot_solver_targets = []
 		self.hand_solver_targets = []
@@ -2503,7 +2511,7 @@ class Biped( AbstractArmature ):
 		self.leg_flex = 50
 		self.stance = 1.0
 		self.toe_height_standing_threshold = 0.1
-
+		self.toe_downward_pull = 50
 
 		self.on_motion_back_step = 0.5
 		self.on_motion_back_step_rate_factor = 0.25
@@ -2514,7 +2522,7 @@ class Biped( AbstractArmature ):
 
 		self.standing_height_threshold = 0.75
 		self.when_standing_foot_target_goal_weight = 100.0
-		self.when_standing_head_lift = 250.0			# magic - only when foot touches ground lift head
+		self.when_standing_head_lift = 100.0			# magic - only when foot touches ground lift head
 		self.when_standing_foot_step_far_lift = 80		# if foot is far from target lift it up
 		self.when_standing_foot_step_near_pull = 10	# if foot is near from target pull it down
 		self.when_standing_foot_step_near_far_thresh = 0.25
@@ -2555,6 +2563,13 @@ class Biped( AbstractArmature ):
 				elif x < 0: self.right_hand = B
 				else: print( 'WARN: hand at zero X ->', name)
 
+			elif 'shoulder' in _name:
+				B = self.rig[ name ]
+				x,y,z = B.get_location()
+				if x > 0: self.left_shoulder = B
+				elif x < 0: self.right_shoulder = B
+
+
 			elif 'chest' in _name:
 				self.chest = self.rig[ name ]
 
@@ -2565,8 +2580,13 @@ class Biped( AbstractArmature ):
 		assert self.pelvis
 		assert self.head
 		assert self.chest
+		assert self.left_shoulder
+		assert self.right_shoulder
 
 		for B in self.rig.values(): B.biped_solver = {}
+
+		self.spine = []
+		self.get_bones_upstream( self.head, self.spine )
 
 		ob = bpy.data.objects.new(name='PELVIS-SHADOW',object_data=None)
 		self.pelvis.shadow = ob
@@ -2588,6 +2608,7 @@ class Biped( AbstractArmature ):
 		if self.right_hand: self.helper_setup_hand( self.right_hand, self.right_foot )
 
 		self.head_center_target = self.create_target( self.head.name, self.pelvis.shaft, weight=100, z=0.0 )
+
 
 
 	def helper_setup_hand( self, hand, foot ):
@@ -2642,7 +2663,7 @@ class Biped( AbstractArmature ):
 		target = self.create_target(
 			foot.name, ob, weight=30, 
 			raw_power=float(len(toes)), 
-			normalized_power=0.5, 
+			normalized_power=0.0, 
 			z=.0 
 		)
 		self.foot_solver_targets.append( target )	# standing or falling modifies all foot targets
@@ -2664,9 +2685,9 @@ class Biped( AbstractArmature ):
 				joint.breaking_threshold = None
 
 			foot.toes.append( toe )
-			target = self.create_target( toe.name, ob, weight=30, z=.0 )
+			target = self.create_target( toe.name, ob, weight=0, z=.0 )
 			toe.biped_solver['TARGET'] = target
-			self.foot_solver_targets.append( target )
+			#self.foot_solver_targets.append( target )
 
 		print('FOOT TOES', foot.toes)
 
@@ -2869,10 +2890,9 @@ class Biped( AbstractArmature ):
 
 				## MAGIC: lift head ##
 				v1 = foot.get_location().copy()
-				if standing and v1.z < 0.1:
-					if head_is_attached:
-						#self.head.add_force( 0,0, head_lift*0.5 )
-						self.apply_head_lift( head_lift*0.5 )
+				if v1.z < self.toe_height_standing_threshold or v1.z < foot.rest_height:
+					if standing and head_is_attached:
+						self.apply_head_lift( head_lift*0.5, left=True )
 
 				v2 = self.left_foot_loc.copy()
 				v1.z = .0; v2.z = .0
@@ -2894,22 +2914,25 @@ class Biped( AbstractArmature ):
 			if not self.any_ancestors_broken(foot):
 
 				## MAGIC: lift head ##
-				if head_is_attached and standing and foot.get_location().z < 0.1:
-					self.apply_head_lift( head_lift*0.5 )
+				v1 = foot.get_location()
+				if v1.z < self.toe_height_standing_threshold or v1.z < foot.rest_height:
+					if standing and head_is_attached:
+						self.apply_head_lift( head_lift*0.5, left=True )
 
 				if self.flip_knee:
-					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
+					#foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
 				else:
-					foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+					#foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
+				foot.add_force( 0,0, -self.toe_downward_pull )
 				foot.biped_solver[ 'TARGET' ].zmult = 1.0
 				for toe in foot.toes:
 					toe.biped_solver[ 'TARGET' ].zmult = 1.0
-					toe.add_force( 0,0, -30 )
+					toe.add_force( 0,0, -self.toe_downward_pull )
 
 		if (step_right and self.auto_right_step) or self.force_right_step or force_right_step:
 			print('step RIGHT')
@@ -2932,10 +2955,9 @@ class Biped( AbstractArmature ):
 
 				## MAGIC: lift head ##
 				v1 = foot.get_location().copy()
-				if standing and v1.z < 0.1:
-					if head_is_attached:
-						#self.head.add_force( 0,0, head_lift*0.5 )
-						self.apply_head_lift( head_lift*0.5 )
+				if v1.z < self.toe_height_standing_threshold or v1.z < foot.rest_height:
+					if standing and head_is_attached:
+						self.apply_head_lift( head_lift*0.5, right=True )
 
 				v2 = self.right_foot_loc.copy()
 				v1.z = .0; v2.z = .0
@@ -2958,23 +2980,27 @@ class Biped( AbstractArmature ):
 			if not self.any_ancestors_broken(foot):
 
 				## MAGIC: lift head ##
-				if head_is_attached and standing and foot.get_location().z < 0.1:
-					self.apply_head_lift( head_lift*0.5 )
+				v1 = foot.get_location()
+				if v1.z < self.toe_height_standing_threshold or v1.z < foot.rest_height:
+					if standing and head_is_attached:
+						self.apply_head_lift( head_lift*0.5, right=True )
+
 
 
 				if self.flip_knee:
-					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
+					#foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
 				else:
-					foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+					#foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
+				foot.add_force( 0,0, -self.toe_downward_pull )
 				foot.biped_solver[ 'TARGET' ].zmult = 1.0
 				for toe in foot.toes:
 					toe.biped_solver[ 'TARGET' ].zmult = 1.0
-					toe.add_force( 0,0,-30 )
+					toe.add_force( 0,0,-self.toe_downward_pull )
 
 		#if not step_left or step_right: print('no STEP')
 
@@ -3050,14 +3076,17 @@ class Biped( AbstractArmature ):
 			#	target.weight *= 0.9
 
 
-	def apply_head_lift( self, force ):
+	def apply_head_lift( self, force, left=False, right=False ):
 		head = self.head
 		x,y,z = head.get_location()
 		if z > head.rest_height: return
 		delta = head.rest_height - z
 		if delta < 1.0: force *= delta + 0.25	## Extra Magic ##
 
-		head.add_force( 0,0, force )
+		head.add_force( 0,0, force*0.75 )
+		if left: self.left_shoulder.add_force( 0,0, force*0.5 )
+		if right: self.right_shoulder.add_force( 0,0, force*0.5 )
+
 		if head.parent:
 			head.parent.add_force( 0,0, force*0.75 )
 			if head.parent.parent:
@@ -3067,6 +3096,9 @@ class Biped( AbstractArmature ):
 					if head.parent.parent.parent.parent:
 						head.parent.parent.parent.parent.add_force( 0,0, force*0.125 )
 
+		#force /= float( len(self.spine) )
+		#force *= 0.25
+		#[ b.add_force( 0,0, force ) for b in self.spine ]
 
 ##########################################################
 bpy.types.Object.pyppet_model = bpy.props.StringProperty( name='pyppet model type', default='' )
@@ -5197,7 +5229,7 @@ class PhysicsWidget(object):
 		#s = Slider(scn.game_settings, name='fps', title='FPS', min=1.0, max=120, tooltip='frames per second')
 		#page.pack_start(s.widget, expand=False)
 
-		s = Slider(scn.world, name='ode_speed', title='speed', min=0.01, max=0.1, tooltip='physics speed')
+		s = Slider(scn.world, name='ode_speed', title='speed', min=0.01, max=0.1, precision=3, tooltip='physics speed')
 		page.pack_start(s.widget, expand=False)
 
 		s = Slider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction')
