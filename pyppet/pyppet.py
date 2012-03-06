@@ -1758,7 +1758,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, disable_collision_with_other_bones=True):
 		self.armature = arm
 		self.name = name
 		self.head = None
@@ -1819,8 +1819,12 @@ class Bone(object):
 		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
 
 		self.shaft.ode_use_body = True
+		self.shaft_wrapper = ENGINE.get_wrapper( self.shaft )
+
 		if self.collision:
 			self.shaft.ode_use_collision = True	# needs matrix_world to be in sync before this is set
+			if disable_collision_with_other_bones:
+				self.shaft_wrapper.no_collision_groups.append( self.armature.name )
 
 		################ pole-target (up-vector) ##############
 		self.pole = bpy.data.objects.new( name='POLE.'+name, object_data=None )
@@ -1915,14 +1919,8 @@ class Bone(object):
 		if '{' in self.name and '}' in self.name: jtype = self.name.split('{')[-1].split('}')[0]
 		print('set-parent joint type:', jtype)
 
-		if self.head:	# if head, bind head to tail of parent #
-			child = ENGINE.get_wrapper( self.head )
-			self.parent_joint = child.new_joint( parent, name='head2parent.'+parent.name, type=jtype )
-
-		else:			## bind body to tail of parent ##
-			child = ENGINE.get_wrapper( self.shaft )
-			self.parent_joint = child.new_joint( parent, name='body2parent.'+parent.name, type=jtype )
-
+		child = ENGINE.get_wrapper( self.shaft )
+		self.parent_joint = child.new_joint( parent, name='body2parent.'+parent.name, type=jtype )
 
 		self.fixed_parent_joint = joint = child.new_joint( parent, name='MAGIC-FIXED.'+parent.name, type='fixed' )
 		joint.set_param( 'CFM', self.tension_CFM )
@@ -1930,6 +1928,11 @@ class Bone(object):
 
 		self.parent_joint.slaves.append( self.fixed_parent_joint )
 		self.breakable_joints.append( self.parent_joint )
+
+		if self.head:		# if head, bind head to tail of parent - (helps breakable ragdoll)  #
+			child = ENGINE.get_wrapper( self.head )
+			joint = child.new_joint( parent, name='head2parent.'+parent.name, type=jtype )
+			self.parent_joint.slaves.append( joint )
 
 
 
@@ -2124,10 +2127,11 @@ class AbstractArmature(object):
 					target.update( self.rig[ bname ].get_objects() )
 
 		for B in self.rig.values():
+			#if not B.shaft_wrapper.touching: continue
+
 			for joint in B.breakable_joints:
 				if joint.broken: continue
 				if joint.breaking_threshold is None: continue
-
 				stress = joint.get_stress()
 				if stress > joint.breaking_threshold:
 					joint.break_joint()
@@ -2601,6 +2605,9 @@ class Biped( AbstractArmature ):
 
 
 	def helper_setup_foot( self, foot, toes=[], flip=False ):
+		for joint in foot.breakable_joints:
+			joint.breaking_threshold = None
+
 		ob = bpy.data.objects.new(
 			name='RING.%s'%foot.name,
 			object_data=None
@@ -2653,6 +2660,9 @@ class Biped( AbstractArmature ):
 
 		foot.toes = []
 		for toe in toes:
+			for joint in toe.breakable_joints:
+				joint.breaking_threshold = None
+
 			foot.toes.append( toe )
 			target = self.create_target( toe.name, ob, weight=30, z=.0 )
 			toe.biped_solver['TARGET'] = target

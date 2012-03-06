@@ -311,37 +311,12 @@ class OdeSingleton(object):
 
 			self.lock.acquire()
 
-			if 0:
-				ode.SpaceCollide( self.space, None, self.near_callback_sync )
-			else:
-
-				self._pending_near = []
-				## 25fps ##
-				ode.SpaceCollide( self.space, None, self.near_callback_sync_fast )
-				while self._pending_near:
-					geom1, geom2 = self._pending_near.pop()
+			#ode.SpaceCollide( self.space, None, self.near_callback_sync )
+			self._pending_near = []
+			ode.SpaceCollide( self.space, None, self.near_callback_sync_fast )
+			if self._pending_near:
+				for geom1, geom2 in self._pending_near:
 					self.do_collision( geom1, geom2 )
-
-				## 27fps ##
-				if 0:
-					for geom in self.bodyless_geoms.values():
-						ode.SpaceCollide2( geom, self.space, None,  self.near_callback_sync_fast)
-					while self._pending_near:
-						geom1, geom2 = self._pending_near.pop()
-						self.do_collision( geom1, geom2 )
-
-
-				#ode.SpaceCollide2( self.bodyless_space, self.space, None, self.near_callback_sync_fast )
-
-				## 26fps ##
-				if 0:
-					for geom1 in self.bodyless_geoms.values():
-						#print('geom1:', geom1)
-						for geom2 in self.body_geoms.values():
-							self.do_collision( geom1, geom2 )
-							#print('---testing:', geom2)
-
-
 
 			rate = self.rate / float(self.substeps)
 			for i in range(int(self.substeps)): self.world.QuickStep( rate )
@@ -443,69 +418,6 @@ class OdeSingleton(object):
 
 
 
-	def check_collision( self, geom1, geom2 ):
-		body1 = ode.GeomGetBody( geom1 )
-		body2 = ode.GeomGetBody( geom2 )
-		_b1 = _b2 = None
-		try: _b1 = body1.POINTER.contents
-		except ValueError: pass
-		try: _b2 = body2.POINTER.contents
-		except ValueError: pass
-		if not _b1 and not _b2:
-			return
-
-		ptr1 = ctypes.cast( ode.GeomGetData( geom1 ), self.PYOBJP )
-		ob1 = ptr1.contents.value
-		ptr2 = ctypes.cast( ode.GeomGetData( geom2 ), self.PYOBJP )
-		ob2 = ptr2.contents.value
-
-		dContactGeom = ode.ContactGeom.CSTRUCT		# get the raw ctypes struct
-		geoms = (dContactGeom * 32)()
-		geoms_ptr = ctypes.pointer( geoms )
-		touching = ode.Collide( 
-			geom1, 
-			geom2,
-			32,	# flags, actually number of 
-			geoms_ptr,
-			ctypes.sizeof( dContactGeom )
-		)
-
-		#bo1 = bpy.data.objects[ ob1.name ]		# not thread-safe
-		#bo2 = bpy.data.objects[ ob2.name ]
-
-		dContact = ode.Contact.CSTRUCT			# get the raw ctypes struct
-		for i in range(touching):
-			g = geoms_ptr.contents[ i ]
-			con = dContact()
-			con.surface.mode = ode.ContactBounce	# pyode default
-			#con.surface.bounce = 0.1			# pyode default
-			#con.surface.mu = 100.0
-			con.geom = g
-
-			## not thread-safe! ##
-			#con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
-			#con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
-
-			## get "friction" and "bounce" settings from wrapper objects ##
-			con.surface.mu = (ob1._friction + ob2._friction) * 100
-			con.surface.bounce = ob1._bounce + ob2._bounce
-
-
-			## user callbacks ##
-			dojoint = True
-			cmd = ob1.callback( ob2, con, g.pos, g.normal, g.depth, i, touching )
-			if cmd == 'BREAK': break
-			elif cmd == 'PASS': dojoint = False
-			cmd = ob2.callback( ob1, con, g.pos, g.normal, g.depth, i, touching )
-			if cmd == 'BREAK': break
-			elif cmd == 'PASS': dojoint = False
-
-			if dojoint:
-				#joint = ode.JointCreateContact( self.world, self.joint_group, ctypes.pointer(con) )
-				#joint.Attach( body1, body2 )
-				#print('friction', con.surface.mu)
-				#joint.Attach( ob1.body, ob2.body )
-				self._pending_contact_joints.append( (ob1, ob2, con) )
 
 	def do_collision( self, geom1, geom2 ):
 		#print('doing collision', geom1, geom2)
@@ -519,12 +431,19 @@ class OdeSingleton(object):
 		if not _b1 and not _b2:
 			return
 
-		if ode.GeomIsSpace(geom1) or ode.GeomIsSpace(geom2): return
+		#if ode.GeomIsSpace(geom1) or ode.GeomIsSpace(geom2): return
 
 		ptr1 = ctypes.cast( ode.GeomGetData( geom1 ), self.PYOBJP )
 		ob1 = ptr1.contents.value
 		ptr2 = ctypes.cast( ode.GeomGetData( geom2 ), self.PYOBJP )
 		ob2 = ptr2.contents.value
+
+		if ob1.no_collision_groups or ob2.no_collision_groups:
+			for cat in ob1.no_collision_groups:
+				if cat in ob2.no_collision_groups: return
+			for cat in ob2.no_collision_groups:
+				if cat in ob1.no_collision_groups: return
+
 
 		dContactGeom = ode.ContactGeom.CSTRUCT		# get the raw ctypes struct
 		geoms = (dContactGeom * 32)()
@@ -537,39 +456,23 @@ class OdeSingleton(object):
 			ctypes.sizeof( dContactGeom )
 		)
 
-		#bo1 = bpy.data.objects[ ob1.name ]		# not thread-safe
-		#bo2 = bpy.data.objects[ ob2.name ]
-
 		dContact = ode.Contact.CSTRUCT			# get the raw ctypes struct
 		for i in range(touching):
 			g = geoms_ptr.contents[ i ]
 			con = dContact()
 			con.surface.mode = ode.ContactBounce	# pyode default
-			#con.surface.bounce = 0.1			# pyode default
-			#con.surface.mu = 100.0
 			con.geom = g
-
-			## not thread-safe! ##
-			#con.surface.mu = (bo1.ode_friction + bo2.ode_friction) * 100
-			#con.surface.bounce = bo1.ode_bounce + bo2.ode_bounce
 
 			## get "friction" and "bounce" settings from wrapper objects ##
 			con.surface.mu = (ob1._friction + ob2._friction) * 100
 			con.surface.bounce = ob1._bounce + ob2._bounce
 
+			info = {'location':g.pos, 'normal':g.normal, 'depth':g.depth}
+			ob1._touching[ ob2.name ] = info
+			ob2._touching[ ob1.name ] = info
 
-			## user callbacks ##
-			dojoint = True
-			cmd = ob1.callback( ob2, con, g.pos, g.normal, g.depth, i, touching )
-			if cmd == 'BREAK': break
-			elif cmd == 'PASS': dojoint = False
-			cmd = ob2.callback( ob1, con, g.pos, g.normal, g.depth, i, touching )
-			if cmd == 'BREAK': break
-			elif cmd == 'PASS': dojoint = False
-
-			if dojoint:
-				joint = ode.JointCreateContact( self.world, self.joint_group, ctypes.pointer(con) )
-				joint.Attach( body1, body2 )
+			joint = ode.JointCreateContact( self.world, self.joint_group, ctypes.pointer(con) )
+			joint.Attach( body1, body2 )
 
 
 LOCK = threading._allocate_lock()
@@ -790,6 +693,9 @@ class Object( object ):
 		self.geomtype = None
 		self.joints = {}
 		self.alive = True
+		self._touching = {}		# used by collision callback
+		self.touching = {}		# used from outside of thread
+		self.no_collision_groups = []
 		self.transform = None	# used to set a transform directly, format: (pos,quat)
 		self._blender_transform = None	# used by geom-only objects
 		self.save_transform( bo )
@@ -823,18 +729,6 @@ class Object( object ):
 		m = ode.Mass()
 		m.SetSphereTotal( value, 0.1)
 		self.mass.Add( m )
-
-	def callback( self, other, contact, pos, normal, depth, hit_index, num_hits ):
-		#contact.surface.mu += self.get_friction( pos, normal, depth )
-		#contact.surface.bounce += self.get_bounce( pos, normal, depth )
-		#contact.surface.bounce_vel += self.get_min_bounce_vel( pos, normal, depth )
-		#contact.surface.soft_erp += self.get_collision_erp( pos, normal, depth )
-		#contact.surface.soft_cfm += self.get_collision_cfm( pos, normal, depth )
-		#con.surface.motion1 = 0.1	# Set the surface velocity in friction direction 1.
-		#con.surface.slip1 = 0.1		# Set the coefficient of force-dependent-slip (FDS) for friction direction 1.
-		#return 'PASS'		# this passes this contact and goes onto the next, more contact joints maybe created.
-		#print( self.get_linear_vel() )
-		if hit_index > 16: return 'BREAK'	# prevents too many collision joints, speeds things up, max hits is 32
 
 
 	def get_linear_vel( self ):
@@ -990,8 +884,12 @@ class Object( object ):
 
 	def sync_from_ode_thread(self):
 		'''
-		do updates that are only safe from the ODE thread
+		do updates that are only safe from the ODE thread,
+		or updates that need to happen before ODE collision check.
 		'''
+		self.touching = self._touching
+		self._touching = {}
+
 		if self.geom and not self.body and self._blender_transform:
 			geom = self.geom
 			pos,rot,scl = self._blender_transform
