@@ -555,7 +555,10 @@ class Joint( object ):
 		elif type == 'slider': pass
 
 		elif type == 'ball': ode.JointSetBallAnchor(self.joint, x,y,z )
-		elif type == 'hinge': ode.JointSetHingeAnchor(self.joint, x,y,z )
+		elif type == 'hinge':
+			ode.JointSetHingeAnchor(self.joint, x,y,z )
+			ode.JointSetHingeAxis( self.joint, *self.axis1 )
+
 		elif type == 'universal':
 			print('setting universal joint anchor', x,y,z)
 			ode.JointSetUniversalAnchor(self.joint, x,y,z )

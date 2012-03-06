@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# March 4th, 2012
+# March 6th, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.5a'
+VERSION = '1.9.5b'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -1943,10 +1943,11 @@ class Bone(object):
 
 		## extra joints ##
 		if len(types) > 1:
+			child = ENGINE.get_wrapper( self.shaft )
 			for i, jtype in enumerate(types[1:]):
 				joint = child.new_joint(
 					parent,
-					name='ex.%s.%s'(parent.name,i),
+					name='ex.%s.%s'%(parent.name,i),
 					type=jtype 
 				)
 				self.parent_joint.slaves.append( joint )
@@ -2088,8 +2089,8 @@ class AbstractArmature(object):
 			bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
 			bpy.ops.object.mode_set(mode='EDIT', toggle=False)
 			for bone in arm.data.edit_bones:
-				bone.use_connect = False
-				#bone.parent = None
+				if self.is_bone_breakable( bone ):
+					bone.use_connect = False
 			bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
 
 		if stretch:
@@ -2136,7 +2137,7 @@ class AbstractArmature(object):
 		self.save_transform()
 
 	def setup(self): pass	# override
-
+	def is_bone_breakable( self, bone ): return True	# override
 
 	def update(self, context ):
 		for bname in self.targets:
@@ -2327,6 +2328,12 @@ class Ragdoll( AbstractArmature ):
 
 class Biped( AbstractArmature ):
 	ICON = icons.BIPED
+
+	def is_bone_breakable( self, bone):
+		name = bone.name.lower()
+		if 'head' in name or 'neck' in name: return False
+		else: return True
+
 	def GetBipedWidget(self):
 		if not self.created: return self.get_create_widget()
 
@@ -2487,9 +2494,6 @@ class Biped( AbstractArmature ):
 		v.z = .0
 		self.right_foot_loc = v
 
-	#def use_bone_in_rig( self, bone ):
-	#	if bone.name.startswith('toe'): return True
-	#	else: return False
 
 	def setup(self):
 		print('making biped...')
@@ -2704,7 +2708,7 @@ class Biped( AbstractArmature ):
 			foot.toes.append( toe )
 			target = self.create_target( toe.name, ob, weight=0, z=.0 )
 			toe.biped_solver['TARGET'] = target
-			#self.foot_solver_targets.append( target )
+			self.foot_solver_targets.append( target )
 
 		print('FOOT TOES', foot.toes)
 
@@ -2937,11 +2941,11 @@ class Biped( AbstractArmature ):
 						self.apply_head_lift( head_lift*0.5, left=True )
 
 				if self.flip_knee:
-					#foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
+					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
 				else:
-					#foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+					foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
@@ -3005,11 +3009,11 @@ class Biped( AbstractArmature ):
 
 
 				if self.flip_knee:
-					#foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
+					foot.add_local_torque( self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( -self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( self.leg_flex*0.5, 0, 0 )
 				else:
-					#foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
+					foot.add_local_torque( -self.leg_flex*0.25, 0, 0 )
 					foot.parent.add_local_torque( self.leg_flex, 0, 0 )
 					foot.parent.parent.add_local_torque( -self.leg_flex*0.5, 0, 0 )
 
@@ -4292,7 +4296,7 @@ class PyppetUI( PyppetAPI ):
 
 			Mslider = Slider(
 				ob, name='ode_mass', title='', tooltip='mass',
-				min=0.001, max=10.0, no_show_all=True,
+				min=0.001, max=100.0, no_show_all=True,
 			)
 
 			if ob.ode_use_body:
@@ -5249,7 +5253,7 @@ class PhysicsWidget(object):
 		s = Slider(scn.world, name='ode_speed', title='speed', min=0.01, max=0.1, precision=3, tooltip='physics speed')
 		page.pack_start(s.widget, expand=False)
 
-		s = Slider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=1.0, tooltip='joint error reduction')
+		s = Slider(scn.world, name='ode_ERP', title='ERP', min=0.0001, max=0.5, precision=3, tooltip='joint error reduction')
 		page.pack_start(s.widget, expand=False)
 
 		s = Slider(scn.world, name='ode_CFM', title='CFM', max=5, tooltip='joint constant mixing force')
