@@ -1897,8 +1897,8 @@ class Bone(object):
 			self.ik = cns = pbone.constraints.new('IK')
 			cns.target = self.tail
 			cns.chain_count = 1
-			#cns.use_stretch = stretch
-			#cns.pole_target = self.pole		# creates invalid state - blender bug?
+			cns.pole_target = self.pole
+			cns.pole_angle = math.radians( -90 )
 
 
 		if self.armature.parent:
@@ -2085,11 +2085,6 @@ class AbstractArmature(object):
 		## bind body to tail of parent ##
 		for name in self.rig:
 			child = self.rig[name]
-
-			if child.ik:
-				child.ik.pole_target = child.pole
-				child.ik.pole_angle = math.radians( -90 )
-
 			if child.parent_name and child.parent_name in self.rig:
 				parent = self.rig[ child.parent_name ]
 				child.set_parent( parent )
@@ -3136,13 +3131,14 @@ class PyppetAPI( BlenderHackLinux ):
 			for ob in self.context.scene.objects: objects.append( ob )
 
 		for ob in objects:
-			if ob.name in ENGINE.objects and ENGINE.objects[ob.name].body:
-				print('record setup on object', ob.name)
-				ob.animation_data_clear()
-				self._rec_objects[ ob.name ] = buff = []
+			if ob.name in ENGINE.objects:
 				w = ENGINE.objects[ ob.name ]
-				w.reset_recording( buff )
-				self._rec_current_objects.append( ob.name )
+				if w.body or w.geom:
+					print('record setup on object', ob.name)
+					ob.animation_data_clear()
+					self._rec_objects[ ob.name ] = buff = []
+					w.reset_recording( buff )
+					self._rec_current_objects.append( ob.name )
 
 		self._rec_inactive_objects = []
 		for name in self._rec_objects:

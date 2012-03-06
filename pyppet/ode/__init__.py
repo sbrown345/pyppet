@@ -5467,7 +5467,7 @@ for func in ( dBodyGetPosition, dBodyGetRotation, dBodyGetLinearVel, dBodyGetAng
 	func.return_wrapper = _ode_convert_to_vector3_
 	func.object_oriented = True
 
-for func in ( dBodyGetQuaternion,  ):
+for func in ( dBodyGetQuaternion, ):
 	func.return_wrapper = _ode_convert_to_vector4_
 	func.object_oriented = True
 ########### end of manual patch #########

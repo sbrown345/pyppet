@@ -1065,24 +1065,28 @@ class Object( object ):
 
 
 	def update( self, ob, now=None, recording=False, update_blender=False ):
+		if not self.alive: return
 		body = self.body
-		if not body or not self.alive: return
+		geom = self.geom
 
-		#if geom:		# geoms don't move?
-		#	px,py,pz = geom.GetPosition()
-		#	rw,rx,ry,rz = geom.GetQuaternion()
-
-		qw,qx,qy,qz = body.GetQuaternion()
-		x,y,z = body.GetPosition()
+		if body:
+			qw,qx,qy,qz = body.GetQuaternion()
+			x,y,z = body.GetPosition()
+		elif geom:
+			#qw,qx,qy,qz = geom.GetQuaternion()	# TODO make ctypes wrapper better
+			#x,y,z = geom.GetPosition()
+			pos,rot,scl = self._blender_transform
+			x,y,z = pos; qw,qx,qy,qz = rot
+		else:
+			return
 
 		self.position = (x,y,z)			# thread-safe to read
 		self.rotation = (qw,qx,qy,qz)	# thread-safe to read
 
-
 		if recording and not self.transform:	# do not record if using direct transform
 			self.recbuffer.append( (now, (x,y,z), (qw,qx,qy,qz)) )
 
-		if update_blender:		# slow because it triggers a DAG update?
+		if update_blender and body:		# slow because it triggers a DAG update?
 			q = mathutils.Quaternion()
 			q.w = qw; q.x=qx; q.y=qy; q.z=qz
 			#e = q.to_euler( 'XYZ', ob.matrix_world.to_euler() )
