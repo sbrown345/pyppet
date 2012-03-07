@@ -2055,10 +2055,8 @@ class AbstractArmature(object):
 		self.breakable = breakable
 
 		self.armature = arm = bpy.data.objects[ self.name ]
-		self.spawn_location = arm.location.to_tuple()
-		arm.location.x = 0.0
-		arm.location.y = 0.0
-		arm.location.z = 0.0
+		self.spawn_matrix = arm.matrix_world.copy()
+		arm.matrix_world = mathutils.Matrix()
 
 		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
@@ -2131,7 +2129,7 @@ class AbstractArmature(object):
 		for b in self.rig.values():
 			for ob in b.get_objects():
 				ob.parent = root
-		root.location = self.spawn_location
+		root.matrix_world = self.spawn_matrix
 		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
 
 		self.save_transform()
@@ -3706,7 +3704,7 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools_modals[ 'drivers' ] = (ex,note)
 		Pyppet.register( self.update_drivers_widget )
 
-		ex = DetachableExpander( icons.FORCES, icons.FORCES_ICON )
+		ex = DetachableExpander( icons.PHYSICS, icons.FORCES_ICON )
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'forces' ] = (ex,note)
@@ -3800,13 +3798,33 @@ class PyppetUI( PyppetAPI ):
 		EX.show_all()
 
 	def update_forces_widget( self, ob ):
-		EX,note = self._left_tools_modals[ 'forces' ]
-		EX.remove( note )
-		note = gtk.Notebook(); EX.add( note )
-		self._left_tools_modals[ 'forces' ] = (EX,note)
+		EX,root = self._left_tools_modals[ 'forces' ]
+		EX.remove( root )
+		root = gtk.VBox(); EX.add( root )
+		self._left_tools_modals[ 'forces' ] = (EX,root)
 
-		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label( 'Global' ) )
+		ex = Expander('damping')
+		root.pack_start( ex.widget, expand=False )
+		bx = gtk.VBox(); ex.add( bx )
+
+		s = Slider(
+			ob, name='ode_linear_damping', title='linear damping',
+			min=0.0, max=1.0,
+		)
+		bx.pack_start(s.widget, expand=False)
+
+		s = Slider(
+			ob, name='ode_angular_damping', title='angular damping',
+			min=0.0, max=1.0,
+		)
+		bx.pack_start(s.widget, expand=False)
+
+		ex = Expander('forces')
+		root.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+
+		page = gtk.VBox(); page.set_border_width( 2 )
+		note.append_page( page, gtk.Label( 'Global' ) )
 		nice = {
 			'ode_constant_global_force':'Constant Global Force', 
 			'ode_constant_global_torque':'Constant Global Torque', 
@@ -3814,7 +3832,7 @@ class PyppetUI( PyppetAPI ):
 		tags='ode_constant_global_force ode_constant_global_torque'.split()
 		for i,tag in enumerate(tags):
 			frame = gtk.Frame( nice[tag] )
-			root.pack_start( frame, expand=False )
+			page.pack_start( frame, expand=False )
 			bx = gtk.VBox(); frame.add( bx )
 			for i in range(3):
 				slider = SimpleSlider(
@@ -3824,8 +3842,8 @@ class PyppetUI( PyppetAPI ):
 				)
 				bx.pack_start( slider.widget, expand=False )
 
-		root = gtk.VBox(); root.set_border_width( 2 )
-		note.append_page( root, gtk.Label( 'Local' ) )
+		page = gtk.VBox(); page.set_border_width( 2 )
+		note.append_page( page, gtk.Label( 'Local' ) )
 		nice = {
 			'ode_constant_local_force':'Constant Local Force',
 			'ode_constant_local_torque':'Constant Local Torque',
@@ -3833,7 +3851,7 @@ class PyppetUI( PyppetAPI ):
 		tags='ode_constant_local_force ode_constant_local_torque'.split()
 		for i,tag in enumerate(tags):
 			frame = gtk.Frame( nice[tag] )
-			root.pack_start( frame, expand=False )
+			page.pack_start( frame, expand=False )
 			bx = gtk.VBox(); frame.add( bx )
 			for i in range(3):
 				slider = SimpleSlider(
@@ -3842,6 +3860,7 @@ class PyppetUI( PyppetAPI ):
 					min=-500, max=500,
 				)
 				bx.pack_start( slider.widget, expand=False )
+
 
 
 		EX.show_all()
@@ -3929,98 +3948,6 @@ class PyppetUI( PyppetAPI ):
 				widget = model.get_targets_widget()
 				root.pack_start( widget, expand=False )
 			EX.show_all()
-
-
-	def deprecate():
-			if ob.type=='MESH':
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.MATERIAL ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-
-				for m in ob.data.materials:
-					ex = gtk.Expander( m.name ); ex.set_expanded(True)
-					root.pack_start( ex )
-					bx = gtk.VBox(); ex.add( bx )
-
-					for tag in 'diffuse_intensity specular_intensity ambient emit alpha'.split():
-						slider = SimpleSlider( m, name=tag, driveable=True )
-						bx.pack_start( slider.widget, expand=False )
-
-					bx.pack_start(
-						self.vector_widget(m,'diffuse_color', title='diffuse color' ), 
-						expand=True
-					)
-
-
-			elif ob.type=='LAMP':
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.LIGHT ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-
-				for tag in 'energy'.split():
-					slider = SimpleSlider( ob.data, name=tag, driveable=True )
-					root.pack_start( slider.widget, expand=False )
-
-				root.pack_start(
-					self.vector_widget(ob.data,'color' ), 
-					expand=True
-				)
-
-
-
-
-
-
-
-			else:
-
-
-				########### physics config ############
-				sw = gtk.ScrolledWindow()
-				note.append_page( sw, gtk.Label( icons.GRAVITY ) )
-				sw.set_policy(True,True)
-				root = gtk.VBox(); root.set_border_width( 6 )
-				sw.add_with_viewport( root )
-
-				b = gtk.CheckButton('%s body active' %icons.BODY )
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_body )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_body',b.get_active()), ob)
-
-				b = gtk.CheckButton('%s enable collision' %icons.COLLISION)
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_collision )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_collision',b.get_active()), ob)
-
-				b = gtk.CheckButton('%s enable gravity' %icons.GRAVITY)
-				root.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_gravity )
-				b.connect('toggled', lambda b,o: setattr(o,'ode_use_gravity',b.get_active()), ob)
-
-
-
-				root.pack_start( gtk.Label() )
-
-
-				s = Slider(
-					ob, name='ode_linear_damping', title='linear damping',
-					min=0.0, max=1.0,
-				)
-				root.pack_start(s.widget, expand=False)
-
-				s = Slider(
-					ob, name='ode_angular_damping', title='angular damping',
-					min=0.0, max=1.0,
-				)
-				root.pack_start(s.widget, expand=False)
-
-
-
-
 
 
 	def create_ui(self, context):

@@ -3,8 +3,8 @@
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
-DEFAULT_ERP = 0.3	# collision bounce gains energy if this is too high
-DEFAULT_CFM = 0.15
+DEFAULT_ERP = 0.35	# collision bounce gains energy if this is too high > 0.5
+DEFAULT_CFM = 0.05
 
 
 import os, sys, time, ctypes
