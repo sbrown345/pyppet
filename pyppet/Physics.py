@@ -234,7 +234,7 @@ class OdeSingleton(object):
 		self._collision_state = []
 
 	def get_wrapper(self, ob):
-		if ob.name not in self.objects: self.objects[ ob.name ] = Object( ob, self.world, self.space )
+		if ob.name not in self.objects: self.objects[ ob.name ] = HybridObject( ob, self.world, self.space )
 		return self.objects[ ob.name ]
 
 	def sync( self, context, now, recording=False, drop_frame=False ):
@@ -270,7 +270,7 @@ class OdeSingleton(object):
 			if self.threaded: self.lock.acquire()
 			for name in create:
 				ob = bpy.data.objects[ name ]
-				self.objects[ ob.name ] = Object( ob, self.world, self.space )
+				self.objects[ ob.name ] = HybridObject( ob, self.world, self.space )
 			if self.threaded: self.lock.release()
 
 
@@ -671,9 +671,10 @@ JOINT_TYPES = list(Joint.Types.keys())
 
 
 ####################### object wrapper ######################
-class Object( object ):
+class HybridObject( object ):
 	'''
-	safe blender wrapper object
+	Geom/Body hybrid container,
+	may be a body or geom, and may also contain sub-geoms
 	'''
 	def __init__( self, bo, world, space, lock=None ):
 		self._friction = 0.0	# internal use only
@@ -685,12 +686,16 @@ class Object( object ):
 		self.name = bo.name
 		self.type = bo.type
 		self.lock = lock
-		self.config = cfg = {}
+
 		self.recbuffer = []
 		self.body = None
 		self.collision_body = None
+
 		self.geom = None
 		self.geomtype = None
+		self.subgeoms = []
+		self.is_subgeom = False
+
 		self.joints = {}
 		self.alive = True
 		self._touching = {}		# used by collision callback
@@ -699,6 +704,13 @@ class Object( object ):
 		self.transform = None	# used to set a transform directly, format: (pos,quat)
 		self._blender_transform = None	# used by geom-only objects
 		self.save_transform( bo )
+
+
+	def append_subgeom( self, child ):
+		assert not self.is_subgeom
+		self.subgeoms.append( child )
+		child.body = self.body
+		child.is_subgeom = True
 
 	def save_transform(self, bo):
 		self.start_matrix = bo.matrix_world.copy()
@@ -710,51 +722,136 @@ class Object( object ):
 		self.start_scale = (x,y,z)
 
 
-	def pop_joint( self, name ): return self.joints.pop(name)
-	def change_joint_type( self, name, type ): self.joints[name].set_type(type)
-	def new_joint(self, other, name='default', type='fixed'):
-		self.joints[name] = j = Joint(other,self,name,type)
-		return j
 
-	def set_mass( self, value ):
-		print( 'set-mass',value )
-		self.mass = mass = ode.Mass()
-		mass.SetSphereTotal( value, 0.1)		# total mass, radius
-		if self.body:
-			self.body.SetMass( mass )
-			if self.collision_body: self.collision_body.SetMass( mass )
+	def reset_recording( self, buff ):
+		self.transform = None
+		self.recbuffer = buff
 
-	def increase_mass( self, value ):
-		assert self.mass
-		m = ode.Mass()
-		m.SetSphereTotal( value, 0.1)
-		self.mass.Add( m )
+	def sync_from_ode_thread(self):
+		'''
+		do updates that are only safe from the ODE thread,
+		or updates that need to happen before ODE collision check.
+		'''
+		self.touching = self._touching
+		self._touching = {}
+
+		## bodyless geoms always get updates from blender ##
+		if self.geom and not self.body and self._blender_transform:
+			geom = self.geom
+			pos,rot,scl = self._blender_transform
+			px,py,pz = pos
+			rw,rx,ry,rz = rot
+			sx,sy,sz = scl
+			geom.SetPosition( px, py, pz )
+			geom.SetQuaternion( (rw,rx,ry,rz) )
+			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():
+				sradius = ((sx+sy+sz) / 3.0) *0.5
+				cradius = ((sx+sy)/2.0) * 0.5
+				length = sz
+				if self.geomtype == 'BOX': geom.BoxSetLengths( sx, sy, sz )
+				elif self.geomtype == 'SPHERE': geom.SphereSetRadius( sradius )
+				elif self.geomtype == 'CAPSULE': geom.CapsuleSetParams( sradius, length )
+				elif self.geomtype == 'CYLINDER': geom.CylinderSetParams( sradius, length )
+
+		elif self.body and self.transform and not self.is_subgeom:	# used by preview playback
+			pos,rot = self.transform
+			x,y,z = pos
+			self.body.SetPosition( x, y, z )
+			w,x,y,z = rot
+			self.body.SetQuaternion( (w,x,y,z) )
+
+	def sync( self, ob ):		# pre-sync, called before physics update
+
+		## to make things thread-safe we need to copy these attributes from pyRNA ##
+		self._friction = ob.ode_friction
+		self._bounce = ob.ode_bounce
+
+		pos,rot,scl = ob.matrix_world.decompose()
+		px,py,pz = pos
+		rw,rx,ry,rz = rot
+		sx,sy,sz = scl
+		if ob.type == 'MESH': sx,sy,sz = ob.dimensions
+
+		self._blender_transform = ( (px,py,pz), (rw,rx,ry,rz), (sx,sy,sz) )	# geom uses this for record and sync
+
+		if not self.is_subgeom and self.body and not self.transform:				# apply constant forces
+			body = self.body
+
+			x,y,z = ob.ode_local_force
+			if x or y or z: body.AddRelForce( x,y,z )
+			x,y,z = ob.ode_global_force
+			if x or y or z: body.AddForce( x,y,z )
+			x,y,z = ob.ode_local_torque
+			if x or y or z: body.AddRelTorque( x,y,z )
+			x,y,z = ob.ode_global_torque
+			if x or y or z: body.AddTorque( x,y,z )
+
+			rate = ob.ode_force_driver_rate
+			for vec in (ob.ode_local_force, ob.ode_global_force, ob.ode_local_torque, ob.ode_global_torque):
+				vec[0] *= rate
+				vec[1] *= rate
+				vec[2] *= rate
+
+			x,y,z = ob.ode_constant_local_force
+			if x or y or z: body.AddRelForce( x,y,z )
+			x,y,z = ob.ode_constant_global_force
+			if x or y or z: body.AddForce( x,y,z )
+			x,y,z = ob.ode_constant_local_torque
+			if x or y or z: body.AddRelTorque( x,y,z )
+			x,y,z = ob.ode_constant_global_torque
+			if x or y or z: body.AddTorque( x,y,z )
 
 
-	def get_linear_vel( self ):
-		if self.body: return self.body.GetLinearVel()		# localspace
+	def update( self, ob, now=None, recording=False, update_blender=False ):
+		body = self.body
+		geom = self.geom
 
-	def get_average_linear_vel( self ):
-		if self.body: 
-			x,y,z = self.body.GetLinearVel()
-			v = abs(x)+abs(y)+abs(z)
-			return v/3.0
+		if body and not self.is_subgeom:
+			qw,qx,qy,qz = body.GetQuaternion()
+			x,y,z = body.GetPosition()
+		elif geom:
+			#qw,qx,qy,qz = geom.GetQuaternion()	# TODO make ctypes wrapper better
+			#x,y,z = geom.GetPosition()
+			pos,rot,scl = self._blender_transform
+			x,y,z = pos; qw,qx,qy,qz = rot
+		else:
+			return
 
-	def get_angular_vel( self ):
-		if self.body: return self.body.GetAngularVel()
+		self.position = (x,y,z)			# thread-safe to read
+		self.rotation = (qw,qx,qy,qz)	# thread-safe to read
+
+		if recording and not self.transform:	# do not record if using direct transform
+			self.recbuffer.append( (now, (x,y,z), (qw,qx,qy,qz)) )
+
+		if update_blender and body and not self.is_subgeom:		# slow because it triggers a DAG update?
+			q = mathutils.Quaternion()
+			q.w = qw; q.x=qx; q.y=qy; q.z=qz
+			m = q.to_matrix().to_4x4()
+			m[0][3] = x	# blender2.61 style
+			m[1][3] = y
+			m[2][3] = z
+			sx,sy,sz = ob.scale		# save scale
+			ob.matrix_world = m
+			ob.scale = (sx,sy,sz)	# restore scale (in local space)
 
 
-
-
+	##########################################################################
+	##########################################################################
 	def toggle_collision(self, switch):
-		if not switch and self.geom:
-			if self.lock: self.lock.acquire()
-			self.geom.Destroy()
-			self.geom = None
-			print('destroyed geom')
-			if self.lock: self.lock.release()
+		if not switch:
+			if self.geom:
+				if self.lock: self.lock.acquire()
+				self.geom.Destroy()
+				self.geom = None
+				print('destroyed geom')
+				if self.lock: self.lock.release()
+			for child in self.subgeoms:
+				child.toggle_collision( False )
+
 		elif switch:
 			self.reset_collision_type()
+			for child in self.subgeoms:
+				child.toggle_collision( True )
 
 	def reset_collision_type(self):
 		if self.lock: self.lock.acquire()
@@ -815,7 +912,45 @@ class Object( object ):
 
 		if self.lock: self.lock.release()
 
+	##########################################################################
+	##########################################################################
+
+	def pop_joint( self, name ): return self.joints.pop(name)
+	def change_joint_type( self, name, type ): self.joints[name].set_type(type)
+	def new_joint(self, other, name='default', type='fixed'):
+		self.joints[name] = j = Joint(other,self,name,type)
+		return j
+
+	def set_mass( self, value ):
+		print( 'set-mass',value )
+		self.mass = mass = ode.Mass()
+		mass.SetSphereTotal( value, 0.1)		# total mass, radius
+		if self.body:
+			self.body.SetMass( mass )
+			if self.collision_body: self.collision_body.SetMass( mass )
+
+	def increase_mass( self, value ):
+		assert self.mass
+		m = ode.Mass()
+		m.SetSphereTotal( value, 0.1)
+		self.mass.Add( m )
+
+
+	def get_linear_vel( self ):
+		if self.body: return self.body.GetLinearVel()		# localspace
+
+	def get_average_linear_vel( self ):
+		if self.body: 
+			x,y,z = self.body.GetLinearVel()
+			v = abs(x)+abs(y)+abs(z)
+			return v/3.0
+
+	def get_angular_vel( self ):
+		if self.body: return self.body.GetAngularVel()
+
+
 	def toggle_body(self, switch):
+		assert not self.is_subgeom
 		if switch:
 			if not self.body:
 				print( 'created new body', self.name )
@@ -842,24 +977,25 @@ class Object( object ):
 
 				if self.geom:
 					print('<<geom setting body>>')
-					#self.geom.SetBody( self.collision_body )
 					self.geom.SetBody( self.body )
+				for child in self.subgeoms:
+					child.geom.SetBody( self.body )
+					child.body = self.body
 
 
 		elif self.body:
 			ENGINE.bodies.pop( self.name )
 			self.body.Destroy()
 			self.body = None
-			self.clear_body_config()
+			for child in self.subgeoms: child.body = None
 			print( 'body destroyed' )
 
 
 	def reset(self):
 		name = self.name
-		cfg = self.config
 		ob = bpy.data.objects[ name ]
 		body = self.body
-		if body:
+		if body and not self.is_subgeom:
 			ob.matrix_world = self.start_matrix.copy()
 			x,y,z = self.start_position
 			body.SetPosition( x,y,z )
@@ -872,146 +1008,4 @@ class Object( object ):
 
 
 
-	def reset_recording( self, buff ):
-		self.transform = None
-		self.recbuffer = buff
-
-	def clear_body_config( self ):
-		keys = list(self.config.keys())
-		for key in keys:
-			if key not in 'use_ghost collision_bounds_type'.split():
-				self.config.pop( key )
-
-	def sync_from_ode_thread(self):
-		'''
-		do updates that are only safe from the ODE thread,
-		or updates that need to happen before ODE collision check.
-		'''
-		self.touching = self._touching
-		self._touching = {}
-
-		if self.geom and not self.body and self._blender_transform:
-			geom = self.geom
-			pos,rot,scl = self._blender_transform
-			px,py,pz = pos
-			rw,rx,ry,rz = rot
-			sx,sy,sz = scl
-			geom.SetPosition( px, py, pz )
-			geom.SetQuaternion( (rw,rx,ry,rz) )
-			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():
-				sradius = ((sx+sy+sz) / 3.0) *0.5
-				cradius = ((sx+sy)/2.0) * 0.5
-				length = sz
-				if self.geomtype == 'BOX': geom.BoxSetLengths( sx, sy, sz )
-				elif self.geomtype == 'SPHERE': geom.SphereSetRadius( sradius )
-				elif self.geomtype == 'CAPSULE': geom.CapsuleSetParams( sradius, length )
-				elif self.geomtype == 'CYLINDER': geom.CylinderSetParams( sradius, length )
-
-		elif self.body and self.transform:	# used by preview playback
-			pos,rot = self.transform
-			x,y,z = pos
-			self.body.SetPosition( x, y, z )
-			w,x,y,z = rot
-			self.body.SetQuaternion( (w,x,y,z) )
-
-	def sync( self, ob ):		# pre-sync, called before physics update
-		cfg = self.config
-		body = self.body
-
-		## to make things thread-safe we need to copy these attributes from pyRNA ##
-		self._friction = ob.ode_friction
-		self._bounce = ob.ode_bounce
-
-		pos,rot,scl = ob.matrix_world.decompose()
-		px,py,pz = pos
-		rw,rx,ry,rz = rot
-		sx,sy,sz = scl
-		if ob.type == 'MESH': sx,sy,sz = ob.dimensions
-
-		self._blender_transform = ( (px,py,pz), (rw,rx,ry,rz), (sx,sy,sz) )
-
-		LIMIT = 10000	# this should be camera far range
-		if abs(px) > LIMIT or abs(py) > LIMIT or abs(pz) > LIMIT:
-			if self.alive and body: body.Disable()
-			self.alive = False
-		if not self.alive: return
-
-		if body and not self.transform:				# apply constant forces
-			x,y,z = ob.ode_local_force
-			if x or y or z: body.AddRelForce( x,y,z )
-			x,y,z = ob.ode_global_force
-			if x or y or z: body.AddForce( x,y,z )
-			x,y,z = ob.ode_local_torque
-			if x or y or z: body.AddRelTorque( x,y,z )
-			x,y,z = ob.ode_global_torque
-			if x or y or z: body.AddTorque( x,y,z )
-
-			rate = ob.ode_force_driver_rate
-			for vec in (ob.ode_local_force, ob.ode_global_force, ob.ode_local_torque, ob.ode_global_torque):
-				vec[0] *= rate
-				vec[1] *= rate
-				vec[2] *= rate
-
-			x,y,z = ob.ode_constant_local_force
-			if x or y or z: body.AddRelForce( x,y,z )
-			x,y,z = ob.ode_constant_global_force
-			if x or y or z: body.AddForce( x,y,z )
-			x,y,z = ob.ode_constant_local_torque
-			if x or y or z: body.AddRelTorque( x,y,z )
-			x,y,z = ob.ode_constant_global_torque
-			if x or y or z: body.AddTorque( x,y,z )
-
-
-	def update( self, ob, now=None, recording=False, update_blender=False ):
-		if not self.alive: return
-		body = self.body
-		geom = self.geom
-
-		if body:
-			qw,qx,qy,qz = body.GetQuaternion()
-			x,y,z = body.GetPosition()
-		elif geom:
-			#qw,qx,qy,qz = geom.GetQuaternion()	# TODO make ctypes wrapper better
-			#x,y,z = geom.GetPosition()
-			pos,rot,scl = self._blender_transform
-			x,y,z = pos; qw,qx,qy,qz = rot
-		else:
-			return
-
-		self.position = (x,y,z)			# thread-safe to read
-		self.rotation = (qw,qx,qy,qz)	# thread-safe to read
-
-		if recording and not self.transform:	# do not record if using direct transform
-			self.recbuffer.append( (now, (x,y,z), (qw,qx,qy,qz)) )
-
-		if update_blender and body:		# slow because it triggers a DAG update?
-			q = mathutils.Quaternion()
-			q.w = qw; q.x=qx; q.y=qy; q.z=qz
-			#e = q.to_euler( 'XYZ', ob.matrix_world.to_euler() )
-			#q = e.to_quaternion()
-
-			m = q.to_matrix().to_4x4()
-			m[0][3] = x	# blender2.61 style
-			m[1][3] = y
-			m[2][3] = z
-			sx,sy,sz = ob.scale		# save scale
-			ob.matrix_world = m
-			ob.scale = (sx,sy,sz)	# restore scale (in local space)
-
-
-## DEPRECATED ##
-class ReloadUserCallbackOp(bpy.types.Operator):
-	bl_idname = "active_physics.reload_user_callback"
-	bl_label = "Reload User Collision Callback"
-	bl_description = "collision callback"
-	@classmethod
-	def poll(cls, context): return True	#return context.mode!='EDIT_MESH'
-	def invoke(self, context, event):
-		txt = bpy.data.texts[0]
-		exec( txt.as_string() )
-		assert 'callback' in locals()
-		setattr( Object, 'callback', locals()['callback'] )
-		return {'FINISHED'}
-#########################################
-#bpy.utils.register_module(__name__)
 
