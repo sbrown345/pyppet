@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# March 6th, 2012
+# March 8th, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.5b'
+VERSION = '1.9.5c'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -3184,6 +3184,7 @@ class PyppetAPI( BlenderHackLinux ):
 		self._rec_start_frame = self.context.scene.frame_current
 		self._rec_start_time = time.time()
 		self._rec_current_objects = []
+		self._rec_blender_objects = {}
 
 		objects = []
 		if selected_only:
@@ -3195,11 +3196,21 @@ class PyppetAPI( BlenderHackLinux ):
 			if ob.name in ENGINE.objects:
 				w = ENGINE.objects[ ob.name ]
 				if w.body or w.geom:
-					print('record setup on object', ob.name)
+					print('new record buffer on ODE-object:', ob.name)
 					ob.animation_data_clear()
 					self._rec_objects[ ob.name ] = buff = []
 					w.reset_recording( buff )
 					self._rec_current_objects.append( ob.name )
+				else:
+					print('setup record buffer on BLENDER-object:', ob.name)
+					ob.animation_data_clear()
+					self._rec_blender_objects[ ob ] = []
+
+			else:		# if user hasn't toggled physics once
+				print('setup record buffer on BLENDER-object:', ob.name)
+				ob.animation_data_clear()
+				self._rec_blender_objects[ ob ] = []
+
 
 		self._rec_inactive_objects = []
 		for name in self._rec_objects:
@@ -3233,7 +3244,6 @@ class PyppetAPI( BlenderHackLinux ):
 
 		for name in self._rec_objects:
 			buff = self._rec_objects[name]
-			#print('updating %s: %s' %(name,len(buff)))
 			for i,F in enumerate(buff):
 				if F[0] < now: continue
 				frame_time, pos, rot = F
@@ -3242,6 +3252,19 @@ class PyppetAPI( BlenderHackLinux ):
 					set_body = (self.recording and name in self._rec_inactive_objects)
 				)
 				offset_cache[ name ] = i
+				if i==len(buff)-1: done.append(True)
+				else: done.append(False)
+				break
+
+		for ob in self._rec_blender_objects:
+			buff = self._rec_blender_objects[ ob ]
+			for i,F in enumerate(buff):
+				if F[0] < now: continue
+				frame_time, pos, rot = F
+				set_transform( 
+					ob.name, pos, rot, 
+					set_body = False
+				)
 				if i==len(buff)-1: done.append(True)
 				else: done.append(False)
 				break
@@ -3255,6 +3278,9 @@ class PyppetAPI( BlenderHackLinux ):
 			ob.hide_select = False
 			ob.select = True
 			ob.rotation_mode = 'QUATERNION'	# prevents flipping
+
+		for ob in self._rec_blender_objects:
+			ob.rotation_mode = 'QUATERNION'
 
 		self.context.scene.frame_current = 1
 		step = 1.0 / float(self.context.scene.render.fps / 3.0)
@@ -3745,14 +3771,16 @@ class PyppetUI( PyppetAPI ):
 		############# direct transform ##############
 		ex = Expander( 'direct transform' )
 		root.pack_start( ex.widget, expand=False )
-		#bx = gtk.VBox(); ex.add( bx )
-		nice = {'location':'Location', 'scale':'Scale', 'rotation_euler':'Rotation' }
-		tags='location scale rotation_euler'.split()
-		for i,tag in enumerate(tags):
-			ex.append(
-				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=False).widget, 
-				#expand=False
-			)
+		ex.append(
+			NotebookVectorWidget(ob,'location', title='Location', expanded=False, min=-10, max=10).widget, 
+		)
+		ex.append(
+			NotebookVectorWidget(ob,'rotation_euler', title='Rotation', expanded=False, min=-math.pi, max=math.pi).widget, 
+		)
+		ex.append(
+			NotebookVectorWidget(ob,'scale', title='Scale', expanded=False, min=0, max=10).widget, 
+		)
+
 
 		############# physics driver forces ##############
 		ex = Expander('force drivers')
@@ -3778,7 +3806,7 @@ class PyppetUI( PyppetAPI ):
 		tags='ode_global_force ode_global_torque'.split()
 		for i,tag in enumerate(tags):
 			page.pack_start(
-				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0, min=-400, max=400).widget, 
 				expand=False
 			)
 
@@ -3791,7 +3819,7 @@ class PyppetUI( PyppetAPI ):
 		tags='ode_local_force ode_local_torque'.split()
 		for i,tag in enumerate(tags):
 			page.pack_start(
-				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0).widget, 
+				NotebookVectorWidget(ob,tag, title=nice[tag], expanded=i is 0, min=-400, max=400).widget, 
 				expand=False
 			)
 
@@ -4544,6 +4572,14 @@ class App( PyppetUI ):
 			DriverManager.update()
 			if ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
 
+			if self.recording:
+				for ob in self._rec_blender_objects:
+					buff = self._rec_blender_objects[ ob ]
+					pos,rot,scl = ob.matrix_world.decompose()
+					px,py,pz = pos
+					qw,qx,qy,qz = rot
+					#sx,sy,sz = scl
+					buff.append( (now, (px,py,pz), (qw,qx,qy,qz)) )
 			if drop_frame: continue
 
 			win = Blender.Window( self.context.window )

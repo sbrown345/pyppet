@@ -99,5 +99,7 @@ Known Issues:
 	. the UV/image editor must be open for WebGL streaming textures to work
 
 	. file open is not working
-		workaround set the file you wish to open as your startup default
+		workaround set the file you wish to open as your startup default, or run:
+		./Pyppet.sh /full/path/to/your/blend
+
 

@@ -1079,9 +1079,11 @@ class RNASlider(object):		# TODO, make driveable
 
 
 class NotebookVectorWidget( object ):
-	def __init__( self, ob, name, title=None, expanded=True ):
-		drivers = Driver.get_drivers(ob.name, name)	# classmethod
+	def __init__( self, ob, name, title=None, expanded=True, min=0.0, max=1.0 ):
+		self.min = min
+		self.max = max
 
+		drivers = Driver.get_drivers(ob.name, name)		# classmethod
 		vec = getattr(ob,name)
 
 		if title: ex = gtk.Expander(title)
@@ -1090,7 +1092,8 @@ class NotebookVectorWidget( object ):
 		self.widget = ex
 
 		note = gtk.Notebook(); ex.add( note )
-		note.set_tab_pos( gtk.POS_RIGHT )
+		#note.set_tab_pos( gtk.POS_RIGHT )
+		note.set_size_request(240,80)
 
 		if type(vec) is mathutils.Color:
 			tags = 'rgb'
@@ -1116,13 +1119,9 @@ class NotebookVectorWidget( object ):
 
 
 	def cb_drop_driver(self, wid, context, x, y, time, target, path, index, page):
-		print('on drop')
+		# TODO check for "rotation_euler" and force rotation_mode to 'EULER' ?
 		output = DND.source_object
-		#driver = output.bind( 'XXX', target=self.object, path=path, index=index )
-		if path.startswith('ode_'):
-			driver = output.bind( 'XXX', target=target, path=path, index=index, max=500 )
-		else:
-			driver = output.bind( 'XXX', target=target, path=path, index=index )
+		driver = output.bind( 'XXX', target=target, path=path, index=index, min=self.min, max=self.max )
 		widget = driver.get_widget()
 		page.pack_start( widget, expand=False )
 		widget.show_all()
