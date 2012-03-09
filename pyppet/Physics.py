@@ -1,5 +1,5 @@
 ## Ode Physics Addon for Blender
-## by Brett Hart, March 1st, 2011
+## by Brett Hart, March 9th, 2011
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
@@ -709,9 +709,17 @@ class HybridObject( object ):
 	def append_subgeom( self, child ):
 		assert not self.is_subgeom
 		self.subgeoms.append( child )
-		child.body = self.body
-		child.is_subgeom = True
-		if child.geom: child.geom.SetBody( self.body )
+		child.set_parent_body( self.body )
+
+	def set_parent_body( self, body ):
+		self.body = body
+		self.is_subgeom = True
+		if self.geom:
+			self.geom.SetBody( self.body )
+			pos,rot,scl = self._blender_transform
+			self.geom.SetOffsetWorldPosition( *pos )
+			self.geom.SetOffsetWorldQuaternion( rot )
+
 
 	def save_transform(self, bo):
 		self.start_matrix = bo.matrix_world.copy()
@@ -737,14 +745,19 @@ class HybridObject( object ):
 		self._touching = {}
 
 		## bodyless geoms always get updates from blender ##
-		if self.geom and not self.body and self._blender_transform:
+		if self._blender_transform and self.geom and (not self.body or self.is_subgeom):
 			geom = self.geom
 			pos,rot,scl = self._blender_transform
 			px,py,pz = pos
 			rw,rx,ry,rz = rot
 			sx,sy,sz = scl
-			geom.SetPosition( px, py, pz )
-			geom.SetQuaternion( (rw,rx,ry,rz) )
+			if self.is_subgeom:
+				geom.SetOffsetWorldPosition( px, py, pz )
+				geom.SetOffsetWorldQuaternion( (rw,rx,ry,rz) )
+			else:
+				geom.SetPosition( px, py, pz )
+				geom.SetQuaternion( (rw,rx,ry,rz) )
+
 			if self.geomtype in 'BOX SPHERE CAPSULE CYLINDER'.split():
 				sradius = ((sx+sy+sz) / 3.0) *0.5
 				cradius = ((sx+sy)/2.0) * 0.5
@@ -869,6 +882,9 @@ class HybridObject( object ):
 		sx,sy,sz = scl
 		if ob.type == 'MESH': sx,sy,sz = ob.dimensions
 
+		self._blender_transform = ( (px,py,pz), (rw,rx,ry,rz), (sx,sy,sz) )	# sub-geom needs this for offset
+
+
 		T = ob.game.collision_bounds_type
 		if T in 'BOX SPHERE CAPSULE CYLINDER'.split():		#TODO: CONVEX_HULL, TRIANGLE_MESH
 			self.geomtype = T
@@ -887,19 +903,22 @@ class HybridObject( object ):
 			elif T == 'CYLINDER': self.geom = ode.CreateCylinder( space, cradius, length )
 			#elif T == 'CONVEX_HULL': self.geom = ode.CreateConvex( self.space, planes, numplanes, points, numpoints, polys )
 			geom = self.geom
-			geom.SetPosition( px, py, pz )
-			geom.SetQuaternion( (rw,rx,ry,rz) )
 			if self.body:
 				print('<<<geom setting body>>>')
-				#geom.SetBody( self.collision_body )
 				geom.SetBody( self.body )
-				ENGINE.body_geoms[ self.name ] = self.geom
+				#ENGINE.body_geoms[ self.name ] = self.geom
+				if self.is_subgeom:
+					self.geom.SetOffsetWorldPosition( px, py, pz )
+					self.geom.SetOffsetWorldQuaternion( (rw,rx,ry,rz) )
+
+
 			else:
 				print('<<<bodyless geom>>>')
-				ENGINE.bodyless_geoms[ self.name ] = self.geom
+				#ENGINE.bodyless_geoms[ self.name ] = self.geom
+				geom.SetPosition( px, py, pz )
+				geom.SetQuaternion( (rw,rx,ry,rz) )
 
-			## this is safe ##
-			self._geom_set_data_pointer = ctypes.pointer( ctypes.py_object(self) )
+			self._geom_set_data_pointer = ctypes.pointer( ctypes.py_object(self) )	# keeping reference to pointer
 			geom.SetData( self._geom_set_data_pointer )
 
 			## not working? ##
@@ -952,6 +971,7 @@ class HybridObject( object ):
 
 	def toggle_body(self, switch):
 		assert not self.is_subgeom
+
 		if switch:
 			if not self.body:
 				print( 'created new body', self.name )
@@ -981,8 +1001,7 @@ class HybridObject( object ):
 					print('<<geom setting body>>')
 					self.geom.SetBody( self.body )
 				for child in self.subgeoms:
-					child.geom.SetBody( self.body )
-					child.body = self.body
+					child.set_parent_body( self.body )
 
 
 		elif self.body:
