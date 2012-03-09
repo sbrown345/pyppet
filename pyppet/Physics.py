@@ -25,6 +25,7 @@ bpy.types.Object.ode_friction = FloatProperty( name='body friction', default=0.5
 
 bpy.types.Object.ode_bounce = FloatProperty( name='body bounce', default=0.025 )
 
+
 bpy.types.Object.ode_use_body = BoolProperty( 
 	name='use physics body', default=False, 
 	update=lambda self,con:  ENGINE.get_wrapper(self).toggle_body(self.ode_use_body)

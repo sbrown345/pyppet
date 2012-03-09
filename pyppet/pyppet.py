@@ -4267,35 +4267,38 @@ class PyppetUI( PyppetAPI ):
 			root.pack_start( gtk.Label(ob.name), expand=False )
 			root.pack_start( gtk.Label('    '), expand=False )
 
-			g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
-			g.set_no_show_all(True)
+			wrapper = ENGINE.get_wrapper( ob )
+			if not wrapper.is_subgeom:	# sub-geom not allowed to have a body
 
-			Mslider = Slider(
-				ob, name='ode_mass', title='', tooltip='mass',
-				min=0.001, max=100.0, no_show_all=True,
-			)
+				g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
+				g.set_no_show_all(True)
 
-			if ob.ode_use_body:
-				g.show()
-				Mslider.widget.show()
-			else:
-				g.hide()	# can't be in pose-mode bug! TODO fix me
-				Mslider.widget.hide()
+				Mslider = Slider(
+					ob, name='ode_mass', title='', tooltip='mass',
+					min=0.001, max=100.0, no_show_all=True,
+				)
 
-			b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('toggle body physics')
-			root.pack_start( b, expand=False )
-			b.set_active( ob.ode_use_body )
-			b.connect('toggled', self.toggle_body, g, Mslider.widget)
+				if ob.ode_use_body:
+					g.show()
+					Mslider.widget.show()
+				else:
+					g.hide()	# can't be in pose-mode bug! TODO fix me
+					Mslider.widget.hide()
 
-			g.set_tooltip_text('toggle gravity')
-			root.pack_start( g, expand=False )
-			g.set_active( ob.ode_use_gravity )
-			g.connect('toggled', self.toggle_gravity)
+				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle body physics')
+				root.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_body )
+				b.connect('toggled', self.toggle_body, g, Mslider.widget)
 
-			root.pack_start(Mslider.widget, expand=True)
+				g.set_tooltip_text('toggle gravity')
+				root.pack_start( g, expand=False )
+				g.set_active( ob.ode_use_gravity )
+				g.connect('toggled', self.toggle_gravity)
 
-			root.pack_start( gtk.Label(' | '), expand=False )
+				root.pack_start(Mslider.widget, expand=True)
+
+				root.pack_start( gtk.Label(' | '), expand=False )
 
 
 			combo = gtk.ComboBoxText()
