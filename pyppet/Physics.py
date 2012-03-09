@@ -711,6 +711,7 @@ class HybridObject( object ):
 		self.subgeoms.append( child )
 		child.body = self.body
 		child.is_subgeom = True
+		if child.geom: child.geom.SetBody( self.body )
 
 	def save_transform(self, bo):
 		self.start_matrix = bo.matrix_world.copy()
@@ -961,6 +962,7 @@ class HybridObject( object ):
 				rw,rx,ry,rz = rot
 				sx,sy,sz = scl
 				if ob.type == 'MESH': sx,sy,sz = ob.dimensions
+				elif ob.type == 'EMPTY': pass	# TODO warn if draw size is not 1.0
 
 				print('SETTING NEW BODY POS', px,py,pz)
 

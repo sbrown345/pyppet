@@ -1,10 +1,10 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# March 8th, 2012
+# March 9th, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
-VERSION = '1.9.5c'
+VERSION = '1.9.5d'
 
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -1758,7 +1758,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, disable_collision_with_other_bones=False):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, external_children=[], disable_collision_with_other_bones=False):
 		self.armature = arm
 		self.name = name
 		self.head = None
@@ -1772,6 +1772,7 @@ class Bone(object):
 		self.tension_CFM = tension_CFM
 		self.tension_ERP = tension_ERP
 		self.collision = collision
+		self.external_children = tuple( external_children )	# not dynamic
 
 		ebone = arm.data.bones[ name ]
 		pbone = arm.pose.bones[ name ]
@@ -2027,10 +2028,11 @@ class AbstractArmature(object):
 
 
 	def build_bones(self, bone, data=None, broken_chain=False):
-		connected = self.bone_info[bone.name]['connected']
+		info = self.bone_info[bone.name]
+		connected = info['connected']
+		ik = info['ik-chain']
+		deform = info['deform']
 		if not connected and bone.parent: broken_chain = True
-		ik = self.bone_info[bone.name]['ik-chain']
-		deform = self.bone_info[bone.name]['deform']
 		if (connected or not bone.parent or self.use_bone_in_rig(bone)) and not ik and deform:
 
 			name = bone.name
@@ -2041,7 +2043,8 @@ class AbstractArmature(object):
 				tension_CFM = self.tension_CFM,
 				tension_ERP = self.tension_ERP,
 				object_data = data,
-				collision = not broken_chain or not bone.children
+				collision = not broken_chain or not bone.children,
+				external_children = info['external-children'],
 			)
 			for child in bone.children: self.build_bones( child, data, broken_chain )
 
@@ -2062,6 +2065,7 @@ class AbstractArmature(object):
 		Pyppet.AddEntity( self )
 		Pyppet.refresh_selected = True
 
+
 		#self.primary_joints = {}
 		#self.breakable_joints = []
 		self.initial_break_thresh = break_thresh
@@ -2076,9 +2080,17 @@ class AbstractArmature(object):
 			pbone = arm.pose.bones[ bone.name ]
 			info['ik-chain'] = pbone.is_in_ik_chain
 			info['ik-target'] = None
+			info['external-children'] = []
 			for cns in pbone.constraints:
 				if cns.type == 'IK':
 					info['ik-target'] = cns.target
+
+		## collect external objects that are children of the bones ##
+		for ob in bpy.data.objects:
+			if ob.parent_type=='BONE' and ob.parent == arm:
+				info = self.bone_info[ ob.parent_bone ]
+				info['external-children'].append( ob )
+
 
 		if breakable:
 			print('making breakable',arm)
@@ -2115,6 +2127,15 @@ class AbstractArmature(object):
 		if break_thresh:
 			for b in self.rig.values():
 				b.set_weakness( break_thresh, damage_thresh )
+
+		## check for external children and make them sub-geoms ##
+		for b in self.rig.values():
+			for ob in b.external_children:
+				if ob.game.use_collision_bounds:
+					print('@@found new subgeom@@', ob)
+					ob.ode_use_collision = True
+					child = ENGINE.get_wrapper( ob )
+					b.shaft_wrapper.append_subgeom( child )
 
 		self.setup()
 
