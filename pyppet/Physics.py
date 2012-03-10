@@ -3,7 +3,7 @@
 ## (updated for Blender2.6.1 matrix-style)
 ## License: BSD
 
-DEFAULT_ERP = 0.35	# collision bounce gains energy if this is too high > 0.5
+DEFAULT_ERP = 0.25		# collision bounce gains energy if this is too high > 0.5
 DEFAULT_CFM = 0.05
 
 
@@ -461,8 +461,9 @@ class OdeSingleton(object):
 				con.surface.mode = ode.ContactBounce
 				con.surface.bounce = ob1._bounce + ob2._bounce
 			else:
-				con.surface.mode = ode.ContactSoftERP
+				con.surface.mode = ode.ContactSoftERP | ode.ContactSoftCFM
 				con.surface.soft_erp = ob1._bounce + ob2._bounce
+				con.surface.soft_cfm = 0.25
 
 			info = {'location':g.pos, 'normal':g.normal, 'depth':g.depth}
 			ob1._touching[ ob2.name ] = info
@@ -474,8 +475,6 @@ class OdeSingleton(object):
 
 LOCK = threading._allocate_lock()
 ENGINE = OdeSingleton( lock=LOCK )
-ActivePhysics = ENGINE
-
 
 
 ############################################################
@@ -710,6 +709,10 @@ class HybridObject( object ):
 	def append_subgeom( self, child ):
 		assert not self.is_subgeom
 		self.subgeoms.append( child )
+		if self.name not in self.no_collision_groups:
+			self.no_collision_groups.append( self.name )
+		if self.name not in child.no_collision_groups:
+			child.no_collision_groups.append( self.name )
 		child.set_parent_body( self.body )
 
 	def set_parent_body( self, body ):
@@ -753,8 +756,11 @@ class HybridObject( object ):
 			rw,rx,ry,rz = rot
 			sx,sy,sz = scl
 			if self.is_subgeom:
-				geom.SetOffsetWorldPosition( px, py, pz )
-				geom.SetOffsetWorldQuaternion( (rw,rx,ry,rz) )
+				## problem is that a body could be offset from the armature bone, but the geoms stay in place,
+				## then the offset gets updated incorrectly.
+				#geom.SetOffsetWorldPosition( px, py, pz )
+				#geom.SetOffsetWorldQuaternion( (rw,rx,ry,rz) )
+				pass
 			else:
 				geom.SetPosition( px, py, pz )
 				geom.SetQuaternion( (rw,rx,ry,rz) )
@@ -1014,8 +1020,8 @@ class HybridObject( object ):
 
 
 	def reset(self):
-		name = self.name
-		ob = bpy.data.objects[ name ]
+		if self.name not in bpy.data.objects: return
+		ob = bpy.data.objects[ self.name ]
 		body = self.body
 		if body and not self.is_subgeom:
 			ob.matrix_world = self.start_matrix.copy()

@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# March 9th, 2012
+# March 10th, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -2132,7 +2132,6 @@ class AbstractArmature(object):
 		for b in self.rig.values():
 			for ob in b.external_children:
 				if ob.game.use_collision_bounds:
-					print('@@found new subgeom@@', ob)
 					ob.ode_use_collision = True
 					child = ENGINE.get_wrapper( ob )
 					b.shaft_wrapper.append_subgeom( child )
