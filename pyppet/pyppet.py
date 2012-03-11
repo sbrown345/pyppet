@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# March 10th, 2012
+# March 11th, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -3243,44 +3243,55 @@ class PyppetAPI( BlenderHackLinux ):
 
 
 	########### recording/baking ###########
-	def start_record(self, selected_only=False):
+	def clear_recording(self, button=None):
+		self._rec_saved_objects = {}
+
+	def commit_recording(self, button=None):
+		for ob in self._rec_current_objects:
+			buff = self._rec_current_objects[ ob ]
+			self._rec_saved_objects[ ob ] = buff
+			print('commit animation', ob, len(buff))
+		self._rec_current_objects = {}
+
+	def start_record(self, selected_only=False, record_physics=True, record_objects=True):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
-		self._rec_start_time = time.time()
-		self._rec_current_objects = []
+		self._rec_current_objects = {}
 		self._rec_blender_objects = {}
 
 		objects = []
 		if selected_only:
-			for ob in self.context.selected_objects: objects.append( ob )
+			for ob in self.context.selected_objects:
+				if ob not in self._rec_saved_objects:
+					objects.append( ob )
 		else:
-			for ob in self.context.scene.objects: objects.append( ob )
+			for ob in self.context.scene.objects:
+				if ob not in self._rec_saved_objects:
+					objects.append( ob )
 
 		for ob in objects:
 			if ob.name in ENGINE.objects:
 				w = ENGINE.objects[ ob.name ]
-				if w.body or w.geom:
+				if record_physics and (w.body or w.geom):
 					print('new record buffer on ODE-object:', ob.name)
 					ob.animation_data_clear()
 					self._rec_objects[ ob.name ] = buff = []
 					w.reset_recording( buff )
-					self._rec_current_objects.append( ob.name )
-				else:
+					self._rec_current_objects[ ob ] = buff
+				elif record_objects:
 					print('setup record buffer on BLENDER-object:', ob.name)
 					ob.animation_data_clear()
-					self._rec_blender_objects[ ob ] = []
+					self._rec_blender_objects[ ob ] = buff = []
+					self._rec_current_objects[ ob ] = buff
 
-			else:		# if user hasn't toggled physics once
+			elif record_objects:		# if user hasn't toggled physics once
 				print('setup record buffer on BLENDER-object:', ob.name)
 				ob.animation_data_clear()
-				self._rec_blender_objects[ ob ] = []
+				self._rec_blender_objects[ ob ] = buff = []
+				self._rec_current_objects[ ob ] = buff
 
 
-		self._rec_inactive_objects = []
-		for name in self._rec_objects:
-			if name not in self._rec_current_objects:
-				self._rec_inactive_objects.append( name )
-
+		self._rec_start_time = time.time()
 		if self.play_wave_on_record and self.wave_speaker:
 			self.start_wave()
 
@@ -3290,8 +3301,6 @@ class PyppetAPI( BlenderHackLinux ):
 		for name in ENGINE.objects:
 			w = ENGINE.objects[ name ]
 			w.transform = None
-			print('recbuffer:', name, len(w.recbuffer))
-
 
 
 	def update_physics(self, now, drop_frame=False):
@@ -3303,31 +3312,15 @@ class PyppetAPI( BlenderHackLinux ):
 
 	def update_preview(self, now):
 		print('updating preview',now)
-		offset_cache = {}
 		done = []
-
-		for name in self._rec_objects:
-			buff = self._rec_objects[name]
+		for ob in self._rec_saved_objects:
+			buff = self._rec_saved_objects[ ob ]
 			for i,F in enumerate(buff):
 				if F[0] < now: continue
 				frame_time, pos, rot = F
 				set_transform( 
-					name, pos, rot, 
-					set_body = (self.recording and name in self._rec_inactive_objects)
-				)
-				offset_cache[ name ] = i
-				if i==len(buff)-1: done.append(True)
-				else: done.append(False)
-				break
-
-		for ob in self._rec_blender_objects:
-			buff = self._rec_blender_objects[ ob ]
-			for i,F in enumerate(buff):
-				if F[0] < now: continue
-				frame_time, pos, rot = F
-				set_transform( 
-					ob.name, pos, rot, 
-					set_body = False
+					ob, pos, rot, 
+					set_body = self.recording
 				)
 				if i==len(buff)-1: done.append(True)
 				else: done.append(False)
@@ -3336,15 +3329,11 @@ class PyppetAPI( BlenderHackLinux ):
 		if all(done): self._rec_preview_button.set_active(False); return True
 		else: return False
 
-	def bake_animation(self,button):
-		for name in self._rec_current_objects:
-			ob = bpy.data.objects[ name ]
+	def bake_animation(self, button=None):
+		for ob in self._rec_saved_objects:
 			ob.hide_select = False
 			ob.select = True
 			ob.rotation_mode = 'QUATERNION'	# prevents flipping
-
-		for ob in self._rec_blender_objects:
-			ob.rotation_mode = 'QUATERNION'
 
 		self.context.scene.frame_current = 1
 		step = 1.0 / float(self.context.scene.render.fps / 3.0)
@@ -3359,8 +3348,7 @@ class PyppetAPI( BlenderHackLinux ):
 		print('Finished baking animation')
 
 
-def set_transform( name, pos, rot, set_body=False ):
-	ob = bpy.data.objects[name]
+def set_transform( ob, pos, rot, set_body=False ):
 	q = mathutils.Quaternion()
 	qw,qx,qy,qz = rot
 	q.w = qw; q.x=qx; q.y=qy; q.z=qz
@@ -3370,8 +3358,8 @@ def set_transform( name, pos, rot, set_body=False ):
 	x,y,z = ob.scale	# save scale
 	ob.matrix_world = m
 	ob.scale = (x,y,z)	# restore scale
-	if set_body:
-		w = ENGINE.objects[ name ]
+	if set_body and ob.name in ENGINE.objects:
+		w = ENGINE.objects[ ob.name ]
 		w.transform = (pos,rot)
 
 ######################################################
@@ -3551,23 +3539,36 @@ class PyppetUI( PyppetAPI ):
 
 		bx = gtk.HBox(); root.pack_start( bx )
 
+		self._rec_preview_button = b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
+		b.connect('toggled', self.toggle_preview)
+		bx.pack_start( b, expand=False )
+
 		c = gtk.CheckButton('selected')
 		c.set_tooltip_text('only record selected objects')
-		bx.pack_start( c, expand=False )
 
 		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
 		b.set_tooltip_text('record selected objects')
 		b.connect('toggled', self.toggle_record, c )
 		bx.pack_start( b, expand=False )
+		bx.pack_start( c, expand=False )
 
-		self._rec_preview_button = b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
-		b.connect('toggled', self.toggle_preview)
+		bx.pack_start( gtk.Label() )
+
+		b = gtk.Button( 'commit' )
+		b.set_tooltip_text('save animation pass for baking')
+		b.connect('clicked', self.commit_recording)
 		bx.pack_start( b, expand=False )
 
 		b = gtk.Button( 'bake %s' %icons.WRITE )
-		b.set_tooltip_text('bake selected objects animation to curves')
+		b.set_tooltip_text('bake all commited passes to animation curves')
 		b.connect('clicked', self.bake_animation)
 		bx.pack_start( b, expand=False )
+
+		b = gtk.Button( 'reset' )
+		b.set_tooltip_text('delete animation commit buffer')
+		b.connect('clicked', self.clear_recording)
+		bx.pack_start( b, expand=False )
+
 
 		bx.pack_start( gtk.Label() )
 		self._rec_current_time_label = gtk.Label('-')
@@ -4570,6 +4571,8 @@ class App( PyppetUI ):
 
 		self._rec_start_time = time.time()
 		self._rec_objects = {}	# recording buffers
+		self._rec_saved_objects = {}	# commited passes
+
 		self.preview = False
 		self.recording = False
 		self.active = True
