@@ -1,4 +1,5 @@
-COOL_ICONS = 'ᚗଷ⟲⟳⤘⤌⤍⤎⤏⤑⥆ⵛⵞⵓ𐎒ㄖ⇠⇡⇢⇣⇦⇧⇨⇩ᨖ▓▒░▩▦▧◍⬔⬕'
+POSITIVE_OFFSET = '⊕'
+NEGATIVE_OFFSET = '⊝'
 
 ACTIVE_BONE = '𝓪𝓬𝓽𝓲𝓿𝓮 𝓫𝓸𝓷𝓮'
 ACTIVE_BONE_ICON = '𐎋'
@@ -90,7 +91,6 @@ COLLISION = '⎒'
 DND = ' ⎗ '
 
 MULTIPLY = '⨉'
-SUBTRACT = '−'
 
 DRIVERS_ICON = DRIVER = '⎆'
 DRIVERS = '𝓭𝓻𝓲𝓿𝓮𝓻𝓼'

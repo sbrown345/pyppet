@@ -377,7 +377,7 @@ class DeviceOutput( object ):
 
 class Driver(object):
 	INSTANCES = []
-	MODES = ('+', icons.SUBTRACT, '=', icons.MULTIPLY)
+	MODES = ('+', '-', '=', icons.MULTIPLY, icons.POSITIVE_OFFSET, icons.NEGATIVE_OFFSET)
 	@classmethod
 	def get_drivers(self,oname, aname):
 		r = []
@@ -388,7 +388,19 @@ class Driver(object):
 		
 	def __init__(self, name='', target=None, target_path=None, target_index=None, source=None, source_index=None, source_attribute_name=None, mode='+', min=.0, max=420):
 		self.name = name
-		self.target = target		# if string assume blender object by name
+
+		if target_path and '.' in target_path:
+			print('DEPRECATION WARNING - do not use "." in target_path')
+
+		self.target = target		# if string assume blender object by name - DEPRECATE
+		if type(target) is str:
+			print('DEPRECATION WARNING - pass objects not strings', target)
+		else:
+			if target_path: attr = getattr(target, target_path)
+			else: attr = target
+			if target_index is not None: self.default = attr[ target_index ]
+			else: self.default = attr
+
 		self.target_path = target_path
 		self.target_index = target_index
 		self.source = source
@@ -494,20 +506,29 @@ class Driver(object):
 					vec[ self.target_index ] += a
 				elif self.mode == '=':
 					vec[ self.target_index ] = a
-				elif self.mode == icons.SUBTRACT:
+				elif self.mode == '-':
 					vec[ self.target_index ] -= a
 				elif self.mode == icons.MULTIPLY:
 					vec[ self.target_index ] *= a
+				elif self.mode == icons.POSITIVE_OFFSET:
+					vec[ self.target_index ] = self.default + a
+				elif self.mode == icons.NEGATIVE_OFFSET:
+					vec[ self.target_index ] = self.default - a
+
 
 			else:
 				if self.mode == '+':
 					value = getattr(sub,aname) + a
 				elif self.mode == '=':
 					value = a
-				elif self.mode == icons.SUBTRACT:
+				elif self.mode == '-':
 					value = getattr(sub,aname) - a
 				elif self.mode == icons.MULTIPLY:
 					value = getattr(sub,aname) * a
+				elif self.mode == icons.POSITIVE_OFFSET:
+					value = self.default + a
+				elif self.mode == icons.NEGATIVE_OFFSET:
+					value = self.default - a
 
 				setattr(sub, aname, value)
 		else:
