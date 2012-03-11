@@ -2081,6 +2081,7 @@ class AbstractArmature(object):
 			info['ik-chain'] = pbone.is_in_ik_chain
 			info['ik-target'] = None
 			info['external-children'] = []
+			info['joints'] = []
 			for cns in pbone.constraints:
 				if cns.type == 'IK':
 					info['ik-target'] = cns.target
@@ -2090,6 +2091,22 @@ class AbstractArmature(object):
 			if ob.parent_type=='BONE' and ob.parent == arm:
 				info = self.bone_info[ ob.parent_bone ]
 				info['external-children'].append( ob )
+
+				## bones not allowed to have RigidBody Constraint, defer to external children.
+				for cns in ob.constraints:
+					if cns.type == 'RIGID_BODY_JOINT':
+						type = None
+						if '{' in cns.name and '}' in cns.name:
+							type = cns.name.split('{')[-1].split('}')[0].strip()
+						elif cns.pivot_type == 'BALL': type = 'ball'
+						elif cns.pivot_type == 'HINGE': type = 'hinge'
+						elif cns.pivot_type == 'CONE_TWIST': pass
+						elif cns.pivot_type == 'GENERIC_6_DOF': pass
+
+						if type and (cns.target or cns.child):
+							info['joints'].append(
+								{'type':type, 'child': cns.target or cns.child}
+							)
 
 
 		if breakable:
@@ -2135,6 +2152,30 @@ class AbstractArmature(object):
 					ob.ode_use_collision = True
 					child = ENGINE.get_wrapper( ob )
 					b.shaft_wrapper.append_subgeom( child )
+
+		## create joints for external objects ##
+		for b in self.rig.values():
+			info = self.bone_info[ b.name ]
+			for d in info['joints']:
+				ob = d['child']
+
+				if ob.parent_type=='BONE' and ob.parent.type == 'ARMATURE':
+					if ob.parent.pyppet_model:
+						e = Pyppet.GetEntity( ob.parent )
+						c = e.rig[ ob.parent_bone ]
+						ob = c.shaft
+
+					else:
+						print('WARNING: you must initialize the sub-armature first, as a ragdoll, etc.')
+
+
+				if not ob.ode_use_body: ob.ode_use_body = True
+				wrap = ENGINE.get_wrapper( ob )
+				wrap.new_joint(
+					name = '%s2%s' %(ob.name,b.name),
+					parent=b.shaft_wrapper, 
+					type=d['type']
+				)
 
 		self.setup()
 
@@ -2226,13 +2267,14 @@ class AbstractArmature(object):
 
 		elif context.active_pose_bone and context.active_pose_bone.name != self.active_pose_bone:
 			bone = context.active_pose_bone
-			self.active_pose_bone = bone.name	# get bone name, not bone instance
+			if bone.name in self.rig:
+				self.active_pose_bone = bone.name	# get bone name, not bone instance
 
-			for B in self.rig.values(): B.hide()
-			self.rig[ bone.name ].show()
+				for B in self.rig.values(): B.hide()
+				self.rig[ bone.name ].show()
 
-			self.update_targets_widget( bone )
-			self.update_active_bone_widget( bone )
+				self.update_targets_widget( bone )
+				self.update_active_bone_widget( bone )
 
 	def heal_broken_joints(self,b):
 		for B in self.rig.values():
@@ -3168,6 +3210,8 @@ class PyppetAPI( BlenderHackLinux ):
 
 	def AddEntity( self, model ):
 		self.entities[ model.name ] = model
+	def GetEntity( self, arm ):
+		return self.entities[ arm.name ]
 
 	def reset_models(self):
 		self.entities = {}

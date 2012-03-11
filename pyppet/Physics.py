@@ -511,7 +511,7 @@ class Joint( object ):
 	
 	Params = 'ERP CFM LoStop HiStop Vel FMax FudgeFactor Bounce StopERP StopCFM SuspensionERP SuspensionCFM'.split()
 
-	def __init__(self, parent, child, name, type, axis1=(1.0,.0,.0), axis2=(.0,1.0,.0) ):
+	def __init__(self, name, parent=None, child=None, type='fixed', axis1=(1.0,.0,.0), axis2=(.0,1.0,.0) ):
 		self.parent = parent
 		self.child = child
 		self.name = name
@@ -944,8 +944,18 @@ class HybridObject( object ):
 
 	def pop_joint( self, name ): return self.joints.pop(name)
 	def change_joint_type( self, name, type ): self.joints[name].set_type(type)
-	def new_joint(self, other, name='default', type='fixed'):
-		self.joints[name] = j = Joint(other,self,name,type)
+
+	def new_joint(self, parent=None, name='default', type='fixed'):
+		'''
+		attach self to parent using a ODE Joint
+		'''
+		assert name not in self.joints
+		self.joints[name] = j = Joint(
+			name, 
+			parent=parent,
+			child=self,
+			type=type,
+		)
 		return j
 
 	def set_mass( self, value ):
