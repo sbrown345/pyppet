@@ -21,6 +21,11 @@ def _None(arg): return None		# stupid rule, why should the func have to return N
 
 
 #################### pyRNA ##################
+bpy.types.Object.ode_use_soft_collision = BoolProperty( name='use soft collision', default=False )
+bpy.types.Object.ode_soft_collision_erp = FloatProperty( name='soft collision ERP', default=0.05 )
+bpy.types.Object.ode_soft_collision_cfm = FloatProperty( name='soft collision CFM', default=0.15 )
+
+
 bpy.types.Object.ode_friction = FloatProperty( name='body friction', default=0.5 )
 
 bpy.types.Object.ode_bounce = FloatProperty( name='body bounce', default=0.025 )
@@ -457,13 +462,20 @@ class OdeSingleton(object):
 			con.geom = g
 			con.surface.mu = (ob1._friction + ob2._friction) * 100
 
-			if ob1._hard or ob2._hard:	# bounce can gain energy if global ERP is too high
+			if ob1._soft or ob2._soft:
+				con.surface.mode = ode.ContactSoftERP | ode.ContactSoftCFM
+				con.surface.soft_erp = 0.0
+				con.surface.soft_cfm = 0.0
+				if ob1._soft:
+					con.surface.soft_erp += ob1._soft_erp
+					con.surface.soft_cfm += ob1._soft_cfm
+				if ob2._soft:
+					con.surface.soft_erp += ob2._soft_erp
+					con.surface.soft_cfm += ob2._soft_cfm
+
+			else:
 				con.surface.mode = ode.ContactBounce
 				con.surface.bounce = ob1._bounce + ob2._bounce
-			else:
-				con.surface.mode = ode.ContactSoftERP | ode.ContactSoftCFM
-				con.surface.soft_erp = ob1._bounce + ob2._bounce
-				con.surface.soft_cfm = 0.25
 
 			info = {'location':g.pos, 'normal':g.normal, 'depth':g.depth}
 			ob1._touching[ ob2.name ] = info
@@ -679,7 +691,9 @@ class HybridObject( object ):
 	def __init__( self, bo, world, space, lock=None ):
 		self._friction = 0.0	# internal use only
 		self._bounce = 0.0	# internal use only
-		self._hard = True	# internal use only
+		self._soft = True	# internal use only
+		self._soft_erp = 0.0	# internal use only
+		self._soft_cfm = 0.0	# internal use only
 
 		self.world = world
 		self.space = space
@@ -786,6 +800,9 @@ class HybridObject( object ):
 		## to make things thread-safe we need to copy these attributes from pyRNA ##
 		self._friction = ob.ode_friction
 		self._bounce = ob.ode_bounce
+		self._soft = ob.ode_use_soft_collision
+		self._soft_erp = ob.ode_soft_collision_erp
+		self._soft_cfm = ob.ode_soft_collision_cfm
 
 		pos,rot,scl = ob.matrix_world.decompose()
 		px,py,pz = pos

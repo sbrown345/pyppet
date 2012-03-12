@@ -732,12 +732,16 @@ class Slider(object):
 
 class ToggleButton(object):
 	_type = 'toggle'
-	def __init__(self, name=None, driveable=True, tooltip=None):
+	def __init__(self, name=None, driveable=True, tooltip=None, frame=True):
 		self.name = name
 
-		self.widget = gtk.Frame()
+		if frame:
+			self.widget = gtk.Frame()
+			self.box = gtk.HBox(); self.widget.add( self.box )
+		else:
+			self.widget = self.box = gtk.HBox()
+
 		if tooltip: self.widget.set_tooltip_text( tooltip )
-		self.box = gtk.HBox(); self.widget.add( self.box )
 
 		if self._type == 'toggle':
 			self.button = gtk.ToggleButton( self.name )
@@ -861,7 +865,7 @@ class Expander(object):
 	'''
 	Like gtk.Expander but can have extra buttons on header
 	'''
-	def __init__(self, name='', border_width=4, full_header_toggle=True, insert=None):
+	def __init__(self, name='', border_width=4, full_header_toggle=True, insert=None, append=None):
 		self.name = name
 		self._full_header_toggle = full_header_toggle
 
@@ -890,6 +894,9 @@ class Expander(object):
 
 		b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled', self.toggle)
+
+		if append:
+			self.header.pack_start( append, expand=False )
 
 		self.children = []
 

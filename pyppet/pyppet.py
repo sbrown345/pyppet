@@ -3906,18 +3906,28 @@ class PyppetUI( PyppetAPI ):
 		root = gtk.VBox(); EX.add( root )
 		self._left_tools_modals[ 'forces' ] = (EX,root)
 
+		b = CheckButton( tooltip='use soft collision', frame=False)
+		b.connect(ob, 'ode_use_soft_collision')
+		ex = Expander('soft collision', append=b.widget)
+		root.pack_start( ex.widget, expand=False )
+
+		s = Slider( ob, name='ode_soft_collision_erp', title='ERP' )
+		ex.append( s.widget )
+		s = Slider( ob, name='ode_soft_collision_cfm', title='CFM' )
+		ex.append( s.widget )
+
 		ex = Expander('damping')
 		root.pack_start( ex.widget, expand=False )
 		bx = gtk.VBox(); ex.add( bx )
 
 		s = Slider(
-			ob, name='ode_linear_damping', title='linear damping',
+			ob, name='ode_linear_damping', title='linear',
 			min=0.0, max=1.0,
 		)
 		bx.pack_start(s.widget, expand=False)
 
 		s = Slider(
-			ob, name='ode_angular_damping', title='angular damping',
+			ob, name='ode_angular_damping', title='angular',
 			min=0.0, max=1.0,
 		)
 		bx.pack_start(s.widget, expand=False)
