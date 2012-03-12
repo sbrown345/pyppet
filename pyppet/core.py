@@ -356,7 +356,7 @@ class DeviceOutput( object ):
 		self.attribute_name = attribute_name	# name of attribute, assumes source is an object
 
 
-	def bind(self, tag, target=None, path=None, index=None, mode='=', min=.0, max=1.0):
+	def bind(self, tag, target=None, path=None, index=None, mode='=', min=.0, max=1.0, gain=1.0):
 		key = (tag, target, path, index)
 		if key not in self.drivers:
 			self.drivers[ key ] = Driver(
@@ -369,7 +369,11 @@ class DeviceOutput( object ):
 				mode = mode,
 				min = min,
 				max = max,
+				gain = gain,
 			)
+		else:
+			print('WARN: driver already exists', key, self)
+
 		driver = self.drivers[ key ]
 		DriverManager.append( driver )
 		return driver
@@ -386,7 +390,7 @@ class Driver(object):
 				r.append( d )
 		return r
 		
-	def __init__(self, name='', target=None, target_path=None, target_index=None, source=None, source_index=None, source_attribute_name=None, mode='+', min=.0, max=420):
+	def __init__(self, name='', target=None, target_path=None, target_index=None, source=None, source_index=None, source_attribute_name=None, mode='+', min=.0, max=420, gain=1.0):
 		self.name = name
 
 		if target_path and '.' in target_path:
@@ -407,15 +411,22 @@ class Driver(object):
 		self.source_index = source_index
 		self.source_attribute_name = source_attribute_name
 		self.active = True
-		self.gain = 0.0
+		self.gain = gain
 		self.mode = mode
 		self.min = min
 		self.max = max
-		self.delete = False
+		self.delete = False	# TODO deprecate
+
+		self.toggle_driver = None
+		self.state = None
+
 		Driver.INSTANCES.append(self)	# TODO use DriverManager
 
 
 	def drop_active_driver(self, button, context, x, y, time, frame):
+		output = DND.source_object
+		self.toggle_driver = driver = output.bind( 'TOGGLE', target=self, path='active', mode='=' )
+
 		frame.remove( button )
 		frame.add( gtk.Label(icons.DRIVER) )
 		frame.show_all()
@@ -432,11 +443,10 @@ class Driver(object):
 
 		frame = gtk.Frame(); root.pack_start(frame, expand=False)
 		b = gtk.CheckButton()
-		#b.set_tooltip_text('toggle driver')	# BUG missing?
+		b.set_tooltip_text('toggle driver')
 		b.set_active(self.active)
 		b.connect('toggled', lambda b,s: setattr(s,'active',b.get_active()), self)
 		frame.add( b )
-
 		DND.make_destination( b )
 		b.connect('drag-drop', self.drop_active_driver, frame)
 
