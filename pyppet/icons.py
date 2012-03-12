@@ -2,10 +2,10 @@ POSITIVE_OFFSET = '⊕'
 NEGATIVE_OFFSET = '⊝'
 
 ACTIVE_BONE = '𝓪𝓬𝓽𝓲𝓿𝓮 𝓫𝓸𝓷𝓮'
-ACTIVE_BONE_ICON = '𐎋'
+ACTIVE_BONE_ICON = '⊶'
 
 DYNAMIC_TARGETS = '𝓭𝔂𝓷𝓪𝓶𝓲𝓬 𝓽𝓪𝓻𝓰𝓮𝓽𝓼'
-DYNAMIC_TARGETS_ICON = 'ව'
+DYNAMIC_TARGETS_ICON = '⊹'
 
 
 WEIGHT = '⥤'

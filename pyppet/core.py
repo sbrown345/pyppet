@@ -433,22 +433,23 @@ class Driver(object):
 
 	def get_widget(self, title=None, extra=None, expander=True):
 		if title is None: title = self.name
-		if expander:
-			ex = gtk.Expander( title ); ex.set_expanded(True)
-			ex.set_border_width(4)
-		else:
-			ex = gtk.Frame()
 
-		root = gtk.HBox(); ex.add( root )
-
-		frame = gtk.Frame(); root.pack_start(frame, expand=False)
+		frame = gtk.Frame()
 		b = gtk.CheckButton()
 		b.set_tooltip_text('toggle driver')
 		b.set_active(self.active)
 		b.connect('toggled', lambda b,s: setattr(s,'active',b.get_active()), self)
-		frame.add( b )
 		DND.make_destination( b )
 		b.connect('drag-drop', self.drop_active_driver, frame)
+		frame.add( b )
+
+		if expander:
+			ex = Expander( title, insert=frame )
+			root = gtk.HBox(); ex.add( root )
+		else:
+			ex = gtk.Frame()
+			root = gtk.HBox(); ex.add( root )
+			root.pack_start(frame, expand=False)
 
 		adjust = gtk.Adjustment( value=self.gain, lower=self.min, upper=self.max )
 		adjust.connect('value-changed', lambda adj,s: setattr(s,'gain',adj.get_value()), self)
@@ -461,14 +462,16 @@ class Driver(object):
 		scale.connect('button-press-event', self.on_click, ex)
 
 		combo = gtk.ComboBoxText()
-		root.pack_start( combo, expand=False )
+		if expander: ex.header.pack_start( combo, expand=False )
+		else: root.pack_start( combo, expand=False )
 		for i,mode in enumerate( Driver.MODES ):
 			combo.append('id', mode)
 			if mode == self.mode: gtk.combo_box_set_active( combo, i )
 		combo.set_tooltip_text( 'driver mode' )
 		combo.connect('changed',lambda c,s: setattr(s,'mode',c.get_active_text()), self )
 
-		return ex
+		if expander: return ex.widget
+		else: return ex
 
 	def on_click(self,scale,event, container):
 		event = gtk.GdkEventButton( pointer=ctypes.c_void_p(event), cast=True )

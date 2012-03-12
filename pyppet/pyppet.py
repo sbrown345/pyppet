@@ -1,6 +1,6 @@
 # _*_ coding: utf-8 _*_
 # Pyppet2
-# March 11th, 2012
+# March 12th, 2012
 # by Brett Hart
 # http://pyppet.blogspot.com
 # License: BSD
@@ -3774,7 +3774,6 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools.pack_start( ex.widget, expand=False )
 		ex.add( self.outlinerUI.widget )
 
-
 		#################### webgl #####################
 		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON )
 		self._left_tools.pack_start( ex.widget, expand=False )
@@ -3805,7 +3804,7 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools_modals[ 'drivers' ] = (ex,note)
 		Pyppet.register( self.update_drivers_widget )
 
-		ex = DetachableExpander( icons.PHYSICS, icons.FORCES_ICON )
+		ex = DetachableExpander( icons.PHYSICS, icons.PHYSICS_ICON )
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'forces' ] = (ex,note)
