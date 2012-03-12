@@ -3311,7 +3311,6 @@ class PyppetAPI( BlenderHackLinux ):
 
 
 	def update_preview(self, now):
-		print('updating preview',now)
 		done = []
 		for ob in self._rec_saved_objects:
 			buff = self._rec_saved_objects[ ob ]
@@ -3368,9 +3367,15 @@ def set_transform( ob, pos, rot, set_body=False ):
 
 
 class PyppetUI( PyppetAPI ):
-	def toggle_record( self, button, selected_only ):
-		if button.get_active(): self.start_record( selected_only.get_active() )
-		else: self.end_record()
+	def toggle_record( self, button, selected_only, preview ):
+		if button.get_active():
+			self.start_record( selected_only.get_active() )
+			if preview.get_active():
+				self._rec_preview_button.set_active(True)
+		else:
+			self.end_record()
+			if preview.get_active():
+				self._rec_preview_button.set_active(False)
 
 	def toggle_preview( self, button ):
 		self.preview = button.get_active()
@@ -3543,37 +3548,42 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled', self.toggle_preview)
 		bx.pack_start( b, expand=False )
 
+		p = gtk.CheckButton()
+		p.set_active(True)
+		p.set_tooltip_text('preview playback while recording (slower)')
+		bx.pack_start( p, expand=False )
+
 		c = gtk.CheckButton('selected')
+		c.set_active(True)
 		c.set_tooltip_text('only record selected objects')
 
 		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
 		b.set_tooltip_text('record selected objects')
-		b.connect('toggled', self.toggle_record, c )
+		b.connect('toggled', self.toggle_record, c, p )
 		bx.pack_start( b, expand=False )
 		bx.pack_start( c, expand=False )
-
-		bx.pack_start( gtk.Label() )
-
-		b = gtk.Button( 'commit' )
-		b.set_tooltip_text('save animation pass for baking')
-		b.connect('clicked', self.commit_recording)
-		bx.pack_start( b, expand=False )
-
-		b = gtk.Button( 'bake %s' %icons.WRITE )
-		b.set_tooltip_text('bake all commited passes to animation curves')
-		b.connect('clicked', self.bake_animation)
-		bx.pack_start( b, expand=False )
-
-		b = gtk.Button( 'reset' )
-		b.set_tooltip_text('delete animation commit buffer')
-		b.connect('clicked', self.clear_recording)
-		bx.pack_start( b, expand=False )
-
 
 		bx.pack_start( gtk.Label() )
 		self._rec_current_time_label = gtk.Label('-')
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
+
+
+		b = gtk.Button( 'commit %s' %icons.WRITE )
+		b.set_tooltip_text('save animation pass for baking')
+		b.connect('clicked', self.commit_recording)
+		bx.pack_start( b, expand=False )
+
+		b = gtk.Button( 'bake %s' %icons.SINE_WAVE )
+		b.set_tooltip_text('bake all commited passes to animation curves')
+		b.connect('clicked', self.bake_animation)
+		bx.pack_start( b, expand=False )
+
+		b = gtk.Button( 'reset %s' %icons.REFRESH )
+		b.set_tooltip_text('delete animation commit buffer')
+		b.connect('clicked', self.clear_recording)
+		bx.pack_start( b, expand=False )
+
 
 
 		root.pack_start( self.get_playback_widget() )
