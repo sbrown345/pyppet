@@ -3358,21 +3358,25 @@ class PyppetAPI( BlenderHackLinux ):
 		else: return False
 
 	def bake_animation(self, button=None):
+		for ob in self.context.scene.objects:
+			ob.select = False
+
 		for ob in self._rec_saved_objects:
 			ob.hide_select = False
 			ob.select = True
 			ob.rotation_mode = 'QUATERNION'	# prevents flipping
 
-		self.context.scene.frame_current = 1
-		step = 1.0 / float(self.context.scene.render.fps / 3.0)
-		now = 0.0
-		done = False
-		while not done:
-			self.context.scene.frame_current += 3
-			done = self.update_preview( now )
-			now += step
-			self.context.scene.update()
-			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
+		if self._rec_saved_objects:
+			self.context.scene.frame_current = 1
+			step = 1.0 / float(self.context.scene.render.fps / 3.0)
+			now = 0.0
+			done = False
+			while not done:
+				self.context.scene.frame_current += 3
+				done = self.update_preview( now )
+				now += step
+				self.context.scene.update()
+				bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
 
 		if self._rec_saved_shape_keys:
 			for ob in self._rec_saved_shape_keys:
@@ -3424,9 +3428,15 @@ def set_transform( ob, pos, rot, set_body=False ):
 
 
 class PyppetUI( PyppetAPI ):
-	def toggle_record( self, button, selected_only, preview ):
+	def toggle_record( self, button, selected_only, preview, record_physics, record_objects, record_shapes ):
 		if button.get_active():
-			self.start_record( selected_only.get_active() )
+			self.start_record( 
+				selected_only = selected_only.get_active(),
+				record_physics = record_physics.get_active(),
+				record_objects = record_objects.get_active(),
+				record_shapes = record_shapes.get_active(),
+			)
+
 			if preview.get_active():
 				self._rec_preview_button.set_active(True)
 		else:
@@ -3601,29 +3611,45 @@ class PyppetUI( PyppetAPI ):
 
 		bx = gtk.HBox(); root.pack_start( bx )
 
-		self._rec_preview_button = b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
-		b.connect('toggled', self.toggle_preview)
-		bx.pack_start( b, expand=False )
-
 		p = gtk.CheckButton()
 		p.set_active(True)
 		p.set_tooltip_text('preview playback while recording (slower)')
 		bx.pack_start( p, expand=False )
 
-		c = gtk.CheckButton('selected')
-		c.set_active(True)
-		c.set_tooltip_text('only record selected objects')
-
-		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
-		b.set_tooltip_text('record selected objects')
-		b.connect('toggled', self.toggle_record, c, p )
+		self._rec_preview_button = b = gtk.ToggleButton( 'preview %s' %icons.PLAY )
+		b.connect('toggled', self.toggle_preview)
 		bx.pack_start( b, expand=False )
-		bx.pack_start( c, expand=False )
 
 		bx.pack_start( gtk.Label() )
 		self._rec_current_time_label = gtk.Label('-')
 		bx.pack_start( self._rec_current_time_label, expand=False )
 		bx.pack_start( gtk.Label() )
+
+		c = gtk.CheckButton('selected')
+		c.set_active(True)
+		c.set_tooltip_text('only record selected objects')
+		bx.pack_start( c, expand=False )
+
+		h = gtk.CheckButton('physics')
+		h.set_active(True)
+		h.set_tooltip_text('record objects with physics')
+		bx.pack_start( h, expand=False )
+
+
+		t = gtk.CheckButton('transforms')
+		t.set_active(True)
+		t.set_tooltip_text('record object position and rotation')
+		bx.pack_start( t, expand=False )
+
+		s = gtk.CheckButton('shape-keys')
+		s.set_tooltip_text('record mesh shape-keys')
+		bx.pack_start( s, expand=False )
+
+
+		b = gtk.ToggleButton( 'record %s' %icons.RECORD )
+		b.set_tooltip_text('record selected objects')
+		b.connect('toggled', self.toggle_record, c, p, h, t, s )
+		bx.pack_start( b, expand=False )
 
 
 		b = gtk.Button( 'commit %s' %icons.WRITE )
