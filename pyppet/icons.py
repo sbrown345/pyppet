@@ -1,6 +1,8 @@
 POSITIVE_OFFSET = '⊕'
 NEGATIVE_OFFSET = '⊝'
 
+SHAPE_KEYS = '𝓼𝓱𝓪𝓹𝓮 𝓴𝓮𝔂𝓼'
+SHAPE_KEYS_ICON = '⍢'
 ACTIVE_BONE = '𝓪𝓬𝓽𝓲𝓿𝓮 𝓫𝓸𝓷𝓮'
 ACTIVE_BONE_ICON = '⊶'
 

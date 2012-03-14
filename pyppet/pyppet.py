@@ -1,11 +1,9 @@
 # _*_ coding: utf-8 _*_
-# Pyppet2
-# March 12th, 2012
-# by Brett Hart
-# http://pyppet.blogspot.com
+# Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
-VERSION = '1.9.5d'
-
+################################################################
+VERSION = '1.9.5e'
+################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
 from random import *
@@ -3243,21 +3241,34 @@ class PyppetAPI( BlenderHackLinux ):
 
 
 	########### recording/baking ###########
+	def set_recording_shape_keys_cache( self, ob, blocks ):
+		self._rec_shape_keys_cache[ ob ] = blocks
+
+
 	def clear_recording(self, button=None):
 		self._rec_saved_objects = {}
+		self._rec_saved_shape_keys = {}
 
 	def commit_recording(self, button=None):
 		for ob in self._rec_current_objects:
 			buff = self._rec_current_objects[ ob ]
 			self._rec_saved_objects[ ob ] = buff
 			print('commit animation', ob, len(buff))
-		self._rec_current_objects = {}
 
-	def start_record(self, selected_only=False, record_physics=True, record_objects=True):
+		for ob in self._rec_current_shape_keys:
+			buff = self._rec_current_shape_keys[ ob ]
+			self._rec_saved_shape_keys[ ob ] = buff
+			print('commit shape animation', ob, buff)
+
+		self._rec_current_objects = {}
+		self._rec_current_shape_keys = {}
+
+	def start_record(self, selected_only=False, record_physics=True, record_objects=True, record_shapes=True):
 		self.recording = True
 		self._rec_start_frame = self.context.scene.frame_current
 		self._rec_current_objects = {}
 		self._rec_blender_objects = {}
+		self._rec_current_shape_keys = {}
 
 		objects = []
 		if selected_only:
@@ -3290,6 +3301,10 @@ class PyppetAPI( BlenderHackLinux ):
 				self._rec_blender_objects[ ob ] = buff = []
 				self._rec_current_objects[ ob ] = buff
 
+			if record_shapes and ob in self._rec_shape_keys_cache:
+				buff = { block:[] for block in self._rec_shape_keys_cache[ob] }
+				print('setup rec buff on for shape-anim', ob, buff)
+				self._rec_current_shape_keys[ ob ] = buff
 
 		self._rec_start_time = time.time()
 		if self.play_wave_on_record and self.wave_speaker:
@@ -3325,6 +3340,20 @@ class PyppetAPI( BlenderHackLinux ):
 				else: done.append(False)
 				break
 
+		for ob in self._rec_saved_shape_keys:
+			M = self._rec_saved_shape_keys[ ob ]
+			## TODO offset cache, since all blocks will have the same number of frames
+			for block in M:
+				buff = M[ block ]
+				for i,F in enumerate(buff):
+					if F[0] < now: continue
+					frame_time, value = F
+					block.value = value
+					if i==len(buff)-1: done.append(True)
+					else: done.append(False)
+					break
+
+
 		if all(done): self._rec_preview_button.set_active(False); return True
 		else: return False
 
@@ -3344,6 +3373,34 @@ class PyppetAPI( BlenderHackLinux ):
 			now += step
 			self.context.scene.update()
 			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
+
+		if self._rec_saved_shape_keys:
+			for ob in self._rec_saved_shape_keys:
+				M = self._rec_saved_shape_keys[ ob ]
+				if not ob.data.shape_keys.animation_data:
+					ob.data.shape_keys.animation_data_create()
+
+				anim = ob.data.shape_keys.animation_data
+				anim.action = None
+				anim.action = bpy.data.actions.new( name='%s.SHAPE-ANIM'%ob.name )
+
+				for block in M:
+					curve = anim.action.fcurves.new( data_path='key_blocks["%s"].value'%block.name )
+					buff = M[ block ]
+					#curve.keyframe_points.add( len(buff) )
+					for i in range(len(buff)):
+						now, value = buff[i]
+						frame = now * float( self.context.scene.render.fps )
+						keyframe = curve.keyframe_points.insert( frame=frame, value=value )
+						#keyframe.interpolation = 'CONSTANT'	# LINEAR, BEZIER
+						#keyframe.co.y = value
+						# FREE, VECTOR, ALIGNED, AUTO
+						keyframe.handle_left_type = 'AUTO_CLAMPED'
+						keyframe.handle_right_type = 'AUTO_CLAMPED'
+
+
+			bpy.ops.anim.keyframe_insert_menu( type='LocRot' )
+
 		print('Finished baking animation')
 
 
@@ -4589,8 +4646,10 @@ class App( PyppetUI ):
 		self.wave_speaker = None
 
 		self._rec_start_time = time.time()
+		self._rec_shape_keys_cache = {}
 		self._rec_objects = {}	# recording buffers
 		self._rec_saved_objects = {}	# commited passes
+		self._rec_saved_shape_keys = {}	# commited shape key passes
 
 		self.preview = False
 		self.recording = False
@@ -4669,6 +4728,14 @@ class App( PyppetUI ):
 					qw,qx,qy,qz = rot
 					#sx,sy,sz = scl
 					buff.append( (now, (px,py,pz), (qw,qx,qy,qz)) )
+
+				for ob in self._rec_current_shape_keys:
+					M = self._rec_current_shape_keys[ob]
+					for block in M:
+						buff = M[ block ]
+						buff.append( (now, block.value) )
+
+
 			if drop_frame: continue
 
 			win = Blender.Window( self.context.window )
@@ -5084,11 +5151,56 @@ class ToolsUI( object ):
 		self._cns_expander.add( self._cns_modal )
 		Pyppet.register( self.update_constraints )
 
+		self._shape_pinned = False
+		self._shape_expander = ex = DetachableExpander(
+			icons.SHAPE_KEYS, 
+			short_name=icons.SHAPE_KEYS_ICON 
+		)
+		root.pack_start( ex.widget, expand=False )
+		self._shape_modal = gtk.EventBox()
+		self._shape_expander.add( self._shape_modal )
+		Pyppet.register( self.update_shape_keys )
+
 
 		ex = DetachableExpander( icons.MATERIALS, short_name=icons.MATERIALS_ICON )
 		root.pack_start( ex.widget, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
+
+	def update_shape_keys(self, ob, force_update=False):
+		if self._shape_pinned and not force_update: return
+
+		self._shape_expander.remove( self._shape_modal )
+		self._shape_modal = root = gtk.VBox()
+		self._shape_expander.add( self._shape_modal )
+
+		frame = gtk.Frame()
+		root.pack_start( frame, expand=False )
+		row = gtk.HBox()
+		row.set_border_width(4)
+		frame.add( row )
+
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
+		b.set_active( self._shape_pinned )
+		b.connect('toggled', lambda b,s: setattr(s,'_shape_pinned',b.get_active()), self)
+		row.pack_start( b, expand=False )
+
+		row.pack_start( gtk.Label(ob.name) )
+
+		blocks = []
+		if ob.data.shape_keys:
+			for block in ob.data.shape_keys.key_blocks:
+				if block.relative_key and block.relative_key != block:
+					row = gtk.HBox(); root.pack_start( row, expand=False )
+					row.pack_start( gtk.Label(block.name), expand=False )
+					s = Slider(block, name='value', title='')
+					row.pack_start( s.widget )
+					blocks.append( block )
+
+		Pyppet.set_recording_shape_keys_cache( ob, blocks )
+
+		self._shape_expander.show_all()
 
 
 	def update_constraints(self, ob, force_update=False):
