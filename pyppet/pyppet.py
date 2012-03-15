@@ -1615,7 +1615,7 @@ class Target(object):
 			create boolean mod on target, set cutting
 
 	'''
-	def __init__(self,ob, weight=0.0, raw_power=1.0, normalized_power=0.0, x=1.0, y=1.0, z=1.0):
+	def __init__(self,ob, weight=0.0, raw_power=1.0, normalized_power=0.0, x=1.0, y=1.0, z=1.0, bidirectional=False):
 		self.name = ob.name				# could change target on the fly by scripting
 		if ob.type=='ARMATURE': pass		# could target nearest bone as rule
 		self.weight = weight
@@ -1625,8 +1625,15 @@ class Target(object):
 		self.xmult = x
 		self.ymult = y
 		self.zmult = z
+		self.bidirectional = bidirectional
+		self.target_start_matrix = ob.matrix_world.copy()
 		self._modal = None
 		self.dynamic = False
+
+	def reset(self):
+		if self.bidirectional:
+			target = bpy.data.objects[ self.name ]
+			target.matrix_world = self.target_start_matrix
 
 	def get_widget(self):
 		ex = gtk.Expander( 'Target: %s' %self.name )
@@ -1644,21 +1651,23 @@ class Target(object):
 		if self.driver:
 			widget = self.driver.get_widget( expander=False )
 			root.pack_start( widget, expand=False )
+
 		elif self.dynamic:
-			root.pack_start( gtk.Label( '(dynamic weight)' ), expand=False )
+			root.pack_start( gtk.Label( '(dynamic)' ), expand=False )
+
 		else:
 			slider = Slider( self, name='weight', title=icons.WEIGHT, tooltip='weight', min=.0, max=100, driveable=False )
 			root.pack_start( slider.widget, expand=False )
 
-		slider = Slider( self, name='raw_power', title=icons.RAW_POWER, tooltip='raw power', min=.0, max=2 )
-		root.pack_start( slider.widget, expand=False )
-
-		slider = Slider( self, name='norm_power', title=icons.NORMALIZED_POWER, tooltip='normalized power', min=.0, max=10 )
-		root.pack_start( slider.widget, expand=False )
-
-		for idx,tag in enumerate('xmult ymult zmult'.split()):
-			slider = Slider( self, name=tag, title='xyz'[idx], min=-1, max=1 )
+			slider = Slider( self, name='raw_power', title=icons.RAW_POWER, tooltip='raw power', min=.0, max=2 )
 			root.pack_start( slider.widget, expand=False )
+
+			slider = Slider( self, name='norm_power', title=icons.NORMALIZED_POWER, tooltip='normalized power', min=.0, max=10 )
+			root.pack_start( slider.widget, expand=False )
+
+			for idx,tag in enumerate('xmult ymult zmult'.split()):
+				slider = Slider( self, name=tag, title='xyz'[idx], min=-1, max=1 )
+				root.pack_start( slider.widget, expand=False )
 
 		ex.show_all()
 
@@ -1698,6 +1707,12 @@ class Target(object):
 				z * self.zmult * W, 
 			)
 
+			if self.bidirectional:
+				m = target.matrix_world.copy()
+				m[0][3] -= x1 * 0.1
+				m[1][3] -= y1 * 0.1
+				m[2][3] -= z1 * 0.1
+				target.matrix_world = m
 
 
 class Bone(object):
@@ -1756,7 +1771,7 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, external_children=[], disable_collision_with_other_bones=False, hybrid=True, info=None):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, external_children=[], disable_collision_with_other_bones=False, hybrid=False, gravity=True, info=None):
 		self.armature = arm
 		self.name = name
 		self.stretch = stretch
@@ -1765,6 +1780,7 @@ class Bone(object):
 		self.collision = collision
 		self.external_children = tuple( external_children )	# not dynamic
 		self.hybrid = hybrid
+		self.gravity = gravity
 		self.info = info
 
 		self.head = None
@@ -1906,18 +1922,21 @@ class Bone(object):
 		elif not self.info['ik-target']:
 			self.ik = cns = pbone.constraints.new('IK')
 			cns.target = self.tail
-			cns.chain_count = 1	# chain length needs to point to the same root as hybrid TODO
+			cns.chain_count = 1
 			cns.iterations = 32
+			cns.pole_target = self.pole
+			cns.pole_angle = math.radians( -90 )
+
 			if self.hybrid:
-				cns.influence = 0.5
 				cns.weight = 0.5
 				if self.info['ik-chain'] and self.info['ik-chain-info']:
 					level = self.info['ik-chain-level']
 					cns.chain_count = self.info['ik-chain-info']['ik-length'] - level
-			#else:
-			cns.pole_target = self.pole
-			cns.pole_angle = math.radians( -90 )
+					cns.influence = 0.5
 
+	
+		for ob in self.get_objects():
+			ob.ode_use_gravity = self.gravity
 
 		if self.armature.parent:
 			for ob in self.get_objects():
@@ -1976,7 +1995,12 @@ class Bone(object):
 
 
 class AbstractArmature(object):
-	def reset(self): pass	# for overloading
+	def reset(self):
+		for bname in self.targets:
+			for target in self.targets[bname]:
+				target.reset()		# to reset bidirectional targets
+
+
 	def get_widget_label(self): return gtk.Label( self.ICON )	# label may need to be a drop target
 	def get_bones_upstream(self, child, lst):
 		lst.append( child )
@@ -2019,24 +2043,50 @@ class AbstractArmature(object):
 
 		stretch  = gtk.CheckButton('stretch-to constraints')
 		breakable = gtk.CheckButton('breakable joints')
+		hybrid = gtk.CheckButton('hybrid-IK')
+		hybrid_bd = gtk.CheckButton('hybrid-IK bidirectional targets')
+		hybrid_bd.set_tooltip_text('IK targets are also affected by the physics rig')
+		gravity = gtk.CheckButton('use gravity')
+		gravity.set_active(True)
+		allow_unconnected = gtk.CheckButton('use unconnected bones')
+
 		break_thresh = Slider( name='joint breaking threshold', value=200, min=0.01, max=420 )
 		damage_thresh = Slider( name='joint damage threshold', value=150, min=0.01, max=420 )
+
+		func = lambda button, s, b, bt, dt, hy, hybd, g, a: self.create(
+			stretch = s.get_active(),
+			breakable = b.get_active(),
+			break_thresh = bt.get_value(),
+			damage_thresh = dt.get_value(),
+			hybrid_IK = hy.get_active(),
+			hybrid_IK_bidirectional = hybd.get_active(),
+			gravity = g.get_active(),
+			allow_unconnected_bones = a.get_active(),
+		)
 
 		b = gtk.Button('create %s' %self.__class__.__name__)
 		row.pack_start( b, expand=False )
 		b.connect(
 			'clicked',
-			lambda button, _self, s, b, bt, dt: _self.create( s.get_active(), b.get_active(), bt.get_value(), dt.get_value() ), 
-			self,
-			stretch, breakable, 
+			func,
+			stretch,
+			breakable, 
 			break_thresh.adjustment,
 			damage_thresh.adjustment,
+			hybrid,
+			hybrid_bd,
+			gravity,
+			allow_unconnected,
 		)
 
 		root.pack_start( stretch, expand=False )
 		root.pack_start( breakable, expand=False )
 		root.pack_start( break_thresh.widget, expand=False )
 		root.pack_start( damage_thresh.widget, expand=False )
+		root.pack_start( hybrid, expand=False )
+		root.pack_start( hybrid_bd, expand=False )
+		root.pack_start( gravity, expand=False )
+		root.pack_start( allow_unconnected, expand=False )
 		return root
 
 
@@ -2048,8 +2098,8 @@ class AbstractArmature(object):
 		ik = info['ik-chain']
 		deform = info['deform']
 		if not connected and bone.parent: broken_chain = True
-		if (connected or not bone.parent or self.use_bone_in_rig(bone)) and deform:
-			if not ik or self.hybrid_IK:
+		if not bone.parent or self.use_bone_in_rig(bone) or connected or self.allow_unconnected_bones:
+			if (not ik or self.hybrid_IK) and deform:
 				name = bone.name
 				self.rig[ name ] = Bone(
 					self.armature,
@@ -2060,16 +2110,24 @@ class AbstractArmature(object):
 					object_data = data,
 					collision = not broken_chain or not bone.children,
 					external_children = info['external-children'],
+					hybrid = self.hybrid_IK,
+					gravity = self.gravity,
 					info = info,
 				)
 				for child in bone.children:	# recursive
 					self.build_bones( child, data, broken_chain )
 
-	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None):
-		self.hybrid_IK = True
+	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_bidirectional=False, gravity=True, allow_unconnected_bones=False):
+
 		self.created = True
+
+		self.hybrid_IK = hybrid_IK
+		self.hybrid_IK_bidirectional = hybrid_IK_bidirectional
+		self.hybrid_IK_targets = []
+		self.gravity = gravity
 		self.stretchable = stretch
 		self.breakable = breakable
+		self.allow_unconnected_bones = allow_unconnected_bones
 
 		self.armature = arm = bpy.data.objects[ self.name ]
 		self.spawn_matrix = arm.matrix_world.copy()
@@ -2196,11 +2254,18 @@ class AbstractArmature(object):
 		for b in self.rig.values():
 			info = self.bone_info[ b.name ]
 
-			if info['ik-target']:
-				target = self.create_target(b.name, info['ik-target'], weight=300, normalized_power=0)
-			if info['location-target']:
-				target = self.create_target(b.name, info['location-target'], weight=300, normalized_power=0)
+			if self.hybrid_IK and (info['ik-target'] or info['location-target']):
+				if info['ik-target']: ob = info['ik-target']
+				else: ob = info['location-target']
 
+				target = self.create_target(
+					b.name, 
+					ob,
+					weight=300,
+					normalized_power=0,
+					bidirectional=self.hybrid_IK_bidirectional
+				)
+				self.hybrid_IK_targets.append( target )
 
 			for d in info['joints']:
 				ob = d['child']
@@ -4341,10 +4406,7 @@ class PyppetUI( PyppetAPI ):
 			root.pack_start( gtk.Label() )
 
 			if ob.name not in self.entities:
-				biped = self.GetBiped( ob )
-				b = gtk.Button( 'create Biped' ); b.set_relief( gtk.RELIEF_NONE )
-				root.pack_start( b, expand=False )
-				b.connect('clicked', lambda b,bi: [b.hide(), bi.create()], biped)
+				pass
 			else:
 				model = self.entities[ ob.name ]
 				#root.pack_start( model.get_active_bone_widget() )

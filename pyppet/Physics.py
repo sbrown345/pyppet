@@ -39,7 +39,7 @@ bpy.types.Object.ode_use_body = BoolProperty(
 
 bpy.types.Object.ode_use_gravity = BoolProperty( 
 	name='use gravity', default=True,		# ode defaults to True
-	update=lambda self, con: ENGINE.get_wrapper(self).body.SetGravityMode(self.ode_use_gravity)
+	update=lambda self, con: _None(ENGINE.get_wrapper(self).body.SetGravityMode(self.ode_use_gravity))
 )
 
 bpy.types.Object.ode_mass = FloatProperty( 
