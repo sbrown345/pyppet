@@ -2049,11 +2049,13 @@ class AbstractArmature(object):
 		gravity = gtk.CheckButton('use gravity')
 		gravity.set_active(True)
 		allow_unconnected = gtk.CheckButton('use unconnected bones')
+		collision = gtk.CheckButton('use collision')
+		collision.set_active(True)
 
 		break_thresh = Slider( name='joint breaking threshold', value=200, min=0.01, max=420 )
 		damage_thresh = Slider( name='joint damage threshold', value=150, min=0.01, max=420 )
 
-		func = lambda button, s, b, bt, dt, hy, hybd, g, a: self.create(
+		func = lambda button, s, b, bt, dt, hy, hybd, g, a, c: self.create(
 			stretch = s.get_active(),
 			breakable = b.get_active(),
 			break_thresh = bt.get_value(),
@@ -2062,6 +2064,7 @@ class AbstractArmature(object):
 			hybrid_IK_bidirectional = hybd.get_active(),
 			gravity = g.get_active(),
 			allow_unconnected_bones = a.get_active(),
+			collision = c.get_active(),
 		)
 
 		b = gtk.Button('create %s' %self.__class__.__name__)
@@ -2077,6 +2080,7 @@ class AbstractArmature(object):
 			hybrid_bd,
 			gravity,
 			allow_unconnected,
+			collision,
 		)
 
 		root.pack_start( stretch, expand=False )
@@ -2087,6 +2091,7 @@ class AbstractArmature(object):
 		root.pack_start( hybrid_bd, expand=False )
 		root.pack_start( gravity, expand=False )
 		root.pack_start( allow_unconnected, expand=False )
+		root.pack_start( collision, expand=False )
 		return root
 
 
@@ -2100,15 +2105,20 @@ class AbstractArmature(object):
 		if not connected and bone.parent: broken_chain = True
 		if not bone.parent or self.use_bone_in_rig(bone) or connected or self.allow_unconnected_bones:
 			if (not ik or self.hybrid_IK) and deform:
-				name = bone.name
-				self.rig[ name ] = Bone(
+				if self.collision and (not broken_chain or not bone.children):
+					collision = True
+				else:
+					collision = False
+
+
+				self.rig[ bone.name ] = Bone(
 					self.armature,
-					name, 
+					bone.name, 
 					stretch=self.stretchable,
 					tension_CFM = self.tension_CFM,
 					tension_ERP = self.tension_ERP,
 					object_data = data,
-					collision = not broken_chain or not bone.children,
+					collision = collision,
 					external_children = info['external-children'],
 					hybrid = self.hybrid_IK,
 					gravity = self.gravity,
@@ -2117,7 +2127,7 @@ class AbstractArmature(object):
 				for child in bone.children:	# recursive
 					self.build_bones( child, data, broken_chain )
 
-	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_bidirectional=False, gravity=True, allow_unconnected_bones=False):
+	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_bidirectional=False, gravity=True, allow_unconnected_bones=False, collision=True):
 
 		self.created = True
 
@@ -2128,6 +2138,7 @@ class AbstractArmature(object):
 		self.stretchable = stretch
 		self.breakable = breakable
 		self.allow_unconnected_bones = allow_unconnected_bones
+		self.collision = collision
 
 		self.armature = arm = bpy.data.objects[ self.name ]
 		self.spawn_matrix = arm.matrix_world.copy()
@@ -4854,8 +4865,9 @@ class App( PyppetUI ):
 				if self.play_wave_on_record:
 					now = self.wave_speaker.seconds
 
-			DriverManager.update()
 			if ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
+
+			DriverManager.update()	# needs to come after solver updates and Dynamic Targets?
 
 			if self.recording:
 				for ob in self._rec_blender_objects:
