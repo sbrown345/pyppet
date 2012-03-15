@@ -1756,21 +1756,24 @@ class Bone(object):
 		return w.get_angular_vel()
 
 
-	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, external_children=[], disable_collision_with_other_bones=False):
+	def __init__(self, arm, name, stretch=False, tension_CFM=0.5, tension_ERP=0.5, object_data=None, collision=True, external_children=[], disable_collision_with_other_bones=False, hybrid=True, info=None):
 		self.armature = arm
 		self.name = name
-		self.head = None
-		self.shaft = None
-		self.tail = None
 		self.stretch = stretch
-		self.breakable_joints = []
-		self.fixed_parent_joint = None
-		self.parent_joint = None
-		self.parent = None
 		self.tension_CFM = tension_CFM
 		self.tension_ERP = tension_ERP
 		self.collision = collision
 		self.external_children = tuple( external_children )	# not dynamic
+		self.hybrid = hybrid
+		self.info = info
+
+		self.head = None
+		self.shaft = None
+		self.tail = None
+		self.breakable_joints = []
+		self.fixed_parent_joint = None
+		self.parent_joint = None
+		self.parent = None
 
 		ebone = arm.data.bones[ name ]
 		pbone = arm.pose.bones[ name ]
@@ -1896,10 +1899,22 @@ class Bone(object):
 			#cns.bulge = 1.5
 			self.ik = None
 
-		else:
+		#elif self.hybrid:	# COPY_ROTATION not compatible with IK
+		#	cns = pbone.constraints.new('COPY_ROTATION')
+		#	cns.target = self.shaft
+		#	cns.influence = 0.5
+		elif not self.info['ik-target']:
 			self.ik = cns = pbone.constraints.new('IK')
 			cns.target = self.tail
-			cns.chain_count = 1
+			cns.chain_count = 1	# chain length needs to point to the same root as hybrid TODO
+			cns.iterations = 32
+			if self.hybrid:
+				cns.influence = 0.5
+				cns.weight = 0.5
+				if self.info['ik-chain'] and self.info['ik-chain-info']:
+					level = self.info['ik-chain-level']
+					cns.chain_count = self.info['ik-chain-info']['ik-length'] - level
+			#else:
 			cns.pole_target = self.pole
 			cns.pole_angle = math.radians( -90 )
 
@@ -2025,32 +2040,33 @@ class AbstractArmature(object):
 		return root
 
 
+	def use_bone_in_rig( self, bone ): return False	# overload
+
 	def build_bones(self, bone, data=None, broken_chain=False):
 		info = self.bone_info[bone.name]
 		connected = info['connected']
 		ik = info['ik-chain']
 		deform = info['deform']
 		if not connected and bone.parent: broken_chain = True
-		if (connected or not bone.parent or self.use_bone_in_rig(bone)) and not ik and deform:
-
-			name = bone.name
-			self.rig[ name ] = Bone(
-				self.armature,
-				name, 
-				stretch=self.stretchable,
-				tension_CFM = self.tension_CFM,
-				tension_ERP = self.tension_ERP,
-				object_data = data,
-				collision = not broken_chain or not bone.children,
-				external_children = info['external-children'],
-			)
-			for child in bone.children: self.build_bones( child, data, broken_chain )
-
-	def use_bone_in_rig( self, bone ): return False	# overload
-
-
+		if (connected or not bone.parent or self.use_bone_in_rig(bone)) and deform:
+			if not ik or self.hybrid_IK:
+				name = bone.name
+				self.rig[ name ] = Bone(
+					self.armature,
+					name, 
+					stretch=self.stretchable,
+					tension_CFM = self.tension_CFM,
+					tension_ERP = self.tension_ERP,
+					object_data = data,
+					collision = not broken_chain or not bone.children,
+					external_children = info['external-children'],
+					info = info,
+				)
+				for child in bone.children:	# recursive
+					self.build_bones( child, data, broken_chain )
 
 	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None):
+		self.hybrid_IK = True
 		self.created = True
 		self.stretchable = stretch
 		self.breakable = breakable
@@ -2071,18 +2087,43 @@ class AbstractArmature(object):
 
 		## collect bone info ##
 		self.bone_info = {}
+		IK_info = []
 		for bone in arm.data.bones:
 			self.bone_info[ bone.name ] = info = {}
+			if bone.parent: info['parent'] = bone.parent.name
+			else: info['parent'] = None
 			info['connected'] = bone.use_connect
 			info['deform'] = bone.use_deform
 			pbone = arm.pose.bones[ bone.name ]
 			info['ik-chain'] = pbone.is_in_ik_chain
 			info['ik-target'] = None
+			info['ik-chain-info'] = None
+			info['location-target'] = None
 			info['external-children'] = []
 			info['joints'] = []
 			for cns in pbone.constraints:
 				if cns.type == 'IK':
 					info['ik-target'] = cns.target
+					info['ik-length'] = cns.chain_count
+				elif cns.type == 'COPY_LOCATION':
+					info['location-target'] = cns.target
+
+			if info['ik-target']:
+				IK_info.append( info )
+
+		for infoIK in IK_info:
+			level = 0
+			parent = infoIK['parent']
+			while parent:
+				level += 1
+				info = self.bone_info[ parent ]
+				if info['ik-chain']:
+					#if info['ik-chain-info']: print('TODO warn?')
+					info['ik-chain-info'] = infoIK
+					info['ik-chain-level'] = level
+					parent = info['parent']
+				else:
+					break
 
 		## collect external objects that are children of the bones ##
 		for ob in bpy.data.objects:
@@ -2151,9 +2192,16 @@ class AbstractArmature(object):
 					child = ENGINE.get_wrapper( ob )
 					b.shaft_wrapper.append_subgeom( child )
 
-		## create joints for external objects ##
+		## create hybrid-IK targets and joints for external objects ##
 		for b in self.rig.values():
 			info = self.bone_info[ b.name ]
+
+			if info['ik-target']:
+				target = self.create_target(b.name, info['ik-target'], weight=300, normalized_power=0)
+			if info['location-target']:
+				target = self.create_target(b.name, info['location-target'], weight=300, normalized_power=0)
+
+
 			for d in info['joints']:
 				ob = d['child']
 
@@ -4720,11 +4768,12 @@ class App( PyppetUI ):
 				#	self.update_blender_and_gtk()
 				#	self.blender_good_frames += 1
 
-				if dt < 25.0:
+				if dt < 15.0:
 					drop_frame = True
 					drops += 1
 					self.update_blender_and_gtk( drop_frame=True )
 					self.blender_dropped_frames += 1
+					#print('FPS', dt)
 				else:
 					self.update_blender_and_gtk()
 					self.blender_good_frames += 1
@@ -5195,15 +5244,16 @@ class ToolsUI( object ):
 
 	def update_shape_keys(self, ob, force_update=False):
 		if self._shape_pinned and not force_update: return
+		if ob.type not in ('MESH', 'LATTICE'): return
 
 		self._shape_expander.remove( self._shape_modal )
 		self._shape_modal = root = gtk.VBox()
 		self._shape_expander.add( self._shape_modal )
 
+		root.set_size_request( 240, 80 )
 		frame = gtk.Frame()
 		root.pack_start( frame, expand=False )
 		row = gtk.HBox()
-		row.set_border_width(4)
 		frame.add( row )
 
 		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
