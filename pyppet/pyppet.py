@@ -1996,7 +1996,9 @@ class Bone(object):
 
 class AbstractArmature(object):
 	def reset(self):
-		for bname in self.targets:
+		names = list(self.targets.keys())
+		names.sort()		# TODO proper restore in order: parent->children
+		for bname in names:
 			for target in self.targets[bname]:
 				target.reset()		# to reset bidirectional targets
 
@@ -2018,6 +2020,8 @@ class AbstractArmature(object):
 
 		self.tension_CFM = 0.05
 		self.tension_ERP = 0.85
+
+		self._show_rig = True
 
 	def any_ancestors_broken(self, child):
 		broken = []
@@ -2382,10 +2386,19 @@ class AbstractArmature(object):
 		container.add( child )
 		return container
 
+
+	def toggle_rig_visible( self, button ):
+		self._show_rig = button.get_active()
+		if self._show_rig:
+			for B in self.rig.values(): B.show()
+		else:
+			for B in self.rig.values(): B.hide()
+
 	def update_ui( self, context ):
 		if not context.active_pose_bone and self.active_pose_bone:
 			self.active_pose_bone = None
-			for B in self.rig.values(): B.show()
+			if self._show_rig:
+				for B in self.rig.values(): B.show()
 
 		elif context.active_pose_bone and context.active_pose_bone.name != self.active_pose_bone:
 			bone = context.active_pose_bone
@@ -4420,7 +4433,13 @@ class PyppetUI( PyppetAPI ):
 				pass
 			else:
 				model = self.entities[ ob.name ]
-				#root.pack_start( model.get_active_bone_widget() )
+				b = gtk.ToggleButton( icons.RIG_VISIBLE )
+				b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('show physics rig')
+				b.set_active(model._show_rig)
+				b.connect('toggled', model.toggle_rig_visible)
+				root.pack_start( b, expand=False )
+
 
 			b = gtk.ToggleButton( icons.XRAY )
 			b.set_relief( gtk.RELIEF_NONE )
