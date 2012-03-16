@@ -53,6 +53,17 @@ def sort_objects_by_type( objects, types=['MESH','ARMATURE','CAMERA','LAMP','EMP
 		if ob.type in r: r[ob.type].append( ob )
 	return r
 
+def get_ancestors( ob ):
+	result = []
+	_get_ancestors( ob, result )
+	return result
+
+def _get_ancestors( child, result ):
+	result.append( child )
+	if child.parent: _get_ancestors( child.parent, result )
+
+
+
 class BlenderContextCopy(object):
 	'''
 	bpy.context becomes none when blender iterates its mainloop,

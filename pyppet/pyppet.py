@@ -3461,21 +3461,25 @@ class PyppetAPI( BlenderHackLinux ):
 		for mod in models:
 			mod.update( self.context )
 
+	def sort_objects_for_preview(self):
+		'''
+		this must be called once before update_preview,
+		because setting matrix_world fails if children are set before their parents.
+		'''
+		rank = {}
+		for ob in self._rec_saved_objects:
+			nth = len( get_ancestors(ob) )
+			if nth not in rank: rank[nth] = []
+			rank[ nth ].append( ob )
+		order = list(rank.keys())
+		order.sort()
+		self._rec_saved_objects_order = []
+		for nth in order:
+			self._rec_saved_objects_order += rank[ nth ]
+
 
 	def update_preview(self, now):
 		done = []
-		for ob in self._rec_saved_objects:
-			buff = self._rec_saved_objects[ ob ]
-			for i,F in enumerate(buff):
-				if F[0] < now: continue
-				frame_time, pos, rot = F
-				set_transform( 
-					ob, pos, rot, 
-					set_body = self.recording
-				)
-				if i==len(buff)-1: done.append(True)
-				else: done.append(False)
-				break
 
 		for ob in self._rec_saved_shape_keys:
 			M = self._rec_saved_shape_keys[ ob ]
@@ -3491,6 +3495,19 @@ class PyppetAPI( BlenderHackLinux ):
 					break
 
 
+		for ob in self._rec_saved_objects_order:
+			buff = self._rec_saved_objects[ ob ]
+			for i,F in enumerate(buff):
+				if F[0] < now: continue
+				frame_time, pos, rot = F
+				set_transform( 
+					ob, pos, rot, 
+					set_body = self.recording
+				)
+				if i==len(buff)-1: done.append(True)
+				else: done.append(False)
+				break
+
 		if all(done): self._rec_preview_button.set_active(False); return True
 		else: return False
 
@@ -3498,12 +3515,14 @@ class PyppetAPI( BlenderHackLinux ):
 		for ob in self.context.scene.objects:
 			ob.select = False
 
-		for ob in self._rec_saved_objects:
+		for ob in self._rec_saved_objects:	# this should work even if objects are on hidden layers
+			ob.hide = False
 			ob.hide_select = False
 			ob.select = True
 			ob.rotation_mode = 'QUATERNION'	# prevents flipping
 
 		if self._rec_saved_objects:
+			self.sort_objects_for_preview()
 			self.context.scene.frame_current = 1
 			step = 1.0 / float(self.context.scene.render.fps / 3.0)
 			now = 0.0
@@ -3584,6 +3603,7 @@ class PyppetUI( PyppetAPI ):
 	def toggle_preview( self, button ):
 		self.preview = button.get_active()
 		if self.preview:
+			self.sort_objects_for_preview()
 			self._rec_start_time = time.time()
 			if self.play_wave_on_record: self.start_wave()
 		else:
@@ -3763,7 +3783,7 @@ class PyppetUI( PyppetAPI ):
 		bx.pack_start( gtk.Label() )
 
 		c = gtk.CheckButton('selected')
-		c.set_active(True)
+		c.set_active(False)
 		c.set_tooltip_text('only record selected objects')
 		bx.pack_start( c, expand=False )
 
@@ -3793,6 +3813,8 @@ class PyppetUI( PyppetAPI ):
 		b.set_tooltip_text('save animation pass for baking')
 		b.connect('clicked', self.commit_recording)
 		bx.pack_start( b, expand=False )
+
+		bx.pack_start( gtk.Label() )
 
 		b = gtk.Button( 'bake %s' %icons.SINE_WAVE )
 		b.set_tooltip_text('bake all commited passes to animation curves')
