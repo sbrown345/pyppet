@@ -655,8 +655,8 @@ class Joint( object ):
 			eg. ERP, ERP1, ERP2, ERP3
 		'''
 		assert param in Joint.Params
-		print('setting joint param', param, args)
-		if param not in self.settings: self.settings.append( param )
+
+		if param not in self.settings: self.settings.append( param )	# TODO, cache here?
 
 		P = getattr(ode, 'Param%s'%param)
 		params = []
@@ -737,17 +737,6 @@ class HybridObject( object ):
 			pos,rot,scl = self._blender_transform
 			self.geom.SetOffsetWorldPosition( *pos )
 			self.geom.SetOffsetWorldQuaternion( rot )
-
-
-	def save_transform(self, bo):
-		self.start_matrix = bo.matrix_world.copy()
-		x,y,z = bo.matrix_world.to_translation()
-		self.position = self.start_position = (x,y,z)
-		w,x,y,z = bo.matrix_world.to_quaternion()
-		self.rotation = self.start_rotation = (w,x,y,z)
-		x,y,z = bo.matrix_world.to_scale()
-		self.start_scale = (x,y,z)
-
 
 
 	def reset_recording( self, buff ):
@@ -1062,5 +1051,19 @@ class HybridObject( object ):
 			body.SetAngularVel( .0, .0, .0 )
 
 
+	def save_transform(self, bo):
+		self.start_matrix = bo.matrix_world.copy()
+		x,y,z = bo.matrix_world.to_translation()
+		self.position = self.start_position = (x,y,z)
+		w,x,y,z = bo.matrix_world.to_quaternion()
+		self.rotation = self.start_rotation = (w,x,y,z)
+		x,y,z = bo.matrix_world.to_scale()
+		self.start_scale = (x,y,z)
 
+	def set_transform( self, pos, rot ):
+		if self.body and not self.is_subgeom:	# used by poser
+			x,y,z = pos
+			self.body.SetPosition( x, y, z )
+			w,x,y,z = rot
+			self.body.SetQuaternion( (w,x,y,z) )
 

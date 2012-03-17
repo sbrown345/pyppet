@@ -1731,19 +1731,51 @@ class Bone(object):
 		self.start_location = (x,y,z)
 		self.rest_height = z				# used by biped solver
 
+	def set_transform(self, matrix, tail):
+		loc,rot,scl = matrix.decompose()
+		if self.head: ENGINE.get_wrapper( self.head ).set_transform( loc, rot )
+		mid = tail - loc; mid *= 0.5	# midpoint
+		ENGINE.get_wrapper( self.shaft ).set_transform( loc+mid, rot )
+		ENGINE.get_wrapper( self.tail ).set_transform( tail, rot )
+
+	def save_pose( self, name ):
+		if not self.parent: return
+		joints = []
+		self.poses[ name ] = {'joints':joints, 'weight':0.0}
+
+		parent = ENGINE.get_wrapper( self.parent.tail )
+		for child in self.get_wrapper_objects():
+			joint = child.new_joint( parent, name='POSE:%s'%name, type='fixed' )
+			joints.append( joint )
+
+		self.adjust_pose( name, weight=0.0 )
+
+	def adjust_pose( self, name, weight=0.0 ):
+		if name not in self.poses: return
+		p = self.poses[ name ]
+		if weight != p['weight']:
+			p['weight'] = weight
+			for joint in p['joints']:
+				joint.set_param( 'CFM', 1.0-weight )
+				joint.set_param( 'ERP', weight )
+
 	def get_location(self):
 		return self.shaft.matrix_world.to_translation()
+
 	def hide(self):
 		for ob in (self.head, self.shaft, self.tail):
 			if ob: ob.hide = True
+
 	def show(self):
 		for ob in (self.head, self.shaft, self.tail):
 			if ob: ob.hide = False
+
 	def get_objects(self):
 		r = []
 		for ob in (self.head, self.shaft, self.tail):
 			if ob: r.append( ob )
 		return r
+
 	def get_wrapper_objects(self):
 		r = []
 		for ob in (self.head, self.shaft, self.tail):
@@ -1782,7 +1814,7 @@ class Bone(object):
 		self.hybrid = hybrid
 		self.gravity = gravity
 		self.info = info
-
+		self.poses = {}		# pose-name : joints
 		self.head = None
 		self.shaft = None
 		self.tail = None
@@ -2018,10 +2050,9 @@ class AbstractArmature(object):
 		self._targets_widget = None
 		self._active_bone_widget = None
 		self.broken = []
-
+		self.poses = {}
 		self.tension_CFM = 0.05
 		self.tension_ERP = 0.85
-
 		self._show_rig = True
 
 	def any_ancestors_broken(self, child):
@@ -2147,12 +2178,21 @@ class AbstractArmature(object):
 
 		self.armature = arm = bpy.data.objects[ self.name ]
 		self.spawn_matrix = arm.matrix_world.copy()
-		arm.matrix_world = mathutils.Matrix()
+		arm.matrix_world = mathutils.Matrix()				# zero transform
 
 		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
 		Pyppet.refresh_selected = True
 
+		self.poses = {}
+		context = Pyppet.context
+		for marker in context.scene.timeline_markers:
+			context.scene.frame_current = marker.frame
+			self.poses[ marker.name ] = pose = {}
+			for bone in arm.pose.bones:
+				pose[ bone.name ] = (bone.matrix.copy(), bone.tail.copy())
+
+		context.scene.frame_current = 1
 
 		#self.primary_joints = {}
 		#self.breakable_joints = []
@@ -2304,7 +2344,18 @@ class AbstractArmature(object):
 					type=d['type']
 				)
 
-		self.setup()
+		self.setup()		# call subclass setup
+
+		## setup poses ##
+		for pose_name in self.poses:
+			pose = self.poses[ pose_name ]
+			for name in pose:
+				if name not in self.rig: continue
+				b = self.rig[ name ]
+				matrix, tail = pose[name]
+				b.set_transform( matrix, tail )
+				b.save_pose( pose_name )
+
 
 		## restore spawn point ##
 		self.armature_root = root = bpy.data.objects.new(
@@ -2321,6 +2372,8 @@ class AbstractArmature(object):
 		Pyppet.context.scene.update()			# syncs .matrix_world with local-space set scale
 
 		self.save_transform()
+
+
 
 	def setup(self): pass	# override
 	def is_bone_breakable( self, bone ): return True	# override
@@ -2441,7 +2494,21 @@ class AbstractArmature(object):
 		s.connect( self.adjust_rig_tension, 'CFM' )
 		bx.pack_start( s.widget, expand=False )
 
+		if self.poses:
+			ex = DetachableExpander( 'Poses' )
+			root.pack_start( ex.widget )
+			box = gtk.VBox(); ex.add( box )
+			for name in self.poses:
+				s = Slider( title=name, value=0.0, tooltip='set pose weight for all bones' )
+				s.connect( self.adjust_rig_pose, name )
+				box.pack_start( s.widget, expand=False )
+
 		return root
+
+	def adjust_rig_pose( self, adjust, name ):
+		value = adjust.get_value()
+		for b in self.rig.values():
+			b.adjust_pose( name, value )
 
 	def save_transform(self, button=None):
 		for B in self.rig.values(): B.save_transform()
