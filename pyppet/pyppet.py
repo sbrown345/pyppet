@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.5e'
+VERSION = '1.9.5f'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -1931,8 +1931,9 @@ class Bone(object):
 				cns.weight = 0.5
 				if self.info['ik-chain'] and self.info['ik-chain-info']:
 					level = self.info['ik-chain-level']
-					cns.chain_count = self.info['ik-chain-info']['ik-length'] - level
-					cns.influence = 0.5
+					count = self.info['ik-chain-info']['ik-length'] - level
+					if count > 0: cns.chain_count = count
+					#cns.influence = 0.5
 
 	
 		for ob in self.get_objects():
