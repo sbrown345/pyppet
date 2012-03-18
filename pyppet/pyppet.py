@@ -1761,10 +1761,6 @@ class Bone(object):
 				joint.set_param( 'CFM', 1.0-weight )
 				joint.set_param( 'ERP', weight )
 
-			if weight > 0.5:
-				for bo in p['objects']:
-					print('posing', bo)
-					bo.matrix_world = p['objects'][ bo ].copy()
 
 
 	def get_location(self):
@@ -2401,6 +2397,16 @@ class AbstractArmature(object):
 		self.save_transform()
 
 
+	def adjust_rig_pose( self, adjust, name ):
+		value = adjust.get_value()
+		pose = self.poses[ name ]
+		for bone_name in pose:
+			if bone_name in self.rig: self.rig[ bone_name ].adjust_pose( name, value )
+			p = pose[ bone_name ]
+			for bo in p['constraints']:
+				mat = p['constraints'][ bo ]
+				bo.matrix_world = bo.matrix_world.lerp( mat, value )
+
 
 	def setup(self): pass	# override
 	def is_bone_breakable( self, bone ): return True	# override
@@ -2532,10 +2538,6 @@ class AbstractArmature(object):
 
 		return root
 
-	def adjust_rig_pose( self, adjust, name ):
-		value = adjust.get_value()
-		for b in self.rig.values():
-			b.adjust_pose( name, value )
 
 	def save_transform(self, button=None):
 		for B in self.rig.values(): B.save_transform()
