@@ -1738,15 +1738,17 @@ class Bone(object):
 		ENGINE.get_wrapper( self.shaft ).set_transform( loc+mid, rot )
 		ENGINE.get_wrapper( self.tail ).set_transform( tail, rot )
 
-	def save_pose( self, name ):
+	def save_pose( self, name, objects ):
 		if not self.parent: return
 		joints = []
-		self.poses[ name ] = {'joints':joints, 'weight':0.0}
+		self.poses[ name ] = {'joints':joints, 'weight':0.0, 'objects':objects}
 
 		parent = ENGINE.get_wrapper( self.parent.tail )
 		for child in self.get_wrapper_objects():
 			joint = child.new_joint( parent, name='POSE:%s'%name, type='fixed' )
 			joints.append( joint )
+
+		if objects: print('pose objects', objects)
 
 		self.adjust_pose( name, weight=0.0 )
 
@@ -1758,6 +1760,12 @@ class Bone(object):
 			for joint in p['joints']:
 				joint.set_param( 'CFM', 1.0-weight )
 				joint.set_param( 'ERP', weight )
+
+			if weight > 0.5:
+				for bo in p['objects']:
+					print('posing', bo)
+					bo.matrix_world = p['objects'][ bo ].copy()
+
 
 	def get_location(self):
 		return self.shaft.matrix_world.to_translation()
@@ -2184,15 +2192,6 @@ class AbstractArmature(object):
 		Pyppet.AddEntity( self )
 		Pyppet.refresh_selected = True
 
-		self.poses = {}
-		context = Pyppet.context
-		for marker in context.scene.timeline_markers:
-			context.scene.frame_current = marker.frame
-			self.poses[ marker.name ] = pose = {}
-			for bone in arm.pose.bones:
-				pose[ bone.name ] = (bone.matrix.copy(), bone.tail.copy())
-
-		context.scene.frame_current = 1
 
 		#self.primary_joints = {}
 		#self.breakable_joints = []
@@ -2238,6 +2237,33 @@ class AbstractArmature(object):
 					parent = info['parent']
 				else:
 					break
+
+		## collect POSE INFO ##
+		self.poses = {}
+		context = Pyppet.context
+		for marker in context.scene.timeline_markers:
+			#context.scene.frame_current = marker.frame
+			#Pyppet.context.scene.update()
+			context.scene.frame_set( marker.frame )
+
+			self.poses[ marker.name ] = pose = {}
+			for bone in arm.pose.bones:
+				pinfo = {'matrix':bone.matrix.copy(), 'tail':bone.tail.copy()}
+				pose[ bone.name ] = pinfo
+
+				pinfo['constraints'] = constraints = {}
+				info = self.bone_info[ bone.name ]
+				if info['ik-target']:
+					bo = info['ik-target']
+					#bo = bpy.data.objects[ bo.name ]
+					constraints[ bo ] = bo.matrix_world.copy()
+				if info['location-target']:
+					bo = info['location-target']
+					constraints[ bo ] = bo.matrix_world.copy()
+
+
+		context.scene.frame_current = 1
+
 
 		## collect external objects that are children of the bones ##
 		for ob in bpy.data.objects:
@@ -2352,9 +2378,10 @@ class AbstractArmature(object):
 			for name in pose:
 				if name not in self.rig: continue
 				b = self.rig[ name ]
-				matrix, tail = pose[name]
+				matrix = pose[name]['matrix']
+				tail = pose[name]['tail']
 				b.set_transform( matrix, tail )
-				b.save_pose( pose_name )
+				b.save_pose( pose_name, pose[name]['constraints'] )
 
 
 		## restore spawn point ##
