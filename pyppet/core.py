@@ -394,10 +394,10 @@ class Driver(object):
 	INSTANCES = []
 	MODES = ('+', '-', '=', icons.MULTIPLY, icons.POSITIVE_OFFSET, icons.NEGATIVE_OFFSET)
 	@classmethod
-	def get_drivers(self,oname, aname):
+	def get_drivers(self, bo, name):
 		r = []
 		for d in self.INSTANCES:
-			if d.target==oname and d.target_path.split('.')[0] == aname:
+			if d.target == bo and d.target_path == name:
 				r.append( d )
 		return r
 		
@@ -1135,7 +1135,7 @@ class NotebookVectorWidget( object ):
 		self.min = min
 		self.max = max
 
-		drivers = Driver.get_drivers(ob.name, name)		# classmethod
+		drivers = Driver.get_drivers(ob, name)		# classmethod
 		vec = getattr(ob,name)
 
 		if title: ex = gtk.Expander(title)
