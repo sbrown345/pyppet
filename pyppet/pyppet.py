@@ -2210,7 +2210,9 @@ class AbstractArmature(object):
 			info['location-target'] = None
 			info['external-children'] = []
 			info['joints'] = []
+			info['constraints'] = []
 			for cns in pbone.constraints:
+				info['constraints'].append( cns )
 				if cns.type == 'IK':
 					info['ik-target'] = cns.target
 					info['ik-length'] = cns.chain_count
@@ -2235,14 +2237,25 @@ class AbstractArmature(object):
 					break
 
 		## collect POSE INFO ##
-		self.poses = {}
 		context = Pyppet.context
+		context.scene.frame_set( 1 )
+		self.poses_bias = {}	# constraint-target: matrix
+		for info in self.bone_info.values():
+			for cns in info['constraints']:
+				if cns.target and cns.target not in self.poses_bias:
+					self.poses_bias[ cns.target ] = cns.target.matrix_world.copy()
+
+
+		self.poses = {}
+		self.poses_state = {}
 		for marker in context.scene.timeline_markers:
 			#context.scene.frame_current = marker.frame
 			#Pyppet.context.scene.update()
 			context.scene.frame_set( marker.frame )
 
 			self.poses[ marker.name ] = pose = {}
+			self.poses_state[ marker.name ] = 0.0
+
 			for bone in arm.pose.bones:
 				pinfo = {'matrix':bone.matrix.copy(), 'tail':bone.tail.copy()}
 				pose[ bone.name ] = pinfo
@@ -2258,7 +2271,7 @@ class AbstractArmature(object):
 					constraints[ bo ] = bo.matrix_world.copy()
 
 
-		context.scene.frame_current = 1
+		context.scene.frame_set( 1 )
 
 
 		## collect external objects that are children of the bones ##
@@ -2398,20 +2411,32 @@ class AbstractArmature(object):
 
 
 	def adjust_rig_pose( self, adjust, name ):
-		value = adjust.get_value()
-		pose = self.poses[ name ]
-		for bone_name in pose:
-			if bone_name in self.rig: self.rig[ bone_name ].adjust_pose( name, value )
-			p = pose[ bone_name ]
-			for bo in p['constraints']:
-				mat = p['constraints'][ bo ]
-				bo.matrix_world = bo.matrix_world.lerp( mat, value )
+		self.poses_state[ name ] = adjust.get_value()
+
+	def update_poses(self):
+		touched = []
+
+		for name in self.poses_state:
+			value = self.poses_state[ name ]
+			if value <= 0.0: continue
+
+			pose = self.poses[ name ]
+			for bone_name in pose:
+				#if bone_name in self.rig: self.rig[ bone_name ].adjust_pose( name, value )
+				p = pose[ bone_name ]
+				for bo in p['constraints']:
+					mat = p['constraints'][ bo ]
+					if bo not in touched:
+						touched.append( bo )
+						bo.matrix_world = self.poses_bias[ bo ].copy()
+					bo.matrix_world = bo.matrix_world.lerp( mat, value )
 
 
 	def setup(self): pass	# override
 	def is_bone_breakable( self, bone ): return True	# override
 
 	def update(self, context ):
+
 		for bname in self.targets:
 			for target in self.targets[bname]:
 				#target.driver.update()	# DriverManager.update takes care of this
@@ -5002,6 +5027,9 @@ class App( PyppetUI ):
 				## use wave time if play on record is true ##
 				if self.play_wave_on_record:
 					now = self.wave_speaker.seconds
+
+			models = self.entities.values()
+			for mod in models: mod.update_poses()
 
 			if ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
 
