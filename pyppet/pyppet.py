@@ -1944,32 +1944,40 @@ class Bone(object):
 			#self.primary_joints[ ebone.name ]['head'] = joint
 
 
-
+		self.ik = None
 		if stretch:
 			self.stretch_to_constraint = cns = pbone.constraints.new('STRETCH_TO')
 			cns.target = self.tail
 			#cns.bulge = 1.5
-			self.ik = None
 
-		#elif self.hybrid:	# COPY_ROTATION not compatible with IK
-		#	cns = pbone.constraints.new('COPY_ROTATION')
-		#	cns.target = self.shaft
-		#	cns.influence = 0.5
 		elif not self.info['ik-target']:
-			self.ik = cns = pbone.constraints.new('IK')
-			cns.target = self.tail
-			cns.chain_count = 1
-			cns.iterations = 32
-			cns.pole_target = self.pole
-			cns.pole_angle = math.radians( -90 )
 
 			if self.hybrid:
-				cns.weight = 0.5
-				if self.info['ik-chain'] and self.info['ik-chain-info']:
-					level = self.info['ik-chain-level']
-					count = self.info['ik-chain-info']['ik-length'] - level
-					if count > 0: cns.chain_count = count
-					#cns.influence = 0.5
+				self.stretch_to_constraint = cns = pbone.constraints.new('STRETCH_TO')
+				cns.target = self.tail
+				cns.keep_axis = 'PLANE_Z'
+				if self.info['ik-chain']: cns.influence = 0.5
+
+				self.limit_scale_constraint = cns = pbone.constraints.new('LIMIT_SCALE')
+				cns.use_min_x = cns.use_min_y = cns.use_min_z = True
+				cns.use_max_x = cns.use_max_y = cns.use_max_z = True
+				cns.min_x = cns.min_y = cns.min_z = 1.0
+				cns.max_x = cns.max_y = cns.max_z = 1.0
+
+
+			else:
+				self.ik = cns = pbone.constraints.new('IK')
+				cns.target = self.tail
+				cns.chain_count = 1
+				cns.iterations = 32
+				cns.pole_target = self.pole
+				cns.pole_angle = math.radians( -90 )
+
+				#cns.weight = 0.5	# TREE IK SUCKS
+				#if self.info['ik-chain'] and self.info['ik-chain-info']:
+				#	level = self.info['ik-chain-level']
+				#	count = self.info['ik-chain-info']['ik-length'] - level
+				#	if count > 0: cns.chain_count = count
 
 	
 		for ob in self.get_objects():
@@ -2308,10 +2316,11 @@ class AbstractArmature(object):
 					bone.use_connect = False
 			bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
 
-		if stretch:
+		if stretch or self.hybrid_IK:
 			for bone in arm.data.bones:
 				bone.use_inherit_rotation = False
 				bone.use_inherit_scale = False
+
 
 		## build rig from roots ##
 		#cube = create_cube()
