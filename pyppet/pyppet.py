@@ -1615,7 +1615,7 @@ class Target(object):
 			create boolean mod on target, set cutting
 
 	'''
-	def __init__(self,ob, weight=0.0, raw_power=1.0, normalized_power=0.0, x=1.0, y=1.0, z=1.0, bidirectional=False):
+	def __init__(self,ob, weight=0.0, raw_power=1.0, normalized_power=0.0, x=1.0, y=1.0, z=1.0, bidirectional=False, bidirectional_power=0.1):
 		self.name = ob.name				# could change target on the fly by scripting
 		if ob.type=='ARMATURE': pass		# could target nearest bone as rule
 		self.weight = weight
@@ -1626,6 +1626,7 @@ class Target(object):
 		self.ymult = y
 		self.zmult = z
 		self.bidirectional = bidirectional
+		self.bidirectional_power = bidirectional_power
 		self.target_start_matrix = ob.matrix_world.copy()
 		self._modal = None
 		self.dynamic = False
@@ -1636,8 +1637,11 @@ class Target(object):
 			target.matrix_world = self.target_start_matrix
 
 	def get_widget(self):
-		ex = gtk.Expander( 'Target: %s' %self.name )
-		if not self.dynamic:
+		if self.dynamic:
+			ex = gtk.Expander( '%s (dynamic)' %self.name )
+			ex.set_tooltip_text( 'some properties are controlled from python and set dynamically' )
+		else:
+			ex = gtk.Expander( self.name )
 			DND.make_destination( ex )
 			ex.connect( 'drag-drop', self.cb_drop_target_driver )
 		self.rebuild_widget( ex )
@@ -1652,22 +1656,26 @@ class Target(object):
 			widget = self.driver.get_widget( expander=False )
 			root.pack_start( widget, expand=False )
 
-		elif self.dynamic:
-			root.pack_start( gtk.Label( '(dynamic)' ), expand=False )
+		slider = Slider( self, name='weight', title=icons.WEIGHT, tooltip='weight', min=.0, max=200 )
+		root.pack_start( slider.widget, expand=False )
 
-		else:
-			slider = Slider( self, name='weight', title=icons.WEIGHT, tooltip='weight', min=.0, max=100, driveable=False )
+		slider = Slider( self, name='raw_power', title=icons.RAW_POWER, tooltip='raw power', min=.0, max=2 )
+		root.pack_start( slider.widget, expand=False )
+
+		slider = Slider( self, name='norm_power', title=icons.NORMALIZED_POWER, tooltip='normalized power', min=.0, max=10 )
+		root.pack_start( slider.widget, expand=False )
+
+		for idx,tag in enumerate('xmult ymult zmult'.split()):
+			slider = Slider( self, name=tag, title='xyz'[idx], min=-1, max=1 )
 			root.pack_start( slider.widget, expand=False )
 
-			slider = Slider( self, name='raw_power', title=icons.RAW_POWER, tooltip='raw power', min=.0, max=2 )
-			root.pack_start( slider.widget, expand=False )
+		b = CheckButton( 'enable bidirectional target' )
+		b.connect( self, 'bidirectional' )
+		root.pack_start( b.widget, expand=False )
 
-			slider = Slider( self, name='norm_power', title=icons.NORMALIZED_POWER, tooltip='normalized power', min=.0, max=10 )
-			root.pack_start( slider.widget, expand=False )
+		slider = Slider( self, name='bidirectional_power', title=icons.BIDIRECTIONAL, tooltip='power of bidirectional target', max=0.25 )
+		root.pack_start( slider.widget, expand=False )
 
-			for idx,tag in enumerate('xmult ymult zmult'.split()):
-				slider = Slider( self, name=tag, title='xyz'[idx], min=-1, max=1 )
-				root.pack_start( slider.widget, expand=False )
 
 		ex.show_all()
 
@@ -1709,9 +1717,9 @@ class Target(object):
 
 			if self.bidirectional:
 				m = target.matrix_world.copy()
-				m[0][3] -= x1 * 0.1
-				m[1][3] -= y1 * 0.1
-				m[2][3] -= z1 * 0.1
+				m[0][3] -= x1 * self.bidirectional_power
+				m[1][3] -= y1 * self.bidirectional_power
+				m[2][3] -= z1 * self.bidirectional_power
 				target.matrix_world = m
 
 
@@ -1951,33 +1959,65 @@ class Bone(object):
 			#cns.bulge = 1.5
 
 		elif not self.info['ik-target']:
+			if self.hybrid and self.info['ik-chain']:
+				if  arm.pose.ik_solver == 'ITASC':	# itasc segfaults!
+					self.ik = cns = pbone.constraints.new('IK')
+					cns.target = self.tail
+					cns.chain_count = 1
+					#cns.iterations = 32
+					#cns.pole_target = self.pole
+					#cns.pole_angle = math.radians( -90 )
 
-			if self.hybrid:
-				self.stretch_to_constraint = cns = pbone.constraints.new('STRETCH_TO')
-				cns.target = self.tail
-				cns.keep_axis = 'PLANE_Z'
-				if self.info['ik-chain']: cns.influence = 0.5
+					cns.use_location = True
+					cns.weight = 0.1
+					cns.use_rotation = True
+					cns.orient_weight = 0.25
 
-				self.limit_scale_constraint = cns = pbone.constraints.new('LIMIT_SCALE')
-				cns.use_min_x = cns.use_min_y = cns.use_min_z = True
-				cns.use_max_x = cns.use_max_y = cns.use_max_z = True
-				cns.min_x = cns.min_y = cns.min_z = 1.0
-				cns.max_x = cns.max_y = cns.max_z = 1.0
+					if self.info['ik-chain'] and self.info['ik-chain-info']:
+						level = self.info['ik-chain-level']
+						count = self.info['ik-chain-info']['ik-length'] - level
+						if count > 0: cns.chain_count = count
 
+
+				else:
+					self.stretch_to_constraint = cns = pbone.constraints.new('STRETCH_TO')
+					cns.target = self.tail
+					cns.keep_axis = 'PLANE_Z'
+					#if self.info['ik-chain']: cns.influence = 0.5	# makes flipping worse!
+
+					self.limit_scale_constraint = cns = pbone.constraints.new('LIMIT_SCALE')
+					cns.use_min_x = cns.use_min_y = cns.use_min_z = True
+					cns.use_max_x = cns.use_max_y = cns.use_max_z = True
+					cns.min_x = cns.min_y = cns.min_z = 1.0
+					cns.max_x = cns.max_y = cns.max_z = 1.0
+
+					############ not helping ###############
+					#cns = pbone.constraints.new('TRACK_TO')
+					#cns.target = self.tail
+					#cns.influence = 0.5
+					#cns = pbone.constraints.new('LOCKED_TRACK')
+					#cns.target = self.pole
+					#cns.track_axis = 'TRACK_Z'
+					#cns.lock_axis = 'LOCK_Y'
 
 			else:
-				self.ik = cns = pbone.constraints.new('IK')
-				cns.target = self.tail
-				cns.chain_count = 1
-				cns.iterations = 32
-				cns.pole_target = self.pole
-				cns.pole_angle = math.radians( -90 )
+				if self.info['ik-constraint']:
+					self.ik = cns = self.info['ik-constraint']
+				else:
+					self.ik = cns = pbone.constraints.new('IK')
+					cns.target = self.tail
+					cns.chain_count = 1
+					cns.iterations = 32
 
-				#cns.weight = 0.5	# TREE IK SUCKS
-				#if self.info['ik-chain'] and self.info['ik-chain-info']:
-				#	level = self.info['ik-chain-level']
-				#	count = self.info['ik-chain-info']['ik-length'] - level
-				#	if count > 0: cns.chain_count = count
+				if not cns.pole_target:
+					cns.pole_target = self.pole
+					cns.pole_angle = math.radians( -90 )
+
+				if self.info['ik-chain'] and self.info['ik-chain-info']:
+					cns.weight = 0.5
+					level = self.info['ik-chain-level']
+					count = self.info['ik-chain-info']['ik-length'] - level
+					if count > 0: cns.chain_count = count
 
 	
 		for ob in self.get_objects():
@@ -2091,9 +2131,13 @@ class AbstractArmature(object):
 
 		stretch  = gtk.CheckButton('stretch-to constraints')
 		breakable = gtk.CheckButton('breakable joints')
+
 		hybrid = gtk.CheckButton('hybrid-IK')
+		hybrid_weight = Slider( name='hybrid-IK weight', value=100, min=0.01, max=200 )
 		hybrid_bd = gtk.CheckButton('hybrid-IK bidirectional targets')
 		hybrid_bd.set_tooltip_text('IK targets are also affected by the physics rig')
+		hybrid_bd_power = Slider( name='hybrid-IK bidirectional power', value=0.1, max=0.5 )
+
 		gravity = gtk.CheckButton('use gravity')
 		gravity.set_active(True)
 		allow_unconnected = gtk.CheckButton('use unconnected bones')
@@ -2103,13 +2147,15 @@ class AbstractArmature(object):
 		break_thresh = Slider( name='joint breaking threshold', value=200, min=0.01, max=420 )
 		damage_thresh = Slider( name='joint damage threshold', value=150, min=0.01, max=420 )
 
-		func = lambda button, s, b, bt, dt, hy, hybd, g, a, c: self.create(
+		func = lambda button, s, b, bt, dt, hy, hyw, hybd, hybdp, g, a, c: self.create(
 			stretch = s.get_active(),
 			breakable = b.get_active(),
 			break_thresh = bt.get_value(),
 			damage_thresh = dt.get_value(),
 			hybrid_IK = hy.get_active(),
+			hybrid_IK_weight = hyw.get_value(),
 			hybrid_IK_bidirectional = hybd.get_active(),
+			hybrid_IK_bidirectional_power = hybdp.get_value(),
 			gravity = g.get_active(),
 			allow_unconnected_bones = a.get_active(),
 			collision = c.get_active(),
@@ -2125,7 +2171,9 @@ class AbstractArmature(object):
 			break_thresh.adjustment,
 			damage_thresh.adjustment,
 			hybrid,
+			hybrid_weight.adjustment,
 			hybrid_bd,
+			hybrid_bd_power.adjustment,
 			gravity,
 			allow_unconnected,
 			collision,
@@ -2135,8 +2183,12 @@ class AbstractArmature(object):
 		root.pack_start( breakable, expand=False )
 		root.pack_start( break_thresh.widget, expand=False )
 		root.pack_start( damage_thresh.widget, expand=False )
+
 		root.pack_start( hybrid, expand=False )
+		root.pack_start( hybrid_weight.widget, expand=False )
 		root.pack_start( hybrid_bd, expand=False )
+		root.pack_start( hybrid_bd_power.widget, expand=False )
+
 		root.pack_start( gravity, expand=False )
 		root.pack_start( allow_unconnected, expand=False )
 		root.pack_start( collision, expand=False )
@@ -2175,12 +2227,14 @@ class AbstractArmature(object):
 				for child in bone.children:	# recursive
 					self.build_bones( child, data, broken_chain )
 
-	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_bidirectional=False, gravity=True, allow_unconnected_bones=False, collision=True):
+	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_weight=100,  hybrid_IK_bidirectional=False, hybrid_IK_bidirectional_power=0.1, gravity=True, allow_unconnected_bones=False, collision=True):
 
 		self.created = True
 
 		self.hybrid_IK = hybrid_IK
+		self.hybrid_IK_weight = hybrid_IK_weight
 		self.hybrid_IK_bidirectional = hybrid_IK_bidirectional
+		self.hybrid_IK_bidirectional_power = hybrid_IK_bidirectional_power
 		self.hybrid_IK_targets = []
 		self.gravity = gravity
 		self.stretchable = stretch
@@ -2192,6 +2246,8 @@ class AbstractArmature(object):
 		self.spawn_matrix = arm.matrix_world.copy()
 		arm.matrix_world = mathutils.Matrix()				# zero transform
 
+		self.itasc = arm.pose.ik_solver == 'ITASC'
+
 		arm.pyppet_model = self.__class__.__name__		# pyRNA
 		Pyppet.AddEntity( self )
 		Pyppet.refresh_selected = True
@@ -2202,7 +2258,7 @@ class AbstractArmature(object):
 		self.initial_break_thresh = break_thresh
 		self.initial_damage_thresh = damage_thresh
 
-		## collect bone info ##
+		## collect bone info first ##
 		self.bone_info = {}
 		IK_info = []
 		for bone in arm.data.bones:
@@ -2213,6 +2269,7 @@ class AbstractArmature(object):
 			info['deform'] = bone.use_deform
 			pbone = arm.pose.bones[ bone.name ]
 			info['ik-chain'] = pbone.is_in_ik_chain
+			info['ik-constraint'] = None
 			info['ik-target'] = None
 			info['ik-chain-info'] = None
 			info['location-target'] = None
@@ -2222,6 +2279,7 @@ class AbstractArmature(object):
 			for cns in pbone.constraints:
 				info['constraints'].append( cns )
 				if cns.type == 'IK':
+					info['ik-constraint'] = cns
 					info['ik-target'] = cns.target
 					info['ik-length'] = cns.chain_count
 				elif cns.type == 'COPY_LOCATION':
@@ -2316,7 +2374,7 @@ class AbstractArmature(object):
 					bone.use_connect = False
 			bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
 
-		if stretch or self.hybrid_IK:
+		if stretch: 	#or self.hybrid_IK:
 			for bone in arm.data.bones:
 				bone.use_inherit_rotation = False
 				bone.use_inherit_scale = False
@@ -2361,9 +2419,10 @@ class AbstractArmature(object):
 				target = self.create_target(
 					b.name, 
 					ob,
-					weight=300,
-					normalized_power=0,
-					bidirectional=self.hybrid_IK_bidirectional
+					weight = self.hybrid_IK_weight,
+					normalized_power = 0.75,
+					bidirectional = self.hybrid_IK_bidirectional,
+					bidirectional_power = self.hybrid_IK_bidirectional_power,
 				)
 				self.hybrid_IK_targets.append( target )
 
@@ -2431,7 +2490,7 @@ class AbstractArmature(object):
 
 			pose = self.poses[ name ]
 			for bone_name in pose:
-				#if bone_name in self.rig: self.rig[ bone_name ].adjust_pose( name, value )
+				if bone_name in self.rig: self.rig[ bone_name ].adjust_pose( name, value )
 				p = pose[ bone_name ]
 				for bo in p['constraints']:
 					mat = p['constraints'][ bo ]
@@ -3604,6 +3663,7 @@ class PyppetAPI( BlenderHackLinux ):
 			rank[ nth ].append( ob )
 		order = list(rank.keys())
 		order.sort()
+		print('ORDER', rank)
 		self._rec_saved_objects_order = []
 		for nth in order:
 			self._rec_saved_objects_order += rank[ nth ]
@@ -3639,6 +3699,8 @@ class PyppetAPI( BlenderHackLinux ):
 				else: done.append(False)
 				break
 
+			self.context.scene.update()	# required to make sure children are aware of their parent's new matrix
+
 		if all(done): self._rec_preview_button.set_active(False); return True
 		else: return False
 
@@ -3654,12 +3716,14 @@ class PyppetAPI( BlenderHackLinux ):
 
 		if self._rec_saved_objects:
 			self.sort_objects_for_preview()
-			self.context.scene.frame_current = 1
+			frame = 1
+			self.context.scene.frame_set( frame )
 			step = 1.0 / float(self.context.scene.render.fps / 3.0)
 			now = 0.0
 			done = False
 			while not done:
-				self.context.scene.frame_current += 3
+				frame += 3
+				self.context.scene.frame_set( frame )
 				done = self.update_preview( now )
 				now += step
 				self.context.scene.update()
