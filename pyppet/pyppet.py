@@ -1746,28 +1746,34 @@ class Bone(object):
 		ENGINE.get_wrapper( self.shaft ).set_transform( loc+mid, rot )
 		ENGINE.get_wrapper( self.tail ).set_transform( tail, rot )
 
-	def save_pose( self, name, objects ):
-		if not self.parent: return
-		joints = []
-		self.poses[ name ] = {'joints':joints, 'weight':0.0, 'objects':objects}
-
-		parent = ENGINE.get_wrapper( self.parent.tail )
-		for child in self.get_wrapper_objects():
-			joint = child.new_joint( parent, name='POSE:%s'%name, type='fixed' )
-			joints.append( joint )
-
-		if objects: print('pose objects', objects)
-
-		self.adjust_pose( name, weight=0.0 )
-
+	def save_pose( self, name, matrix, tail ):
+		self.poses[ name ] = {'matrix':matrix, 'tail':tail, 'weight':0.0}
 	def adjust_pose( self, name, weight=0.0 ):
-		if name not in self.poses: return
-		p = self.poses[ name ]
-		if weight != p['weight']:
-			p['weight'] = weight
-			for joint in p['joints']:
-				joint.set_param( 'CFM', 1.0-weight )
-				joint.set_param( 'ERP', weight )
+		if not weight: return
+		pose = self.poses[ name ]
+		self.set_transform( pose['matrix'], pose['tail'] )
+
+
+	## this failed because even with no ERP/CFM the joint still has an effect ##
+	## ODE lacks a joint strength option, this was probably a bad idea anyways ##
+	#def save_pose( self, name, objects ):
+	#	if not self.parent: return
+	#	joints = []
+	#	self.poses[ name ] = {'joints':joints, 'weight':0.0, 'objects':objects}
+	#	parent = ENGINE.get_wrapper( self.parent.tail )
+	#	for child in self.get_wrapper_objects():
+	#		joint = child.new_joint( parent, name='POSE:%s'%name, type='fixed' )
+	#		joints.append( joint )
+	#	if objects: print('pose objects', objects)
+	#	self.adjust_pose( name, weight=0.0 )
+	#def adjust_pose( self, name, weight=0.0 ):
+	#	if name not in self.poses: return
+	#	p = self.poses[ name ]
+	#	if weight != p['weight']:
+	#		p['weight'] = weight
+	#		for joint in p['joints']:
+	#			joint.set_param( 'CFM', 0.0) #1.0-weight )
+	#			joint.set_param( 'ERP', weight )
 
 
 
@@ -2457,9 +2463,9 @@ class AbstractArmature(object):
 				b = self.rig[ name ]
 				matrix = pose[name]['matrix']
 				tail = pose[name]['tail']
-				b.set_transform( matrix, tail )
-				b.save_pose( pose_name, pose[name]['constraints'] )
-
+				#b.set_transform( matrix, tail )
+				#b.save_pose( pose_name, pose[name]['constraints'] )
+				b.save_pose( pose_name, matrix, tail )
 
 		## restore spawn point ##
 		self.armature_root = root = bpy.data.objects.new(
