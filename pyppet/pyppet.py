@@ -2149,11 +2149,12 @@ class AbstractArmature(object):
 		allow_unconnected = gtk.CheckButton('use unconnected bones')
 		collision = gtk.CheckButton('use collision')
 		collision.set_active(True)
+		collides_with_self = gtk.CheckButton('use self collision')
 
 		break_thresh = Slider( name='joint breaking threshold', value=200, min=0.01, max=420 )
 		damage_thresh = Slider( name='joint damage threshold', value=150, min=0.01, max=420 )
 
-		func = lambda button, s, b, bt, dt, hy, hyw, hybd, hybdp, g, a, c: self.create(
+		func = lambda button, s, b, bt, dt, hy, hyw, hybd, hybdp, g, a, c, cws: self.create(
 			stretch = s.get_active(),
 			breakable = b.get_active(),
 			break_thresh = bt.get_value(),
@@ -2165,6 +2166,7 @@ class AbstractArmature(object):
 			gravity = g.get_active(),
 			allow_unconnected_bones = a.get_active(),
 			collision = c.get_active(),
+			collides_with_self = cws.get_active(),
 		)
 
 		b = gtk.Button('create %s' %self.__class__.__name__)
@@ -2183,6 +2185,7 @@ class AbstractArmature(object):
 			gravity,
 			allow_unconnected,
 			collision,
+			collides_with_self,
 		)
 
 		root.pack_start( stretch, expand=False )
@@ -2198,6 +2201,7 @@ class AbstractArmature(object):
 		root.pack_start( gravity, expand=False )
 		root.pack_start( allow_unconnected, expand=False )
 		root.pack_start( collision, expand=False )
+		root.pack_start( collides_with_self, expand=False )
 		return root
 
 
@@ -2225,6 +2229,7 @@ class AbstractArmature(object):
 					tension_ERP = self.tension_ERP,
 					object_data = data,
 					collision = collision,
+					disable_collision_with_other_bones = not self.collides_with_self,
 					external_children = info['external-children'],
 					hybrid = self.hybrid_IK,
 					gravity = self.gravity,
@@ -2233,7 +2238,7 @@ class AbstractArmature(object):
 				for child in bone.children:	# recursive
 					self.build_bones( child, data, broken_chain )
 
-	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_weight=100,  hybrid_IK_bidirectional=False, hybrid_IK_bidirectional_power=0.1, gravity=True, allow_unconnected_bones=False, collision=True):
+	def create( self, stretch=False, breakable=False, break_thresh=None, damage_thresh=None, hybrid_IK=False, hybrid_IK_weight=100,  hybrid_IK_bidirectional=False, hybrid_IK_bidirectional_power=0.1, gravity=True, allow_unconnected_bones=False, collision=True, collides_with_self=False):
 
 		self.created = True
 
@@ -2247,6 +2252,7 @@ class AbstractArmature(object):
 		self.breakable = breakable
 		self.allow_unconnected_bones = allow_unconnected_bones
 		self.collision = collision
+		self.collides_with_self = collides_with_self
 
 		self.armature = arm = bpy.data.objects[ self.name ]
 		self.spawn_matrix = arm.matrix_world.copy()
