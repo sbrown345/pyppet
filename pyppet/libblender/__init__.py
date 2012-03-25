@@ -30,7 +30,7 @@ _clibs_dir = os.path.dirname(os.path.abspath(__file__))
 
 def _load_ctypes_lib( name ):
 	if __os.name == 'posix':
-		if __sys.platform=='linux2':
+		if __sys.platform.startswith('linux'):
 			if not name.endswith('.so'): name += '.so'
 			if not name.startswith('lib'): name = 'lib' + name
 

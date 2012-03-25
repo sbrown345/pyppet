@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# updated Dec 2011
+# updated March 2012
 
 import os, sys, ctypes, math, time
 
@@ -294,8 +294,9 @@ class Kinect( object ):
 		#print( 'num devices', numdevs )
 		#assert numdevs
 
-		print( 'setting leds' )
-		status = freenect.sync_set_led( freenect.LED_YELLOW, 0 )
+		print( 'KINECT: setting leds' )
+		#status = freenect.set_led( freenect.LED_YELLOW, 0 )
+		status = -1
 		print('KINECT STATUS',status)
 		if status < 0: self.ready = False
 		else: self.ready = True

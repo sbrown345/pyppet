@@ -137,7 +137,7 @@ DELETE = '✗'
 GRAVITY = 'ⴿ'
 
 WEBGL = '𝔀𝓮𝓫𝓰𝓵'
-WEBGL_ICON = '〄'
+WEBGL_ICON = '⎅'
 
 POPUP = '𝛒𝛐𝛒𝛖𝛒'
 

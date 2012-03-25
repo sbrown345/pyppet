@@ -1,44 +1,16 @@
-Pyppet2 - Feb22, 2012
+Pyppet2 - March, 2012
 by The Blender Research Lab. (Philippines)
 http://pyppet.blogspot.com
 License: BSD
 
 ======================================================
-Pyppet Requires:
-	Linux
-	Blender2.6.1
-	GTK3
-	ODE
-	OpenCV
-	Python-Wnck
-
-GTK/Blender SDK Requires:
-	Linux
-	Blender2.6.1
-	GTK3
-	Python-Wnck
-
-======================================================
 Basic Usage:
 	./Pyppet.sh
 
-The script "Pyppet.sh" expects you have installed Blender to "~/Blender2.6"
-You can modify Pyppet.sh to match the path to your installed Blender.
+If Blender opens without the GTK interface, the installer failed.
 
-If Blender opens without the GTK interface, something is not installed correctly,
-see Installing Libraries below. 
-
-UBUNTU:
-	Ubuntu is still using GTK2 and its servers do not host GTK3.
-	You must add the Gnome Developers PPA server, and install Gnome3.
-	When done you will have: "/usr/lib/libgtk-3.so"
-
-	http://abhizweblog.blogspot.com/2011/04/gnome-3-in-natty.html
-
-FEDORA:
-	Fedora has GTK3 by default.
-	Just install: OpenCV, ODE, FFTW, Python-Wnck and you are done!
-
+Installing:
+	./install-ubuntu.sh
 
 ======================================================
 Installing a better GTK3 Theme
@@ -50,30 +22,29 @@ Installing a better GTK3 Theme
 ========================================================
 
 Installing Libraries:
-	You must install and/or compile these libraries to "/usr/lib" or "/usr/local/lib":
-		. gtk3
-		. opencv
-		. SDL
-		. libfreenect
-		. ode (open dynamics engine)
-		. wnck
-		. fftw3
-		. openAL
 
-	Ubuntu:
-		you can apt-get all of the required librarys
+	Ubuntu 11.10 32/64bits:
+		apt-get:
+			bluez
+			bluetooth
+			libfreenect-dev
+			libfftw3-dev
+			libCV-dev
+			libhighgui-dev
+			libsdl-dev
+			libopenal-dev
+			libilmbase-dev
+			libopenexr-dev
+			libopenjpeg-dev
+			libspnav-dev
+			python-wnck
+			libgtk-3-dev
+			libfluidsynth-dev
+			libode-dev
+			libmlt-dev
+			libavcodec-dev
+			libavformat-dev
 
-	Wnck:
-		sudo apt-get install python-wnck
-
-	Libfreenect:
-		git clone https://github.com/OpenKinect/libfreenect.git
-		cd libfreenect
-		mkdir build
-		cd build
-		cmake -g "Unix Makefiles" ../.
-		make
-		sudo make install
 
 	Wiiuse:
 		apt-get install bluez bluetooth
@@ -82,7 +53,7 @@ Installing Libraries:
 
 =============================================================
 Known Issues:
-	. Xembed only works on Linux.
+	. Xembed only works on Linux, and better with Gnome3 (Ubuntu Unity has problems?)
 
 	. the wnck-helper.py is a hack that may leave a dead Blender window open
 

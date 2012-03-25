@@ -9,4 +9,4 @@ google-chrome &
 #~/Blender2.6/blender --window-borderless --python ./pyppet.py
 #wine ~/blender-mingw/blender.exe --python ./pyppet.py
 echo $1
-~/Blender2.6/blender $1 -noaudio --python ./pyppet/pyppet.py
+bin/blender $1 -noaudio --python ./pyppet/pyppet.py
