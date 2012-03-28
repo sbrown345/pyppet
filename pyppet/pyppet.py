@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.5f'
+VERSION = '1.9.5g'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -67,6 +67,13 @@ import bpy, mathutils
 from bpy.props import *
 
 gtk.init()
+
+def load_gtk_css( path='malys-revolt2/gtk-3.0/gtk.css' ):
+	cssp = gtk.css_provider_get_default()
+	cssp.css_provider_load_from_path( path )
+load_gtk_css()
+
+
 sdl.Init( sdl.SDL_INIT_JOYSTICK )
 
 ENGINE = Physics.ENGINE		# physics engine singleton
@@ -127,10 +134,13 @@ def rgb2gdk( r, g, b ): return gtk.GdkColor(0,int(r*65535),int(g*65535),int(b*65
 def gdk2rgb( c ): return (c.red/65536.0, c.green/65536.0, c.blue/65536.0)
 
 BLENDER_GREY = 114.0 / 255.0
-BG_COLOR = rgb2gdk( BLENDER_GREY, BLENDER_GREY, BLENDER_GREY )
-#BG_COLOR = rgb2gdk( 0.94, 0.94, 0.96 )
-BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
-DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)
+USE_BLENDER_GREY = False
+
+if USE_BLENDER_GREY:
+	BG_COLOR = rgb2gdk( BLENDER_GREY, BLENDER_GREY, BLENDER_GREY )
+	#BG_COLOR = rgb2gdk( 0.94, 0.94, 0.96 )
+	BG_COLOR_DARK = rgb2gdk( 0.5, 0.5, 0.5 )
+	DRIVER_COLOR = gtk.GdkRGBA(0.2,0.4,0.0,1.0)	# deprecate
 
 def color_set( button, color, ob ):
 	button.get_color( color )
@@ -4516,9 +4526,10 @@ class PyppetUI( PyppetAPI ):
 		self._blender_min_height = 480
 
 		self.window = win = gtk.Window()
-		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_title( 'Pyppet '+VERSION )
 		self.root = root = gtk.VBox()
+		root.set_border_width( 26 )
 		win.add( root )
 
 		split = gtk.HBox()
@@ -4538,16 +4549,31 @@ class PyppetUI( PyppetAPI ):
 		subV = gtk.HPaned()
 		Hsplit.pack_start( subV )
 
-
 		self.main_notebook = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
-		subV.add1( note )
+
+		################ Kivy ####################
+		blend_kivy_split = gtk.VPaned()
+		#subV.add1( note )
+		subV.add1( blend_kivy_split )
+
+
+		self._kivy_container = gtk.EventBox()
+		self._kivy_xsocket = gtk.Socket()
+		self._kivy_container.add( self._kivy_xsocket )
+
+		blend_kivy_split.add1( self._kivy_container )
+		#blend_kivy_split.add2( self.main_notebook )
+
 
 		################# blender containers #################
 		self.blender_container = eb = gtk.EventBox()
-		note.append_page( self.blender_container, gtk.Label('VIEW3D') )
+		#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
+		blend_kivy_split.add2( self.blender_container )
+
 		self.blender_container2 = eb = gtk.EventBox()
 		note.append_page( eb, gtk.Label('UV') )
+
 		################# setup destination DND ###############
 		DND.make_destination( self.blender_container )
 		self.blender_container.connect('drag-drop', self.drop_on_blender_container)
@@ -4559,6 +4585,7 @@ class PyppetUI( PyppetAPI ):
 		################# source DND is not working! - TODO research how to make it work ############
 		xsocket = self.create_blender_xembed_socket()
 		self.blender_container.add( xsocket )
+
 
 		################ The Gimp ##############
 		self._gimp_page = gtk.HBox()
@@ -4589,7 +4616,6 @@ class PyppetUI( PyppetAPI ):
 		self._nautilus_xsocket = gtk.Socket()
 		self._nautilus_container.add( self._nautilus_xsocket )
 		note.append_page( self._nautilus_container, gtk.Label('FILES') )
-
 
 		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
@@ -4636,11 +4662,13 @@ class PyppetUI( PyppetAPI ):
 
 		self.do_xembed( self._nautilus_xsocket, "Home")
 
+		self.do_xembed( self._kivy_xsocket, "IcarusTouch")
+		load_gtk_css()	# not here?
 
 
 	def update_header(self,ob):
 		self._frame.remove( self._modal )
-		self._modal = eb = gtk.EventBox()
+		self._modal = eb = gtk.Frame()
 		self._frame.add( self._modal )
 		root = gtk.HBox()
 		eb.add( root )
@@ -5387,7 +5415,7 @@ class MaterialsUI(object):
 			root.pack_start( eb, expand=False )
 			eb.add( ex )
 
-			subeb = gtk.EventBox()	# not colorized
+			subeb = gtk.Frame()	# not colorized
 			bx = gtk.VBox(); subeb.add( bx )
 			ex.add( subeb )
 			#if mat == ob.active_material: ex.set_expanded(True)
@@ -5633,7 +5661,7 @@ class ToolsUI( object ):
 		row.pack_start( b, expand=False )
 
 		stacker = VStacker()
-		stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		stacker.set_callback( self.reorder_constraint, ob )
 		root.pack_start( stacker.widget )
 		for cns in ob.constraints:
@@ -5682,7 +5710,7 @@ class ToolsUI( object ):
 		row.pack_start( b, expand=False )
 
 		stacker = VStacker()
-		stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		stacker.set_callback( self.reorder_modifier, ob )
 		root.pack_start( stacker.widget )
 		for mod in ob.modifiers:

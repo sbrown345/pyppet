@@ -893,9 +893,9 @@ class Expander(object):
 		self.name = name
 		self._full_header_toggle = full_header_toggle
 
-		self.widget = gtk.EventBox()
-		frame = gtk.Frame()
-		self.widget.add( frame )
+		self.widget = frame = gtk.Frame()
+		#frame = gtk.Frame()
+		#self.widget.add( frame )
 		self.root = gtk.VBox()
 		frame.add( self.root )
 		self.root.set_border_width( border_width )

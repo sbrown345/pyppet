@@ -24,6 +24,9 @@ Installing a better GTK3 Theme
 Installing Libraries:
 
 	Ubuntu 11.10 32/64bits:
+
+		http://www.liberiangeek.net/2011/12/install-google-chrome-using-apt-get-in-ubuntu-11-10-oneiric-ocelot/
+
 		apt-get:
 			bluez
 			bluetooth

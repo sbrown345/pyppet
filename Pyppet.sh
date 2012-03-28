@@ -1,6 +1,9 @@
 #!/bin/bash
 ## note: chrome must not have "system titlebar and borders" shown to xembed
 google-chrome &
+
+python IcarusTouch/src/main.py &
+
 ## assumes that Nautilus opens with window named "Home"
 #nautilus &
 #gimp --no-splash &
