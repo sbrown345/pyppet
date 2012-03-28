@@ -68,10 +68,13 @@ from bpy.props import *
 
 gtk.init()
 
-def load_gtk_css( path='malys-revolt2/gtk-3.0/gtk.css' ):
-	cssp = gtk.css_provider_get_default()
+def load_gtk_css( style, path='malys-revolt2/gtk-3.0/gtk.css' ):
+	style.remove_provider( gtk.css_provider_get_default() )
+	cssp = gtk.css_provider_new()
 	cssp.css_provider_load_from_path( path )
-load_gtk_css()
+	style.add_provider( cssp, 600)	#gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+#load_gtk_css()
 
 
 sdl.Init( sdl.SDL_INIT_JOYSTICK )
@@ -4528,6 +4531,9 @@ class PyppetUI( PyppetAPI ):
 		self.window = win = gtk.Window()
 		if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_title( 'Pyppet '+VERSION )
+		load_gtk_css( win.get_style_context() )
+
+
 		self.root = root = gtk.VBox()
 		root.set_border_width( 26 )
 		win.add( root )
@@ -4663,7 +4669,6 @@ class PyppetUI( PyppetAPI ):
 		self.do_xembed( self._nautilus_xsocket, "Home")
 
 		self.do_xembed( self._kivy_xsocket, "IcarusTouch")
-		load_gtk_css()	# not here?
 
 
 	def update_header(self,ob):
