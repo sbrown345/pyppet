@@ -4159,14 +4159,19 @@ class PyppetUI( PyppetAPI ):
 		b.connect('toggled',self.toggle_left_tools)
 		self.header.pack_start( b, expand=False )
 
-		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
+		self._top_toggle_button = b = gtk.ToggleButton( icons.TOP_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
-		b.connect('toggled',self.toggle_footer)
+		b.connect('toggled',self.toggle_header_views)
 		self.header.pack_start( b, expand=False )
 
 		b = gtk.ToggleButton( icons.RIGHT_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_right_tools)
+		self.header.pack_start( b, expand=False )
+
+		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
+		b.set_active(True)
+		b.connect('toggled',self.toggle_footer)
 		self.header.pack_start( b, expand=False )
 
 		b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
@@ -4181,6 +4186,10 @@ class PyppetUI( PyppetAPI ):
 		else:
 			self.window.set_keep_above(False)
 			self.window.unfullscreen()
+
+	def toggle_header_views(self,b):
+		if b.get_active(): self._header_views.show()
+		else: self._header_views.hide()
 
 	def toggle_overlay(self,b):
 		if b.get_active(): self.window.set_opacity( 0.8 )
@@ -4535,47 +4544,49 @@ class PyppetUI( PyppetAPI ):
 
 
 		self.root = root = gtk.VBox()
-		root.set_border_width( 26 )
+		root.set_border_width( 20 )
 		win.add( root )
+		self.create_header_ui( root )
 
-		split = gtk.HBox()
+		self._main_body_split = split = gtk.HBox()
 		root.pack_start( split )
 
 		############ LEFT TOOLS ###########
 		self.create_left_tools( split )
 
 		###############################
-		Vsplit = gtk.VBox()
-		split.pack_start( Vsplit, expand=True )
 
-		self.create_header_ui( Vsplit )
+		Vsplit = gtk.VPaned()
+		self._main_body_split.pack_start( Vsplit, expand=True )
 
-		Hsplit = gtk.HBox()
-		Vsplit.pack_start( Hsplit )
-		subV = gtk.HPaned()
-		Hsplit.pack_start( subV )
+
+		self._header_views = subV = gtk.HPaned()
+		Vsplit.add1( subV )
 
 		self.main_notebook = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
 
 		################ Kivy ####################
-		blend_kivy_split = gtk.VPaned()
+		#blend_kivy_split = gtk.VPaned()
 		#subV.add1( note )
+		blend_kivy_split = gtk.VBox()
 		subV.add1( blend_kivy_split )
 
 
-		self._kivy_container = gtk.EventBox()
+		self._kivy_container = gtk.Frame()
+		self._kivy_container.set_size_request( 800, 380 )
 		self._kivy_xsocket = gtk.Socket()
 		self._kivy_container.add( self._kivy_xsocket )
-
-		blend_kivy_split.add1( self._kivy_container )
+		self._kivy_container.set_border_width(2)
+		blend_kivy_split.pack_start( self._kivy_container )
 		#blend_kivy_split.add2( self.main_notebook )
 
 
 		################# blender containers #################
 		self.blender_container = eb = gtk.EventBox()
 		#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
-		blend_kivy_split.add2( self.blender_container )
+		#blend_kivy_split.pack_start( self.blender_container )
+		Vsplit.add2( self.blender_container )
 
 		self.blender_container2 = eb = gtk.EventBox()
 		note.append_page( eb, gtk.Label('UV') )
@@ -4630,12 +4641,14 @@ class PyppetUI( PyppetAPI ):
 		############### ToolsUI ################
 		self.toolsUI = ToolsUI( self.lock, context )
 		self.toolsUI.widget.set_border_width(2)
-		Hsplit.pack_start( self.toolsUI.widget, expand=False )
+		self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
+
 
 		############### FOOTER #################
 		self.footer = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
-		Vsplit.pack_start( self.footer, expand=False )
+		#Vsplit.pack_start( self.footer, expand=False )
+		self._main_body_split.pack_start( self.footer, expand=False )
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.RECORD) )

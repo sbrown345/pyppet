@@ -41,6 +41,7 @@ def sans_serif( txt ):
 EXPANDER_UP = '⬏'
 EXPANDER_DOWN = '⬎'
 
+TOP_UI = 'ⵠ'
 BOTTOM_UI = 'ᐁ'
 LEFT_UI = 'ᐘ'
 RIGHT_UI = 'ᐒ'
