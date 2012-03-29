@@ -69,6 +69,7 @@ from bpy.props import *
 gtk.init()
 
 def load_gtk_css( style, path='malys-revolt2/gtk-3.0/gtk.css' ):
+	#def load_gtk_css( style, path='Greyness-GTK/gtk-3.0/gtk.css' ):
 	style.remove_provider( gtk.css_provider_get_default() )
 	cssp = gtk.css_provider_new()
 	cssp.css_provider_load_from_path( path )

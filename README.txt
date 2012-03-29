@@ -7,15 +7,13 @@ License: BSD
 Basic Usage:
 	./Pyppet.sh
 
-If Blender opens without the GTK interface, the installer failed.
-
 Installing:
 	./install-ubuntu.sh
 
 ======================================================
 Installing a better GTK3 Theme
 	Pyppet has been optimized to work with a dark GTK theme.
-	AtoLm by the DeviantMars is included, you can install it by extracting to:
+	Malys Revolt2 by Malys777 is included, you can install it by extracting to:
 	"/usr/share/themes"
 	Then use gnome-tweak-tool to select the theme
 
@@ -65,6 +63,7 @@ Known Issues:
 
 	. the UV/image editor must be open for WebGL streaming textures to work
 
+	. Blender window xembed only works properly in Gnome3 desktop
 
 ======================================================
 For Developers:
