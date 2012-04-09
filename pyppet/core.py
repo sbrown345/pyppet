@@ -3,10 +3,14 @@
 # http://pyppet.blogspot.com
 # License: BSD
 
-import bpy, mathutils
-import os, ctypes, time, threading, urllib
-import urllib.request
-import urllib.parse
+try: import bpy, mathutils
+except: print('WARN: unable to import bpy')
+
+import sys, os, time
+import ctypes, threading, urllib
+if sys.version_info[0] >= 3:
+	import urllib.request
+	import urllib.parse
 
 import gtk3 as gtk
 import icons

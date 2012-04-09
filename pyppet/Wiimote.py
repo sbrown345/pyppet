@@ -4,6 +4,8 @@
 import os,sys, time, ctypes
 import wiiuse as wii
 
+from core import *
+
 class Wiimote(object):
 	def __init__(self, index=0, pointer=None):
 		self.index = index
@@ -77,7 +79,7 @@ class Manager(object):
 
 		
 	def callback( self, state ):
-		mote = self.wiimotes[ mote.contents.uid - 1 ]
+		mote = self.wiimotes[ state.contents.uid - 1 ]
 		mote.update( state )
 
 	def iterate( self ):
