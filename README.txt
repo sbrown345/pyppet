@@ -13,8 +13,8 @@ Installing:
 ======================================================
 Installing a better GTK3 Theme
 	Pyppet has been optimized to work with a dark GTK theme.
-	Malys Revolt2 by Malys777 is included, you can install it by extracting to:
-	"/usr/share/themes"
+	Malys Revolt2 by Malys777 is included, copy "malys-revolt2" to:
+	"/usr/share/themes/"
 	Then use gnome-tweak-tool to select the theme
 
 ========================================================

@@ -5553,7 +5553,8 @@ class ToolsUI( object ):
 		widget = Webcam.Widget( box )
 		self.webcam = widget.webcam
 		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source
-		self.webcam.start_thread( self.lock )
+		#self.webcam.start_thread( self.lock )
+		self.webcam.lock = self.lock
 
 		box = self.new_page( icons.KINECT )		# kinect
 		widget = Kinect.Widget( box )

@@ -214,7 +214,9 @@ class WebCamera(object):
 		_gray32 = self._gray32
 
 		if self.active:
+			print('getting frame...')
 			_frame = self.cam.QueryFrame()	# IplImage from highgui lacks fancy methods
+			print('got it!')
 			cv.cvSet( self.comp_image, cv.CvScalar(255,255,255) )
 			#cv.cvSet( self.comp_image, cv.CvScalar(0,0,0) )
 			prev = self.comp_image
@@ -295,8 +297,9 @@ class WebCamera(object):
 		gtk.image_set_from_pixbuf( self.preview_image_gtk, pix )
 		#self.preview_image_gtk.set_from_pixbuf( pix )	# bug - MISSING?
 
-	def start_thread(self, lock):
-		self.lock = lock
+	def start_thread(self, lock=None):
+		assert lock or self.lock
+		if lock: self.lock = lock
 		if self.ready: threading._start_new_thread( self.loop, () )
 		else: print('Warning: no webcam found')
 
@@ -311,7 +314,7 @@ class Widget(object):
 		self.active = False
 		self.webcam.active = False
 
-	def __init__(self, parent, active=True ):
+	def __init__(self, parent, active=False ):
 		self.webcam = WebCamera( active=active )
 		self.active = active
 		self.root = root = gtk.VBox()
@@ -321,6 +324,9 @@ class Widget(object):
 		self.dnd_container = gtk.EventBox()
 		self.dnd_container.add( self.webcam.preview_image_gtk )
 		self.dnd_image = self.webcam.preview_image_gtk
+		#scale.add_events(gtk.GDK_BUTTON_PRESS_MASK)
+		self.dnd_image.connect('button-press-event', self.on_click)
+
 		root.pack_start( self.dnd_container, expand=False )
 		note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
@@ -328,13 +334,20 @@ class Widget(object):
 		for layer in self.webcam.layers:
 			layer.widget( note )
 
+	def on_click(self,image):
+		self.active = not self.active
+		if self.active and not self.webcam.active:
+			self.webcam.active = self.active
+			self.webcam.start_thread()
+		else:
+			self.webcam.active = self.active
 
 if __name__ == '__main__':
 	gtk.init()
 
 	win = gtk.Window()
 	win.set_title( 'OpenCV+GTK' )
-	widget = Widget( win )
+	widget = Widget( win, active=True )
 	win.connect('destroy', widget.exit )
 	win.show_all()
 

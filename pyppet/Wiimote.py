@@ -1,17 +1,24 @@
 #!/usr/bin/python
-# updated Dec 2011
+# updated April 2012
+
 import os,sys, time, ctypes
 import wiiuse as wii
 
 class Wiimote(object):
-	def __init__(self, index):
+	def __init__(self, index=0, pointer=None):
 		self.index = index
+		self.pointer = pointer
+		assert pointer
+		wii.motion_sensing(pointer, 1)
+		wii.set_leds( pointer, wii.WIIMOTE_LED_2)
+
 		self.buttons = {}
 		for char in 'ABUDLR-+H': self.buttons[char] = 0
 		self.x = .0
 		self.y = .0
 		self.z = .0
 		self.force = [.0]*3
+
 	def update( self, wm ):
 		bs = self.buttons
 		for tag in 'UDLR+H-12AB': bs[ tag ] = 0
@@ -38,44 +45,56 @@ class Manager(object):
 	def __init__( self, wiimotes=2 ):
 		self._active = False
 		self._nmotes = wiimotes
-		self._pointer = wii.init( self._nmotes )
-		self.wiimotes = [ Wiimote(i) for i in range(self._nmotes) ]
-
+		self._pointer = wii.init( self._nmotes )	# returns array-like pointer
+		self.wiimotes = []
 
 	def exit( self ):
 		self._active = False
 		time.sleep(1)
 		wii.cleanup( self._pointer, self._nmotes)
 
-
 	def connect( self ):
+		print('press 1+2 buttons on wiimote(s) now...')
 		found = wii.find( self._pointer, self._nmotes, 5 )
 		print( 'found wiimotes', found )
 		if not found: return 0
 
-		connected = wii.wiiuse_connect( self._pointer, self._nmotes )	# NOT wii.connect
+		## NOT wii.connect - this is the raw bluetooth connect function
+		connected = wii.wiiuse_connect( self._pointer, self._nmotes )
 		assert connected
 		print( 'connected wiimotes', connected )
 
-		for i in range( self._nmotes ):
-			wm = self._pointer[i]
-			wii.motion_sensing(wm, 1)
-			wii.set_leds( wm, wii.WIIMOTE_LED_2)
+		while len(self.wiimotes) < connected:
+			index = len(self.wiimotes)
+			mote = Wiimote(
+				index = index,
+				pointer = self._pointer[ index ]
+			)
+			self.wiimotes.append( mote )
 
 		self._active = True
 		return found
 
 		
-	def callback( self, mote ):
-		self.wiimotes[ mote.contents.uid - 1 ].update( mote )
+	def callback( self, state ):
+		mote = self.wiimotes[ mote.contents.uid - 1 ]
+		mote.update( state )
 
 	def iterate( self ):
-		status = wii.update( self._pointer, self._nmotes, self.callback )
-
+		status = wii.update(
+			self._pointer,
+			self._nmotes,
+			self.callback
+		)
 
 if __name__ == '__main__':
 	w = Manager()
-	w.connect()
-	while True:
-		w.iterate()
+	if w.connect():
+		while True:
+			w.iterate()
+			for mote in w.wiimotes:
+				print( mote.force )
+	else:
+		print('failed to connect')
+
 
