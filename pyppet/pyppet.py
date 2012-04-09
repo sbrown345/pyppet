@@ -5920,58 +5920,6 @@ class GamepadsWidget(object):
 			note.append_page( pad.widget, gtk.Label('%s'%i) )
 
 
-############# Generic Game Device ###############
-
-class GameDevice(object):
-
-	def make_widget(self, device_name):
-		self.widget = root = gtk.VBox()
-		root.set_border_width(2)
-
-		ex = gtk.Expander('Axes'); ex.set_expanded(True)
-		root.pack_start( ex, expand=False )
-		box = gtk.VBox(); ex.add( box )
-		self.axes_gtk = []
-		for i in range(self.naxes):
-			row = gtk.HBox(); row.set_border_width(4)
-			box.pack_start( row, expand=False )
-
-			a = gtk.EventBox()
-			title = '%s%s.axis%s' %(device_name,self.index,i)
-			#DND.make_source(a, self.callback, 'axes', i, title)
-			output = DeviceOutput( title, source=self.axes, index=i )
-			DND.make_source( a, output )
-
-			a.add( gtk.Label(icons.DND) )
-			row.pack_start( a, expand=False )
-
-			adjust = gtk.Adjustment( value=.0, lower=-1, upper=1 )
-			self.axes_gtk.append( adjust )
-			scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
-			scale.set_digits(2)
-			row.pack_start( scale )
-
-		############## buttons ##############
-		ex = gtk.Expander('Buttons'); ex.set_expanded(True)
-		root.pack_start( ex, expand=False )
-		box = gtk.VBox(); ex.add( box )
-		self.buttons_gtk = []
-
-		row = gtk.HBox(); row.set_border_width(4)
-		box.pack_start( row, expand=False )
-		for i in range(self.nbuttons):
-			if not i%4:
-				row = gtk.HBox(); row.set_border_width(4)
-				box.pack_start( row, expand=False )
-
-			a = gtk.EventBox()
-			title = 'gamepad%s.button%s' %(self.index,i)
-			b = gtk.ToggleButton('%s'%i); self.buttons_gtk.append( b )
-			#DND.make_source(b, self.callback, 'buttons', i, title)
-			output = DeviceOutput( title, source=self.buttons, index=i )
-			DND.make_source( b, output )
-			a.add( b )
-			row.pack_start( a, expand=True )
 
 
 

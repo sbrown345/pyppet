@@ -6,41 +6,41 @@ import wiiuse as wii
 
 from core import *
 
-class Wiimote(object):
+class Wiimote( GameDevice ):
+	WIIMOTE_BUTTONS = tuple('UDLR+-H12AB')
+	_WIIUSE_BUTTONS_ORDER = (
+		wii.WIIMOTE_BUTTON_UP,
+		wii.WIIMOTE_BUTTON_DOWN,
+		wii.WIIMOTE_BUTTON_LEFT,
+		wii.WIIMOTE_BUTTON_RIGHT,
+		wii.WIIMOTE_BUTTON_PLUS,
+		wii.WIIMOTE_BUTTON_MINUS,
+		wii.WIIMOTE_BUTTON_HOME,
+		wii.WIIMOTE_BUTTON_ONE,
+		wii.WIIMOTE_BUTTON_TWO,
+		wii.WIIMOTE_BUTTON_A,
+		wii.WIIMOTE_BUTTON_B,
+	)
 	def __init__(self, index=0, pointer=None):
+		assert pointer
 		self.index = index
 		self.pointer = pointer
-		assert pointer
 		wii.motion_sensing(pointer, 1)
 		wii.set_leds( pointer, wii.WIIMOTE_LED_2)
 
-		self.buttons = {}
-		for char in 'ABUDLR-+H': self.buttons[char] = 0
-		self.x = .0
-		self.y = .0
-		self.z = .0
-		self.force = [.0]*3
+		self.configure_device(
+			axes=3,
+			buttons=len(self.WIIMOTE_BUTTONS),
+		)
 
 	def update( self, wm ):
-		bs = self.buttons
-		for tag in 'UDLR+H-12AB': bs[ tag ] = 0
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_A)): bs['A'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_B)): bs['B'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_UP)): bs['U'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_DOWN)): bs['D'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_LEFT)): bs['L'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_RIGHT)): bs['R'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_MINUS)): bs['-'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_PLUS)): bs['+'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_ONE)): bs['1'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_TWO)): bs['2'] = 1
-		if (wii.IS_PRESSED(wm, wii.WIIMOTE_BUTTON_HOME)): bs['H'] = 1
-		self.x = wm.contents.accel.x
-		self.y = wm.contents.accel.y
-		self.z = wm.contents.accel.z
-		self.force[0] = self.x
-		self.force[1] = self.y
-		self.force[2] = self.z
+		for i,button in enumerate( self._WIIUSE_BUTTONS_ORDER ):
+			if wii.IS_PRESSED(wm, button): self.buttons[ i ] = 1
+			else: self.buttons[ i ] = 0
+
+		self.axes[0] = (wm.contents.accel.x / 255.0) - 0.5
+		self.axes[1] = (wm.contents.accel.y / 255.0) - 0.5
+		self.axes[2] = (wm.contents.accel.z / 255.0) - 0.5
 
 
 class Manager(object):
@@ -95,7 +95,7 @@ if __name__ == '__main__':
 		while True:
 			w.iterate()
 			for mote in w.wiimotes:
-				print( mote.force )
+				print( mote.axes )
 	else:
 		print('failed to connect')
 
