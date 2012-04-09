@@ -42,6 +42,12 @@ class Wiimote( GameDevice ):
 		self.axes[1] = (wm.contents.accel.y / 255.0) - 0.5
 		self.axes[2] = (wm.contents.accel.z / 255.0) - 0.5
 
+		if self.widget:
+			for i,value in enumerate( self.axes ):
+				self.axes_gtk[ i ].set_value( value )
+			for i,value in enumerate( self.buttons ):
+				self.buttons_gtk[ i ].set_active( value )
+
 
 class Manager(object):
 	def __init__( self, wiimotes=2 ):
@@ -90,12 +96,28 @@ class Manager(object):
 		)
 
 if __name__ == '__main__':
-	w = Manager()
-	if w.connect():
+	gtk.init()
+	man = Manager()
+	if man.connect():
+		win = gtk.Window()
+		win.set_size_request( 320, 240 )
+		note = gtk.Notebook()
+		note.set_tab_pos( gtk.POS_BOTTOM )
+		win.add( note )
+		for i,mote in enumerate(man.wiimotes):
+			note.append_page(
+				mote.get_widget('wiimote'),
+				gtk.Label('%s'%i)
+			)
+		win.show_all()
+
 		while True:
-			w.iterate()
-			for mote in w.wiimotes:
-				print( mote.axes )
+			man.iterate()
+			#for mote in man.wiimotes:
+			#	print( mote.axes )
+			while gtk.gtk_events_pending():
+				gtk.gtk_main_iteration()
+
 	else:
 		print('failed to connect')
 

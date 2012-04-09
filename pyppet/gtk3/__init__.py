@@ -377,7 +377,7 @@ class _rpythonic_metafunc_(object):
 			elif kt is PyCPointerType and not isinstance( arg, (ctypes._Pointer,CArgObject) ):
 				if t in (int,float,bool): ptr = k( k._type_(arg) )
 				elif t is str:
-					arg = arg.encode('utf-8')
+					if not _ISPYTHON2: arg = arg.encode('utf-8')
 					#ptr = k( k._type_() )								# not k() otherwise null pointer error
 					#for j, char in enumerate(arg): ptr[ j ] = char		# not correct - missing null byte?
 					ptr = ctypes.create_string_buffer(arg)				# correct and pypy compatible

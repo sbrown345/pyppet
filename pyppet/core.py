@@ -1375,8 +1375,9 @@ class GameDevice(object):
 		self.num_buttons = buttons
 		self.axes = [0.0] * axes
 		self.buttons = [0] * buttons
+		self.widget = None
 
-	def make_widget(self, device_name):
+	def get_widget(self, device_name='device name'):
 		self.widget = root = gtk.VBox()
 		root.set_border_width(2)
 
@@ -1424,4 +1425,7 @@ class GameDevice(object):
 			DND.make_source( b, output )
 			a.add( b )
 			row.pack_start( a, expand=True )
+
+		return self.widget
+
 
