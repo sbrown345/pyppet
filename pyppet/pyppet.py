@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.5g'
+VERSION = '1.9.5h'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -5953,74 +5953,35 @@ class Gamepad( GameDevice ):
 		self.logic = {}
 		self.drivers = []
 
-		self.make_widget('gamepad')
+		self.widget = self.get_widget('gamepad')
 
 
 
 
 #################### wiimote #################
-class WiimoteWrapper( GameDevice ):
-	def __init__(self,dev):
-		self.dev = dev
-		self.index = dev.index
-		self.naxes = 3
-		self.nbuttons = len(self.dev.buttons)
-		self.axes = [ 0.0 ] * self.naxes
-		self.buttons = [ False ] * self.nbuttons
-		### no hats on wii ##
-		self.nhats = 0
-		self.hats = [ 0 ] * self.nhats
-
-		self.logic = {}
-		self.drivers = []
-
-		self.make_widget('wiimote')
-
-	def update(self):
-		for i in range( self.naxes ):
-			value = self.dev.force[i] / 255.0
-			value -= 0.5
-			self.axes[i] = value
-			self.axes_gtk[i].set_value(value)
-		#for i in range( self.nbuttons ):
-		#	value = self.dev.buttons
-		#	self.buttons[i] = value
-		#	self.buttons_gtk[i].set_active( value )
-
-		#self.update_drivers()
 
 
 class WiimotesWidget(object):
-	def update(self):
-		if self.active:
-			self.manager.iterate()
-			for w in self.wiimotes: w.update()
-
 	def __init__(self, parent, context=None):
-		self.active = False
-		self.manager = Wiimote.Manager()
-		self.wiimotes = [ WiimoteWrapper(dev) for dev in self.manager.wiimotes ]
-
+		self.manager = Wiimote.Manager( wiimotes=4 )
 		self.root = root = gtk.VBox(); root.set_border_width( 2 )
 		parent.add( root )
-		self.connect_button = b = gtk.Button('connect wiimotes')
+		self.connect_button = b = gtk.Button('connect wiimote(s)')
 		b.connect('clicked', self.connect_wiimotes)
 		root.pack_start( b, expand=False )
 
 	def connect_wiimotes(self,b):
 		found = self.manager.connect()
 		if found:
-			self.connect_button.hide()
-			self.active = True
-			note = gtk.Notebook(); self.root.pack_start( note, expand=True )
+			self.connect_button.hide()	# TODO connect and reconnect
+			note = gtk.Notebook()
+			self.root.pack_start( note, expand=True )
 			note.set_tab_pos( gtk.POS_BOTTOM )
-			for i in range( found ):
-				#pad = Gamepad(i); self.gamepads.append( pad )
-				a = self.wiimotes[i]
-				note.append_page( a.widget, gtk.Label('%s'%i) )
-				#w=gtk.Label('yes!')
-				#note.append_page( w, gtk.Label('%s'%i) )
-
+			for i,mote in enumerate(self.manager.wiimotes):
+				note.append_page(
+					mote.get_widget('wiimote'),
+					gtk.Label('%s'%i)
+				)
 			note.show_all()
 
 
