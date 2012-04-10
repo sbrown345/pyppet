@@ -16,6 +16,10 @@ import gtk3 as gtk
 import icons
 import Blender
 
+def start_new_thread( func, *args ):
+	return threading._start_new_thread( func, args )
+
+
 MODIFIER_TYPES = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRROR', 'REMESH', 'SOLIDIFY', 'UV_PROJECT', 'VERTEX_WEIGHT_EDIT', 'VERTEX_WEIGHT_MIX', 'VERTEX_WEIGHT_PROXIMITY', 'BEVEL', 'BOOLEAN', 'BUILD', 'DECIMATE', 'EDGE_SPLIT', 'MASK', 'SCREW', 'ARMATURE', 'CAST', 'CURVE', 'DISPLACE', 'MESH_DEFORM', 'SHRINKWRAP', 'SIMPLE_DEFORM', 'SMOOTH', 'WARP', 'WAVE', 'CLOTH', 'COLLISION', 'DYNAMIC_PAINT', 'EXPLODE', 'FLUID_SIMULATION', 'OCEAN', 'PARTICLE_INSTANCE', 'PARTICLE_SYSTEM', 'SMOKE', 'SOFT_BODY', 'SURFACE')
 
 CONSTRAINT_TYPES = ('COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE', 'COPY_TRANSFORMS', 'DAMPED_TRACK', 'LOCKED_TRACK', 'TRACK_TO', 'LIMIT_DISTANCE', 'LIMIT_LOCATION', 'LIMIT_ROTATION', 'LIMIT_SCALE', 'MAINTAIN_VOLUME', 'TRANSFORM', 'CLAMP_TO', 'IK', 'SPLINE_IK', 'STRETCH_TO', 'ACTION', 'CHILD_OF', 'FLOOR', 'FOLLOW_PATH', 'PIVOT', 'RIGID_BODY_JOINT', 'SCRIPT', 'SHRINKWRAP', 'CAMERA_SOLVER', 'OBJECT_SOLVER', 'FOLLOW_TRACK')
@@ -1377,9 +1381,15 @@ class GameDevice(object):
 		self.buttons = [0] * buttons
 		self.widget = None
 
+	def _get_header_widget(self): pass
+	def _get_footer_widget(self): pass
+
 	def get_widget(self, device_name='device name'):
 		self.widget = root = gtk.VBox()
 		root.set_border_width(2)
+
+		header = self._get_header_widget()
+		if header: root.pack_start( header, expand=False )
 
 		ex = gtk.Expander('Axes'); ex.set_expanded(True)
 		root.pack_start( ex, expand=False )
@@ -1425,6 +1435,10 @@ class GameDevice(object):
 			DND.make_source( b, output )
 			a.add( b )
 			row.pack_start( a, expand=True )
+
+		footer = self._get_footer_widget()
+		if footer: root.pack_start( footer, expand=False )
+
 
 		return self.widget
 

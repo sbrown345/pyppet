@@ -25,6 +25,7 @@ class Wiimote( GameDevice ):
 		assert pointer
 		self.index = index
 		self.pointer = pointer
+		self.gain = 1.0
 		wii.motion_sensing(pointer, 1)
 		wii.set_leds( pointer, wii.WIIMOTE_LED_2)
 
@@ -33,14 +34,18 @@ class Wiimote( GameDevice ):
 			buttons=len(self.WIIMOTE_BUTTONS),
 		)
 
+	def _get_header_widget(self):
+		slider = Slider( self, name='gain', min=-2.0, max=2.0 )
+		return slider.widget
+
 	def update( self, wm ):
 		for i,button in enumerate( self._WIIUSE_BUTTONS_ORDER ):
 			if wii.IS_PRESSED(wm, button): self.buttons[ i ] = 1
 			else: self.buttons[ i ] = 0
 
-		self.axes[0] = (wm.contents.accel.x / 255.0) - 0.5
-		self.axes[1] = (wm.contents.accel.y / 255.0) - 0.5
-		self.axes[2] = (wm.contents.accel.z / 255.0) - 0.5
+		self.axes[0] = ((wm.contents.accel.x / 255.0) - 0.5) * self.gain
+		self.axes[1] = ((wm.contents.accel.y / 255.0) - 0.5) * self.gain
+		self.axes[2] = ((wm.contents.accel.z / 255.0) - 0.5) * self.gain
 
 		if self.widget:
 			for i,value in enumerate( self.axes ):
@@ -95,6 +100,17 @@ class Manager(object):
 			self.callback
 		)
 
+	def start( self ): start_new_thread( self.loop )
+
+	def loop(self):
+		while self._active:
+			status = wii.update(
+				self._pointer,
+				self._nmotes,
+				self.callback
+			)
+
+
 if __name__ == '__main__':
 	gtk.init()
 	man = Manager()
@@ -110,9 +126,9 @@ if __name__ == '__main__':
 				gtk.Label('%s'%i)
 			)
 		win.show_all()
-
+		man.start()	# wiiuse needs to be run in thread to stay in sync
 		while True:
-			man.iterate()
+			#man.iterate()	# too slow!
 			#for mote in man.wiimotes:
 			#	print( mote.axes )
 			while gtk.gtk_events_pending():
