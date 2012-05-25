@@ -264,8 +264,8 @@ class Shape(object):
 
 class Kinect( object ):
 	BUFFER = []
-	DEPTH16RAW = cv.CreateImage((640,480), cv.IPL_DEPTH_16S, 1)
 	PREVIEW_IMAGE = None
+	DEPTH16RAW = cv.CreateImage((640,480), cv.IPL_DEPTH_16S, 1)
 
 	## gui options ##
 	show_depth = False
@@ -287,17 +287,25 @@ class Kinect( object ):
 		self.buffer = self.buffer_type()
 		self.pointer = ctypes.pointer( self.buffer )
 
-		#context = freenect.context()
-		#status = freenect.init(context, None)
-		#print('init status', status )
-		#numdevs = freenect.num_devices( context )
-		#print( 'num devices', numdevs )
-		#assert numdevs
-
-		print( 'KINECT: setting leds' )
-		#status = freenect.set_led( freenect.LED_YELLOW, 0 )
 		status = -1
-		print('KINECT STATUS',status)
+		if False:	# TODO get kinect working with Fedora
+			#context = freenect.context()
+			context = freenect._freenect_context()
+			usbctx = freenect.libusb_context()
+			uptr = ctypes.pointer( usbctx.POINTER )
+			freenect.libusb_init( uptr )
+			ptr = ctypes.pointer( context.POINTER )
+			status = freenect.init(ptr, usbctx)
+			print('init status', status )
+			numdevs = freenect.num_devices( context )
+			print( 'num devices', numdevs )
+			assert numdevs
+			assert 0
+			#print( 'KINECT: setting leds' )
+			#status = freenect.set_led( freenect.LED_YELLOW, 0 )
+			#status = -1
+			#status = freenect.set_led( 0, freenect.LED_YELLOW )
+			print('KINECT STATUS',status)
 		if status < 0: self.ready = False
 		else: self.ready = True
 
@@ -312,6 +320,8 @@ class Kinect( object ):
 			status = freenect.sync_get_depth( ctypes.pointer(self.pointer), 0, 0, 
 				freenect.FREENECT_DEPTH_11BIT
 			)
+			if status: break
+
 			print('cap ok')
 			lock.acquire()
 			print('data set...')
@@ -456,7 +466,6 @@ class ProcessContours( object ):
 	DEPTH640 = cv.CreateImage((640,480), cv.IPL_DEPTH_8U, 3)
 	#DEPTH320 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 	DEPTH240 = cv.CreateImage((240,180), cv.IPL_DEPTH_8U, 3)
-
 	DEPTH8 = cv.CreateImage((640,480), 8, 1)
 
 	def __init__(self):

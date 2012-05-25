@@ -80,7 +80,8 @@ class Manager(object):
 		self._active = False
 		self._nmotes = wiimotes
 		self._threading = threading
-		self._pointer = wii.init( self._nmotes )	# returns array-like pointer
+		if hasattr(wii, 'init'):
+			self._pointer = wii.init( self._nmotes )	# returns array-like pointer
 		self.wiimotes = []
 
 	def exit( self ):

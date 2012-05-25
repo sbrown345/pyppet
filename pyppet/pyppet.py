@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.5h'
+VERSION = '1.9.5i'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -5807,7 +5807,6 @@ class ToolsUI( object ):
 	def iterate(self, context):
 		self.physics_widget.update_ui( context )
 		self.gamepads_widget.update()
-		self.wiimotes_widget.update()
 		#self.engine.sync( context )
 
 		if '_webcam_' in bpy.data.images:

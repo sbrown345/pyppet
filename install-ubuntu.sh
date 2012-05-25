@@ -1,5 +1,5 @@
 #!/bin/bash
-
+sudo apt-get install freenect
 sudo apt-get install libfreenect-dev libfftw3-dev libCV-dev libhighgui-dev
 sudo apt-get install libsdl-dev libopenal-dev libilmbase-dev libopenexr-dev
 sudo apt-get install libopenjpeg-dev libspnav-dev python-wnck

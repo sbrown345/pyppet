@@ -706,7 +706,7 @@ def _rpythonic_strip_prefixes_( prefixes ):
 
 
 
-_clib_name_ = 'libcv'
+_clib_name_ = 'libopencv_core'
 print('loading lib', _clib_name_)
 print( os.path.abspath( os.path.curdir ) )
 CTYPES_DLL = _load_ctypes_lib( _clib_name_ )

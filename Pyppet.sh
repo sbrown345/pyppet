@@ -1,8 +1,9 @@
 #!/bin/bash
 ## note: chrome must not have "system titlebar and borders" shown to xembed
-google-chrome &
+#google-chrome &
+#chromium-browser &
 
-python IcarusTouch/src/main.py &
+#python IcarusTouch/src/main.py &
 
 ## assumes that Nautilus opens with window named "Home"
 #nautilus &
@@ -12,4 +13,10 @@ python IcarusTouch/src/main.py &
 #~/Blender2.6/blender --window-borderless --python ./pyppet.py
 #wine ~/blender-mingw/blender.exe --python ./pyppet.py
 echo $1
-bin/blender $1 -noaudio --python ./pyppet/pyppet.py
+
+bits=`getconf LONG_BIT`
+if [ $bits -eq 32 ]; then
+	bin/blender32bits/blender $1 -noaudio --python ./pyppet/pyppet.py
+else
+	bin/blender64bits/blender $1 -noaudio --python ./pyppet/pyppet.py
+fi

@@ -20,9 +20,17 @@ Installing a better GTK3 Theme
 ========================================================
 
 Installing Libraries:
+	Fedora 16:
+		[Google Chrome]
+		http://www.if-not-true-then-false.com/2010/install-google-chrome-with-yum-on-fedora-red-hat-rhel/
+
+		yum install:
+			chromium
+			google-chrome-stable
+
 
 	Ubuntu 11.10 32/64bits:
-
+		[Google Chrome]
 		http://www.liberiangeek.net/2011/12/install-google-chrome-using-apt-get-in-ubuntu-11-10-oneiric-ocelot/
 
 		apt-get:
@@ -54,7 +62,7 @@ Installing Libraries:
 
 =============================================================
 Known Issues:
-	. Xembed only works on Linux, and better with Gnome3 (Ubuntu Unity has problems?)
+	. Xembed only works on Linux
 
 	. the wnck-helper.py is a hack that may leave a dead Blender window open
 
@@ -74,4 +82,26 @@ The generic GTK/Blender API is in "pyppet/core.py"
 This will be documented later...
 
 ======================================================
+
+Fedora16 Notes:
+	Chromium is easier to install with Fedora
+	go to "chrome://flags/" and make sure "Override software rendering list" is enabled
+	http://morecode.wordpress.com/2012/01/15/enabling-webgl-with-fedora-16/
+
+	(Google Chrome not tested yet on Fedora)
+	Add following to /etc/yum.repos.d/google.repo file:
+
+[google-chrome]
+name=google-chrome - 32-bit
+baseurl=http://dl.google.com/linux/chrome/rpm/stable/i386
+enabled=1
+gpgcheck=1
+gpgkey=https://dl-ssl.google.com/linux/linux_signing_key.pub
+[google-chrome]
+name=google-chrome - 64-bit
+baseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://dl-ssl.google.com/linux/linux_signing_key.pub
+
 
