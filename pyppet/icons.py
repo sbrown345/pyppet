@@ -5,12 +5,12 @@ BIDIRECTIONAL = '⥂'
 POSITIVE_OFFSET = '⊕'
 NEGATIVE_OFFSET = '⊝'
 
-SHAPE_KEYS = '𝓼𝓱𝓪𝓹𝓮 𝓴𝓮𝔂𝓼'
+SHAPE_KEYS = 'shape keys'
 SHAPE_KEYS_ICON = '⍢'
-ACTIVE_BONE = '𝓪𝓬𝓽𝓲𝓿𝓮 𝓫𝓸𝓷𝓮'
+ACTIVE_BONE = 'active bone'
 ACTIVE_BONE_ICON = '⊶'
 
-DYNAMIC_TARGETS = '𝓭𝔂𝓷𝓪𝓶𝓲𝓬 𝓽𝓪𝓻𝓰𝓮𝓽𝓼'
+DYNAMIC_TARGETS = 'dynamic targets'
 DYNAMIC_TARGETS_ICON = '⊹'
 
 
@@ -18,7 +18,7 @@ WEIGHT = '⥤'
 RAW_POWER = '⥴'
 NORMALIZED_POWER = '⥵'
 
-PROGRESSIVE_TEXTURES = 'ᨖ'
+PROGRESSIVE_TEXTURES = '⏳'
 
 DROP_HERE = '𝘥𝘳𝘰𝘱-𝘩𝘦𝘳𝘦'
 
@@ -48,13 +48,13 @@ BOTTOM_UI = 'ᐁ'
 LEFT_UI = 'ᐘ'
 RIGHT_UI = 'ᐒ'
 
-OUTLINER = '𝓸𝓾𝓽𝓵𝓲𝓷𝓮𝓻'
+OUTLINER = 'outliner'
 OUTLINER_ICON = '⑆'
 
 TOOLS = '𝙩𝙤𝙤𝙡𝙨'
 
 FX = '𝗙𝗫'
-FX_LAYERS = '𐎒'
+FX_LAYERS = '☄'
 
 REFRESH = '⟳'
 
@@ -68,13 +68,13 @@ SOUTH_WEST_ARROW = '⬋'
 
 SOUTH_ARROW = '⇩'
 
-CAMERA = '⏣'
+CAMERA = '🎥'
 
 MODE = '⬕'
 
 POSE = '☊'
 
-SPEAKER = 'ↂ'
+SPEAKER = '🔊'
 
 LIGHT = '☼'
 
@@ -82,7 +82,7 @@ MATERIAL = '▧'
 
 TEXTURE = '▩'
 
-MICROPHONE = '𐎘'
+MICROPHONE = '🎤'
 
 SINE_WAVE = '∿'
 
@@ -100,34 +100,34 @@ DND = ' ⎗ '
 MULTIPLY = '⨉'
 
 DRIVERS_ICON = DRIVER = '⎆'
-DRIVERS = '𝓭𝓻𝓲𝓿𝓮𝓻𝓼'
+DRIVERS = 'drivers'
 
 FORCES_ICON = '⤽'
-FORCES = '𝓯𝓸𝓻𝓬𝓮𝓼'
+FORCES = 'forces'
 
-WEBCAM = '⍜'
+WEBCAM = '📹'
 KINECT = '㉿'
-GAMEPAD = '⚯'
+GAMEPAD = '🎮'
 WIIMOTE = '⍠'
 
 DEVICES_ICON = '⥅'
-DEVICES = '𝓭𝓮𝓿𝓲𝓬𝓮𝓼'
+DEVICES = 'devices'
 
 PHYSICS_ICON = '⌘'
-PHYSICS = '𝓹𝓱𝔂𝓼𝓲𝓬𝓼'
+PHYSICS = 'physics'
 
 MODIFIERS_ICON = '⑇'
-MODIFIERS = '𝓶𝓸𝓭𝓲𝓯𝓲𝓮𝓻𝓼'
+MODIFIERS = 'modifiers'
 
-CONSTRAINTS_ICON = '⑈'
-CONSTRAINTS = '𝓬𝓸𝓷𝓼𝓽𝓻𝓪𝓲𝓷𝓽𝓼'
+CONSTRAINTS_ICON = '⧪'
+CONSTRAINTS = 'constraints'
 
-MATERIALS_ICON = '▧'
-MATERIALS = '𝓶𝓪𝓽𝓮𝓻𝓲𝓪𝓵𝓼'
+MATERIALS_ICON = '💎'
+MATERIALS = 'materials'
 
-SETTINGS = '𝓼𝓮𝓽𝓽𝓲𝓷𝓰𝓼'
+SETTINGS = 'settings'
 
-CONTACT = '𐎌'
+CONTACT = '⧂'
 
 VISIBLE_RENDER = '⎊'
 VISIBLE_EDITMODE = '⌗'
@@ -139,7 +139,7 @@ DELETE = '✗'
 
 GRAVITY = 'ⴿ'
 
-WEBGL = '𝔀𝓮𝓫𝓰𝓵'
+WEBGL = 'webGL'
 WEBGL_ICON = '⎅'
 
 POPUP = '𝛒𝛐𝛒𝛖𝛒'
@@ -152,20 +152,20 @@ FULLSCREEN = '⬚'
 
 PLAY_PHYSICS = '⧐'
 
-PYPPET = 'Ⲣⲩⲣⲣⲉⲧ'
+PYPPET = 'Pyppet'
 
 PLAY = '⊳'
 RECORD = '⊚'
 
 PHYSICS_RIG_ICON = RAGDOLL = '☠'
-PHYSICS_RIG = '𝓹𝓱𝔂𝓼𝓲𝓬𝓼 𝓻𝓲𝓰'
+PHYSICS_RIG = 'physics rig'
 
-BIPED = 'Ꮬ'
+BIPED = '🏃'
 
 ROPE = '⟅'
 
 JOINTS_ICON = JOINT = 'ⵞ'
-JOINTS = '𝓳𝓸𝓲𝓷𝓽𝓼'
+JOINTS = 'joints'
 
 TRANSFORM = '⇨'
 

@@ -1,4 +1,4 @@
-Pyppet2 - March, 2012
+Pyppet2 - May, 2012
 by The Blender Research Lab. (Philippines)
 http://pyppet.blogspot.com
 License: BSD
@@ -8,14 +8,9 @@ Basic Usage:
 	./Pyppet.sh
 
 Installing:
-	./install-ubuntu.sh
+	./install-fedora.sh
 
-======================================================
-Installing a better GTK3 Theme
-	Pyppet has been optimized to work with a dark GTK theme.
-	Malys Revolt2 by Malys777 is included, copy "malys-revolt2" to:
-	"/usr/share/themes/"
-	Then use gnome-tweak-tool to select the theme
+[ Pyppet development has moved from Ubuntu to Fedora ]
 
 ========================================================
 
@@ -23,10 +18,6 @@ Installing Libraries:
 	Fedora 16:
 		[Google Chrome]
 		http://www.if-not-true-then-false.com/2010/install-google-chrome-with-yum-on-fedora-red-hat-rhel/
-
-		yum install:
-			chromium
-			google-chrome-stable
 
 
 	Ubuntu 11.10 32/64bits:

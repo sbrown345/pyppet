@@ -6,6 +6,7 @@ sudo yum install opencv-devel
 sudo yum install ode-devel
 sudo yum install openal-devel
 sudo yum install fluidsynth-devel
+sudo yum install gdouros-symbola-fonts
 
 sudo yum install chromium
 sudo yum install google-chrome-stable

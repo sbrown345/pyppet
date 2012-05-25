@@ -4541,11 +4541,12 @@ class PyppetUI( PyppetAPI ):
 		self.window = win = gtk.Window()
 		if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_title( 'Pyppet '+VERSION )
-		load_gtk_css( win.get_style_context() )
+		if '--skin' in sys.argv:
+			load_gtk_css( win.get_style_context() )
 
 
 		self.root = root = gtk.VBox()
-		root.set_border_width( 20 )
+		root.set_border_width( 10 )
 		win.add( root )
 		self.create_header_ui( root )
 
@@ -4557,37 +4558,27 @@ class PyppetUI( PyppetAPI ):
 
 		###############################
 
-		Vsplit = gtk.VPaned()
-		self._main_body_split.pack_start( Vsplit, expand=True )
+		#Vsplit = gtk.VPaned()
+		#Vsplit = gtk.VBox()
+		#self._main_body_split.pack_start( Vsplit, expand=True )
 
 
-		self._header_views = subV = gtk.HPaned()
-		Vsplit.add1( subV )
+		self._header_views = subV = gtk.VPaned()
+		#Vsplit.add1( subV )
+		self._main_body_split.pack_start( subV, expand=True )
+
 
 		self.main_notebook = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
 
-		################ Kivy ####################
-		#blend_kivy_split = gtk.VPaned()
-		#subV.add1( note )
-		blend_kivy_split = gtk.VBox()
-		subV.add1( blend_kivy_split )
-
-
-		self._kivy_container = gtk.Frame()
-		self._kivy_container.set_size_request( 800, 380 )
-		self._kivy_xsocket = gtk.Socket()
-		self._kivy_container.add( self._kivy_xsocket )
-		self._kivy_container.set_border_width(2)
-		blend_kivy_split.pack_start( self._kivy_container )
-		#blend_kivy_split.add2( self.main_notebook )
 
 
 		################# blender containers #################
 		self.blender_container = eb = gtk.EventBox()
 		#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
 		#blend_kivy_split.pack_start( self.blender_container )
-		Vsplit.add2( self.blender_container )
+		#Vsplit.add2( self.blender_container )
+		subV.add1( self.blender_container )
 
 		self.blender_container2 = eb = gtk.EventBox()
 		note.append_page( eb, gtk.Label('UV') )
@@ -4649,7 +4640,7 @@ class PyppetUI( PyppetAPI ):
 		self.footer = note = gtk.Notebook()
 		note.set_tab_pos( gtk.POS_BOTTOM )
 		#Vsplit.pack_start( self.footer, expand=False )
-		self._main_body_split.pack_start( self.footer, expand=False )
+		self.root.pack_start( self.footer, expand=False )
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.RECORD) )
@@ -4674,7 +4665,7 @@ class PyppetUI( PyppetAPI ):
 		self._bottom_toggle_button.set_active(False)
 
 		self.do_xembed( xsocket, 'Blender' )		# this must come last
-		self.do_xembed( self._chrome_xsocket, "New Tab - Google Chrome")
+		self.do_xembed( self._chrome_xsocket, "New Tab - Chromium")
 
 		self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
 		self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
@@ -4682,7 +4673,7 @@ class PyppetUI( PyppetAPI ):
 
 		self.do_xembed( self._nautilus_xsocket, "Home")
 
-		self.do_xembed( self._kivy_xsocket, "IcarusTouch")
+		#self.do_xembed( self._kivy_xsocket, "IcarusTouch")
 
 
 	def update_header(self,ob):
