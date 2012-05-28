@@ -1,12 +1,25 @@
 #!/bin/bash
 sudo yum clean all
 
+sudo yum install gnome-tweak-tool
+mkdir ~/.theme
+cp -Rv Great-White-GTK/ ~/.theme/.
+gnome-tweak-tool
+
+
 sudo yum install SDL-devel
 sudo yum install opencv-devel
 sudo yum install ode-devel
 sudo yum install openal-devel
 sudo yum install fluidsynth-devel
 sudo yum install gdouros-symbola-fonts
+
+sudo yum install libjpeg-devel
+sudo yum install openjpeg-devel
+sudo yum install libpng-devel
+sudo yum install freetype-devel
+sudo yum install openexr-devel
+sudo yum install libXi-devel
 
 sudo yum install chromium
 sudo yum install google-chrome-stable

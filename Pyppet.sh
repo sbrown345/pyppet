@@ -1,7 +1,8 @@
 #!/bin/bash
 ## note: chrome must not have "system titlebar and borders" shown to xembed
 #google-chrome &
-#chromium-browser &
+killall chromium-browser
+chromium-browser localhost:8080 &
 
 #python IcarusTouch/src/main.py &
 

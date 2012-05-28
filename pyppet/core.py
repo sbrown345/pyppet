@@ -324,7 +324,7 @@ class BlenderHackLinux( BlenderHack ):
 		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
 		assert os.path.isfile( wnck_helper )
 		#p =os.popen('xwininfo -int -name "%s" ' %name)
-		p =os.popen('%s --use-icon-name --use-starts-with "%s" ' %(wnck_helper, name))
+		p =os.popen('%s "%s" ' %(wnck_helper, name))
 		data = p.read().strip()
 		p.close()
 		lines = data.splitlines()

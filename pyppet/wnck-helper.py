@@ -46,10 +46,11 @@ else:
 				win = w; break
 
 		else:
-			if w.get_name() == NAME:
+			if use_startswith and w.get_name().startswith( NAME ):
 				win = w; break
-			elif use_startswith and w.get_name().startswith( NAME ):
+			elif NAME in w.get_name():
 				win = w; break
+
 
 	if win:
 		win.make_below()		# trick allows Pyppet not to be forced always-on-top

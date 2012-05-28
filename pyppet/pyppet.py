@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.5i'
+VERSION = '1.9.6a'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -329,22 +329,38 @@ class FX(object):
 class WebGL(object):
 	def __init__(self):
 		self.effects = []
-		self.effects.append( FX('fxaa', True) )
-		#self.effects.append( FX('ssao', False) )
-		self.effects.append( FX('dots', False, scale=1.8) )
-		self.effects.append( FX('vignette', True, darkness=1.0) )
-		self.effects.append( FX('bloom', True, opacity=0.333) )
-		self.effects.append( FX('glowing_dots', False, scale=0.23) )
-		self.effects.append( FX('blur_horizontal', True, r=0.5) )
-		self.effects.append( FX('blur_vertical', True, r=0.5) )
-		self.effects.append( FX('noise', False, nIntensity=0.01, sIntensity=0.5) )
-		self.effects.append( FX('film', False, nIntensity=10.0, sIntensity=0.1) )
+		group = [
+			FX('fxaa', True),
+			#self.effects.append( FX('ssao', False) )
+			FX('dots', False, scale=1.8),
+			FX('vignette', True, darkness=1.0),
+			FX('bloom', True, opacity=0.333),
+			FX('glowing_dots', False, scale=0.23),
+		]
+		self._page1 = list( group )
+		self.effects += group
 
-	def get_fx_widget(self):
+		group = [
+			FX('blur_horizontal', True, r=0.5),
+			FX('blur_vertical', True, r=0.5),
+			FX('noise', False, nIntensity=0.01, sIntensity=0.5),
+			FX('film', False, nIntensity=10.0, sIntensity=0.1),
+		]
+		self._page2 = list( group )
+		self.effects += group
+
+	def get_fx_widget_page1(self):
 		root = gtk.VBox()
 		root.set_border_width(3)
-		for fx in self.effects: root.pack_start( fx.get_widget(), expand=False )
+		for fx in self._page1: root.pack_start( fx.get_widget(), expand=False )
 		return root
+
+	def get_fx_widget_page2(self):
+		root = gtk.VBox()
+		root.set_border_width(3)
+		for fx in self._page2: root.pack_start( fx.get_widget(), expand=False )
+		return root
+
 
 #####################
 
@@ -947,7 +963,8 @@ class AudioThread(object):
 			self.microphone.update()
 			self.synth.update()
 			time.sleep(0.05)
-		print('..audio thread finished..')
+		print('[audio thread finished]')
+		self.microphone.close()
 
 	def start(self):
 		self.active = True
@@ -956,10 +973,10 @@ class AudioThread(object):
 
 
 	def exit(self):
-		print('audio thread exit')
+		print('[audio thread exit]')
 		self.active = False
+		time.sleep(0.1)
 		self.synth.active = False
-		self.microphone.close()
 
 		#ctx=al.GetCurrentContext()
 		#dev = al.GetContextsDevice(ctx)
@@ -1502,7 +1519,7 @@ class Microphone( Audio ):
 		Audio.update( self )
 
 	def start_capture( self, frequency=22050 ):
-		print('starting capture...')
+		print('[[starting mic capture]]')
 		self.active = True
 		self.frequency = frequency
 		self.format=al.AL_FORMAT_MONO16
@@ -1515,6 +1532,7 @@ class Microphone( Audio ):
 			self.speakers.append( s )
 
 	def stop_capture( self ):
+		print('[[stop mic capture]]')
 		al.CaptureStop( self.input )
 		self.input = None
 		self.active = False
@@ -1522,6 +1540,7 @@ class Microphone( Audio ):
 	def close(self):
 		self.active = False
 		if self.input:
+			print('[[closing mic]]')
 			al.CaptureStop( self.input )
 			al.CloseDevice( self.input )
 			self.input = None
@@ -4251,8 +4270,13 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 
-		widget = self.websocket_server.webGL.get_fx_widget()
+		widget = self.websocket_server.webGL.get_fx_widget_page1()
 		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+
+		widget = self.websocket_server.webGL.get_fx_widget_page2()
+		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+
+
 		page = gtk.VBox()
 		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
 		b.connect( self, path='camera_randomize' )
@@ -4541,8 +4565,10 @@ class PyppetUI( PyppetAPI ):
 		self.window = win = gtk.Window()
 		if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
 		win.set_title( 'Pyppet '+VERSION )
-		if '--skin' in sys.argv:
-			load_gtk_css( win.get_style_context() )
+
+		## TODO - loading css theme is broken (half works) ##
+		#if '--skin' in sys.argv:
+		#load_gtk_css( win.get_style_context() )
 
 
 		self.root = root = gtk.VBox()
@@ -4574,57 +4600,58 @@ class PyppetUI( PyppetAPI ):
 
 
 		################# blender containers #################
-		self.blender_container = eb = gtk.EventBox()
-		#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
-		#blend_kivy_split.pack_start( self.blender_container )
-		#Vsplit.add2( self.blender_container )
-		subV.add1( self.blender_container )
+		if False:
+			self.blender_container = eb = gtk.EventBox()
+			#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
+			#blend_kivy_split.pack_start( self.blender_container )
+			#Vsplit.add2( self.blender_container )
+			subV.add1( self.blender_container )
 
-		self.blender_container2 = eb = gtk.EventBox()
-		note.append_page( eb, gtk.Label('UV') )
+			self.blender_container2 = eb = gtk.EventBox()
+			note.append_page( eb, gtk.Label('UV') )
 
-		################# setup destination DND ###############
-		DND.make_destination( self.blender_container )
-		self.blender_container.connect('drag-drop', self.drop_on_blender_container)
-		DND.make_destination( self.blender_container2 )
-		self.blender_container2.connect('drag-drop', self.drop_on_blender_container)
-		################# setup source DND ###################
-		DND.make_source( self.blender_container, 'BLENDER_CONTAINER' )
-		DND.make_source( self.blender_container2, 'BLENDER_CONTAINER' )
-		################# source DND is not working! - TODO research how to make it work ############
-		xsocket = self.create_blender_xembed_socket()
-		self.blender_container.add( xsocket )
-
-
-		################ The Gimp ##############
-		self._gimp_page = gtk.HBox()
-		note.append_page( self._gimp_page, gtk.Label('GIMP') )
-
-		self._gimp_toolbox_xsocket = soc = gtk.Socket()
-		soc.set_size_request( 170, 560 )
-		self._gimp_image_xsocket = soc = gtk.Socket()
-		soc.set_size_request( 320, 560 )
-		self._gimp_layers_xsocket = soc = gtk.Socket()
-		soc.set_size_request( 240, 560 )
-
-		eb = gtk.EventBox()
-		eb.add( self._gimp_toolbox_xsocket )
-		self._gimp_page.pack_start( eb, expand=False )
-
-		eb = gtk.EventBox()
-		eb.add( self._gimp_image_xsocket )
-		self._gimp_page.pack_start( eb, expand=True )
-
-		eb = gtk.EventBox()
-		eb.add( self._gimp_layers_xsocket )
-		self._gimp_page.pack_start( eb, expand=False )
+			################# setup destination DND ###############
+			DND.make_destination( self.blender_container )
+			self.blender_container.connect('drag-drop', self.drop_on_blender_container)
+			DND.make_destination( self.blender_container2 )
+			self.blender_container2.connect('drag-drop', self.drop_on_blender_container)
+			################# setup source DND ###################
+			DND.make_source( self.blender_container, 'BLENDER_CONTAINER' )
+			DND.make_source( self.blender_container2, 'BLENDER_CONTAINER' )
+			################# source DND is not working! - TODO research how to make it work ############
+			xsocket = self.create_blender_xembed_socket()
+			self.blender_container.add( xsocket )
 
 
-		################ gnome nautilus ####################
-		self._nautilus_container = gtk.EventBox()
-		self._nautilus_xsocket = gtk.Socket()
-		self._nautilus_container.add( self._nautilus_xsocket )
-		note.append_page( self._nautilus_container, gtk.Label('FILES') )
+			################ The Gimp ##############
+			self._gimp_page = gtk.HBox()
+			note.append_page( self._gimp_page, gtk.Label('GIMP') )
+
+			self._gimp_toolbox_xsocket = soc = gtk.Socket()
+			soc.set_size_request( 170, 560 )
+			self._gimp_image_xsocket = soc = gtk.Socket()
+			soc.set_size_request( 320, 560 )
+			self._gimp_layers_xsocket = soc = gtk.Socket()
+			soc.set_size_request( 240, 560 )
+
+			eb = gtk.EventBox()
+			eb.add( self._gimp_toolbox_xsocket )
+			self._gimp_page.pack_start( eb, expand=False )
+
+			eb = gtk.EventBox()
+			eb.add( self._gimp_image_xsocket )
+			self._gimp_page.pack_start( eb, expand=True )
+
+			eb = gtk.EventBox()
+			eb.add( self._gimp_layers_xsocket )
+			self._gimp_page.pack_start( eb, expand=False )
+
+
+			################ gnome nautilus ####################
+			self._nautilus_container = gtk.EventBox()
+			self._nautilus_xsocket = gtk.Socket()
+			self._nautilus_container.add( self._nautilus_xsocket )
+			note.append_page( self._nautilus_container, gtk.Label('FILES') )
 
 		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
@@ -4664,14 +4691,15 @@ class PyppetUI( PyppetAPI ):
 		win.show_all()
 		self._bottom_toggle_button.set_active(False)
 
-		self.do_xembed( xsocket, 'Blender' )		# this must come last
-		self.do_xembed( self._chrome_xsocket, "New Tab - Chromium")
+		#self.do_xembed( xsocket, 'Blender' )		# this must come last
 
-		self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
-		self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
-		self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
+		self.do_xembed( self._chrome_xsocket, "Chromium")
 
-		self.do_xembed( self._nautilus_xsocket, "Home")
+		#self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
+		#self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
+		#self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
+
+		#self.do_xembed( self._nautilus_xsocket, "Home")
 
 		#self.do_xembed( self._kivy_xsocket, "IcarusTouch")
 
@@ -5035,7 +5063,8 @@ class App( PyppetUI ):
 		self.active = False
 		self.websocket_server.active = False
 		sdl.Quit()
-		print('clean exit')
+		print('...quit blender...')
+		bpy.ops.wm.quit_blender()	# fixes hang on exit
 
 	def cb_toggle_physics(self,button,event):
 		if button.get_active(): self.toggle_physics(False)	# reversed
@@ -5332,7 +5361,7 @@ class OutlinerUI( object ):
 		self.meshes = {}
 
 		self.widget = sw = gtk.ScrolledWindow()
-		sw.set_size_request( 180, 640 )
+		sw.set_size_request( 180, 420 )
 		self.lister = box = gtk.VBox()
 		box.set_border_width(2)
 		sw.add_with_viewport( box )
