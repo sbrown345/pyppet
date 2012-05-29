@@ -1190,8 +1190,12 @@ class NotebookVectorWidget( object ):
 #########################################################
 
 class PopupWindow(object):
-	def __init__(self, title='', width=100, height=40, child=None):
+	def __init__(self, title='', width=100, height=40, child=None, toolbar=None):
 		self.object = None
+		if not toolbar:
+			self.toolbar = toolbar = gtk.Frame()
+			toolbar.add( gtk.Label() )
+		self.toolbar = toolbar
 		self.window = win = gtk.Window()
 		win.set_title( title )
 		win.set_position( gtk.WIN_POS_MOUSE )
@@ -1201,10 +1205,10 @@ class PopupWindow(object):
 		#win.set_size_request( width, height )
 		win.set_deletable(False)
 		win.set_decorated( False )
-		win.set_opacity( 0.8 )
+		win.set_opacity( 0.9 )
 
 		self.root = gtk.EventBox()
-		color = gtk.GdkRGBA(0.85,1.0,0.85,0.1)
+		color = gtk.GdkRGBA(0.5,0.5,0.6,0.1)
 		self.root.override_background_color( gtk.STATE_NORMAL, color )
 		win.add( self.root )
 
@@ -1212,18 +1216,25 @@ class PopupWindow(object):
 		header = gtk.HBox()
 		vbox.pack_start( header, expand=False )
 
+		b = gtk.ToggleButton('⟺'); b.set_border_width(0)
+		b.set_active(True)
+		b.connect('button-press-event', self.on_resize)
+		header.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton(); b.set_border_width(1)
+		header.pack_start( toolbar )
+
+		b = gtk.ToggleButton('∸'); b.set_border_width(1)
 		b.set_active(True)
 		b.connect('toggled', lambda b: win.set_keep_above(b.get_active()))
 		header.pack_start( b, expand=False )
 
-		header.pack_start( gtk.Label() )
 
-		b = gtk.ToggleButton(); b.set_border_width(1)
+		b = gtk.ToggleButton('🌁'); b.set_border_width(1)
 		b.set_active(True)
 		b.connect('toggled', self.toggle_transparent)
 		header.pack_start( b, expand=False )
+
+
 
 		#color = gtk.GdkRGBA(0.0,50000.5,0.3,0.1)
 		#win.override_background_color( gtk.STATE_NORMAL, color )	# not allowed?
@@ -1236,6 +1247,8 @@ class PopupWindow(object):
 
 		self.root.add_events( gtk.GDK_BUTTON_PRESS_MASK )
 		self.root.connect('button-press-event', self.on_press)
+
+
 		if child:
 			child.set_border_width(3)
 			self.child = child
@@ -1251,6 +1264,18 @@ class PopupWindow(object):
 		c.set_source_rgba(0.5, 0.75, 0.5, 0.1)
 		c.set_operator( gtk.cairo_operator['CAIRO_OPERATOR_SOURCE'] )
 		c.paint_with_alpha( 0.5 )
+
+
+	def on_resize(self,widget, event):
+		event = gtk.GdkEventButton( pointer=ctypes.c_void_p(event), cast=True )
+		if event.button == 1:
+			self.window.begin_resize_drag( 
+				gtk.GDK_WINDOW_EDGE_NORTH_WEST, # edge
+				event.button,
+				int(event.x_root), 	# c_double
+				int(event.y_root), 
+				event.time
+			)
 
 
 	def on_press(self, widget, event):

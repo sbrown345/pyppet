@@ -4141,7 +4141,7 @@ class PyppetUI( PyppetAPI ):
 		self.context.scene.frame_start = self._start_frame_adjustment.get_value()
 		self.context.scene.frame_end = self._end_frame_adjustment.get_value()
 
-	def create_header_ui(self, root):
+	def create_header_ui(self, root, modal_frame=None):
 		self.header = gtk.HBox()
 		self.header.set_border_width(2)
 		root.pack_start(self.header, expand=False)
@@ -4166,7 +4166,7 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
-		self._frame = gtk.Frame()
+		self._frame = modal_frame or gtk.Frame()
 		self._modal = gtk.Label()
 		self._frame.add( self._modal )
 		self.header.pack_start( self._frame )
@@ -4262,7 +4262,7 @@ class PyppetUI( PyppetAPI ):
 
 		self.outlinerUI = OutlinerUI()
 		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
-		self._left_tools.pack_start( ex.widget, expand=False )
+		parent.pack_end( ex.widget, expand=False )
 		#ex.add( self.outlinerUI.widget )
 		self._main_body_split.pack_start(
 			self.outlinerUI.widget, expand=False)
@@ -4606,8 +4606,6 @@ class PyppetUI( PyppetAPI ):
 		note.set_tab_pos( gtk.POS_BOTTOM )
 
 
-
-		################# blender containers #################
 		if False:
 			self.blender_container = eb = gtk.EventBox()
 			#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
@@ -4672,12 +4670,32 @@ class PyppetUI( PyppetAPI ):
 		self.toolsUI = ToolsUI( self.lock, context )
 		self.toolsUI.widget.set_border_width(2)
 
+		################# blender containers #################
+
+		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
+		bpy.ops.wm.window_duplicate()
+		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
+
+		#bxsock = gtk.Socket()
+		#bxsock.connect('size-allocate',self.on_resize_blender)	# required
+		#bxsock.set_border_width(6)
+		#self.toolsUI.widget.pack_start( bxsock )
+
+
+		#-----------------------------------------------------------------------
+		#			Second Popup
+		#-----------------------------------------------------------------------
+
 		#self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
-		popup = PopupWindow( child=self.toolsUI.widget)
+		frame = gtk.Frame()
+		popup = PopupWindow(
+			child=self.toolsUI.widget, 
+			toolbar=frame)
+
 		popup.window.show_all()
 
 		################ HEADER ################
-		self.create_header_ui( self.root )
+		self.create_header_ui( self.root, modal_frame=frame )
 		#---------------------------------------------------------------
 		#---------------------------------------------------------------
 
@@ -4718,6 +4736,10 @@ class PyppetUI( PyppetAPI ):
 		#self.do_xembed( xsocket, 'Blender' )		# this must come last
 
 		self.do_xembed( self._chrome_xsocket, "Chromium")
+
+		#self.do_xembed( bxsock, 'Blender' )
+		#Blender.window_expand()
+
 
 		#self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
 		#self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
@@ -5591,7 +5613,7 @@ class ToolsUI( object ):
 
 	def __init__(self, lock, context):
 		self.lock = lock
-		self.widget = root = gtk.VBox()
+		self.widget = root = gtk.HBox()
 
 		hpane = gtk.HPaned()
 		root.pack_start( hpane, expand=False )
