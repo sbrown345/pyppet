@@ -5,13 +5,13 @@ BIDIRECTIONAL = '⥂'
 POSITIVE_OFFSET = '⊕'
 NEGATIVE_OFFSET = '⊝'
 
-SHAPE_KEYS = 'shape keys'
-SHAPE_KEYS_ICON = '⍢'
-ACTIVE_BONE = 'active bone'
-ACTIVE_BONE_ICON = '⊶'
+SHAPE_KEYS = '⟝shape keys:'
+SHAPE_KEYS_ICON = '⟝shape keys⟞'
+ACTIVE_BONE = '⟝active bone:'
+ACTIVE_BONE_ICON = '⟝active bone⟞'
 
-DYNAMIC_TARGETS = 'dynamic targets'
-DYNAMIC_TARGETS_ICON = '⊹'
+DYNAMIC_TARGETS = '⟝targets:'
+DYNAMIC_TARGETS_ICON = '⟝targets⟞'
 
 
 WEIGHT = '⥤'
@@ -99,11 +99,12 @@ DND = ' ⎗ '
 
 MULTIPLY = '⨉'
 
-DRIVERS_ICON = DRIVER = '⎆'
-DRIVERS = 'drivers'
+DRIVERS_ICON = '⟝drivers⟞'
+DRIVER = '⎆'
+DRIVERS = '⟝drivers:'
 
-FORCES_ICON = '⤽'
-FORCES = 'forces'
+FORCES_ICON = '⟝forces⟞'
+FORCES = '⟝⟞forces:'
 
 WEBCAM = '📹'
 KINECT = '㉿'

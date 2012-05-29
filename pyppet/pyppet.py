@@ -4173,21 +4173,21 @@ class PyppetUI( PyppetAPI ):
 
 		self.header.pack_start( gtk.Label() )
 
+		if False:
+			b = gtk.ToggleButton( icons.LEFT_UI ); b.set_relief( gtk.RELIEF_NONE )
+			b.set_active(True)
+			b.connect('toggled',self.toggle_left_tools)
+			self.header.pack_start( b, expand=False )
 
-		b = gtk.ToggleButton( icons.LEFT_UI ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_left_tools)
-		self.header.pack_start( b, expand=False )
+			self._top_toggle_button = b = gtk.ToggleButton( icons.TOP_UI ); b.set_relief( gtk.RELIEF_NONE )
+			b.set_active(True)
+			b.connect('toggled',self.toggle_header_views)
+			self.header.pack_start( b, expand=False )
 
-		self._top_toggle_button = b = gtk.ToggleButton( icons.TOP_UI ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_header_views)
-		self.header.pack_start( b, expand=False )
-
-		b = gtk.ToggleButton( icons.RIGHT_UI ); b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('toggled',self.toggle_right_tools)
-		self.header.pack_start( b, expand=False )
+			b = gtk.ToggleButton( icons.RIGHT_UI ); b.set_relief( gtk.RELIEF_NONE )
+			b.set_active(True)
+			b.connect('toggled',self.toggle_right_tools)
+			self.header.pack_start( b, expand=False )
 
 		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
@@ -4263,7 +4263,9 @@ class PyppetUI( PyppetAPI ):
 		self.outlinerUI = OutlinerUI()
 		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
 		self._left_tools.pack_start( ex.widget, expand=False )
-		ex.add( self.outlinerUI.widget )
+		#ex.add( self.outlinerUI.widget )
+		self._main_body_split.pack_start(
+			self.outlinerUI.widget, expand=False)
 
 		#################### webgl #####################
 		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON )
@@ -4562,9 +4564,11 @@ class PyppetUI( PyppetAPI ):
 		self._blender_min_width = 640
 		self._blender_min_height = 480
 
-		self.window = win = gtk.Window()
-		if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		win.set_title( 'Pyppet '+VERSION )
+		#self.window = win = gtk.Window()
+		#win.set_opacity( 0.95 )
+
+		#if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		#win.set_title( 'Pyppet '+VERSION )
 
 		## TODO - loading css theme is broken (half works) ##
 		#if '--skin' in sys.argv:
@@ -4573,14 +4577,18 @@ class PyppetUI( PyppetAPI ):
 
 		self.root = root = gtk.VBox()
 		root.set_border_width( 10 )
-		win.add( root )
-		self.create_header_ui( root )
+		popup = PopupWindow( child=root )
+		#win.add( root )
+		self.window = popup.window
 
 		self._main_body_split = split = gtk.HBox()
 		root.pack_start( split )
 
 		############ LEFT TOOLS ###########
-		self.create_left_tools( split )
+		self.create_left_tools( self._main_body_split )
+		## OUTLINER ##
+		#split.pack_start( outliner )
+
 
 		###############################
 
@@ -4589,9 +4597,9 @@ class PyppetUI( PyppetAPI ):
 		#self._main_body_split.pack_start( Vsplit, expand=True )
 
 
-		self._header_views = subV = gtk.VPaned()
+		#self._header_views = subV = gtk.VPaned()
 		#Vsplit.add1( subV )
-		self._main_body_split.pack_start( subV, expand=True )
+		#self._main_body_split.pack_start( subV, expand=True )
 
 
 		self.main_notebook = note = gtk.Notebook()
@@ -4655,12 +4663,23 @@ class PyppetUI( PyppetAPI ):
 
 		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
-		subV.add2( self._chrome_xsocket )
+		#subV.add2( self._chrome_xsocket )
+		self._main_body_split.pack_start( self._chrome_xsocket, expand=True )
 
-		############### ToolsUI ################
+
+
+		############### RIGHT ToolsUI ################
 		self.toolsUI = ToolsUI( self.lock, context )
 		self.toolsUI.widget.set_border_width(2)
-		self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
+
+		#self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
+		popup = PopupWindow( child=self.toolsUI.widget)
+		popup.window.show_all()
+
+		################ HEADER ################
+		self.create_header_ui( self.root )
+		#---------------------------------------------------------------
+		#---------------------------------------------------------------
 
 
 		############### FOOTER #################
@@ -4687,8 +4706,13 @@ class PyppetUI( PyppetAPI ):
 		w = self.audio.synth.channels[0].get_widget()
 		page.add( w )
 
-		win.connect('destroy', self.exit )
-		win.show_all()
+
+
+		##################################
+		self.window.connect('destroy', self.exit )
+		self.window.show_all()
+
+		#####################################
 		self._bottom_toggle_button.set_active(False)
 
 		#self.do_xembed( xsocket, 'Blender' )		# this must come last
@@ -4708,13 +4732,20 @@ class PyppetUI( PyppetAPI ):
 		self._frame.remove( self._modal )
 		self._modal = eb = gtk.Frame()
 		self._frame.add( self._modal )
+		DND.make_source( self._modal, ob )
+
+		_root = gtk.VBox()
+		self._modal.add( _root )
+
+		header = gtk.HBox()
+		_root.pack_start( header )
+
 		root = gtk.HBox()
-		eb.add( root )
-		DND.make_source( eb, ob )
+		_root.pack_start( root )
 		root.set_border_width(2)
 
 		if ob.type == 'ARMATURE':
-			root.pack_start( gtk.Label(ob.name), expand=False )
+			header.pack_start( gtk.Label(ob.name), expand=False )
 
 			b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('toggle pose mode')
@@ -4845,8 +4876,8 @@ class PyppetUI( PyppetAPI ):
 			b.connect('clicked', lambda b: bpy.ops.mesh.faces_shade_flat())
 
 		else:
-			root.pack_start( gtk.Label(ob.name), expand=False )
-			root.pack_start( gtk.Label('    '), expand=False )
+			header.pack_start( gtk.Label(ob.name), expand=False )
+			header.pack_start( gtk.Label('    '), expand=False )
 
 			wrapper = ENGINE.get_wrapper( ob )
 			if not wrapper.is_subgeom:	# sub-geom not allowed to have a body
@@ -4923,28 +4954,28 @@ class PyppetUI( PyppetAPI ):
 			b.set_tooltip_text('show wireframe')
 			b.set_active(ob.show_wire)
 			b.connect('toggled', lambda b,o: setattr(o,'show_wire',b.get_active()), ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 			b = gtk.ToggleButton( icons.NAME )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('show name')
 			b.set_active(ob.show_name)
 			b.connect('toggled', lambda b,o: setattr(o,'show_name',b.get_active()), ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 			b = gtk.ToggleButton( icons.AXIS )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('show axis')
 			b.set_active(ob.show_axis)
 			b.connect('toggled', lambda b,o: setattr(o,'show_axis',b.get_active()), ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 			b = gtk.ToggleButton( icons.XRAY )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('show xray')
 			b.set_active(ob.show_x_ray)
 			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 			combo = gtk.ComboBoxText()
 			root.pack_start( combo, expand=False )
@@ -4954,21 +4985,21 @@ class PyppetUI( PyppetAPI ):
 			combo.set_tooltip_text( 'view draw type' )
 			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
 
-			root.pack_start( gtk.Label() )
+			header.pack_start( gtk.Label() )
 
 			b = gtk.ToggleButton( icons.STREAMING )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('stream mesh to webGL client')
 			b.set_active(ob.webgl_stream_mesh)
 			b.connect('toggled', lambda b,o: setattr(o,'webgl_stream_mesh',b.get_active()), ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 			b = gtk.ToggleButton( icons.PROGRESSIVE_TEXTURES )
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('use progressive texture loading (webgl)')
 			b.set_active(ob.webgl_progressive_textures)
 			b.connect('toggled', lambda b,o: setattr(o,'webgl_progressive_textures',b.get_active()), ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 			slider = SimpleSlider( ob, name='webgl_normal_map', title='', max=5.0, border_width=0, tooltip='normal map scale' )
 			root.pack_start( slider.widget )
@@ -4977,7 +5008,7 @@ class PyppetUI( PyppetAPI ):
 			b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('rebake textures (webgl)')
 			b.connect('clicked', self.reload_rebake, ob)
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 
 
 		self._modal.show_all()
@@ -5562,8 +5593,16 @@ class ToolsUI( object ):
 		self.lock = lock
 		self.widget = root = gtk.VBox()
 
+		hpane = gtk.HPaned()
+		root.pack_start( hpane, expand=False )
+		pane1 = gtk.VBox()
+		hpane.add1( pane1 )
+		pane2 = gtk.VBox()
+		hpane.add2( pane2 )
+
+
 		ex = DetachableExpander( icons.DEVICES, short_name=icons.DEVICES_ICON )
-		root.pack_start( ex.widget, expand=False )
+		pane1.pack_start( ex.widget, expand=False )
 
 		self.notebook = gtk.Notebook()
 		self.notebook.set_size_request( 260,450 )
@@ -5592,19 +5631,24 @@ class ToolsUI( object ):
 		widget = Pyppet.audio.microphone.get_analysis_widget()
 		box.pack_start( widget )
 
+		######################################
+
 		ex = DetachableExpander( icons.PHYSICS, short_name=icons.PHYSICS_ICON )
-		root.pack_start( ex.widget, expand=False )
+		pane1.pack_start( ex.widget, expand=False )
 		box = gtk.VBox()
 		ex.add( box )
 		self.engine = Physics.ENGINE
 		self.physics_widget = PhysicsWidget( box, context )
+
+
+		#############################################
 
 		self._modifiers_pinned = False
 		self._modifiers_expander = ex = DetachableExpander(
 			icons.MODIFIERS, 
 			short_name=icons.MODIFIERS_ICON 
 		)
-		root.pack_start( ex.widget, expand=False )
+		pane2.pack_start( ex.widget, expand=False )
 		self._modifiers_modal = gtk.EventBox()
 		self._modifiers_expander.add( self._modifiers_modal )
 		Pyppet.register( self.update_modifiers )
@@ -5614,7 +5658,7 @@ class ToolsUI( object ):
 			icons.CONSTRAINTS, 
 			short_name=icons.CONSTRAINTS_ICON 
 		)
-		root.pack_start( ex.widget, expand=False )
+		pane2.pack_start( ex.widget, expand=False )
 		self._cns_modal = gtk.EventBox()
 		self._cns_expander.add( self._cns_modal )
 		Pyppet.register( self.update_constraints )
@@ -5624,14 +5668,14 @@ class ToolsUI( object ):
 			icons.SHAPE_KEYS, 
 			short_name=icons.SHAPE_KEYS_ICON 
 		)
-		root.pack_start( ex.widget, expand=False )
+		pane2.pack_start( ex.widget, expand=False )
 		self._shape_modal = gtk.EventBox()
 		self._shape_expander.add( self._shape_modal )
 		Pyppet.register( self.update_shape_keys )
 
 
 		ex = DetachableExpander( icons.MATERIALS, short_name=icons.MATERIALS_ICON )
-		root.pack_start( ex.widget, expand=True )
+		pane2.pack_start( ex.widget, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
 
