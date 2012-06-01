@@ -4140,62 +4140,44 @@ class PyppetUI( PyppetAPI ):
 		self.context.scene.frame_start = self._start_frame_adjustment.get_value()
 		self.context.scene.frame_end = self._end_frame_adjustment.get_value()
 
-	def create_header_ui(self, root, modal_frame=None):
-		self.header = gtk.HBox()
-		self.header.set_border_width(2)
-		root.pack_start(self.header, expand=False)
 
 
-		frame2 = gtk.Frame()
-		self.header.pack_start( frame2, expand=False )
-		box = gtk.HBox(); box.set_border_width(2)
-		frame2.add( box )
+
+	def create_header(self, modal_frame=None):
+		left = []; right = []
+		toolbar = Toolbar( left, right, modal_frame=modal_frame )
+		return toolbar
+
+	def create_footer(self, modal_frame=None):
+		left = []
+
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
 		s.set_tooltip_text( 'toggle physics' )
-		box.pack_start( s, expand=False )
+		left.append( s )
+
 		b = gtk.ToggleButton( icons.PLAY_PHYSICS ); b.set_relief( gtk.RELIEF_NONE )
 		b.connect('toggled', lambda b: ENGINE.toggle_pause(b.get_active()))
-		box.pack_start( b, expand=False )
+		left.append( b )
 
 		b = gtk.CheckButton()
 		b.connect('toggled', lambda b: setattr(self,'playback_blender_anim',b.get_active()))
 		b.set_tooltip_text('playback blender animation when physics is on')
-		box.pack_start( b, expand=False )
+		left.append( b )
 
-		self.header.pack_start( gtk.Label() )
-
-		self._frame = modal_frame or gtk.Frame()
-		self._modal = gtk.Label()
-		self._frame.add( self._modal )
-		self.header.pack_start( self._frame )
-
-		self.header.pack_start( gtk.Label() )
-
-		if False:
-			b = gtk.ToggleButton( icons.LEFT_UI ); b.set_relief( gtk.RELIEF_NONE )
-			b.set_active(True)
-			b.connect('toggled',self.toggle_left_tools)
-			self.header.pack_start( b, expand=False )
-
-			self._top_toggle_button = b = gtk.ToggleButton( icons.TOP_UI ); b.set_relief( gtk.RELIEF_NONE )
-			b.set_active(True)
-			b.connect('toggled',self.toggle_header_views)
-			self.header.pack_start( b, expand=False )
-
-			b = gtk.ToggleButton( icons.RIGHT_UI ); b.set_relief( gtk.RELIEF_NONE )
-			b.set_active(True)
-			b.connect('toggled',self.toggle_right_tools)
-			self.header.pack_start( b, expand=False )
-
+		right = []
 		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_footer)
-		self.header.pack_start( b, expand=False )
+		right.append( b )
 
-		b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
-		b.connect('toggled',self.toggle_fullscreen)
-		self.header.pack_start( b, expand=False )
+		#b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
+		#b.connect('toggled',self.toggle_fullscreen)
+		#right.append( b )
+
+		toolbar = Toolbar( left, right, modal_frame=modal_frame )
+		return toolbar
+
 
 
 	def toggle_fullscreen(self,b):
@@ -4588,12 +4570,24 @@ class PyppetUI( PyppetAPI ):
 
 		self.root = root = gtk.VBox()
 		root.set_border_width( 10 )
-		popup = PopupWindow( child=root )
+		frame = gtk.Frame()
+		popup = PopupWindow( child=root, toolbar=frame )
 		#win.add( root )
 		self.window = popup.window
 
+		################ HEADER ################
+		self.toolbar_header = self.create_header( modal_frame=frame )
+		root.pack_start( self.toolbar_header.widget, expand=False )
+		#---------------------------------------------------------------
+		#---------------------------------------------------------------
+
 		self._main_body_split = split = gtk.HBox()
 		root.pack_start( split )
+
+		self.toolbar_footer = self.create_footer()
+		root.pack_start( self.toolbar_footer.widget, expand=False )
+
+
 
 		############ LEFT TOOLS ###########
 		left_tools = self.create_left_tools( self._main_body_split )
@@ -4681,14 +4675,9 @@ class PyppetUI( PyppetAPI ):
 			popup.window.show_all()
 		else:
 			left_tools.pack_start( self.toolsUI.widget )
-			#self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
 			frame = gtk.Frame()
 
 
-		################ HEADER ################
-		self.create_header_ui( self.root, modal_frame=frame )
-		#---------------------------------------------------------------
-		#---------------------------------------------------------------
 
 
 		############### FOOTER #################
@@ -4751,20 +4740,16 @@ class PyppetUI( PyppetAPI ):
 
 
 	def update_header(self,ob):
-		self._frame.remove( self._modal )
-		self._modal = eb = gtk.Frame()
-		self._frame.add( self._modal )
-		DND.make_source( self._modal, ob )
-
-		_root = gtk.VBox()
-		self._modal.add( _root )
+		modal1 = self.toolbar_header.reset()
+		DND.make_source( modal1, ob )
+		modal2 = self.toolbar_footer.reset()
 
 		header = gtk.HBox()
-		_root.pack_start( header )
+		modal1.add( header )
 
-		root = gtk.HBox()
-		_root.pack_start( root )
-		root.set_border_width(2)
+		footer = gtk.HBox()
+		modal2.add( footer )
+
 
 		if ob.type == 'ARMATURE':
 			header.pack_start( gtk.Label(ob.name), expand=False )
@@ -4921,18 +4906,18 @@ class PyppetUI( PyppetAPI ):
 
 				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
 				b.set_tooltip_text('toggle body physics')
-				root.pack_start( b, expand=False )
+				header.pack_start( b, expand=False )
 				b.set_active( ob.ode_use_body )
 				b.connect('toggled', self.toggle_body, g, Mslider.widget)
 
 				g.set_tooltip_text('toggle gravity')
-				root.pack_start( g, expand=False )
+				header.pack_start( g, expand=False )
 				g.set_active( ob.ode_use_gravity )
 				g.connect('toggled', self.toggle_gravity)
 
-				root.pack_start(Mslider.widget, expand=True)
+				header.pack_start(Mslider.widget, expand=True)
 
-				root.pack_start( gtk.Label(' | '), expand=False )
+				header.pack_start( gtk.Label(' | '), expand=False )
 
 
 			combo = gtk.ComboBoxText()
@@ -4941,11 +4926,11 @@ class PyppetUI( PyppetAPI ):
 
 			b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('toggle collision')
-			root.pack_start( b, expand=False )
+			footer.pack_start( b, expand=False )
 			b.set_active( ob.ode_use_collision )
 			b.connect('toggled', self.toggle_collision, combo, Fslider.widget, Bslider.widget)
 
-			root.pack_start( combo, expand=False )
+			footer.pack_start( combo, expand=False )
 			for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
 				combo.append('id', type)
 				if type == ob.game.collision_bounds_type:
@@ -4953,9 +4938,8 @@ class PyppetUI( PyppetAPI ):
 			combo.set_tooltip_text( 'collision type' )
 			combo.connect('changed',self.change_collision_type, ob )
 
-			root.pack_start( Fslider.widget )
-			root.pack_start( Bslider.widget )
-
+			footer.pack_start( Fslider.widget )
+			footer.pack_start( Bslider.widget )
 
 			if ob.ode_use_collision:
 				combo.show()
@@ -4969,7 +4953,8 @@ class PyppetUI( PyppetAPI ):
 
 			combo.set_no_show_all(True)
 
-			root.pack_start( gtk.Label() )
+			#root.pack_start( gtk.Label() )
+
 			###################################################
 			b = gtk.ToggleButton( icons.WIREFRAME )
 			b.set_relief( gtk.RELIEF_NONE )
@@ -5000,7 +4985,7 @@ class PyppetUI( PyppetAPI ):
 			header.pack_start( b, expand=False )
 
 			combo = gtk.ComboBoxText()
-			root.pack_start( combo, expand=False )
+			footer.pack_start( combo, expand=False )
 			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
 				combo.append('id', type)
 				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
@@ -5024,7 +5009,7 @@ class PyppetUI( PyppetAPI ):
 			header.pack_start( b, expand=False )
 
 			slider = SimpleSlider( ob, name='webgl_normal_map', title='', max=5.0, border_width=0, tooltip='normal map scale' )
-			root.pack_start( slider.widget )
+			footer.pack_start( slider.widget )
 
 			b = gtk.Button( icons.REFRESH )
 			b.set_relief( gtk.RELIEF_NONE )
@@ -5033,7 +5018,9 @@ class PyppetUI( PyppetAPI ):
 			header.pack_start( b, expand=False )
 
 
-		self._modal.show_all()
+
+		modal1.show_all()
+		modal2.show_all()
 
 
 	def reload_rebake(self, button, ob ):

@@ -11,12 +11,12 @@ if sys.version_info[0] >= 3:
 	import urllib.request
 	import urllib.parse
 
-import libclutter_gtk as clutter
+#import libclutter_gtk as clutter
 import gtk3 as gtk
 import icons
 import Blender
 
-assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
+#assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
 gtk.init()	# comes after clutter init
 
 
@@ -1304,6 +1304,7 @@ class PopupWindow(object):
 		vbox.pack_start( header, expand=False )
 
 		b = gtk.ToggleButton('⟔'); b.set_border_width(0)
+		#b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('button-press-event', self.on_resize)
 		header.pack_start( b, expand=False )
@@ -1554,5 +1555,34 @@ class GameDevice(object):
 
 
 		return self.widget
+
+
+class Toolbar(object):
+	'''
+	simple toolbar with a center modal area,
+	optional left and right extra tools.
+	'''
+	def __init__(self, left_tools=[], right_tools=[], modal_frame=None):
+		self.widget = root = gtk.HBox()
+		root.set_border_width(2)
+
+		for a in left_tools:
+			root.pack_start( a, expand=False )
+
+		root.pack_start( gtk.Label() )
+		self._frame = modal_frame or gtk.Frame()
+		self._modal = gtk.Label()
+		self._frame.add( self._modal )
+		root.pack_start( self._frame )
+		root.pack_start( gtk.Label() )
+
+		for a in right_tools:
+			root.pack_start( a, expand=False )
+
+	def reset(self):
+		self._frame.remove( self._modal )
+		self._modal = eb = gtk.Frame()
+		self._frame.add( self._modal )
+		return self._modal
 
 

@@ -48,7 +48,7 @@ BOTTOM_UI = 'ᐁ'
 LEFT_UI = 'ᐘ'
 RIGHT_UI = 'ᐒ'
 
-OUTLINER = 'outliner'
+OUTLINER = '𝙊𝙪𝙩𝙡𝙞𝙣𝙚𝙧'
 OUTLINER_ICON = '⑆'
 
 TOOLS = '𝙩𝙤𝙤𝙡𝙨'
