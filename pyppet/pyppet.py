@@ -66,7 +66,6 @@ import icons
 import bpy, mathutils
 from bpy.props import *
 
-gtk.init()
 
 def load_gtk_css( style, path='malys-revolt2/gtk-3.0/gtk.css' ):
 	#def load_gtk_css( style, path='Greyness-GTK/gtk-3.0/gtk.css' ):
@@ -4256,19 +4255,35 @@ class PyppetUI( PyppetAPI ):
 	def create_left_tools( self, parent ):
 		self._left_tools = gtk.VBox()
 		self._left_tools.set_border_width( 2 )
-		parent.pack_start( self._left_tools, expand=False )
+
+		sw = gtk.ScrolledWindow()
+		#sw.add_with_viewport( self._left_tools )
+		self.embed = ClutterEmbed( width=200, height=100 )
+		#sw.add_with_viewport( self.embed.widget )
+		sw.set_policy(True,False)
+		sw.set_size_request( 300, 200 )
+		#parent.pack_start( sw, expand=False )
+		parent.pack_start( self.embed.widget, expand=False )
 
 		#################### outliner ##################
 
 		self.outlinerUI = OutlinerUI()
 		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
 		parent.pack_end( ex.widget, expand=False )
-		#ex.add( self.outlinerUI.widget )
-		self._main_body_split.pack_start(
-			self.outlinerUI.widget, expand=False)
+		ex.add( self.outlinerUI.widget )
+		#self._main_body_split.pack_start(
+		#	self.outlinerUI.widget, expand=False)
+
+		#b = gtk.ToggleButton('hi'); b.show()
+		#def sayhi(b):print('hello')
+		#b.connect('toggled',sayhi)
+		#self._left_tools.pack_start( b, expand=False )
+		#actor = self.embed.add( b )
+		#print(actor)
+
 
 		#################### webgl #####################
-		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON )
+		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON, expanded=True )
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 
@@ -4303,7 +4318,7 @@ class PyppetUI( PyppetAPI ):
 		Pyppet.register( self.update_drivers_widget )
 
 		ex = DetachableExpander( icons.PHYSICS, icons.PHYSICS_ICON )
-		self._left_tools.pack_start( ex.widget, expand=False )
+		self._left_tools.pack_start( ex.widget, expand=True )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'forces' ] = (ex,note)
 		Pyppet.register( self.update_forces_widget )
@@ -4331,6 +4346,10 @@ class PyppetUI( PyppetAPI ):
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'dynamic-targets' ] = (ex,note)
 		Pyppet.register( self.update_dynamic_targets_widget )
+
+		actor = self.embed.add( self._left_tools )
+		return self._left_tools
+
 
 
 	def update_drivers_widget( self, ob ):
@@ -4564,6 +4583,15 @@ class PyppetUI( PyppetAPI ):
 		self._blender_min_width = 640
 		self._blender_min_height = 480
 
+		if True:
+			win = gtk.Window()
+			embed = ClutterEmbed( width=1, height=1 )
+			win.add( embed.widget )
+			b = gtk.ToggleButton('toggle me')
+			b.show()
+			embed.add( b )
+			win.show_all()
+
 		#self.window = win = gtk.Window()
 		#win.set_opacity( 0.95 )
 
@@ -4585,21 +4613,9 @@ class PyppetUI( PyppetAPI ):
 		root.pack_start( split )
 
 		############ LEFT TOOLS ###########
-		self.create_left_tools( self._main_body_split )
+		left_tools = self.create_left_tools( self._main_body_split )
 		## OUTLINER ##
 		#split.pack_start( outliner )
-
-
-		###############################
-
-		#Vsplit = gtk.VPaned()
-		#Vsplit = gtk.VBox()
-		#self._main_body_split.pack_start( Vsplit, expand=True )
-
-
-		#self._header_views = subV = gtk.VPaned()
-		#Vsplit.add1( subV )
-		#self._main_body_split.pack_start( subV, expand=True )
 
 
 		self.main_notebook = note = gtk.Notebook()
@@ -4665,34 +4681,26 @@ class PyppetUI( PyppetAPI ):
 		self._main_body_split.pack_start( self._chrome_xsocket, expand=True )
 
 
-
-		############### RIGHT ToolsUI ################
+		############### Extra Tools #################
+		#______________________________________________________#
 		self.toolsUI = ToolsUI( self.lock, context )
 		self.toolsUI.widget.set_border_width(2)
-
-		################# blender containers #################
-
-		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
-		bpy.ops.wm.window_duplicate()
-		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
-
-		#bxsock = gtk.Socket()
-		#bxsock.connect('size-allocate',self.on_resize_blender)	# required
-		#bxsock.set_border_width(6)
-		#self.toolsUI.widget.pack_start( bxsock )
-
 
 		#-----------------------------------------------------------------------
 		#			Second Popup
 		#-----------------------------------------------------------------------
 
-		#self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
-		frame = gtk.Frame()
-		popup = PopupWindow(
-			child=self.toolsUI.widget, 
-			toolbar=frame)
+		if '--popup-tools' in sys.argv:
+			frame = gtk.Frame()
+			popup = PopupWindow(
+				child=self.toolsUI.widget, 
+				toolbar=frame)
+			popup.window.show_all()
+		else:
+			left_tools.pack_start( self.toolsUI.widget )
+			#self._main_body_split.pack_start( self.toolsUI.widget, expand=False )
+			frame = gtk.Frame()
 
-		popup.window.show_all()
 
 		################ HEADER ################
 		self.create_header_ui( self.root, modal_frame=frame )
@@ -4729,6 +4737,15 @@ class PyppetUI( PyppetAPI ):
 		##################################
 		self.window.connect('destroy', self.exit )
 		self.window.show_all()
+
+		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
+		bpy.ops.wm.window_duplicate()
+		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
+		#bxsock = gtk.Socket()
+		#bxsock.connect('size-allocate',self.on_resize_blender)	# required
+		#bxsock.set_border_width(6)
+		#self.toolsUI.widget.pack_start( bxsock )
+
 
 		#####################################
 		self._bottom_toggle_button.set_active(False)
@@ -6077,4 +6094,7 @@ if __name__ == '__main__':
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 	## run pyppet ##
 	Pyppet.mainloop()
+	#threading._start_new_thread( Pyppet.mainloop, ())
+
+
 

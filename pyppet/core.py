@@ -6,15 +6,19 @@
 try: import bpy, mathutils
 except: print('WARN: unable to import bpy')
 
-import sys, os, time
-import ctypes, threading, urllib
+import sys, os, time, ctypes, threading, urllib
 if sys.version_info[0] >= 3:
 	import urllib.request
 	import urllib.parse
 
+import libclutter_gtk as clutter
 import gtk3 as gtk
 import icons
 import Blender
+
+assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
+gtk.init()	# comes after clutter init
+
 
 def start_new_thread( func, *args ):
 	return threading._start_new_thread( func, args )
@@ -108,11 +112,12 @@ class BlenderHack( object ):
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
-		self._gtk_updated = True
+		#self._gtk_updated = True
 		self.context = BlenderContextCopy( bpy.context )
 		self.lock.acquire()
-		while gtk.gtk_events_pending():	# doing it here makes callbacks safe
-			gtk.gtk_main_iteration()
+		## Clutter is not working here ##
+		#while gtk.gtk_events_pending():	# doing it here makes callbacks safe
+		#	gtk.gtk_main_iteration()
 		self.lock.release()
 
 	def setup_blender_hack(self, context):
@@ -128,7 +133,7 @@ class BlenderHack( object ):
 					if reg.type == 'WINDOW':
 						## only POST_PIXEL is thread-safe and drag'n'drop safe
 						## (maybe not!?) ##
-						self._handle = reg.callback_add( self.sync_context, (reg,), 'PRE_VIEW' )
+						self._handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
 						return True
 		return False
 
@@ -136,6 +141,20 @@ class BlenderHack( object ):
 
 	def update_blender_and_gtk( self, drop_frame=False ):
 		self._gtk_updated = False
+
+		## need to force redraw of all actors here ##
+		ClutterEmbed.update()
+		clutter.cogl_flush()
+
+		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
+			#print('WARN: 3D view is not shown - this is dangerous')
+			self.lock.acquire()
+			while gtk.gtk_events_pending():
+				gtk.gtk_main_iteration()
+			self.lock.release()
+
+		clutter.cogl_flush()
+
 
 		if not drop_frame:
 			## force redraw in VIEW_3D ##
@@ -161,21 +180,21 @@ class BlenderHack( object ):
 								print('---------setting up image editor callback---------')
 								self._image_editor_handle = reg.callback_add( 
 									self.bake_hack, (reg,), 
-									'POST_VIEW' 	# PRE_VIEW is invalid here
+									'POST_VIEW'
 								)
 							reg.tag_redraw()
 							break
 
-
-		Blender.iterate( self.evil_C, draw=not drop_frame)
-
-		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
-			#print('WARN: 3D view is not shown - this is dangerous')
-			self.lock.acquire()
-			while gtk.gtk_events_pending():
-				gtk.gtk_main_iteration()
-			self.lock.release()
-
+		#Blender.iterate( self.evil_C, draw=not drop_frame)
+		if 1:
+			print(1)
+			clutter.cogl_begin_gl()
+			print(2)
+			Blender.iterate( self.evil_C, draw=not drop_frame)
+			clutter.cogl_end_gl()
+			print(3)
+			clutter.cogl_flush()
+			print(4)
 
 
 	################ BAKE HACK ################
@@ -893,17 +912,90 @@ class VStacker( object ):
 		if self.callback:
 			self.callback( oldindex, newindex, *self.callback_args )
 
-class Expander(object):
+class ClutterEmbed(object):
+	instances = []
+	actors = []
+	def __init__(self, width=320, height=240 ):
+		self.instances.append( self )
+
+		self.widget = gtk.EventBox()
+		self.embed = embed = clutter.gtk_clutter_embed_new()
+		self.widget.add( embed )
+		embed.set_size_request(width, height)
+		embed.connect('realize',self.realized)
+		self.stage = None
+		self.children = []
+
+		#self.embed.set_double_buffered(True)	# looks worse
+
+	def add( self, widget ):
+		print('adding clutter widget',widget)
+		# create actor as needed
+		widget.show_all()	# need to show first
+		self.children.append( widget )
+		actor = clutter.gtk_clutter_actor_new_with_contents( widget )
+		self.actors.append( actor )
+		return actor
+
+
+	def realized(self,widget):
+		#for child in self.children: child.show_all()	# segfaults
+		embed = self.embed
+		#embed.realize()
+		print('getting stage...')
+		self.stage = clutter.gtk_clutter_embed_get_stage( embed )
+		clutter.actor_show( self.stage )
+
+		rect = clutter.rectangle_new()	#clutter.Rectangle()
+		clr = clutter.color_new( 100,1,0,100 )
+		clutter.rectangle_set_color(rect, clr)	#rect.set_color( clr )
+		rect.set_size(100, 100)
+		rect.set_anchor_point(50, 50)
+		rect.set_position(150, 150)
+		rect.set_rotation(clutter.CLUTTER_X_AXIS, 45.0, 0, 0, 0)
+		clutter.container_add_actor( self.stage, rect )
+
+		for actor in self.actors:
+			clutter.container_add_actor( self.stage, actor )
+			clutter.actor_show( actor )
+
+	@classmethod
+	def update(self):
+		for a in self.instances:
+			if a.stage:
+				#clutter.clutter_redraw( a.stage )
+				#print('force redraw..',a.stage)
+				a.stage.queue_redraw()	#relayout()	# relayout is slow!
+
+		for actor in self.actors:
+			actor.queue_redraw()
+
+
+class Expander( object ):
 	'''
 	Like gtk.Expander but can have extra buttons on header
+
+
+	if 0:
+		rect = clutter.rectangle_new()	#clutter.Rectangle()
+		clr = clutter.color_new( 100,1,0,100 )
+		clutter.rectangle_set_color(rect, clr)	#rect.set_color( clr )
+		rect.set_size(100, 100)
+		rect.set_anchor_point(50, 50)
+		rect.set_position(150, 150)
+		rect.set_rotation(clutter.CLUTTER_X_AXIS, 45.0, 0, 0, 0)
+		clutter.container_add_actor( stage, rect )
 	'''
+
 	def __init__(self, name='', border_width=4, full_header_toggle=True, insert=None, append=None):
 		self.name = name
+		self.children = []
 		self._full_header_toggle = full_header_toggle
 
-		self.widget = frame = gtk.Frame()
-		#frame = gtk.Frame()
-		#self.widget.add( frame )
+		self.widget = gtk.EventBox()
+		frame = gtk.Frame()
+		self.widget.add( frame )
+
 		self.root = gtk.VBox()
 		frame.add( self.root )
 		self.root.set_border_width( border_width )
@@ -930,7 +1022,6 @@ class Expander(object):
 		if append:
 			self.header.pack_start( append, expand=False )
 
-		self.children = []
 
 	def toggle(self,b):
 		if b.get_active():
@@ -941,10 +1032,21 @@ class Expander(object):
 				child.show_all()
 				child.set_no_show_all(True)
 
+			#self.actor.animate(
+			#	clutter.CLUTTER_LINEAR, 800,
+			#	scale_x=1.0, scale_y=1.0,
+			#)
+
+
 		else:
 			if self._full_header_toggle: b.set_label( '%s  %s' %(icons.EXPANDER_UP,self.name) )
 			else: b.set_label( icons.EXPANDER_UP )
 			for child in self.children: child.hide()
+
+			#self.actor.animate(
+			#	clutter.CLUTTER_LINEAR, 500,
+			#	scale_x=1.5, scale_y=0.5,
+			#)
 
 
 	def add( self, child): self.append( child, expand=False )
@@ -1190,7 +1292,8 @@ class NotebookVectorWidget( object ):
 #########################################################
 
 class PopupWindow(object):
-	def __init__(self, title='', width=100, height=40, child=None, toolbar=None):
+
+	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False):
 		self.object = None
 		if not toolbar:
 			self.toolbar = toolbar = gtk.Frame()
@@ -1200,23 +1303,21 @@ class PopupWindow(object):
 		win.set_title( title )
 		win.set_position( gtk.WIN_POS_MOUSE )
 		win.set_keep_above(True)
-		win.set_skip_pager_hint(True)
+		if skip_pager: win.set_skip_pager_hint(True)
 		#win.set_skip_taskbar_hint(True)
 		#win.set_size_request( width, height )
 		win.set_deletable(False)
 		win.set_decorated( False )
-		win.set_opacity( 0.9 )
+		#win.set_opacity( 0.9 )
 
 		self.root = gtk.EventBox()
-		color = gtk.GdkRGBA(0.5,0.5,0.6,0.1)
-		self.root.override_background_color( gtk.STATE_NORMAL, color )
 		win.add( self.root )
 
 		vbox = gtk.VBox(); self.root.add( vbox )
 		header = gtk.HBox()
 		vbox.pack_start( header, expand=False )
 
-		b = gtk.ToggleButton('⟺'); b.set_border_width(0)
+		b = gtk.ToggleButton('⟔'); b.set_border_width(0)
 		b.set_active(True)
 		b.connect('button-press-event', self.on_resize)
 		header.pack_start( b, expand=False )
@@ -1306,7 +1407,7 @@ def _on_detach( widget, gcontext ):
 	w.window.show_all()
 
 class Detachable( object ):
-	_detachable_target_ = gtk.target_entry_new( 'detachable',2,gtk.TARGET_OTHER_APP )	
+	_detachable_target_ = gtk.target_entry_new( 'detachable',2,0)	#gtk.TARGET_OTHER_APP )	
 	def make_detachable(self,widget, on_detach):
 		self.widget.drag_source_set(
 			gtk.GDK_BUTTON1_MASK, 
@@ -1318,7 +1419,7 @@ class Detachable( object ):
 
 class DetachableExpander( Detachable ):
 
-	def __init__(self, name, short_name=None):
+	def __init__(self, name, short_name=None, expanded=False):
 		self.name = name
 		self.short_name = short_name
 		self.detached = False
@@ -1327,6 +1428,7 @@ class DetachableExpander( Detachable ):
 			self.widget = gtk.Expander(short_name)
 		else:
 			self.widget = gtk.Expander(name)
+		if expanded: self.widget.set_expanded(True)
 
 		self.widget.connect('activate', self.on_expand)
 		self.make_detachable( self.widget, self.on_detach )
