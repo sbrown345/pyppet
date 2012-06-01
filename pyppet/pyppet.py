@@ -4264,12 +4264,26 @@ class PyppetUI( PyppetAPI ):
 
 		#################### outliner ##################
 
+		box = gtk.VBox()
+		parent.pack_end( box, expand=False )
+
 		self.outlinerUI = OutlinerUI()
 		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
-		parent.pack_end( ex.widget, expand=False )
 		ex.add( self.outlinerUI.widget )
-		#self._main_body_split.pack_start(
-		#	self.outlinerUI.widget, expand=False)
+		box.pack_start( ex.widget, expand=False )
+
+		tool = ModifiersTool(
+			icons.MODIFIERS, 
+			short_name=icons.MODIFIERS_ICON 
+		)
+		box.pack_start( tool.widget, expand=False )
+
+		tool = ConstraintsTool(
+			icons.CONSTRAINTS, 
+			short_name=icons.CONSTRAINTS_ICON 
+		)
+		box.pack_start( tool.widget, expand=False )
+
 
 
 		#################### webgl #####################
@@ -4308,7 +4322,7 @@ class PyppetUI( PyppetAPI ):
 		Pyppet.register( self.update_drivers_widget )
 
 		ex = DetachableExpander( icons.PHYSICS, icons.PHYSICS_ICON )
-		self._left_tools.pack_start( ex.widget, expand=True )
+		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'forces' ] = (ex,note)
 		Pyppet.register( self.update_forces_widget )
@@ -5582,6 +5596,171 @@ class MaterialsUI(object):
 			color = rgb2gdk(r,g,b)
 			eventbox.modify_bg( gtk.STATE_NORMAL, color )
 
+class Tool( object ):
+	def update_modifiers(self, ob, force_update=False): assert None	# overload me
+
+	def __init__(self, name, short_name=None):
+		if not short_name: short_name = name
+		self._pinned = False
+		self._expander = ex = DetachableExpander(
+			name, short_name=short_name
+		)
+		self._modal = gtk.EventBox()
+		self._expander.add( self._modal )
+		self.widget = ex.widget
+		Pyppet.register( self.update )
+
+class ConstraintsTool( Tool ):
+	def update(self, ob, force_update=False):
+		if self._pinned and not force_update: return
+
+		self._expander.remove( self._modal )
+		self._modal = root = gtk.VBox()
+		self._expander.add( self._modal )
+
+		frame = gtk.Frame()
+		root.pack_start( frame, expand=False )
+		row = gtk.HBox()
+		row.set_border_width(4)
+		frame.add( row )
+
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
+		b.set_active( self._pinned )
+		b.connect('toggled', lambda b,s: setattr(s,'_pinned',b.get_active()), self)
+		row.pack_start( b, expand=False )
+
+		combo = gtk.ComboBoxText()
+		row.pack_start( combo )
+		for i,type in enumerate( CONSTRAINT_TYPES ): combo.append('id', type)
+		gtk.combo_box_set_active( combo, 0 )
+
+		b = gtk.Button('+')
+		b.connect('clicked', self.add_constraint, combo, ob)
+		row.pack_start( b, expand=False )
+
+		stacker = VStacker()
+		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		stacker.set_callback( self.reorder_constraint, ob )
+		root.pack_start( stacker.widget )
+		for cns in ob.constraints:
+			e = Expander( cns.name, insert=gtk.Label(icons.DND) )
+			R = RNAWidget( cns )
+			e.add( R.widget )
+			stacker.append( e.widget )
+
+			b = gtk.ToggleButton( icons.VISIBLE )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('toggle constraint')
+			b.set_active( not cns.mute )
+			b.connect('toggled', lambda b,c: setattr(c,'mute',not b.get_active()), cns)
+			e.header.pack_start( b, expand=False )
+
+		self._expander.show_all()
+
+
+	def add_constraint(self,b, combo, ob):
+		mtype = combo.get_active_text()
+		cns = ob.constraints.new( type=mtype )
+		cns.name = mtype.lower()
+		self.update_constraints( ob, force_update=True )
+
+	def reorder_constraint( self, oldindex, newindex, ob ):
+		'''
+		ob.constraint is missing .insert method!
+		workaround use bpy.ops.constraint.move_{up/down}
+		TODO need to force ob to be active object
+		'''
+		name = ob.constraints[ oldindex ].name
+		delta = oldindex - newindex
+		for i in range( abs(delta) ):
+			if delta < 0:
+				bpy.ops.constraint.move_down( constraint=name, owner='OBJECT' )
+			else:
+				bpy.ops.constraint.move_up( constraint=name, owner='OBJECT' )
+
+
+class ModifiersTool( Tool ):
+	def update(self, ob, force_update=False):
+		if self._pinned and not force_update: return
+
+		self._expander.remove( self._modal )
+		self._modal = root = gtk.VBox()
+		self._expander.add( self._modal )
+
+		frame = gtk.Frame()
+		root.pack_start( frame, expand=False )
+		row = gtk.HBox()
+		row.set_border_width(4)
+		frame.add( row )
+
+		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
+		b.set_active( self._pinned )
+		b.connect('toggled', lambda b,s: setattr(s,'_pinned',b.get_active()), self)
+		row.pack_start( b, expand=False )
+
+		combo = gtk.ComboBoxText()
+		row.pack_start( combo )
+		for i,type in enumerate( MODIFIER_TYPES ): combo.append('id', type)
+		gtk.combo_box_set_active( combo, 0 )
+
+		b = gtk.Button('+')
+		b.connect('clicked', self.add_modifier, combo, ob)
+		row.pack_start( b, expand=False )
+
+		stacker = VStacker()
+		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
+		stacker.set_callback( self.reorder_modifier, ob )
+		root.pack_start( stacker.widget )
+		for mod in ob.modifiers:
+			e = Expander( mod.name, insert=gtk.Label(icons.DND) )
+			R = RNAWidget( mod )
+			e.add( R.widget )
+			stacker.append( e.widget )
+
+			b = gtk.ToggleButton( icons.VISIBLE_RENDER )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show in render')
+			b.set_active( mod.show_render )
+			b.connect('toggled', lambda b,m: setattr(m,'show_render',b.get_active()), mod)
+			e.header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.VISIBLE )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show in viewport')
+			b.set_active( mod.show_viewport )
+			b.connect('toggled', lambda b,m: setattr(m,'show_viewport',b.get_active()), mod)
+			e.header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.VISIBLE_EDITMODE )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show in edit-mode')
+			b.set_active( mod.show_in_editmode )
+			b.connect('toggled', lambda b,m: setattr(m,'show_in_editmode',b.get_active()), mod)
+			e.header.pack_start( b, expand=False )
+
+		self._expander.show_all()
+
+
+	def add_modifier(self,b, combo, ob):
+		mtype = combo.get_active_text()
+		mod = ob.modifiers.new( name=mtype.lower(), type=mtype )
+		self.update( ob, force_update=True )
+
+	def reorder_modifier( self, oldindex, newindex, ob ):
+		'''
+		ob.modifiers is missing .insert method!
+		workaround use bpy.ops.object.modifier_move_{up/down}
+		TODO need to force ob to be active object
+		'''
+		name = ob.modifiers[ oldindex ].name
+		delta = oldindex - newindex
+		for i in range( abs(delta) ):
+			if delta < 0:
+				bpy.ops.object.modifier_move_down( modifier=name )
+			else:
+				bpy.ops.object.modifier_move_up( modifier=name )
 
 
 class ToolsUI( object ):
@@ -5599,14 +5778,12 @@ class ToolsUI( object ):
 
 	def __init__(self, lock, context):
 		self.lock = lock
-		self.widget = root = gtk.HBox()
+		self.widget = root = gtk.VBox()
 
-		hpane = gtk.HPaned()
-		root.pack_start( hpane, expand=False )
-		pane1 = gtk.VBox()
-		hpane.add1( pane1 )
-		pane2 = gtk.VBox()
-		hpane.add2( pane2 )
+		#hpane = gtk.HPaned()
+		#root.pack_start( hpane, expand=False )
+		pane1 = root
+		pane2 = root
 
 
 		ex = DetachableExpander( icons.DEVICES, short_name=icons.DEVICES_ICON )
@@ -5650,26 +5827,6 @@ class ToolsUI( object ):
 
 
 		#############################################
-
-		self._modifiers_pinned = False
-		self._modifiers_expander = ex = DetachableExpander(
-			icons.MODIFIERS, 
-			short_name=icons.MODIFIERS_ICON 
-		)
-		pane2.pack_start( ex.widget, expand=False )
-		self._modifiers_modal = gtk.EventBox()
-		self._modifiers_expander.add( self._modifiers_modal )
-		Pyppet.register( self.update_modifiers )
-
-		self._cns_pinned = False
-		self._cns_expander = ex = DetachableExpander(
-			icons.CONSTRAINTS, 
-			short_name=icons.CONSTRAINTS_ICON 
-		)
-		pane2.pack_start( ex.widget, expand=False )
-		self._cns_modal = gtk.EventBox()
-		self._cns_expander.add( self._cns_modal )
-		Pyppet.register( self.update_constraints )
 
 		self._shape_pinned = False
 		self._shape_expander = ex = DetachableExpander(
@@ -5724,154 +5881,7 @@ class ToolsUI( object ):
 		self._shape_expander.show_all()
 
 
-	def update_constraints(self, ob, force_update=False):
-		if self._cns_pinned and not force_update: return
 
-		self._cns_expander.remove( self._cns_modal )
-		self._cns_modal = root = gtk.VBox()
-		self._cns_expander.add( self._cns_modal )
-
-		frame = gtk.Frame()
-		root.pack_start( frame, expand=False )
-		row = gtk.HBox()
-		row.set_border_width(4)
-		frame.add( row )
-
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
-		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
-		b.set_active( self._cns_pinned )
-		b.connect('toggled', lambda b,s: setattr(s,'_cns_pinned',b.get_active()), self)
-		row.pack_start( b, expand=False )
-
-		combo = gtk.ComboBoxText()
-		row.pack_start( combo )
-		for i,type in enumerate( CONSTRAINT_TYPES ): combo.append('id', type)
-		gtk.combo_box_set_active( combo, 0 )
-
-		b = gtk.Button('+')
-		b.connect('clicked', self.add_constraint, combo, ob)
-		row.pack_start( b, expand=False )
-
-		stacker = VStacker()
-		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		stacker.set_callback( self.reorder_constraint, ob )
-		root.pack_start( stacker.widget )
-		for cns in ob.constraints:
-			e = Expander( cns.name, insert=gtk.Label(icons.DND) )
-			R = RNAWidget( cns )
-			e.add( R.widget )
-			stacker.append( e.widget )
-
-			b = gtk.ToggleButton( icons.VISIBLE )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('toggle constraint')
-			b.set_active( not cns.mute )
-			b.connect('toggled', lambda b,c: setattr(c,'mute',not b.get_active()), cns)
-			e.header.pack_start( b, expand=False )
-
-
-		self._cns_expander.show_all()
-
-
-	def update_modifiers(self, ob, force_update=False):
-		if self._modifiers_pinned and not force_update: return
-
-		self._modifiers_expander.remove( self._modifiers_modal )
-		self._modifiers_modal = root = gtk.VBox()
-		self._modifiers_expander.add( self._modifiers_modal )
-
-		frame = gtk.Frame()
-		root.pack_start( frame, expand=False )
-		row = gtk.HBox()
-		row.set_border_width(4)
-		frame.add( row )
-
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
-		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
-		b.set_active( self._modifiers_pinned )
-		b.connect('toggled', lambda b,s: setattr(s,'_modifiers_pinned',b.get_active()), self)
-		row.pack_start( b, expand=False )
-
-		combo = gtk.ComboBoxText()
-		row.pack_start( combo )
-		for i,type in enumerate( MODIFIER_TYPES ): combo.append('id', type)
-		gtk.combo_box_set_active( combo, 0 )
-
-		b = gtk.Button('+')
-		b.connect('clicked', self.add_modifier, combo, ob)
-		row.pack_start( b, expand=False )
-
-		stacker = VStacker()
-		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		stacker.set_callback( self.reorder_modifier, ob )
-		root.pack_start( stacker.widget )
-		for mod in ob.modifiers:
-			e = Expander( mod.name, insert=gtk.Label(icons.DND) )
-			R = RNAWidget( mod )
-			e.add( R.widget )
-			stacker.append( e.widget )
-
-			b = gtk.ToggleButton( icons.VISIBLE_RENDER )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show in render')
-			b.set_active( mod.show_render )
-			b.connect('toggled', lambda b,m: setattr(m,'show_render',b.get_active()), mod)
-			e.header.pack_start( b, expand=False )
-
-			b = gtk.ToggleButton( icons.VISIBLE )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show in viewport')
-			b.set_active( mod.show_viewport )
-			b.connect('toggled', lambda b,m: setattr(m,'show_viewport',b.get_active()), mod)
-			e.header.pack_start( b, expand=False )
-
-			b = gtk.ToggleButton( icons.VISIBLE_EDITMODE )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show in edit-mode')
-			b.set_active( mod.show_in_editmode )
-			b.connect('toggled', lambda b,m: setattr(m,'show_in_editmode',b.get_active()), mod)
-			e.header.pack_start( b, expand=False )
-
-		self._modifiers_expander.show_all()
-
-	def add_modifier(self,b, combo, ob):
-		mtype = combo.get_active_text()
-		mod = ob.modifiers.new( name=mtype.lower(), type=mtype )
-		self.update_modifiers( ob, force_update=True )
-
-	def add_constraint(self,b, combo, ob):
-		mtype = combo.get_active_text()
-		cns = ob.constraints.new( type=mtype )
-		cns.name = mtype.lower()
-		self.update_constraints( ob, force_update=True )
-
-	def reorder_constraint( self, oldindex, newindex, ob ):
-		'''
-		ob.constraint is missing .insert method!
-		workaround use bpy.ops.constraint.move_{up/down}
-		TODO need to force ob to be active object
-		'''
-		name = ob.constraints[ oldindex ].name
-		delta = oldindex - newindex
-		for i in range( abs(delta) ):
-			if delta < 0:
-				bpy.ops.constraint.move_down( constraint=name, owner='OBJECT' )
-			else:
-				bpy.ops.constraint.move_up( constraint=name, owner='OBJECT' )
-
-	def reorder_modifier( self, oldindex, newindex, ob ):
-		'''
-		ob.modifiers is missing .insert method!
-		workaround use bpy.ops.object.modifier_move_{up/down}
-		TODO need to force ob to be active object
-		'''
-		name = ob.modifiers[ oldindex ].name
-		delta = oldindex - newindex
-		for i in range( abs(delta) ):
-			if delta < 0:
-				bpy.ops.object.modifier_move_down( modifier=name )
-			else:
-				bpy.ops.object.modifier_move_up( modifier=name )
 
 
 

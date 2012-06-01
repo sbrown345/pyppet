@@ -5,13 +5,13 @@ BIDIRECTIONAL = '⥂'
 POSITIVE_OFFSET = '⊕'
 NEGATIVE_OFFSET = '⊝'
 
-SHAPE_KEYS = '⟝shape keys:'
-SHAPE_KEYS_ICON = '⟝shape keys⟞'
-ACTIVE_BONE = '⟝active bone:'
-ACTIVE_BONE_ICON = '⟝active bone⟞'
+SHAPE_KEYS = '𝙎𝙝𝙖𝙥𝙚 𝙆𝙚𝙮𝙨'
+SHAPE_KEYS_ICON = '𝙎𝙝𝙖𝙥𝙚 𝙆𝙚𝙮𝙨'
+ACTIVE_BONE = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
+ACTIVE_BONE_ICON = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
 
-DYNAMIC_TARGETS = '⟝targets:'
-DYNAMIC_TARGETS_ICON = '⟝targets⟞'
+DYNAMIC_TARGETS = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
+DYNAMIC_TARGETS_ICON = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
 
 
 WEIGHT = '⥤'
@@ -99,32 +99,32 @@ DND = ' ⎗ '
 
 MULTIPLY = '⨉'
 
-DRIVERS_ICON = '⟝drivers⟞'
+DRIVERS_ICON = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
 DRIVER = '⎆'
-DRIVERS = '⟝drivers:'
+DRIVERS = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
 
-FORCES_ICON = '⟝forces⟞'
-FORCES = '⟝⟞forces:'
+FORCES_ICON = '𝙁𝙤𝙧𝙘𝙚𝙨'
+FORCES = '𝙁𝙤𝙧𝙘𝙚𝙨'
 
 WEBCAM = '📹'
 KINECT = '㉿'
 GAMEPAD = '🎮'
 WIIMOTE = '⍠'
 
-DEVICES_ICON = '⥅'
-DEVICES = 'devices'
+DEVICES_ICON = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
+DEVICES = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
 
-PHYSICS_ICON = '⌘'
-PHYSICS = 'physics'
+PHYSICS_ICON = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
+PHYSICS = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
 
-MODIFIERS_ICON = '⑇'
-MODIFIERS = 'modifiers'
+MODIFIERS_ICON = '🔧'
+MODIFIERS = '𝙈𝙤𝙙𝙞𝙛𝙞𝙚𝙧𝙨'
 
-CONSTRAINTS_ICON = '⧪'
-CONSTRAINTS = 'constraints'
+CONSTRAINTS_ICON = '🔗'
+CONSTRAINTS = '𝘾𝙤𝙣𝙨𝙩𝙧𝙖𝙞𝙣𝙩𝙨'
 
-MATERIALS_ICON = '💎'
-MATERIALS = 'materials'
+MATERIALS_ICON = '💎𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
+MATERIALS = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
 
 SETTINGS = 'settings'
 
@@ -140,8 +140,8 @@ DELETE = '✗'
 
 GRAVITY = 'ⴿ'
 
-WEBGL = 'webGL'
-WEBGL_ICON = '⎅'
+WEBGL = '𝙒𝙚𝙗𝙂𝙇'
+WEBGL_ICON = '𝙒𝙚𝙗𝙂𝙇'
 
 POPUP = '𝛒𝛐𝛒𝛖𝛒'
 
