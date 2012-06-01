@@ -112,12 +112,11 @@ class BlenderHack( object ):
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
-		#self._gtk_updated = True
+		self._gtk_updated = True
 		self.context = BlenderContextCopy( bpy.context )
 		self.lock.acquire()
-		## Clutter is not working here ##
-		#while gtk.gtk_events_pending():	# doing it here makes callbacks safe
-		#	gtk.gtk_main_iteration()
+		while gtk.gtk_events_pending():	# doing it here makes callbacks safe
+			gtk.gtk_main_iteration()
 		self.lock.release()
 
 	def setup_blender_hack(self, context):
@@ -141,20 +140,6 @@ class BlenderHack( object ):
 
 	def update_blender_and_gtk( self, drop_frame=False ):
 		self._gtk_updated = False
-
-		## need to force redraw of all actors here ##
-		ClutterEmbed.update()
-		clutter.cogl_flush()
-
-		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
-			#print('WARN: 3D view is not shown - this is dangerous')
-			self.lock.acquire()
-			while gtk.gtk_events_pending():
-				gtk.gtk_main_iteration()
-			self.lock.release()
-
-		clutter.cogl_flush()
-
 
 		if not drop_frame:
 			## force redraw in VIEW_3D ##
@@ -185,16 +170,14 @@ class BlenderHack( object ):
 							reg.tag_redraw()
 							break
 
-		#Blender.iterate( self.evil_C, draw=not drop_frame)
-		if 1:
-			print(1)
-			clutter.cogl_begin_gl()
-			print(2)
-			Blender.iterate( self.evil_C, draw=not drop_frame)
-			clutter.cogl_end_gl()
-			print(3)
-			clutter.cogl_flush()
-			print(4)
+		Blender.iterate( self.evil_C, draw=not drop_frame)
+
+		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
+			#print('WARN: 3D view is not shown - this is dangerous')
+			self.lock.acquire()
+			while gtk.gtk_events_pending():
+				gtk.gtk_main_iteration()
+			self.lock.release()
 
 
 	################ BAKE HACK ################
@@ -913,6 +896,9 @@ class VStacker( object ):
 			self.callback( oldindex, newindex, *self.callback_args )
 
 class ClutterEmbed(object):
+	'''
+	this can work with blender, but the clutter widgets flicker, even with forced redraw
+	'''
 	instances = []
 	actors = []
 	def __init__(self, width=320, height=240 ):

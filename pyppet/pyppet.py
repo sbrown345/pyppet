@@ -4257,13 +4257,10 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools.set_border_width( 2 )
 
 		sw = gtk.ScrolledWindow()
-		#sw.add_with_viewport( self._left_tools )
-		self.embed = ClutterEmbed( width=200, height=100 )
-		#sw.add_with_viewport( self.embed.widget )
+		sw.add_with_viewport( self._left_tools )
 		sw.set_policy(True,False)
 		sw.set_size_request( 300, 200 )
-		#parent.pack_start( sw, expand=False )
-		parent.pack_start( self.embed.widget, expand=False )
+		parent.pack_start( sw, expand=False )
 
 		#################### outliner ##################
 
@@ -4273,13 +4270,6 @@ class PyppetUI( PyppetAPI ):
 		ex.add( self.outlinerUI.widget )
 		#self._main_body_split.pack_start(
 		#	self.outlinerUI.widget, expand=False)
-
-		#b = gtk.ToggleButton('hi'); b.show()
-		#def sayhi(b):print('hello')
-		#b.connect('toggled',sayhi)
-		#self._left_tools.pack_start( b, expand=False )
-		#actor = self.embed.add( b )
-		#print(actor)
 
 
 		#################### webgl #####################
@@ -4347,7 +4337,6 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools_modals[ 'dynamic-targets' ] = (ex,note)
 		Pyppet.register( self.update_dynamic_targets_widget )
 
-		actor = self.embed.add( self._left_tools )
 		return self._left_tools
 
 
@@ -4582,26 +4571,6 @@ class PyppetUI( PyppetAPI ):
 	def create_ui(self, context):
 		self._blender_min_width = 640
 		self._blender_min_height = 480
-
-		if True:
-			win = gtk.Window()
-			embed = ClutterEmbed( width=1, height=1 )
-			win.add( embed.widget )
-			b = gtk.ToggleButton('toggle me')
-			b.show()
-			embed.add( b )
-			win.show_all()
-
-		#self.window = win = gtk.Window()
-		#win.set_opacity( 0.95 )
-
-		#if USE_BLENDER_GREY:		win.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
-		#win.set_title( 'Pyppet '+VERSION )
-
-		## TODO - loading css theme is broken (half works) ##
-		#if '--skin' in sys.argv:
-		#load_gtk_css( win.get_style_context() )
-
 
 		self.root = root = gtk.VBox()
 		root.set_border_width( 10 )
