@@ -5,13 +5,13 @@ BIDIRECTIONAL = '⥂'
 POSITIVE_OFFSET = '⊕'
 NEGATIVE_OFFSET = '⊝'
 
-SHAPE_KEYS = '𝙎𝙝𝙖𝙥𝙚 𝙆𝙚𝙮𝙨'
-SHAPE_KEYS_ICON = '𝙎𝙝𝙖𝙥𝙚 𝙆𝙚𝙮𝙨'
+SHAPE_KEYS = '𝙎𝙝𝙖𝙥𝙚s'
+SHAPE_KEYS_ICON = '𝙎𝙝𝙖𝙥𝙚𝙨'
 ACTIVE_BONE = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
-ACTIVE_BONE_ICON = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
+ACTIVE_BONE_ICON = '⟝'
 
 DYNAMIC_TARGETS = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
-DYNAMIC_TARGETS_ICON = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
+DYNAMIC_TARGETS_ICON = '⟟'
 
 
 WEIGHT = '⥤'
@@ -99,7 +99,7 @@ DND = ' ⎗ '
 
 MULTIPLY = '⨉'
 
-DRIVERS_ICON = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
+DRIVERS_ICON = '⟤'
 DRIVER = '⎆'
 DRIVERS = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
 
@@ -123,7 +123,7 @@ MODIFIERS = '𝙈𝙤𝙙𝙞𝙛𝙞𝙚𝙧𝙨'
 CONSTRAINTS_ICON = '🔗'
 CONSTRAINTS = '𝘾𝙤𝙣𝙨𝙩𝙧𝙖𝙞𝙣𝙩𝙨'
 
-MATERIALS_ICON = '💎𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
+MATERIALS_ICON = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
 MATERIALS = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
 
 SETTINGS = 'settings'

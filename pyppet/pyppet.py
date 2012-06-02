@@ -563,9 +563,15 @@ class WebServer( object ):
 		if forking:
 			self.httpd = make_forking_server( self.host, self.httpd_port, self.httpd_reply )
 		else:
-			self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+			try:
+				self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+			except:
+				print('ERROR: failed to bind to port', self.httpd_port)
+				self.httpd = None
 
-		self.httpd.timeout = timeout
+		if self.httpd:
+			self.httpd.timeout = timeout
+
 		self.THREE = None
 		path = os.path.join(SCRIPT_DIR, 'javascripts/Three.js')
 		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
@@ -819,7 +825,8 @@ class Server( WebServer ):
 
 	def update(self, context):
 		## first do http ##
-		self.httpd.handle_request()
+		if self.httpd:
+			self.httpd.handle_request()
 		#self.write_streams()
 
 	def write_streams(self):	# to clients (peers)
@@ -4234,21 +4241,25 @@ class PyppetUI( PyppetAPI ):
 			slot = ob.data.materials[0].texture_slots[0]
 			slot.texture.image = bpy.data.images['_kinect_']
 
-	def create_left_tools( self, parent ):
+	def create_tools( self, parent ):
 		self._left_tools = gtk.VBox()
 		self._left_tools.set_border_width( 2 )
 
+		self._right_tools = gtk.VBox()
+		self._right_tools.set_border_width( 4 )
+
+		## add left tools to parent - in scrolled window
 		sw = gtk.ScrolledWindow()
 		sw.add_with_viewport( self._left_tools )
 		sw.set_policy(True,False)
-		sw.set_size_request( 300, 200 )
+		sw.set_size_request( 250, 200 )
 		parent.pack_start( sw, expand=False )
+		## add right tools to parent - PACK_END
+		parent.pack_end( self._right_tools, expand=False )
+
 
 		#################### outliner ##################
-
-		box = gtk.VBox()
-		parent.pack_end( box, expand=False )
-
+		box = self._right_tools
 		self.outlinerUI = OutlinerUI()
 		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
 		ex.add( self.outlinerUI.widget )
@@ -4268,40 +4279,39 @@ class PyppetUI( PyppetAPI ):
 
 
 
-		#################### webgl #####################
-		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON, expanded=True )
-		self._left_tools.pack_start( ex.widget, expand=False )
+		ex = DetachableExpander( icons.JOINTS, icons.JOINTS_ICON )
+		box.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'joints' ] = (ex,note)
+		Pyppet.register( self.update_joints_widget )
 
-		widget = self.websocket_server.webGL.get_fx_widget_page1()
-		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+		ex = DetachableExpander( icons.PHYSICS_RIG, icons.PHYSICS_RIG_ICON )
+		box.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'solver' ] = (ex,note)
+		Pyppet.register( self.update_solver_widget )
 
-		widget = self.websocket_server.webGL.get_fx_widget_page2()
-		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+		ex = DetachableExpander( icons.ACTIVE_BONE, icons.ACTIVE_BONE_ICON )
+		box.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'active-bone' ] = (ex,note)
+		Pyppet.register( self.update_bone_widget )
 
-
-		page = gtk.VBox()
-		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
-		b.connect( self, path='camera_randomize' )
-		page.pack_start( b.widget, expand=False )
-		for name in 'camera_focus camera_aperture camera_maxblur'.split():
-			page.pack_start( gtk.Label(name.split('_')[-1]), expand=False )
-			if name == 'camera_aperture':
-				slider = SimpleSlider( self, name=name, title='', max=0.2, driveable=True )
-			else:
-				slider = SimpleSlider( self, name=name, title='', max=3.0, driveable=True )
-			page.pack_start( slider.widget, expand=False )
-		note.append_page(page, gtk.Label( icons.CAMERA) )
-
-
-		#################### drivers ###################
-		self._left_tools_modals = {}
+		ex = DetachableExpander( icons.DYNAMIC_TARGETS, icons.DYNAMIC_TARGETS_ICON )
+		box.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook(); ex.add( note )
+		self._left_tools_modals[ 'dynamic-targets' ] = (ex,note)
+		Pyppet.register( self.update_dynamic_targets_widget )
 
 		ex = DetachableExpander( icons.DRIVERS, icons.DRIVERS_ICON )
-		self._left_tools.pack_start( ex.widget, expand=False )
+		box.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 		self._left_tools_modals[ 'drivers' ] = (ex,note)
 		Pyppet.register( self.update_drivers_widget )
+
+		#######################################
+		#					LEFT
+		#######################################
 
 		ex = DetachableExpander( icons.PHYSICS, icons.PHYSICS_ICON )
 		self._left_tools.pack_start( ex.widget, expand=False )
@@ -4309,29 +4319,28 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools_modals[ 'forces' ] = (ex,note)
 		Pyppet.register( self.update_forces_widget )
 
-		ex = DetachableExpander( icons.JOINTS, icons.JOINTS_ICON )
-		self._left_tools.pack_start( ex.widget, expand=False )
-		note = gtk.Notebook(); ex.add( note )
-		self._left_tools_modals[ 'joints' ] = (ex,note)
-		Pyppet.register( self.update_joints_widget )
 
-		ex = DetachableExpander( icons.PHYSICS_RIG, icons.PHYSICS_RIG_ICON )
+		#################### webgl #####################
+		ex = DetachableExpander( icons.WEBGL, short_name=icons.WEBGL_ICON, expanded=False )
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
-		self._left_tools_modals[ 'solver' ] = (ex,note)
-		Pyppet.register( self.update_solver_widget )
 
-		ex = DetachableExpander( icons.ACTIVE_BONE, icons.ACTIVE_BONE_ICON )
-		self._left_tools.pack_start( ex.widget, expand=False )
-		note = gtk.Notebook(); ex.add( note )
-		self._left_tools_modals[ 'active-bone' ] = (ex,note)
-		Pyppet.register( self.update_bone_widget )
+		widget = self.websocket_server.webGL.get_fx_widget_page1()
+		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+		widget = self.websocket_server.webGL.get_fx_widget_page2()
+		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
 
-		ex = DetachableExpander( icons.DYNAMIC_TARGETS, icons.DYNAMIC_TARGETS_ICON )
-		self._left_tools.pack_start( ex.widget, expand=False )
-		note = gtk.Notebook(); ex.add( note )
-		self._left_tools_modals[ 'dynamic-targets' ] = (ex,note)
-		Pyppet.register( self.update_dynamic_targets_widget )
+		page = gtk.VBox()
+		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
+		b.connect( self, path='camera_randomize' )
+		page.pack_start( b.widget, expand=False )
+		for name in 'camera_focus camera_aperture camera_maxblur'.split():
+			if name == 'camera_aperture':
+				slider = SimpleSlider( self, name=name, title=name, max=0.2, driveable=True )
+			else:
+				slider = SimpleSlider( self, name=name, title=name, max=3.0, driveable=True )
+			page.pack_start( slider.widget, expand=False )
+		note.append_page(page, gtk.Label( icons.CAMERA) )
 
 		return self._left_tools
 
@@ -4567,12 +4576,12 @@ class PyppetUI( PyppetAPI ):
 	def create_ui(self, context):
 		self._blender_min_width = 640
 		self._blender_min_height = 480
-
+		self._left_tools_modals = {}
+		######################
 		self.root = root = gtk.VBox()
 		root.set_border_width( 10 )
 		frame = gtk.Frame()
 		popup = PopupWindow( child=root, toolbar=frame )
-		#win.add( root )
 		self.window = popup.window
 
 		################ HEADER ################
@@ -4587,85 +4596,20 @@ class PyppetUI( PyppetAPI ):
 		self.toolbar_footer = self.create_footer()
 		root.pack_start( self.toolbar_footer.widget, expand=False )
 
+		############ create tools  ###########
+		left_tools = self.create_tools( self._main_body_split )
 
-
-		############ LEFT TOOLS ###########
-		left_tools = self.create_left_tools( self._main_body_split )
-		## OUTLINER ##
-		#split.pack_start( outliner )
-
-
-		self.main_notebook = note = gtk.Notebook()
+		self.main_notebook = note = gtk.Notebook()		# TODO store blenders here
 		note.set_tab_pos( gtk.POS_BOTTOM )
-
-
-		if False:
-			self.blender_container = eb = gtk.EventBox()
-			#note.append_page( self.blender_container, gtk.Label('VIEW3D') )
-			#blend_kivy_split.pack_start( self.blender_container )
-			#Vsplit.add2( self.blender_container )
-			subV.add1( self.blender_container )
-
-			self.blender_container2 = eb = gtk.EventBox()
-			note.append_page( eb, gtk.Label('UV') )
-
-			################# setup destination DND ###############
-			DND.make_destination( self.blender_container )
-			self.blender_container.connect('drag-drop', self.drop_on_blender_container)
-			DND.make_destination( self.blender_container2 )
-			self.blender_container2.connect('drag-drop', self.drop_on_blender_container)
-			################# setup source DND ###################
-			DND.make_source( self.blender_container, 'BLENDER_CONTAINER' )
-			DND.make_source( self.blender_container2, 'BLENDER_CONTAINER' )
-			################# source DND is not working! - TODO research how to make it work ############
-			xsocket = self.create_blender_xembed_socket()
-			self.blender_container.add( xsocket )
-
-
-			################ The Gimp ##############
-			self._gimp_page = gtk.HBox()
-			note.append_page( self._gimp_page, gtk.Label('GIMP') )
-
-			self._gimp_toolbox_xsocket = soc = gtk.Socket()
-			soc.set_size_request( 170, 560 )
-			self._gimp_image_xsocket = soc = gtk.Socket()
-			soc.set_size_request( 320, 560 )
-			self._gimp_layers_xsocket = soc = gtk.Socket()
-			soc.set_size_request( 240, 560 )
-
-			eb = gtk.EventBox()
-			eb.add( self._gimp_toolbox_xsocket )
-			self._gimp_page.pack_start( eb, expand=False )
-
-			eb = gtk.EventBox()
-			eb.add( self._gimp_image_xsocket )
-			self._gimp_page.pack_start( eb, expand=True )
-
-			eb = gtk.EventBox()
-			eb.add( self._gimp_layers_xsocket )
-			self._gimp_page.pack_start( eb, expand=False )
-
-
-			################ gnome nautilus ####################
-			self._nautilus_container = gtk.EventBox()
-			self._nautilus_xsocket = gtk.Socket()
-			self._nautilus_container.add( self._nautilus_xsocket )
-			note.append_page( self._nautilus_container, gtk.Label('FILES') )
 
 		################# google chrome ######################
 		self._chrome_xsocket = gtk.Socket()
-		#subV.add2( self._chrome_xsocket )
 		self._main_body_split.pack_start( self._chrome_xsocket, expand=True )
-
 
 		############### Extra Tools #################
 		#______________________________________________________#
 		self.toolsUI = ToolsUI( self.lock, context )
 		self.toolsUI.widget.set_border_width(2)
-
-		#-----------------------------------------------------------------------
-		#			Second Popup
-		#-----------------------------------------------------------------------
 
 		if '--popup-tools' in sys.argv:
 			frame = gtk.Frame()
@@ -4673,11 +4617,13 @@ class PyppetUI( PyppetAPI ):
 				child=self.toolsUI.widget, 
 				toolbar=frame)
 			popup.window.show_all()
+
 		else:
+			##############################
+			##		right tools mini tools			#
+			##############################
 			left_tools.pack_start( self.toolsUI.widget )
 			frame = gtk.Frame()
-
-
 
 
 		############### FOOTER #################
@@ -4747,7 +4693,7 @@ class PyppetUI( PyppetAPI ):
 		header = gtk.HBox()
 		modal1.add( header )
 
-		footer = gtk.HBox()
+		footer = root = gtk.HBox()
 		modal2.add( footer )
 
 
@@ -5401,7 +5347,7 @@ class OutlinerUI( object ):
 		self.meshes = {}
 
 		self.widget = sw = gtk.ScrolledWindow()
-		sw.set_size_request( 180, 420 )
+		sw.set_size_request( 180, 280 )
 		self.lister = box = gtk.VBox()
 		box.set_border_width(2)
 		sw.add_with_viewport( box )
@@ -5480,12 +5426,12 @@ class MaterialsUI(object):
 		root.set_border_width(2)
 
 		ex = gtk.Expander( 'webgl-tint' )
+		ex.set_expanded(True)
 		root.pack_start( ex, expand=False )
 		hsv = gtk.HSV(); ex.add( hsv )
 		r,g,b,a = ob.color
 		hsv.set_color( *gtk.rgb2hsv(r,g,b) )
 		hsv.connect('changed', self.color_changed, ob, 'color', None)
-
 
 		exs = []
 		for mat in ob.data.materials:
@@ -5548,7 +5494,7 @@ class MaterialsUI(object):
 			slider = SimpleSlider( mat, name='ambient', title='', max=1.0, driveable=True, tooltip='ambient' )
 			bxx.pack_start( slider.widget, expand=False )
 
-		if len(exs)==1: exs[0].set_expanded(True)
+		#if len(exs)==1: exs[0].set_expanded(True)
 
 		root.pack_start( gtk.Label() )
 		b = gtk.Button('new material')
@@ -5826,7 +5772,11 @@ class ToolsUI( object ):
 		Pyppet.register( self.update_shape_keys )
 
 
-		ex = DetachableExpander( icons.MATERIALS, short_name=icons.MATERIALS_ICON )
+		ex = DetachableExpander(
+			icons.MATERIALS, 
+			short_name=icons.MATERIALS_ICON,
+			expanded=True
+		)
 		pane2.pack_start( ex.widget, expand=True )
 		self.materials_UI = MaterialsUI()
 		ex.add( self.materials_UI.widget )
