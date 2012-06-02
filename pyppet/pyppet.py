@@ -6056,11 +6056,13 @@ class WiimotesWidget(object):
 
 #####################################
 if __name__ == '__main__':
+	os.system('killall chromium-browser')
+	os.system('chromium-browser localhost:8080 &')
+	time.sleep(1.0)
 	Pyppet.do_wnck_hack()
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 	## run pyppet ##
 	Pyppet.mainloop()
-	#threading._start_new_thread( Pyppet.mainloop, ())
 
 
 
