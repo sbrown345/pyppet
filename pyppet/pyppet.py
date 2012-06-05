@@ -4158,6 +4158,11 @@ class PyppetUI( PyppetAPI ):
 	def create_footer(self, modal_frame=None):
 		left = []
 
+		b = gtk.Button( icons.BLENDER )
+		b.connect('clicked', self.embed_blender_window)
+		b.set_tooltip_text( 'embed blender window' )
+		left.append( b )
+
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
 		s.set_tooltip_text( 'toggle physics' )
@@ -4216,35 +4221,10 @@ class PyppetUI( PyppetAPI ):
 		else: self.footer.hide()
 
 
-	def drop_on_blender_container(self, wid, con, x, y, time):
-		ob = self.context.active_object
-
-		if type(DND.source_object) is bpy.types.Material:
-			print('material dropped')
-			mat = DND.source_object
-			index = 0
-			for index in range( len(ob.data.materials) ):
-				if ob.data.materials[ index ] == mat: break
-			ob.active_material_index = index
-			bpy.ops.object.material_slot_assign()
-			## should be in edit mode, if not then what action? ##
-		elif DND.source_object == 'WEBCAM':
-			if '_webcam_' not in bpy.data.images:
-				bpy.data.images.new( name='_webcam_', width=240, height=180 )
-			slot = ob.data.materials[0].texture_slots[0]
-			slot.texture.image = bpy.data.images['_webcam_']
-
-
-		elif DND.source_object == 'KINECT':
-			if '_kinect_' not in bpy.data.images:
-				bpy.data.images.new( name='_kinect_', width=240, height=180 )
-			slot = ob.data.materials[0].texture_slots[0]
-			slot.texture.image = bpy.data.images['_kinect_']
 
 	def create_tools( self, parent ):
 		self._left_tools = gtk.VBox()
 		self._left_tools.set_border_width( 2 )
-
 		self._right_tools = gtk.VBox()
 		self._right_tools.set_border_width( 4 )
 
@@ -4269,15 +4249,15 @@ class PyppetUI( PyppetAPI ):
 			icons.MODIFIERS, 
 			short_name=icons.MODIFIERS_ICON 
 		)
-		box.pack_start( tool.widget, expand=False )
+		box.pack_start( tool.widget, expand=True )
 
 		tool = ConstraintsTool(
 			icons.CONSTRAINTS, 
 			short_name=icons.CONSTRAINTS_ICON 
 		)
-		box.pack_start( tool.widget, expand=False )
+		box.pack_start( tool.widget, expand=True )
 
-
+		box.pack_start( gtk.Label() )
 
 		ex = DetachableExpander( icons.JOINTS, icons.JOINTS_ICON )
 		box.pack_start( ex.widget, expand=False )
@@ -4573,127 +4553,6 @@ class PyppetUI( PyppetAPI ):
 			EX.show_all()
 
 
-	def create_ui(self, context):
-		self._blender_min_width = 640
-		self._blender_min_height = 480
-		self._left_tools_modals = {}
-		######################
-		self.root = root = gtk.VBox()
-		root.set_border_width( 10 )
-		frame = gtk.Frame()
-		popup = PopupWindow(
-			child=root,
-			toolbar=frame,
-			deletable=True,
-			on_close=self.exit
-		)
-		self.window = popup.window
-
-		################ HEADER ################
-		self.toolbar_header = self.create_header( modal_frame=frame )
-		root.pack_start( self.toolbar_header.widget, expand=False )
-		#---------------------------------------------------------------
-		#---------------------------------------------------------------
-
-		self._main_body_split = split = gtk.HBox()
-		root.pack_start( split )
-
-		self.toolbar_footer = self.create_footer()
-		root.pack_start( self.toolbar_footer.widget, expand=False )
-
-		############ create tools  ###########
-		left_tools = self.create_tools( self._main_body_split )
-
-		self.main_notebook = note = gtk.Notebook()		# TODO store blenders here
-		note.set_tab_pos( gtk.POS_BOTTOM )
-
-		################# google chrome ######################
-		self._chrome_xsocket = gtk.Socket()
-		self._main_body_split.pack_start( self._chrome_xsocket, expand=True )
-
-		############### Extra Tools #################
-		#______________________________________________________#
-		self.toolsUI = ToolsUI( self.lock, context )
-		self.toolsUI.widget.set_border_width(2)
-
-		if '--popup-tools' in sys.argv:
-			frame = gtk.Frame()
-			popup = PopupWindow(
-				child=self.toolsUI.widget, 
-				toolbar=frame)
-			popup.window.show_all()
-
-		else:
-			##############################
-			##		right tools mini tools			#
-			##############################
-			left_tools.pack_start( self.toolsUI.widget )
-			frame = gtk.Frame()
-
-
-		############### FOOTER #################
-		self.footer = note = gtk.Notebook()
-		note.set_tab_pos( gtk.POS_BOTTOM )
-		#Vsplit.pack_start( self.footer, expand=False )
-		self.root.pack_start( self.footer, expand=False )
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.RECORD) )
-		page.add( self.get_recording_widget() )
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.SINE_WAVE) )
-		page.add( self.get_wave_widget() )
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.TEXTURE) )
-		page.add( self.get_textures_widget() )
-
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.KEYBOARD) )
-		w = self.audio.synth.channels[0].get_widget()
-		page.add( w )
-
-
-
-		##################################
-		self.window.connect('destroy', self.exit )
-		self.window.show_all()
-
-		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
-		bpy.ops.wm.window_duplicate()
-		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
-		#bxsock = gtk.Socket()
-		#bxsock.connect('size-allocate',self.on_resize_blender)	# required
-		#bxsock.set_border_width(6)
-		#self.toolsUI.widget.pack_start( bxsock )
-
-
-		#####################################
-		self._bottom_toggle_button.set_active(False)
-
-		#self.do_xembed( xsocket, 'Blender' )		# this must come last
-
-		if self.server.httpd:
-			self.do_xembed( self._chrome_xsocket, "Chromium")
-		else:
-			msg = gtk.Label('ERROR: can not listen on port 8080 (streaming disabled)' )
-			self._main_body_split.pack_start( msg )
-			msg.show()
-
-
-		#self.do_xembed( bxsock, 'Blender' )
-		#Blender.window_expand()
-
-
-		#self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
-		#self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
-		#self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
-
-		#self.do_xembed( self._nautilus_xsocket, "Home")
-
-		#self.do_xembed( self._kivy_xsocket, "IcarusTouch")
 
 
 	def update_header(self,ob):
@@ -5040,69 +4899,157 @@ class PyppetUI( PyppetAPI ):
 		w = ENGINE.get_wrapper(ob)
 		w.reset_collision_type()
 
+	def create_ui(self, context):
+		self._left_tools_modals = {}
+		######################
+		self.root = root = gtk.VBox()
+		root.set_border_width( 10 )
+		frame = gtk.Frame()
+		popup = PopupWindow(
+			child=root,
+			toolbar=frame,
+			deletable=True,
+			on_close=self.exit,
+			set_keep_above=False,				
+		)
+		self.window = popup.window
 
-##########################################################
-class App( PyppetUI ):
+		################ HEADER ################
+		self.toolbar_header = self.create_header( modal_frame=frame )
+		root.pack_start( self.toolbar_header.widget, expand=False )
+		#---------------------------------------------------------------
+		#---------------------------------------------------------------
 
-	def after_on_plug_blender(self):
-		# change 3 views up, get the UV editor, duplicate window, change back #
+		self._main_body_split = split = gtk.HBox()
+		root.pack_start( split )
+
+		self.toolbar_footer = self.create_footer()
+		root.pack_start( self.toolbar_footer.widget, expand=False )
+
+		############ create tools  ###########
+		left_tools = self.create_tools( self._main_body_split )
+
+		self.main_notebook = note = gtk.Notebook()		# TODO store blenders here
+		note.set_tab_pos( gtk.POS_BOTTOM )
+
+		################# google chrome ######################
+		self._chrome_xsocket = gtk.Socket()
+		self._main_body_split.pack_start( self._chrome_xsocket, expand=True )
+
+		############### Extra Tools #################
+		#______________________________________________________#
+		self.toolsUI = ToolsUI( self.lock, context )
+		self.toolsUI.widget.set_border_width(2)
+
+		if '--popup-tools' in sys.argv:
+			frame = gtk.Frame()
+			popup = PopupWindow(
+				child=self.toolsUI.widget, 
+				toolbar=frame)
+			popup.window.show_all()
+
+		else:
+			##############################
+			##		right tools mini tools			#
+			##############################
+			left_tools.pack_start( self.toolsUI.widget )
+			frame = gtk.Frame()
+
+
+		############### Blender Embed Windows ##############
+		self._blender_embed_toolbar = gtk.VBox()
+		self.root.pack_start( self._blender_embed_toolbar, expand=True )
+
+
+		############### FOOTER #################
+		self.footer = note = gtk.Notebook()
+		note.set_tab_pos( gtk.POS_BOTTOM )
+		#Vsplit.pack_start( self.footer, expand=False )
+		self.root.pack_start( self.footer, expand=False )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.RECORD) )
+		page.add( self.get_recording_widget() )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.SINE_WAVE) )
+		page.add( self.get_wave_widget() )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.TEXTURE) )
+		page.add( self.get_textures_widget() )
+
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.KEYBOARD) )
+		w = self.audio.synth.channels[0].get_widget()
+		page.add( w )
+
+
+
+		##################################
+		self.window.connect('destroy', self.exit )
+		self.window.show_all()
+
 		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
 		bpy.ops.wm.window_duplicate()
 		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
 
-		self._blender_xsocket2 = xsock = gtk.Socket()
-		self.blender_container2.add( xsock )
-		xsock.connect('size-allocate',self.on_resize_blender)	# required
-		#xsock.connect('plug-added', self.on_plug_blender2)	# not required?
-		xsock.show()
-
-		self.do_wnck_hack()
-		self.do_xembed( xsock, 'Blender' )
-		#self.window.maximize()
-		Blender.window_expand()
-
-	def on_plug_blender2(self, args):
-		self._blender_xsocket2.set_size_request(
-			self._blender_min_width, 
-			self._blender_min_height
-		)
+		#####################################
+		self._bottom_toggle_button.set_active(False)
 
 
-	def exit(self, arg):
-		self.audio.exit()
-		self.active = False
-		self.websocket_server.active = False
-		sdl.Quit()
-		print('...quit blender...')
-		bpy.ops.wm.quit_blender()	# fixes hang on exit
-
-	def cb_toggle_physics(self,button,event):
-		if button.get_active(): self.toggle_physics(False)	# reversed
-		else: self.toggle_physics(True)
-
-	def toggle_physics(self,switch):
-		self.physics_running = switch
-		if switch:
-			self.blender_start_time = time.time()
-			self.blender_good_frames = 0
-			self.blender_dropped_frames = 0
-
-			ENGINE.start()
-			if self.playback_blender_anim:
-				bpy.ops.screen.animation_play()
+		if self.server.httpd:
+			self.do_xembed( self._chrome_xsocket, "Chromium")
 		else:
-			ENGINE.stop()
-			for e in self.entities.values(): e.reset()
-			if self.playback_blender_anim:
-				bpy.ops.screen.animation_cancel()
+			msg = gtk.Label('ERROR: can not listen on port 8080 (streaming disabled)' )
+			self._main_body_split.pack_start( msg )
+			msg.show()
 
-			print('--blender good frames:', self.blender_good_frames)
-			print('--blender dropped frames:', self.blender_dropped_frames)
-			frames = self.blender_good_frames + self.blender_dropped_frames
-			delta = (time.time() - self.blender_start_time) / float(frames)
-			print('--blender average time per frame:', delta )
-			print('--blender FPS:', 1.0 / delta )
+		##### OLD STUFF #####
+		#self.do_xembed( bxsock, 'Blender' )
+		#Blender.window_expand()
+		#self.do_xembed( self._gimp_toolbox_xsocket, "Toolbox")
+		#self.do_xembed( self._gimp_image_xsocket, "GNU Image Manipulation Program")
+		#self.do_xembed( self._gimp_layers_xsocket, "Layers, Channels, Paths, Undo - Brushes, Patterns, Gradients")
+		#self.do_xembed( self._nautilus_xsocket, "Home")
+		#self.do_xembed( self._kivy_xsocket, "IcarusTouch")
+		####################
 
+
+
+	def drop_on_blender_container(self, wid, con, x, y, time):
+		ob = self.context.active_object
+		if type(DND.source_object) is bpy.types.Material:
+			print('material dropped')
+			mat = DND.source_object
+			index = 0
+			for index in range( len(ob.data.materials) ):
+				if ob.data.materials[ index ] == mat: break
+			ob.active_material_index = index
+			bpy.ops.object.material_slot_assign()
+			## should be in edit mode, if not then what action? ##
+		elif DND.source_object == 'WEBCAM':
+			if '_webcam_' not in bpy.data.images:
+				bpy.data.images.new( name='_webcam_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_webcam_']
+		elif DND.source_object == 'KINECT':
+			if '_kinect_' not in bpy.data.images:
+				bpy.data.images.new( name='_kinect_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_kinect_']
+
+
+	def embed_blender_window(self,b):
+		xsock = self.create_blender_xembed_socket()	# gtk.Socket
+		xsock.set_border_width(3)
+		self._blender_embed_toolbar.pack_start( xsock )
+		self.do_xembed( xsock, 'Blender' )	# shows xsock
+
+
+##########################################################
+class App( PyppetUI ):
 	def __init__(self):
 		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
 
@@ -5144,9 +5091,56 @@ class App( PyppetUI ):
 
 		self.progressive_baking = True
 
+		self._blender_embed_windows = []
+		self._blender_embed_toolbar = None
+
 		self.blender_good_frames = 0
 		self.blender_dropped_frames = 0
 		self._mainloop_prev_time = time.time()
+
+
+
+
+
+	def exit(self, arg):
+		self.audio.exit()
+		self.active = False
+		self.websocket_server.active = False
+		sdl.Quit()
+		print('...quit blender...')
+		bpy.ops.wm.quit_blender()	# fixes hang on exit
+
+
+	######################################################
+
+
+	def cb_toggle_physics(self,button,event):
+		if button.get_active(): self.toggle_physics(False)	# reversed
+		else: self.toggle_physics(True)
+
+	def toggle_physics(self,switch):
+		self.physics_running = switch
+		if switch:
+			self.blender_start_time = time.time()
+			self.blender_good_frames = 0
+			self.blender_dropped_frames = 0
+
+			ENGINE.start()
+			if self.playback_blender_anim:
+				bpy.ops.screen.animation_play()
+		else:
+			ENGINE.stop()
+			for e in self.entities.values(): e.reset()
+			if self.playback_blender_anim:
+				bpy.ops.screen.animation_cancel()
+
+			print('--blender good frames:', self.blender_good_frames)
+			print('--blender dropped frames:', self.blender_dropped_frames)
+			frames = self.blender_good_frames + self.blender_dropped_frames
+			delta = (time.time() - self.blender_start_time) / float(frames)
+			print('--blender average time per frame:', delta )
+			print('--blender FPS:', 1.0 / delta )
+
 
 
 	####################################################
@@ -5960,18 +5954,22 @@ class GamepadsWidget(object):
 
 
 class Gamepad( GameDevice ):
+	'''
+	SDL Gamepad wrapper
+	'''
 	NUM_DEVICES = sdl.NumJoysticks()
-	#assert NUM_DEVICES
 	def update(self):
-		for i in range( self.naxes ):
+		for i in range( self.num_axes ):
 			value = self.dev.GetAxis(i) / 32767.0		# -32768 to 32767
 			self.axes[i] = value
 			self.axes_gtk[i].set_value(value)
-		for i in range( self.nbuttons ):
+
+		for i in range( self.num_buttons ):
 			value = bool( self.dev.GetButton(i) )
 			self.buttons[i] = value
 			self.buttons_gtk[i].set_active( value )
-		for i in range( self.nhats ):
+
+		for i in range( self.num_hats ):
 			self.hats[i] = self.dev.GetHat(i)
 
 		#self.update_drivers()
@@ -5979,16 +5977,16 @@ class Gamepad( GameDevice ):
 	def __init__(self,index=0):
 		self.index = index
 		self.dev = sdl.JoystickOpen(index)
-		self.naxes = self.dev.NumAxes()
-		self.nbuttons = self.dev.NumButtons()
-		self.nhats = self.dev.NumHats()
-		self.axes = [ 0.0 ] * self.naxes
-		self.buttons = [ False ] * self.nbuttons
-		self.hats = [ 0 ] * self.nhats
+		self.configure_device(	# core API
+			axes = self.dev.NumAxes(),
+			buttons = self.dev.NumButtons(),
+			hats = self.dev.NumHats(),
+		)
 
-		self.logic = {}
+
+		self.logic = {}	# deprecated?
+
 		self.drivers = []
-
 		self.widget = self.get_widget('gamepad')
 
 
@@ -6027,7 +6025,7 @@ if __name__ == '__main__':
 	os.system('killall chromium-browser')
 	os.system('chromium-browser localhost:8080 &')
 	time.sleep(1.0)
-	Pyppet.do_wnck_hack()
+
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 	## run pyppet ##
 	Pyppet.mainloop()

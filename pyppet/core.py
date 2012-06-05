@@ -106,8 +106,8 @@ class BlenderHack( object ):
 		. request Ideasman and Ton for proper support for this.
 	'''
 	blender_window_ready = False
-	_blender_min_width = 640
-	_blender_min_height = 480
+	_blender_min_width = 240
+	_blender_min_height = 320
 	_gtk_updated = False
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
@@ -278,17 +278,27 @@ class BlenderHackWindows( BlenderHack ): pass	#TODO
 class BlenderHackOSX( BlenderHack ): pass		# TODO
 
 class BlenderHackLinux( BlenderHack ):
-	# ( this is brutal, ideally blender API supports embeding from python )
+
 	def create_blender_xembed_socket(self):
-		self._blender_xsocket = sock = gtk.Socket()
+		sock = gtk.Socket()
 		sock.connect('plug-added', self.on_plug_blender)
 		sock.connect('size-allocate',self.on_resize_blender)
 		return sock
 
+	_xembed_sockets = {}
 	def do_xembed(self, xsocket, window_name='Blender'):
+		if window_name not in self._xembed_sockets:
+			self._xembed_sockets[ window_name ] = {}	# xid : xsock
+		# assert xsocket has a parent that is realized #
+		xsocket.show()
 		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
-		xid = self.get_window_xid( window_name )
-		xsocket.add_id( xid )
+		ids = self.get_window_xid( window_name )
+
+		for xid in ids:
+			if xid not in self._xembed_sockets[ window_name ]:
+				self._xembed_sockets[ xid ] = xsocket
+				xsocket.add_id( xid )
+				return xid
 
 	def on_plug_debug(self, xsocket):
 		print('----------on plug debug', xsocket)
@@ -298,18 +308,19 @@ class BlenderHackLinux( BlenderHack ):
 		gdkwin.show()
 		print('gdkwin', width,height)
 
-	def on_plug_blender(self, args):
+	def on_plug_blender(self, xsock):
+		print('[[ on plug blender ]]')
 		self.blender_window_ready = True
-		self._blender_xsocket.set_size_request(
+		xsock.set_size_request(
 			self._blender_min_width, 
 			self._blender_min_height
 		)
-		gdkwin = self._blender_xsocket.get_plug_window()
+		gdkwin = xsock.get_plug_window()
 		gdkwin.set_title( 'EMBED' )
 		Blender.window_expand()
 		self.after_on_plug_blender()
 
-	def after_on_plug_blender(self): pass		# overload me
+	def after_on_plug_blender(self): pass		# API overload me
 
 	def on_resize_blender(self,sock,rect):
 		rect = gtk.cairo_rectangle_int()
@@ -325,30 +336,18 @@ class BlenderHackLinux( BlenderHack ):
 		SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
 		assert os.path.isfile( wnck_helper )
-		#p =os.popen('xwininfo -int -name "%s" ' %name)
 		p =os.popen('%s "%s" ' %(wnck_helper, name))
 		data = p.read().strip()
 		p.close()
 		lines = data.splitlines()
-		for line in lines: print(line)
-		if lines[-1].startswith('XID='):
-			return int( lines[-1].split('=')[-1] )
-
-		#if data.startswith('xwininfo: error:'): return None
-		#elif data:
-		#	lines = data.splitlines()
-		#	return int( lines[0].split()[3] )
-
-
-
-	def do_wnck_hack(self, name='Blender'):
-		print('do_wnck_hack is DEPRECATED')
-		## TODO deprecate wnck-helper hack ##
-		#SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-		#wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
-		#assert os.path.isfile( wnck_helper )
-		#os.system( '%s "%s"' %(wnck_helper,name) )
-
+		ids = []
+		for line in lines:
+			if line.startswith('XID='):
+				print(line)
+				ids.append(
+					int( lines[-1].split('=')[-1] )
+				)
+		return ids
 
 #########################################################
 
@@ -1278,17 +1277,16 @@ class NotebookVectorWidget( object ):
 #########################################################
 
 class PopupWindow(object):
-
-	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None):
+	'''disable set_keep_above for non-popup style window'''
+	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=True):
 		self.object = None
-		if not toolbar:
-			self.toolbar = toolbar = gtk.Frame()
-			toolbar.add( gtk.Label() )
+		if not toolbar: self.toolbar = toolbar = gtk.Frame(); toolbar.add( gtk.Label() )
 		self.toolbar = toolbar
+
 		self.window = win = gtk.Window()
 		win.set_title( title )
 		win.set_position( gtk.WIN_POS_MOUSE )
-		win.set_keep_above(True)
+		if set_keep_above: win.set_keep_above(True)
 		if skip_pager: win.set_skip_pager_hint(True)
 		#win.set_skip_taskbar_hint(True)
 		#win.set_size_request( width, height )
@@ -1342,13 +1340,6 @@ class PopupWindow(object):
 		if button.get_active(): self.window.set_opacity( 0.8 )
 		else: self.window.set_opacity( 1.0 )
 
-	def expose(self, widget, event):		# NOT WORKING
-		gdkwin = self.window.get_window()
-		c = gdkwin.cairo_create()	# segfaults here
-		c.set_source_rgba(0.5, 0.75, 0.5, 0.1)
-		c.set_operator( gtk.cairo_operator['CAIRO_OPERATOR_SOURCE'] )
-		c.paint_with_alpha( 0.5 )
-
 
 	def on_resize(self,widget, event):
 		event = gtk.GdkEventButton( pointer=ctypes.c_void_p(event), cast=True )
@@ -1361,7 +1352,6 @@ class PopupWindow(object):
 				event.time
 			)
 
-
 	def on_press(self, widget, event):
 		event = gtk.GdkEventButton( pointer=ctypes.c_void_p(event), cast=True )
 		if event.button == 1:
@@ -1372,6 +1362,7 @@ class PopupWindow(object):
 				event.time
 			)
 
+######################################################################
 
 def make_detachable( widget ):
 	widget.drag_source_set(
@@ -1484,17 +1475,23 @@ class FileEntry( object ):
 ############# Generic Game Device ###############
 
 class GameDevice(object):
-	def configure_device(self, axes=0, buttons=0):
+	def configure_device(self, axes=0, buttons=0, hats=0):
 		self.num_axes = axes
 		self.num_buttons = buttons
+		self.num_hats = hats
 		self.axes = [0.0] * axes
 		self.buttons = [0] * buttons
+		self.hats = [ False ] * hats
 		self.widget = None
 
 	def _get_header_widget(self): pass
 	def _get_footer_widget(self): pass
 
 	def get_widget(self, device_name='device name'):
+		if not hasattr(self,'num_axes'):
+			print('ERROR, device.configure_device( axes, buttons ) not called')
+			assert False
+
 		self.widget = root = gtk.VBox()
 		root.set_border_width(2)
 

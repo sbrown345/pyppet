@@ -36,23 +36,22 @@ if '--close-all-windows' in sys.argv:	# not working!
 
 
 else:
-	win = None
+	wins = []
 	for w in screen.get_windows():
 		if use_icon_name:
 			print( 'ICON NAME:', w.get_icon_name() )
 			if w.get_icon_name() == NAME:
-				win = w; break
+				wins.append( w )
 			elif use_startswith and w.get_icon_name().startswith(NAME):
-				win = w; break
+				wins.append( w )
 
 		else:
 			if use_startswith and w.get_name().startswith( NAME ):
-				win = w; break
+				wins.append( w )
 			elif NAME in w.get_name():
-				win = w; break
+				wins.append( w )
 
-
-	if win:
+	for win in wins:
 		win.make_below()		# trick allows Pyppet not to be forced always-on-top
 		win.shade()
 		print( 'XID=%s' %win.get_xid() )
