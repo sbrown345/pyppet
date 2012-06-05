@@ -26,6 +26,9 @@ def start_new_thread( func, *args ):
 
 MODIFIER_TYPES = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRROR', 'REMESH', 'SOLIDIFY', 'UV_PROJECT', 'VERTEX_WEIGHT_EDIT', 'VERTEX_WEIGHT_MIX', 'VERTEX_WEIGHT_PROXIMITY', 'BEVEL', 'BOOLEAN', 'BUILD', 'DECIMATE', 'EDGE_SPLIT', 'MASK', 'SCREW', 'ARMATURE', 'CAST', 'CURVE', 'DISPLACE', 'MESH_DEFORM', 'SHRINKWRAP', 'SIMPLE_DEFORM', 'SMOOTH', 'WARP', 'WAVE', 'CLOTH', 'COLLISION', 'DYNAMIC_PAINT', 'EXPLODE', 'FLUID_SIMULATION', 'OCEAN', 'PARTICLE_INSTANCE', 'PARTICLE_SYSTEM', 'SMOKE', 'SOFT_BODY', 'SURFACE')
 
+MODIFIER_TYPES_MINI = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRROR', 'REMESH', 'SOLIDIFY', 'UV_PROJECT', 'BEVEL', 'BOOLEAN', 'BUILD', 'DECIMATE', 'EDGE_SPLIT', 'MASK', 'SCREW', 'ARMATURE', 'CAST', 'CURVE', 'DISPLACE', 'MESH_DEFORM', 'SHRINKWRAP', 'SIMPLE_DEFORM', 'SMOOTH', 'WARP', 'WAVE', 'COLLISION', 'DYNAMIC_PAINT', 'EXPLODE', 'SURFACE')
+
+
 CONSTRAINT_TYPES = ('COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE', 'COPY_TRANSFORMS', 'DAMPED_TRACK', 'LOCKED_TRACK', 'TRACK_TO', 'LIMIT_DISTANCE', 'LIMIT_LOCATION', 'LIMIT_ROTATION', 'LIMIT_SCALE', 'MAINTAIN_VOLUME', 'TRANSFORM', 'CLAMP_TO', 'IK', 'SPLINE_IK', 'STRETCH_TO', 'ACTION', 'CHILD_OF', 'FLOOR', 'FOLLOW_PATH', 'PIVOT', 'RIGID_BODY_JOINT', 'SCRIPT', 'SHRINKWRAP', 'CAMERA_SOLVER', 'OBJECT_SOLVER', 'FOLLOW_TRACK')
 
 def clear_cloth_caches():
@@ -1277,8 +1280,13 @@ class NotebookVectorWidget( object ):
 #########################################################
 
 class PopupWindow(object):
+	def show(self):
+		self.window.show_all()
+		if self._system_header_hack:
+			self._system_header_hack.hide()
+
 	'''disable set_keep_above for non-popup style window'''
-	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=True):
+	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=True, fullscreen=False):
 		self.object = None
 		if not toolbar: self.toolbar = toolbar = gtk.Frame(); toolbar.add( gtk.Label() )
 		self.toolbar = toolbar
@@ -1294,13 +1302,23 @@ class PopupWindow(object):
 		win.set_decorated( False )
 		win.set_deletable( deletable )
 
-
 		self.root = gtk.EventBox()
 		win.add( self.root )
 
 		vbox = gtk.VBox(); self.root.add( vbox )
+
+		## need this for extra border when fullscreen ##
+		self._system_header_hack = None
+		if fullscreen:
+			self._system_header_hack = hack = gtk.VBox()
+			for i in range(2): hack.pack_start( gtk.Label() )
+			hack.show_all()
+			vbox.pack_start( self._system_header_hack, expand=False )
+			self._system_header_hack.set_no_show_all(True)
+
 		header = gtk.HBox()
 		vbox.pack_start( header, expand=False )
+
 
 		b = gtk.ToggleButton('⟔'); b.set_border_width(0)
 		#b.set_relief( gtk.RELIEF_NONE )
@@ -1320,6 +1338,13 @@ class PopupWindow(object):
 		b.set_active(True)
 		b.connect('toggled', self.toggle_transparent)
 		header.pack_start( b, expand=False )
+
+		if fullscreen:
+			b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
+			b.connect('toggled',self.toggle_fullscreen)
+			header.pack_start( b, expand=False )
+
+
 
 		if deletable and on_close:
 			b = gtk.ToggleButton( icons.DELETE ); b.set_border_width(1)
@@ -1361,6 +1386,20 @@ class PopupWindow(object):
 				int(event.y_root), 
 				event.time
 			)
+
+	def toggle_fullscreen(self,b):
+		if b.get_active():
+			if self._system_header_hack:
+				self._system_header_hack.set_no_show_all(False)
+				self._system_header_hack.show_all()	# fixes gnome task bar over
+			self.window.set_keep_above(True)
+			self.window.fullscreen()
+		else:
+			if self._system_header_hack:
+				self._system_header_hack.hide()
+			self.window.set_keep_above(False)
+			self.window.unfullscreen()
+
 
 ######################################################################
 

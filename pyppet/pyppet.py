@@ -4158,10 +4158,6 @@ class PyppetUI( PyppetAPI ):
 	def create_footer(self, modal_frame=None):
 		left = []
 
-		b = gtk.Button( icons.BLENDER )
-		b.connect('clicked', self.embed_blender_window)
-		b.set_tooltip_text( 'embed blender window' )
-		left.append( b )
 
 		s = gtk.Switch()
 		s.connect('button-press-event', self.cb_toggle_physics )
@@ -4178,27 +4174,23 @@ class PyppetUI( PyppetAPI ):
 		left.append( b )
 
 		right = []
+
+		b = gtk.Button( icons.BLENDER )
+		b.connect('clicked', self.embed_blender_window)
+		b.set_tooltip_text( 'embed blender window' )
+		right.append( b )
+
 		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
 		b.connect('toggled',self.toggle_footer)
 		right.append( b )
 
-		#b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
-		#b.connect('toggled',self.toggle_fullscreen)
-		#right.append( b )
 
 		toolbar = Toolbar( left, right, modal_frame=modal_frame )
 		return toolbar
 
 
 
-	def toggle_fullscreen(self,b):
-		if b.get_active():
-			self.window.set_keep_above(True)
-			self.window.fullscreen()
-		else:
-			self.window.set_keep_above(False)
-			self.window.unfullscreen()
 
 	def toggle_header_views(self,b):
 		if b.get_active(): self._header_views.show()
@@ -4225,7 +4217,7 @@ class PyppetUI( PyppetAPI ):
 	def create_tools( self, parent ):
 		self._left_tools = gtk.VBox()
 		self._left_tools.set_border_width( 2 )
-		self._right_tools = gtk.VBox()
+		self._right_tools = gtk.HBox()
 		self._right_tools.set_border_width( 4 )
 
 		## add left tools to parent - in scrolled window
@@ -4235,7 +4227,7 @@ class PyppetUI( PyppetAPI ):
 		sw.set_size_request( 250, 200 )
 		parent.pack_start( sw, expand=False )
 		## add right tools to parent - PACK_END
-		parent.pack_end( self._right_tools, expand=False )
+		#parent.pack_end( self._right_tools, expand=False )
 
 
 		#################### outliner ##################
@@ -4322,7 +4314,7 @@ class PyppetUI( PyppetAPI ):
 			page.pack_start( slider.widget, expand=False )
 		note.append_page(page, gtk.Label( icons.CAMERA) )
 
-		return self._left_tools
+		return self._left_tools, self._right_tools
 
 
 
@@ -4904,13 +4896,16 @@ class PyppetUI( PyppetAPI ):
 		######################
 		self.root = root = gtk.VBox()
 		root.set_border_width( 10 )
+
+
 		frame = gtk.Frame()
 		popup = PopupWindow(
 			child=root,
 			toolbar=frame,
 			deletable=True,
 			on_close=self.exit,
-			set_keep_above=False,				
+			set_keep_above=False,
+			fullscreen=True,
 		)
 		self.window = popup.window
 
@@ -4918,16 +4913,24 @@ class PyppetUI( PyppetAPI ):
 		self.toolbar_header = self.create_header( modal_frame=frame )
 		root.pack_start( self.toolbar_header.widget, expand=False )
 		#---------------------------------------------------------------
-		#---------------------------------------------------------------
 
+		vpane = gtk.VPaned()
+		root.pack_start( vpane, expand=True )
+
+		#---------------------------------------------------------------
 		self._main_body_split = split = gtk.HBox()
-		root.pack_start( split )
+		vpane.add1( split )
+
+		############ create tools  ###########
+		left_tools, right_tools = self.create_tools( self._main_body_split )
+
+		#_________________________________________
+		## RIGHT TOOLS ##
+		self.root.pack_start( right_tools, expand=False )
 
 		self.toolbar_footer = self.create_footer()
 		root.pack_start( self.toolbar_footer.widget, expand=False )
 
-		############ create tools  ###########
-		left_tools = self.create_tools( self._main_body_split )
 
 		self.main_notebook = note = gtk.Notebook()		# TODO store blenders here
 		note.set_tab_pos( gtk.POS_BOTTOM )
@@ -4940,6 +4943,9 @@ class PyppetUI( PyppetAPI ):
 		#______________________________________________________#
 		self.toolsUI = ToolsUI( self.lock, context )
 		self.toolsUI.widget.set_border_width(2)
+		right_tools.pack_end(
+			self.toolsUI.devices_widget,
+		)
 
 		if '--popup-tools' in sys.argv:
 			frame = gtk.Frame()
@@ -4958,14 +4964,17 @@ class PyppetUI( PyppetAPI ):
 
 		############### Blender Embed Windows ##############
 		self._blender_embed_toolbar = gtk.VBox()
-		self.root.pack_start( self._blender_embed_toolbar, expand=True )
+		self._blender_embed_toolbar.set_border_width( 10 )
+		vpane.add2(
+			self._blender_embed_toolbar
+		)
 
 
-		############### FOOTER #################
+
+		## FOOTER ##
 		self.footer = note = gtk.Notebook()
-		note.set_tab_pos( gtk.POS_BOTTOM )
-		#Vsplit.pack_start( self.footer, expand=False )
 		self.root.pack_start( self.footer, expand=False )
+		note.set_tab_pos( gtk.POS_BOTTOM )
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.RECORD) )
@@ -4979,17 +4988,15 @@ class PyppetUI( PyppetAPI ):
 		note.append_page( page, gtk.Label(icons.TEXTURE) )
 		page.add( self.get_textures_widget() )
 
-
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.KEYBOARD) )
 		w = self.audio.synth.channels[0].get_widget()
 		page.add( w )
 
-
-
 		##################################
 		self.window.connect('destroy', self.exit )
-		self.window.show_all()
+		#self.window.show_all()
+		popup.show()
 
 		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
 		bpy.ops.wm.window_duplicate()
@@ -5002,7 +5009,7 @@ class PyppetUI( PyppetAPI ):
 		if self.server.httpd:
 			self.do_xembed( self._chrome_xsocket, "Chromium")
 		else:
-			msg = gtk.Label('ERROR: can not listen on port 8080 (streaming disabled)' )
+			msg = gtk.Label('ERROR [port 8080] (streaming disabled)' )
 			self._main_body_split.pack_start( msg )
 			msg.show()
 
@@ -5043,8 +5050,9 @@ class PyppetUI( PyppetAPI ):
 
 	def embed_blender_window(self,b):
 		xsock = self.create_blender_xembed_socket()	# gtk.Socket
-		xsock.set_border_width(3)
+		xsock.set_border_width(10)
 		self._blender_embed_toolbar.pack_start( xsock )
+		self._blender_embed_toolbar.show_all()
 		self.do_xembed( xsock, 'Blender' )	# shows xsock
 
 
@@ -5575,20 +5583,23 @@ class ConstraintsTool( Tool ):
 		row.set_border_width(4)
 		frame.add( row )
 
+		combo = gtk.ComboBoxText()
+
+		b = gtk.Button( icons.PLUS )
+		b.connect('clicked', self.add_constraint, combo, ob)
+		row.pack_start( b, expand=False )
+
+		row.pack_start( combo )
+		for i,type in enumerate( CONSTRAINT_TYPES ): combo.append('id', type)
+		gtk.combo_box_set_active( combo, 0 )
+
+
 		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
 		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
 		b.set_active( self._pinned )
 		b.connect('toggled', lambda b,s: setattr(s,'_pinned',b.get_active()), self)
 		row.pack_start( b, expand=False )
 
-		combo = gtk.ComboBoxText()
-		row.pack_start( combo )
-		for i,type in enumerate( CONSTRAINT_TYPES ): combo.append('id', type)
-		gtk.combo_box_set_active( combo, 0 )
-
-		b = gtk.Button('+')
-		b.connect('clicked', self.add_constraint, combo, ob)
-		row.pack_start( b, expand=False )
 
 		stacker = VStacker()
 		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
@@ -5614,7 +5625,7 @@ class ConstraintsTool( Tool ):
 		mtype = combo.get_active_text()
 		cns = ob.constraints.new( type=mtype )
 		cns.name = mtype.lower()
-		self.update_constraints( ob, force_update=True )
+		self.update( ob, force_update=True )
 
 	def reorder_constraint( self, oldindex, newindex, ob ):
 		'''
@@ -5645,20 +5656,22 @@ class ModifiersTool( Tool ):
 		row.set_border_width(4)
 		frame.add( row )
 
+		combo = gtk.ComboBoxText()
+
+		b = gtk.Button( icons.PLUS )
+		b.connect('clicked', self.add_modifier, combo, ob)
+		row.pack_start( b, expand=False )
+
+		row.pack_start( combo )
+		for i,type in enumerate( MODIFIER_TYPES_MINI ): combo.append('id', type)
+		gtk.combo_box_set_active( combo, 0 )
+
 		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
 		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
 		b.set_active( self._pinned )
 		b.connect('toggled', lambda b,s: setattr(s,'_pinned',b.get_active()), self)
 		row.pack_start( b, expand=False )
 
-		combo = gtk.ComboBoxText()
-		row.pack_start( combo )
-		for i,type in enumerate( MODIFIER_TYPES ): combo.append('id', type)
-		gtk.combo_box_set_active( combo, 0 )
-
-		b = gtk.Button('+')
-		b.connect('clicked', self.add_modifier, combo, ob)
-		row.pack_start( b, expand=False )
 
 		stacker = VStacker()
 		if USE_BLENDER_GREY:	stacker.widget.modify_bg( gtk.STATE_NORMAL, BG_COLOR )
@@ -5723,16 +5736,39 @@ class ToolsUI( object ):
 
 	def __init__(self, lock, context):
 		self.lock = lock
-		self.widget = root = gtk.VBox()
+		self.widget = root = gtk.VBox()	# ROOT
+		self.devices_widget = self.make_devices_widget()
+		################### PHYSICS ###################
+		ex = DetachableExpander( icons.PHYSICS, short_name=icons.PHYSICS_ICON )
+		root.pack_start( ex.widget, expand=False )
+		box = gtk.VBox()
+		ex.add( box )
+		self.engine = Physics.ENGINE
+		self.physics_widget = PhysicsWidget( box, context )
+		#############################################
+		self._shape_pinned = False
+		self._shape_expander = ex = DetachableExpander(
+			icons.SHAPE_KEYS, 
+			short_name=icons.SHAPE_KEYS_ICON 
+		)
+		root.pack_start( ex.widget, expand=False )
+		self._shape_modal = gtk.EventBox()
+		self._shape_expander.add( self._shape_modal )
+		Pyppet.register( self.update_shape_keys )
 
-		#hpane = gtk.HPaned()
-		#root.pack_start( hpane, expand=False )
-		pane1 = root
-		pane2 = root
+		ex = DetachableExpander(
+			icons.MATERIALS, 
+			short_name=icons.MATERIALS_ICON,
+			expanded=True
+		)
+		root.pack_start( ex.widget, expand=True )
+		self.materials_UI = MaterialsUI()
+		ex.add( self.materials_UI.widget )
 
 
+	def make_devices_widget( self ):
 		ex = DetachableExpander( icons.DEVICES, short_name=icons.DEVICES_ICON )
-		pane1.pack_start( ex.widget, expand=False )
+		self.devices_widget = ex.widget
 
 		self.notebook = gtk.Notebook()
 		self.notebook.set_size_request( 260,450 )
@@ -5741,57 +5777,29 @@ class ToolsUI( object ):
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )
 		self.webcam = widget.webcam
-		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source
+		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender embed window to assign to material
+
 		#self.webcam.start_thread( self.lock )
 		self.webcam.lock = self.lock
 
-		box = self.new_page( icons.KINECT )		# kinect
+		box = self.new_page( icons.KINECT )		# kinect page
 		widget = Kinect.Widget( box )
 		self.kinect = widget.kinect
 		DND.make_source( widget.dnd_container, 'KINECT' )	# make drag source
 		widget.start_threads( self.lock )
 
-		box = self.new_page( icons.GAMEPAD )	# gamepad
+		box = self.new_page( icons.GAMEPAD )	# gamepad page
 		self.gamepads_widget = GamepadsWidget( box )
 
-		box = self.new_page( icons.WIIMOTE )	# wiimote
+		box = self.new_page( icons.WIIMOTE )	# wiimote page
 		self.wiimotes_widget = WiimotesWidget( box )
 
-		box = self.new_page( icons.MICROPHONE )	# microphone
+		box = self.new_page( icons.MICROPHONE )	# microphone page TODO move me
 		widget = Pyppet.audio.microphone.get_analysis_widget()
 		box.pack_start( widget )
 
-		######################################
+		return self.devices_widget
 
-		ex = DetachableExpander( icons.PHYSICS, short_name=icons.PHYSICS_ICON )
-		pane1.pack_start( ex.widget, expand=False )
-		box = gtk.VBox()
-		ex.add( box )
-		self.engine = Physics.ENGINE
-		self.physics_widget = PhysicsWidget( box, context )
-
-
-		#############################################
-
-		self._shape_pinned = False
-		self._shape_expander = ex = DetachableExpander(
-			icons.SHAPE_KEYS, 
-			short_name=icons.SHAPE_KEYS_ICON 
-		)
-		pane2.pack_start( ex.widget, expand=False )
-		self._shape_modal = gtk.EventBox()
-		self._shape_expander.add( self._shape_modal )
-		Pyppet.register( self.update_shape_keys )
-
-
-		ex = DetachableExpander(
-			icons.MATERIALS, 
-			short_name=icons.MATERIALS_ICON,
-			expanded=True
-		)
-		pane2.pack_start( ex.widget, expand=True )
-		self.materials_UI = MaterialsUI()
-		ex.add( self.materials_UI.widget )
 
 	def update_shape_keys(self, ob, force_update=False):
 		if self._shape_pinned and not force_update: return
@@ -5953,7 +5961,7 @@ class GamepadsWidget(object):
 
 
 
-class Gamepad( GameDevice ):
+class Gamepad( GameDevice ):	# class GameDevice see core.py
 	'''
 	SDL Gamepad wrapper
 	'''
@@ -5982,9 +5990,6 @@ class Gamepad( GameDevice ):
 			buttons = self.dev.NumButtons(),
 			hats = self.dev.NumHats(),
 		)
-
-
-		self.logic = {}	# deprecated?
 
 		self.drivers = []
 		self.widget = self.get_widget('gamepad')

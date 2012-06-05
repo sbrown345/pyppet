@@ -1,5 +1,6 @@
 # _*_ coding: utf-8 _*_
 BLENDER = '🐵'
+PLUS = '＋'
 
 BIDIRECTIONAL = '⥂'
 
@@ -112,7 +113,7 @@ KINECT = '㉿'
 GAMEPAD = '🎮'
 WIIMOTE = '⍠'
 
-DEVICES_ICON = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
+DEVICES_ICON = '⌹'
 DEVICES = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
 
 PHYSICS_ICON = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
