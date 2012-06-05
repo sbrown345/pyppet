@@ -1279,7 +1279,7 @@ class NotebookVectorWidget( object ):
 
 class PopupWindow(object):
 
-	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False):
+	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None):
 		self.object = None
 		if not toolbar:
 			self.toolbar = toolbar = gtk.Frame()
@@ -1292,9 +1292,10 @@ class PopupWindow(object):
 		if skip_pager: win.set_skip_pager_hint(True)
 		#win.set_skip_taskbar_hint(True)
 		#win.set_size_request( width, height )
-		win.set_deletable(False)
-		win.set_decorated( False )
 		#win.set_opacity( 0.9 )
+		win.set_decorated( False )
+		win.set_deletable( deletable )
+
 
 		self.root = gtk.EventBox()
 		win.add( self.root )
@@ -1322,16 +1323,11 @@ class PopupWindow(object):
 		b.connect('toggled', self.toggle_transparent)
 		header.pack_start( b, expand=False )
 
+		if deletable and on_close:
+			b = gtk.ToggleButton( icons.DELETE ); b.set_border_width(1)
+			b.connect('clicked', on_close)
+			header.pack_start( b, expand=False )
 
-
-		#color = gtk.GdkRGBA(0.0,50000.5,0.3,0.1)
-		#win.override_background_color( gtk.STATE_NORMAL, color )	# not allowed?
-		#win.set_app_paintable(True)	# tell GTK we will paint the background
-		#eb = gtk.EventBox(); win.add( eb )
-		#eb.connect('draw', self.expose)	# looks like expose-event is deprecated?
-		#screen = widget.get_screen()		# this was pygtk only?
-		#colormap = screen.get_rgba_colormap()
-		#win.set_colormap(colormap)
 
 		self.root.add_events( gtk.GDK_BUTTON_PRESS_MASK )
 		self.root.connect('button-press-event', self.on_press)

@@ -4581,7 +4581,12 @@ class PyppetUI( PyppetAPI ):
 		self.root = root = gtk.VBox()
 		root.set_border_width( 10 )
 		frame = gtk.Frame()
-		popup = PopupWindow( child=root, toolbar=frame )
+		popup = PopupWindow(
+			child=root,
+			toolbar=frame,
+			deletable=True,
+			on_close=self.exit
+		)
 		self.window = popup.window
 
 		################ HEADER ################
@@ -4670,7 +4675,13 @@ class PyppetUI( PyppetAPI ):
 
 		#self.do_xembed( xsocket, 'Blender' )		# this must come last
 
-		self.do_xembed( self._chrome_xsocket, "Chromium")
+		if self.server.httpd:
+			self.do_xembed( self._chrome_xsocket, "Chromium")
+		else:
+			msg = gtk.Label('ERROR: can not listen on port 8080 (streaming disabled)' )
+			self._main_body_split.pack_start( msg )
+			msg.show()
+
 
 		#self.do_xembed( bxsock, 'Blender' )
 		#Blender.window_expand()
@@ -4752,38 +4763,40 @@ class PyppetUI( PyppetAPI ):
 			root.pack_start( slider.widget )
 
 		elif ob.type == 'MESH' and self.context.mode=='EDIT_MESH':
-			b = gtk.Button( 'merge' )
-			root.pack_start( b, expand=False )
-			b.connect('clicked', lambda b: bpy.ops.mesh.merge())
 
-			b = gtk.Button( 'split' )
-			root.pack_start( b, expand=False )
-			b.connect('clicked', lambda b: bpy.ops.mesh.split())
 
-			root.pack_start( gtk.Label() )
+			header.pack_start( gtk.Label() )
+
+			b = gtk.Button( 'unwrap' )
+			header.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.uv.unwrap())
+
+			b = gtk.Button( 'project' )
+			header.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.uv.smart_project())
 
 			b = gtk.Button( 'subdivide' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.subdivide())
 
 			b = gtk.Button( 'seam' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.mark_seam())
 
 			b = gtk.Button( 'unseam' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.mark_seam(clear=True))
 
 			b = gtk.Button( 'sharp' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.mark_sharp())
 
 			b = gtk.Button( 'unsharp' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.mark_sharp(clear=True))
 
 			b = gtk.Button( 'flip edge' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.edge_rotate())
 
 			#b = gtk.Button( 'slide' )
@@ -4791,14 +4804,25 @@ class PyppetUI( PyppetAPI ):
 			#b.connect('clicked', lambda b: bpy.ops.mesh.edge_slide())
 
 			b = gtk.Button( 'loop' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.loop_multi_select())
 
 			b = gtk.Button( 'ring' )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('clicked', lambda b: bpy.ops.mesh.loop_multi_select(ring=True))
 
-			root.pack_start( gtk.Label() )
+			header.pack_start( gtk.Label() )
+
+
+			#root.pack_start( gtk.Label() )
+
+			b = gtk.Button( 'merge' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.merge())
+
+			b = gtk.Button( 'split' )
+			root.pack_start( b, expand=False )
+			b.connect('clicked', lambda b: bpy.ops.mesh.split())
 
 			b = gtk.Button( 'extrude' )
 			root.pack_start( b, expand=False )
@@ -5699,12 +5723,6 @@ class ModifiersTool( Tool ):
 class ToolsUI( object ):
 	COLOR = gtk.GdkRGBA(0.96,.95,.95, 0.85)
 	def new_page( self, title ):
-		#sw = gtk.ScrolledWindow()
-		#self.notebook.append_page( sw, gtk.Label(title) )
-		#eb = gtk.EventBox()
-		#eb.override_background_color( gtk.STATE_NORMAL, self.COLOR )
-		#box = gtk.VBox(); eb.add( box )
-		#sw.add_with_viewport( eb )
 		box = gtk.VBox()
 		self.notebook.append_page( box, gtk.Label(title) )
 		return box
