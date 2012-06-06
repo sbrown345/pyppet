@@ -13,8 +13,6 @@ gtk.init()
 
 class MyApp( BlenderHackLinux ):
 	def __init__(self):
-		self.do_wnck_hack()
-
 		assert self.setup_blender_hack( bpy.context )
 
 		self.window = win = gtk.Window()
@@ -44,12 +42,12 @@ class MyApp( BlenderHackLinux ):
 			extra_arg,	'another arg' # more extra args can go here
 		)
 
-		xsocket = self.create_blender_xembed_socket()
-		eb.add( xsocket )
+		xsocket, container = self.create_blender_xembed_socket()
+		eb.add( container )
 
 		win.show_all()				# window and all widgets shown first
-		self.do_xembed( xsocket, 'Blender' )	# this must come last
-
+		xid = self.do_xembed( xsocket, 'Blender' )	# this must come last
+		print('<< do xembed done >>')
 
 	def on_click(self, button):
 		print('you clicked')

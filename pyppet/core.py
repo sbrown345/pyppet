@@ -108,19 +108,19 @@ class BlenderHack( object ):
 	TOO MANY HACKS:
 		. request Ideasman and Ton for proper support for this.
 	'''
-	blender_window_ready = False
+	_blender_window_ready = False
 	_blender_min_width = 240
 	_blender_min_height = 320
-	_gtk_updated = False
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
-		self._gtk_updated = True
 		self.context = BlenderContextCopy( bpy.context )
 		self.lock.acquire()
-		while gtk.gtk_events_pending():	# doing it here makes callbacks safe
+		while gtk.gtk_events_pending():
 			gtk.gtk_main_iteration()
+		self._gtk_updated = True
 		self.lock.release()
+
 
 	def setup_blender_hack(self, context):
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
@@ -174,14 +174,8 @@ class BlenderHack( object ):
 							break
 
 		Blender.iterate( self.evil_C, draw=not drop_frame)
-
-		if not self._gtk_updated:	# ensures that gtk updates, so that we never get a dead UI
-			#print('WARN: 3D view is not shown - this is dangerous')
-			self.lock.acquire()
-			while gtk.gtk_events_pending():
-				gtk.gtk_main_iteration()
-			self.lock.release()
-
+		# even updating GTK first wont fix the freeze on DND over blenders window! #
+		assert self._gtk_updated
 
 	################ BAKE HACK ################
 	progressive_baking = False
@@ -285,35 +279,23 @@ class BlenderHackLinux( BlenderHack ):
 	def create_blender_xembed_socket(self):
 		sock = gtk.Socket()
 		sock.connect('plug-added', self.on_plug_blender)
-		sock.connect('size-allocate',self.on_resize_blender)
-		return sock
+		sock.connect('size-allocate',self.on_resize_blender)	# REQUIRED
+		eb = gtk.EventBox()
+		DND.make_destination(eb)
+		eb.connect(
+			'drag-drop', self.drop_on_blender_container,
+		)
+		DND.make_destination(sock)
+		sock.connect(
+			'drag-drop', self.drop_on_blender_container,
+		)
+		eb.add( sock )
+		return sock, eb
 
-	_xembed_sockets = {}
-	def do_xembed(self, xsocket, window_name='Blender'):
-		if window_name not in self._xembed_sockets:
-			self._xembed_sockets[ window_name ] = {}	# xid : xsock
-		# assert xsocket has a parent that is realized #
-		xsocket.show()
-		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
-		ids = self.get_window_xid( window_name )
-
-		for xid in ids:
-			if xid not in self._xembed_sockets[ window_name ]:
-				self._xembed_sockets[ xid ] = xsocket
-				xsocket.add_id( xid )
-				return xid
-
-	def on_plug_debug(self, xsocket):
-		print('----------on plug debug', xsocket)
-		gdkwin = xsocket.get_plug_window()
-		width = gdkwin.get_width()
-		height = gdkwin.get_height()
-		gdkwin.show()
-		print('gdkwin', width,height)
-
+	def after_on_plug_blender(self): pass		# API overload me
 	def on_plug_blender(self, xsock):
 		print('[[ on plug blender ]]')
-		self.blender_window_ready = True
+		self._blender_window_ready = True
 		xsock.set_size_request(
 			self._blender_min_width, 
 			self._blender_min_height
@@ -323,16 +305,67 @@ class BlenderHackLinux( BlenderHack ):
 		Blender.window_expand()
 		self.after_on_plug_blender()
 
-	def after_on_plug_blender(self): pass		# API overload me
-
 	def on_resize_blender(self,sock,rect):
 		rect = gtk.cairo_rectangle_int()
 		sock.get_allocation( rect )
-		if self.blender_window_ready and self._gtk_updated:
-			print('Xsocket Resize', rect.width, rect.height)
+		if self._blender_window_ready:
 			self.blender_width = rect.width
 			self.blender_height = rect.height
-			Blender.window_resize( self.blender_width, self.blender_height )
+			Blender.window_resize(
+				self.blender_width,
+				self.blender_height
+			)
+
+
+
+
+	def drop_on_blender_container(self, wid, con, x, y, time):
+		ob = self.context.active_object
+		if type(DND.source_object) is bpy.types.Material:
+			print('material dropped')
+			mat = DND.source_object
+			index = 0
+			for index in range( len(ob.data.materials) ):
+				if ob.data.materials[ index ] == mat: break
+			ob.active_material_index = index
+			bpy.ops.object.material_slot_assign()
+			## should be in edit mode, if not then what action? ##
+		elif DND.source_object == 'WEBCAM':
+			if '_webcam_' not in bpy.data.images:
+				bpy.data.images.new( name='_webcam_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_webcam_']
+		elif DND.source_object == 'KINECT':
+			if '_kinect_' not in bpy.data.images:
+				bpy.data.images.new( name='_kinect_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_kinect_']
+
+
+	_xembed_sockets = {}
+	def do_xembed(self, xsocket, window_name='Blender'):
+		if window_name not in self._xembed_sockets:
+			self._xembed_sockets[ window_name ] = {}	# xid : xsock
+		# assert xsocket has a parent that is realized #
+		xsocket.show()
+		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
+		ids = self.get_window_xid( window_name )
+		ids.reverse()
+		for xid in ids:
+			if xid not in self._xembed_sockets[ window_name ]:
+				self._xembed_sockets[ xid ] = xsocket
+				print('xsocket.add_id',xid)
+				xsocket.add_id( xid )
+				print('OK', xsocket, type(xsocket))
+				return xid
+
+	def on_plug_debug(self, xsocket):
+		print('----------on plug debug', xsocket)
+		gdkwin = xsocket.get_plug_window()
+		width = gdkwin.get_width()
+		height = gdkwin.get_height()
+		gdkwin.show()
+		print('gdkwin', width,height)
 
 
 	def get_window_xid( self, name ):
@@ -590,7 +623,7 @@ class ToolWindow(object):
 
 ################## simple drag'n'drop API ################
 class SimpleDND(object):
-	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )		# GTK's confusing API
+	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )# GTK's confusing API
 
 	def __init__(self):
 		self.dragging = False

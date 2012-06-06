@@ -5007,7 +5007,15 @@ class PyppetUI( PyppetAPI ):
 
 
 		if self.server.httpd:
-			self.do_xembed( self._chrome_xsocket, "Chromium")
+			xid = self.do_xembed( self._chrome_xsocket, "Chromium")
+			if not xid:
+				time.sleep(2)
+				xid = self.do_xembed( self._chrome_xsocket, "Chromium")
+				if not xid:
+					msg = gtk.Label('ERROR [chromium browser not installed]' )
+					self._main_body_split.pack_start( msg )
+					msg.show()
+
 		else:
 			msg = gtk.Label('ERROR [port 8080] (streaming disabled)' )
 			self._main_body_split.pack_start( msg )
@@ -5024,34 +5032,12 @@ class PyppetUI( PyppetAPI ):
 		####################
 
 
-
-	def drop_on_blender_container(self, wid, con, x, y, time):
-		ob = self.context.active_object
-		if type(DND.source_object) is bpy.types.Material:
-			print('material dropped')
-			mat = DND.source_object
-			index = 0
-			for index in range( len(ob.data.materials) ):
-				if ob.data.materials[ index ] == mat: break
-			ob.active_material_index = index
-			bpy.ops.object.material_slot_assign()
-			## should be in edit mode, if not then what action? ##
-		elif DND.source_object == 'WEBCAM':
-			if '_webcam_' not in bpy.data.images:
-				bpy.data.images.new( name='_webcam_', width=240, height=180 )
-			slot = ob.data.materials[0].texture_slots[0]
-			slot.texture.image = bpy.data.images['_webcam_']
-		elif DND.source_object == 'KINECT':
-			if '_kinect_' not in bpy.data.images:
-				bpy.data.images.new( name='_kinect_', width=240, height=180 )
-			slot = ob.data.materials[0].texture_slots[0]
-			slot.texture.image = bpy.data.images['_kinect_']
-
-
 	def embed_blender_window(self,b):
-		xsock = self.create_blender_xembed_socket()	# gtk.Socket
+		xsock, container = self.create_blender_xembed_socket()	# gtk.Socket
 		xsock.set_border_width(10)
-		self._blender_embed_toolbar.pack_start( xsock )
+		self._blender_embed_toolbar.pack_start(
+			container
+		)
 		self._blender_embed_toolbar.show_all()
 		self.do_xembed( xsock, 'Blender' )	# shows xsock
 
@@ -6030,9 +6016,7 @@ if __name__ == '__main__':
 	os.system('killall chromium-browser')
 	os.system('chromium-browser localhost:8080 &')
 	time.sleep(1.0)
-
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
-	## run pyppet ##
 	Pyppet.mainloop()
 
 

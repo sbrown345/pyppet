@@ -52,7 +52,9 @@ else:
 				wins.append( w )
 
 	for win in wins:
-		win.make_below()		# trick allows Pyppet not to be forced always-on-top
+		## make_below allows drag and drop/move in parent window to work
+		## otherwise parent window must use always-on-top ##
+		win.make_below()
 		win.shade()
 		print( 'XID=%s' %win.get_xid() )
 

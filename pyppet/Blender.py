@@ -219,6 +219,8 @@ def window_resize( x, y ):
 	blender.wm_window_raise( win )
 
 
+## This can happen with a DND from GTK same app - TODO BUG: desktop melt down
+## [2411:2413:2260926699:ERROR:gpu_watchdog_thread.cc(234)] The GPU process hung. Terminating after 10000 ms.
 def iterate(C, draw=True):
 	blender.wm_window_process_events(C)	# might sleep 5ms if no events
 	blender.wm_event_do_handlers(C)
