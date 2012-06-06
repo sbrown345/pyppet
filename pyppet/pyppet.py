@@ -4936,8 +4936,11 @@ class PyppetUI( PyppetAPI ):
 		note.set_tab_pos( gtk.POS_BOTTOM )
 
 		################# google chrome ######################
-		self._chrome_xsocket = gtk.Socket()
-		self._main_body_split.pack_start( self._chrome_xsocket, expand=True )
+		#self._chrome_xsocket = gtk.Socket()
+		self._chrome_xsocket, chrome_container = self.create_embed_widget(
+			on_dnd = self.drop_on_view,
+		)
+		self._main_body_split.pack_start( chrome_container, expand=True )
 
 		############### Extra Tools #################
 		#______________________________________________________#
@@ -5033,7 +5036,12 @@ class PyppetUI( PyppetAPI ):
 
 
 	def embed_blender_window(self,b):
-		xsock, container = self.create_blender_xembed_socket()	# gtk.Socket
+		#xsock, container = self.create_blender_xembed_socket()	# gtk.Socket
+		xsock, container = self.create_embed_widget(
+			on_dnd = self.drop_on_view,
+			on_resize = self.on_resize_blender,	# REQUIRED
+		)
+
 		xsock.set_border_width(10)
 		self._blender_embed_toolbar.pack_start(
 			container

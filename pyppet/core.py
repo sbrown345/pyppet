@@ -270,11 +270,66 @@ class BlenderHack( object ):
 			return open( path+'.jpg', 'rb' ).read()
 
 
+	def drop_on_view(self, wid, con, x, y, time):
+		ob = self.context.active_object
+		if type(DND.source_object) is bpy.types.Material:
+			print('material dropped')
+			mat = DND.source_object
+			index = 0
+			for index in range( len(ob.data.materials) ):
+				if ob.data.materials[ index ] == mat: break
+			ob.active_material_index = index
+			bpy.ops.object.material_slot_assign()
+			## should be in edit mode, if not then what action? ##
+		elif DND.source_object == 'WEBCAM':
+			if '_webcam_' not in bpy.data.images:
+				bpy.data.images.new( name='_webcam_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_webcam_']
+		elif DND.source_object == 'KINECT':
+			if '_kinect_' not in bpy.data.images:
+				bpy.data.images.new( name='_kinect_', width=240, height=180 )
+			slot = ob.data.materials[0].texture_slots[0]
+			slot.texture.image = bpy.data.images['_kinect_']
+
+
 
 class BlenderHackWindows( BlenderHack ): pass	#TODO
 class BlenderHackOSX( BlenderHack ): pass		# TODO
 
 class BlenderHackLinux( BlenderHack ):
+	def _create_embed_widget_helper(self, sock, callback):
+		print('[[ on plug dnd helper ]]')
+		DND.make_destination(sock)
+		sock.connect(
+			'drag-drop', callback,
+		)
+
+	def create_embed_widget(self, on_dnd=None, on_resize=None):
+		'''
+		Tricks to force our own drag'n'drop callbacks:
+			1. wnck-helper shades and sets the window to set-keep-below,
+			2. this function attaches an plug-added callback:
+				. setting of the drag-drop callback before this would fail
+				. in plug-added callback attach the user DND callback
+			( just to be safe we set the DND callback on the EventBox container )
+		'''
+		sock = gtk.Socket()
+		eb = gtk.EventBox()
+		eb.set_border_width(4)
+
+		if on_dnd:
+			sock.connect('plug-added', self._create_embed_widget_helper, on_dnd)
+			DND.make_destination(eb)
+			eb.connect( 'drag-drop', on_dnd)
+
+		if on_resize:
+			sock.connect('size-allocate', on_resize)	# REQUIRED by blender
+
+		eb.add( sock )
+		return sock, eb
+
+
 
 	def create_blender_xembed_socket(self):
 		sock = gtk.Socket()
@@ -317,29 +372,11 @@ class BlenderHackLinux( BlenderHack ):
 			)
 
 
-
-
-	def drop_on_blender_container(self, wid, con, x, y, time):
+	def drop_on_chrome_container(self, wid, con, x, y, time):
 		ob = self.context.active_object
-		if type(DND.source_object) is bpy.types.Material:
-			print('material dropped')
-			mat = DND.source_object
-			index = 0
-			for index in range( len(ob.data.materials) ):
-				if ob.data.materials[ index ] == mat: break
-			ob.active_material_index = index
-			bpy.ops.object.material_slot_assign()
-			## should be in edit mode, if not then what action? ##
-		elif DND.source_object == 'WEBCAM':
-			if '_webcam_' not in bpy.data.images:
-				bpy.data.images.new( name='_webcam_', width=240, height=180 )
-			slot = ob.data.materials[0].texture_slots[0]
-			slot.texture.image = bpy.data.images['_webcam_']
-		elif DND.source_object == 'KINECT':
-			if '_kinect_' not in bpy.data.images:
-				bpy.data.images.new( name='_kinect_', width=240, height=180 )
-			slot = ob.data.materials[0].texture_slots[0]
-			slot.texture.image = bpy.data.images['_kinect_']
+		print('[[drop on chrome]]', ob)
+		return self.drop_on_blender_container(wid, con, x, y, time)
+
 
 
 	_xembed_sockets = {}
