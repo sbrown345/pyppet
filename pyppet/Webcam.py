@@ -150,8 +150,10 @@ class WebCamera(object):
 		self.active = active
 		self.lock = None
 		self.index = 0
-		self.ready = os.path.exists('/dev/video0')		# is this true for all linux?
+		#self.ready = os.path.exists('/dev/video0')		# Only on ubuntu, breaks fedora
 		self.cam = gui.CreateCameraCapture(self.index)
+		print(self.cam)
+		self.ready = True
 
 		########### Layer Configs ############
 		self.layers = []
