@@ -605,7 +605,7 @@ class WebServer( object ):
 		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
 		else: print('missing ./javascripts/Three.js')
 
-	def get_header(self, title='Pyppet WebGL', webgl=False):
+	def get_header(self, title='http://localhost', webgl=False):
 		h = [
 			'<!DOCTYPE html><html lang="en">',
 			'<head><title>%s</title>' %title,
@@ -4590,13 +4590,29 @@ class PyppetUI( PyppetAPI ):
 		if ob.type == 'ARMATURE':
 			header.pack_start( gtk.Label(ob.name), expand=False )
 
+			b = gtk.ToggleButton( icons.XRAY )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show xray')
+			b.set_active(ob.show_x_ray)
+			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
+			header.pack_start( b, expand=False )
+
+			combo = gtk.ComboBoxText()
+			header.pack_start( combo, expand=False )
+			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
+				combo.append('id', type)
+				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
+			combo.set_tooltip_text( 'view draw type' )
+			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
+
+
 			b = gtk.ToggleButton( icons.MODE ); b.set_relief( gtk.RELIEF_NONE )
 			b.set_tooltip_text('toggle pose mode')
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.set_active( self.context.mode=='POSE' )
 			b.connect('toggled', self.toggle_pose_mode)
 
-			root.pack_start( gtk.Label() )
+			header.pack_start( gtk.Label() )
 
 			if ob.name not in self.entities:
 				pass
@@ -4607,39 +4623,25 @@ class PyppetUI( PyppetAPI ):
 				b.set_tooltip_text('show physics rig')
 				b.set_active(model._show_rig)
 				b.connect('toggled', model.toggle_rig_visible)
-				root.pack_start( b, expand=False )
+				header.pack_start( b, expand=False )
 
 
-			b = gtk.ToggleButton( icons.XRAY )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show xray')
-			b.set_active(ob.show_x_ray)
-			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
-			root.pack_start( b, expand=False )
-
-			combo = gtk.ComboBoxText()
-			root.pack_start( combo, expand=False )
-			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
-				combo.append('id', type)
-				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
-			combo.set_tooltip_text( 'view draw type' )
-			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
 
 
 
 		elif ob.type=='LAMP':
-			root.pack_start( gtk.Label(ob.name), expand=False )
+			header.pack_start( gtk.Label(ob.name), expand=False )
 			r,g,b = ob.data.color
 			gcolor = rgb2gdk(r,g,b)
 			b = gtk.ColorButton( gcolor )
 			b.set_relief( gtk.RELIEF_NONE )
-			root.pack_start( b, expand=False )
+			header.pack_start( b, expand=False )
 			b.connect('color-set', color_set, gcolor, ob.data )
 			slider = Slider( ob.data, name='energy', title='', max=5.0, border_width=0, tooltip='light energy' )
-			root.pack_start( slider.widget )
+			header.pack_start( slider.widget )
 
 			slider = Slider( ob, name='webgl_lens_flare_scale', title='', max=2.0, border_width=0, tooltip='lens flare scale' )
-			root.pack_start( slider.widget )
+			header.pack_start( slider.widget )
 
 		elif ob.type == 'MESH' and self.context.mode=='EDIT_MESH':
 
@@ -5042,10 +5044,11 @@ class PyppetUI( PyppetAPI ):
 
 
 		if self.server.httpd:
-			xid = self.do_xembed( self._chrome_xsocket, "Chromium")
+			name = 'Chromium'
+			xid = self.do_xembed( self._chrome_xsocket, name)
 			if not xid:
 				time.sleep(2)
-				xid = self.do_xembed( self._chrome_xsocket, "Chromium")
+				xid = self.do_xembed( self._chrome_xsocket, name)
 				if not xid:
 					msg = gtk.Label('ERROR [chromium browser not installed]' )
 					self._main_body_split.pack_start( msg )
@@ -5627,7 +5630,7 @@ class ConstraintsTool( Tool ):
 		gtk.combo_box_set_active( combo, 0 )
 
 
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b = gtk.ToggleButton( icons.PIN )
 		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
 		b.set_active( self._pinned )
 		b.connect('toggled', lambda b,s: setattr(s,'_pinned',b.get_active()), self)
@@ -5699,7 +5702,7 @@ class ModifiersTool( Tool ):
 		for i,type in enumerate( MODIFIER_TYPES_MINI ): combo.append('id', type)
 		gtk.combo_box_set_active( combo, 0 )
 
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b = gtk.ToggleButton( icons.PIN )
 		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
 		b.set_active( self._pinned )
 		b.connect('toggled', lambda b,s: setattr(s,'_pinned',b.get_active()), self)
@@ -5806,6 +5809,9 @@ class ToolsUI( object ):
 		self.notebook = gtk.Notebook()
 		ex.add( self.notebook )
 
+		box = self.new_page( icons.GAMEPAD )	# gamepad page
+		self.gamepads_widget = GamepadsWidget( box )
+
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )
 		self.webcam = widget.webcam
@@ -5820,15 +5826,12 @@ class ToolsUI( object ):
 		DND.make_source( widget.dnd_container, 'KINECT' )	# make drag source
 		widget.start_threads( self.lock )
 
-		box = self.new_page( icons.GAMEPAD )	# gamepad page
-		self.gamepads_widget = GamepadsWidget( box )
-
 		box = self.new_page( icons.WIIMOTE )	# wiimote page
 		self.wiimotes_widget = WiimotesWidget( box )
 
 		box = self.new_page( icons.MICROPHONE )	# microphone page TODO move me
 		widget = Pyppet.audio.microphone.get_analysis_widget()
-		if 0: box.pack_start( widget )
+		box.pack_start( widget )
 
 		return self.devices_widget
 
@@ -5847,7 +5850,7 @@ class ToolsUI( object ):
 		row = gtk.HBox()
 		frame.add( row )
 
-		b = gtk.ToggleButton( icons.SOUTH_WEST_ARROW )
+		b = gtk.ToggleButton( icons.PIN )
 		b.set_relief( gtk.RELIEF_NONE ); b.set_tooltip_text( 'pin to active' )
 		b.set_active( self._shape_pinned )
 		b.connect('toggled', lambda b,s: setattr(s,'_shape_pinned',b.get_active()), self)
@@ -6061,6 +6064,7 @@ class WiimotesWidget(object):
 if __name__ == '__main__':
 	## chrome is already open by shell script, this only sets the page to localhost,
 	## this is required otherwise python can not close the ports its listening on.
+	#os.system('chromium-browser --app=http://localhost:8080 &')	# opens new window with name Untitled
 	os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
 	time.sleep(0.1)
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop

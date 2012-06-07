@@ -190,6 +190,7 @@ class BlenderHack( object ):
 	################ BAKE HACK ################
 	progressive_baking = False
 	server = None
+	_image_editor_handle = None
 	def bake_hack( self, reg ):
 		self.context = BlenderContextCopy( bpy.context )
 		self.server.update( self.context )	# update http server
@@ -213,7 +214,13 @@ class BlenderHack( object ):
 		if not refresh and os.path.isfile(path+'.png'):
 			print('FAST CACHE RETURN')
 
-		if refresh or not os.path.isfile(path+'.png'):
+		elif refresh or not os.path.isfile(path+'.png'):
+			if not self._image_editor_handle:
+				print('_'*80)
+				print('ERROR: you must open a "UV/Image editor" to bake textures')
+				print('_'*80)
+				return bytes()
+
 			print('---------- baking image ->', ob.name)
 
 			restore_active = self.context.active_object
@@ -225,7 +232,9 @@ class BlenderHack( object ):
 			self.context.scene.objects.active = ob
 
 			## TRICK, enter edit-mode and create a new image, this sets it as active in the ImageEditor
-			bpy.ops.object.mode_set( mode='EDIT' )
+			if self.context.mode != 'EDIT': bpy.ops.object.mode_set( mode='EDIT' )
+			else: print('[[ already in edit mode ]]')
+
 			bpy.ops.mesh.select_all( action='SELECT' )	# ensure all faces selected
 			bpy.ops.image.new(
 				name='_%s_(%s %sx%s)' %(ob.name,type,width,height), 
@@ -276,11 +285,11 @@ class BlenderHack( object ):
 		pngsize = os.stat( path+'.png' ).st_size
 		jpgsize = os.stat( path+'.jpg' ).st_size
 		if pngsize < jpgsize:
-			print('sending png data', pngsize)
+			print('sending png data - bytes:', pngsize)
 			self.BAKE_BYTES += pngsize
 			return open( path+'.png', 'rb' ).read()
 		else:
-			print('sending jpg data', jpgsize)
+			print('sending jpg data - bytes:', jpgsize)
 			self.BAKE_BYTES += jpgsize
 			return open( path+'.jpg', 'rb' ).read()
 

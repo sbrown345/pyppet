@@ -1,6 +1,7 @@
 # _*_ coding: utf-8 _*_
 BLENDER = '🐵'
 PLUS = '＋'
+PIN = '📌'
 
 BIDIRECTIONAL = '⥂'
 
@@ -10,21 +11,21 @@ NEGATIVE_OFFSET = '⊝'
 SHAPE_KEYS = '𝙎𝙝𝙖𝙥𝙚s'
 SHAPE_KEYS_ICON = '𝙎𝙝𝙖𝙥𝙚𝙨'
 ACTIVE_BONE = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
-ACTIVE_BONE_ICON = '⟝'
+ACTIVE_BONE_ICON = '🍖'
 
 DYNAMIC_TARGETS = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
-DYNAMIC_TARGETS_ICON = '⟟'
+DYNAMIC_TARGETS_ICON = '🎯'
 
 
 WEIGHT = '⥤'
 RAW_POWER = '⥴'
 NORMALIZED_POWER = '⥵'
 
-PROGRESSIVE_TEXTURES = '⏳'
+PROGRESSIVE_TEXTURES = '🔀'
 
 DROP_HERE = '𝘥𝘳𝘰𝘱-𝘩𝘦𝘳𝘦'
 
-STREAMING = '𝄏'
+STREAMING = '🔛'
 
 WIREFRAME = '⬚'
 NAME = '⎁'
@@ -101,7 +102,7 @@ DND = ' ⎗ '
 
 MULTIPLY = '⨉'
 
-DRIVERS_ICON = '⟤'
+DRIVERS_ICON = '🔄'
 DRIVER = '⎆'
 DRIVERS = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
 
@@ -113,7 +114,7 @@ KINECT = '㉿'
 GAMEPAD = '🎮'
 WIIMOTE = '⍠'
 
-DEVICES_ICON = '⌹'
+DEVICES_ICON = '🔌'
 DEVICES = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
 
 PHYSICS_ICON = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
@@ -160,14 +161,14 @@ PYPPET = 'Pyppet'
 PLAY = '⊳'
 RECORD = '⊚'
 
-PHYSICS_RIG_ICON = RAGDOLL = '☠'
+PHYSICS_RIG_ICON = RAGDOLL = '💀'
 PHYSICS_RIG = 'physics rig'
 
 BIPED = '🏃'
 
 ROPE = '⟅'
 
-JOINTS_ICON = JOINT = 'ⵞ'
+JOINTS_ICON = JOINT = '💪'
 JOINTS = 'joints'
 
 TRANSFORM = '⇨'
