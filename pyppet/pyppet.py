@@ -1497,12 +1497,13 @@ class Audio(object):
 	def sync(self):	# called from main - (gtk not thread safe)
 		if not self.active: return
 
-		for i,power in enumerate( self.raw_bands ):
-			self.raw_adjustments[ i ].set_value( power )
-		for i,power in enumerate( self.norm_bands ):
-			self.norm_adjustments[ i ].set_value( power )
-		for i,beat in enumerate( self.beats ):
-			self.beats_buttons[ i ].set_active( beat )
+		if self.beats_buttons:
+			for i,power in enumerate( self.raw_bands ):
+				self.raw_adjustments[ i ].set_value( power )
+			for i,power in enumerate( self.norm_bands ):
+				self.norm_adjustments[ i ].set_value( power )
+			for i,beat in enumerate( self.beats ):
+				self.beats_buttons[ i ].set_active( beat )
 
 
 class Microphone( Audio ):
@@ -4707,6 +4708,44 @@ class PyppetUI( PyppetAPI ):
 			header.pack_start( gtk.Label(ob.name), expand=False )
 			header.pack_start( gtk.Label('    '), expand=False )
 
+			###################################################
+			b = gtk.ToggleButton( icons.WIREFRAME )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show wireframe')
+			b.set_active(ob.show_wire)
+			b.connect('toggled', lambda b,o: setattr(o,'show_wire',b.get_active()), ob)
+			header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.NAME )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show name')
+			b.set_active(ob.show_name)
+			b.connect('toggled', lambda b,o: setattr(o,'show_name',b.get_active()), ob)
+			header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.AXIS )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show axis')
+			b.set_active(ob.show_axis)
+			b.connect('toggled', lambda b,o: setattr(o,'show_axis',b.get_active()), ob)
+			header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.XRAY )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('show xray')
+			b.set_active(ob.show_x_ray)
+			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
+			header.pack_start( b, expand=False )
+
+			combo = gtk.ComboBoxText()
+			header.pack_start( combo, expand=False )
+			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
+				combo.append('id', type)
+				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
+			combo.set_tooltip_text( 'view draw type' )
+			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
+
+
 			wrapper = ENGINE.get_wrapper( ob )
 			if not wrapper.is_subgeom:	# sub-geom not allowed to have a body
 
@@ -4738,7 +4777,6 @@ class PyppetUI( PyppetAPI ):
 
 				header.pack_start(Mslider.widget, expand=True)
 
-				header.pack_start( gtk.Label(' | '), expand=False )
 
 
 			combo = gtk.ComboBoxText()
@@ -4776,43 +4814,6 @@ class PyppetUI( PyppetAPI ):
 
 			#root.pack_start( gtk.Label() )
 
-			###################################################
-			b = gtk.ToggleButton( icons.WIREFRAME )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show wireframe')
-			b.set_active(ob.show_wire)
-			b.connect('toggled', lambda b,o: setattr(o,'show_wire',b.get_active()), ob)
-			header.pack_start( b, expand=False )
-
-			b = gtk.ToggleButton( icons.NAME )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show name')
-			b.set_active(ob.show_name)
-			b.connect('toggled', lambda b,o: setattr(o,'show_name',b.get_active()), ob)
-			header.pack_start( b, expand=False )
-
-			b = gtk.ToggleButton( icons.AXIS )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show axis')
-			b.set_active(ob.show_axis)
-			b.connect('toggled', lambda b,o: setattr(o,'show_axis',b.get_active()), ob)
-			header.pack_start( b, expand=False )
-
-			b = gtk.ToggleButton( icons.XRAY )
-			b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('show xray')
-			b.set_active(ob.show_x_ray)
-			b.connect('toggled', lambda b,o: setattr(o,'show_x_ray',b.get_active()), ob)
-			header.pack_start( b, expand=False )
-
-			combo = gtk.ComboBoxText()
-			footer.pack_start( combo, expand=False )
-			for i,type in enumerate( ['TEXTURED', 'SOLID', 'WIRE', 'BOUNDS'] ):
-				combo.append('id', type)
-				if type == ob.draw_type: gtk.combo_box_set_active( combo, i )
-			combo.set_tooltip_text( 'view draw type' )
-			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
-
 			header.pack_start( gtk.Label() )
 
 			b = gtk.ToggleButton( icons.STREAMING )
@@ -4829,6 +4830,8 @@ class PyppetUI( PyppetAPI ):
 			b.connect('toggled', lambda b,o: setattr(o,'webgl_progressive_textures',b.get_active()), ob)
 			header.pack_start( b, expand=False )
 
+
+			footer.pack_start( gtk.Label() )
 			slider = SimpleSlider( ob, name='webgl_normal_map', title='', max=5.0, border_width=0, tooltip='normal map scale' )
 			footer.pack_start( slider.widget )
 
@@ -4971,6 +4974,8 @@ class PyppetUI( PyppetAPI ):
 		vpane.add2(
 			self._blender_embed_toolbar
 		)
+		self._blender_embed_toolbar.hide()
+		self._blender_embed_toolbar.set_no_show_all(True)
 
 
 
@@ -5036,7 +5041,9 @@ class PyppetUI( PyppetAPI ):
 
 
 	def embed_blender_window(self,b):
-		#xsock, container = self.create_blender_xembed_socket()	# gtk.Socket
+		self._blender_embed_toolbar.set_no_show_all(False)
+		self._blender_embed_toolbar.show()
+
 		xsock, container = self.create_embed_widget(
 			on_dnd = self.drop_on_view,
 			on_resize = self.on_resize_blender,	# REQUIRED
@@ -5765,7 +5772,6 @@ class ToolsUI( object ):
 		self.devices_widget = ex.widget
 
 		self.notebook = gtk.Notebook()
-		self.notebook.set_size_request( 260,450 )
 		ex.add( self.notebook )
 
 		box = self.new_page( icons.WEBCAM )	# webcam
@@ -5773,7 +5779,7 @@ class ToolsUI( object ):
 		self.webcam = widget.webcam
 		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender embed window to assign to material
 
-		#self.webcam.start_thread( self.lock )
+		#self.webcam.start_thread( self.lock )	# TODO reenable webcam streaming
 		self.webcam.lock = self.lock
 
 		box = self.new_page( icons.KINECT )		# kinect page
@@ -5790,7 +5796,7 @@ class ToolsUI( object ):
 
 		box = self.new_page( icons.MICROPHONE )	# microphone page TODO move me
 		widget = Pyppet.audio.microphone.get_analysis_widget()
-		box.pack_start( widget )
+		if 0: box.pack_start( widget )
 
 		return self.devices_widget
 

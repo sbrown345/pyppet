@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# updated nov, 2011 - NOT pypy1.7 compatible
+# updated june 2012 - TODO fix me, CvtColor
 import os, sys, time, ctypes, threading
 import cv
 import highgui as gui
@@ -216,9 +216,16 @@ class WebCamera(object):
 		_gray32 = self._gray32
 
 		if self.active:
-			print('getting frame...')
-			_frame = self.cam.QueryFrame()	# IplImage from highgui lacks fancy methods
-			print('got it!')
+			if False:	# TODO fix me - probably use gstreamer for frame capture
+				print('getting frame...')
+				_frame = self.cam.QueryFrame()	# IplImage from highgui
+				print('got it!', _frame, dir(_frame))
+			else:
+				_frame = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_8U, 3)
+				cv.cvSet( _frame, cv.CvScalar(255,0,0) )
+
+
+
 			cv.cvSet( self.comp_image, cv.CvScalar(255,255,255) )
 			#cv.cvSet( self.comp_image, cv.CvScalar(0,0,0) )
 			prev = self.comp_image
@@ -226,7 +233,7 @@ class WebCamera(object):
 				if not layer.active: continue
 
 				a = layer._image
-				cv.CvtColor( _frame, a, layer.colorspace )		# no _frame.CvtColor because its from highgui
+				cv.CvtColor( _frame, a, layer.colorspace ) # no _frame.CvtColor from highgui?
 
 				## FX
 				if layer.FXsplit:
@@ -319,7 +326,7 @@ class Widget(object):
 	def __init__(self, parent, active=False ):
 		self.webcam = WebCamera( active=active )
 		self.active = active
-		self.root = root = gtk.VBox()
+		self.root = root = gtk.HBox()
 		root.set_border_width( 2 )
 		parent.add( root )
 
@@ -331,8 +338,8 @@ class Widget(object):
 
 		root.pack_start( self.dnd_container, expand=False )
 		note = gtk.Notebook()
-		note.set_tab_pos( gtk.POS_BOTTOM )
-		root.pack_start( note, expand=False )
+		note.set_tab_pos( gtk.POS_RIGHT )
+		root.pack_start( note, expand=True )
 		for layer in self.webcam.layers:
 			layer.widget( note )
 

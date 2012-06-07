@@ -114,30 +114,34 @@ class BlenderHack( object ):
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
+		## TODO store region types, and order
 		self.context = BlenderContextCopy( bpy.context )
-		self.lock.acquire()
-		while gtk.gtk_events_pending():
-			gtk.gtk_main_iteration()
-		self._gtk_updated = True
-		self.lock.release()
+		if not self._gtk_updated:
+			self.lock.acquire()
+			while gtk.gtk_events_pending():
+				gtk.gtk_main_iteration()
+			self._gtk_updated = True
+			self.lock.release()
 
 
 	def setup_blender_hack(self, context):
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
 
 		self.default_blender_screen = context.screen.name
-
 		self.evil_C = Blender.Context( context )
 		self.context = BlenderContextCopy( context )
+
+		self._sync_hack_handles = {}	# region : handle
+
 		for area in context.screen.areas:
 			if area.type == 'VIEW_3D':
 				for reg in area.regions:
 					if reg.type == 'WINDOW':
 						## only POST_PIXEL is thread-safe and drag'n'drop safe
 						## (maybe not!?) ##
-						self._handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
-						return True
-		return False
+						handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
+						self._sync_hack_handles[ reg ] = handle
+		return self._sync_hack_handles
 
 	_image_editor_handle = None
 
@@ -173,9 +177,12 @@ class BlenderHack( object ):
 							reg.tag_redraw()
 							break
 
-		Blender.iterate( self.evil_C, draw=not drop_frame)
 		# even updating GTK first wont fix the freeze on DND over blenders window! #
-		assert self._gtk_updated
+		Blender.iterate( self.evil_C, draw=not drop_frame)
+		# its ok not to force gtk to update (this happens when ODE physics is on)
+		#assert self._gtk_updated
+
+
 
 	################ BAKE HACK ################
 	progressive_baking = False
@@ -370,6 +377,7 @@ class BlenderHackLinux( BlenderHack ):
 				self.blender_width,
 				self.blender_height
 			)
+			Blender.window_expand()
 
 
 	def drop_on_chrome_container(self, wid, con, x, y, time):
@@ -1607,8 +1615,11 @@ class GameDevice(object):
 		header = self._get_header_widget()
 		if header: root.pack_start( header, expand=False )
 
+		split = gtk.HBox()
+		root.pack_start( split )
+
 		ex = gtk.Expander('Axes'); ex.set_expanded(True)
-		root.pack_start( ex, expand=False )
+		split.pack_start( ex, expand=True )
 		box = gtk.VBox(); ex.add( box )
 		self.axes_gtk = []
 		for i in range(self.num_axes):
@@ -1632,7 +1643,7 @@ class GameDevice(object):
 
 		############## buttons ##############
 		ex = gtk.Expander('Buttons'); ex.set_expanded(True)
-		root.pack_start( ex, expand=False )
+		split.pack_start( ex, expand=False )
 		box = gtk.VBox(); ex.add( box )
 		self.buttons_gtk = []
 

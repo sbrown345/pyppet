@@ -564,7 +564,7 @@ class Widget(object):
 		self.proc_shapes = ProcessShapes()
 		self.proc_contours.proc_shapes = self.proc_shapes
 
-		self.root = root = gtk.VBox()
+		self.root = root = gtk.HBox()
 		root.set_border_width( 3 )
 		parent.add( root )
 
@@ -572,27 +572,30 @@ class Widget(object):
 		self.dnd_container.add( self.proc_shapes.preview_image_gtk )
 		root.pack_start( self.dnd_container, expand=False )
 
-		row = gtk.HBox(); root.pack_start( row, expand=False )
+		page = gtk.VBox()
+		root.pack_start( page, expand=True )
+
+		row = gtk.HBox(); page.pack_start( row, expand=False )
 		b = gtk.CheckButton('show depth')
 		row.pack_start( b )
 		b.connect('toggled', Kinect.toggle, 'show_depth')
 
 
-		row = gtk.HBox(); root.pack_start( row, expand=False )
+		row = gtk.HBox(); page.pack_start( row, expand=False )
 		adjust = gtk.Adjustment( value=Kinect.sweeps, lower=1, upper=64 )
 		adjust.connect('value-changed', Kinect.adjust, 'sweeps')
 		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
 		scale.set_digits(0)
 		row.pack_start( scale )
 
-		row = gtk.HBox(); root.pack_start( row, expand=False )
+		row = gtk.HBox(); page.pack_start( row, expand=False )
 		adjust = gtk.Adjustment( value=Kinect.sweep_step, lower=1, upper=8 )
 		adjust.connect('value-changed', Kinect.adjust, 'sweep_step')
 		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
 		scale.set_digits(0)
 		row.pack_start( scale )
 
-		row = gtk.HBox(); root.pack_start( row, expand=False )
+		row = gtk.HBox(); page.pack_start( row, expand=False )
 		adjust = gtk.Adjustment( value=Kinect.sweep_begin, lower=0, upper=255 )
 		adjust.connect('value-changed', Kinect.adjust, 'sweep_begin')
 		scale = gtk.HScale( adjust ); scale.set_value_pos(gtk.POS_RIGHT)
