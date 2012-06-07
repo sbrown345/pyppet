@@ -4,6 +4,8 @@
 killall chromium-browser
 chromium-browser &
 
+rm -rf /tmp/texture-cache
+
 #python IcarusTouch/src/main.py &
 
 ## assumes that Nautilus opens with window named "Home"

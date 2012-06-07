@@ -203,7 +203,12 @@ class BlenderHack( object ):
 		assert type in self.BAKE_MODES
 		width = height = size
 		name = ob.name
-		path = '/tmp/%s.%s.%s' %(name,size,type)
+		path_dir = '/tmp/texture-cache'
+		if not os.path.isdir( path_dir ): os.makedirs( path_dir )
+		path = os.path.join(
+			path_dir, 
+			'%s.%s.%s' %(name,size,type),
+		)
 
 		if not refresh and os.path.isfile(path+'.png'):
 			print('FAST CACHE RETURN')

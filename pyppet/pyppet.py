@@ -125,8 +125,11 @@ def UID( ob ):
 	'''
 	sets and returns simple unique ID for object.
 	note: when merging data, need to check all ID's are unique
+	note: copy object duplicates the UID
 	'''
-	if ob.UID == 0: ob.UID = max( [o.UID for o in bpy.data.objects] ) + 1
+	ids = [o.UID for o in bpy.data.objects]
+	if not ob.UID or ids.count( ob.UID ) > 1:
+		ob.UID = max( ids ) + 1
 	return ob.UID
 
 def ensure_unique_ids():
@@ -451,6 +454,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				pak['scale'] = ob.webgl_lens_flare_scale
 
 			elif ob.type == 'MESH':
+				#print('sending mesh',ob)
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 				specular = None
 				if ob.data.materials:
@@ -5138,8 +5142,7 @@ class App( PyppetUI ):
 
 
 	def exit(self, arg):
-		os.system('killall chromium-browser')
-
+		#os.system('killall chromium-browser')
 		self.audio.exit()
 		self.active = False
 		self.websocket_server.stop()
