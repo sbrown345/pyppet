@@ -118,8 +118,10 @@ class BlenderHack( object ):
 		self.context = BlenderContextCopy( bpy.context )
 		if not self._gtk_updated:
 			self.lock.acquire()
-			while gtk.gtk_events_pending():
+			i = 0
+			while gtk.gtk_events_pending() and i < 100:
 				gtk.gtk_main_iteration()
+				i += 1
 			self._gtk_updated = True
 			self.lock.release()
 
@@ -134,13 +136,14 @@ class BlenderHack( object ):
 		self._sync_hack_handles = {}	# region : handle
 
 		for area in context.screen.areas:
-			if area.type == 'VIEW_3D':
-				for reg in area.regions:
-					if reg.type == 'WINDOW':
-						## only POST_PIXEL is thread-safe and drag'n'drop safe
-						## (maybe not!?) ##
-						handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
-						self._sync_hack_handles[ reg ] = handle
+			if area.type == 'IMAGE_EDITOR': continue	# always checks for in update_blender_and_gtk
+			#if area.type == 'VIEW_3D':
+			for reg in area.regions:
+				if reg.type == 'WINDOW':
+					## only POST_PIXEL is thread-safe and drag'n'drop safe
+					## (maybe not!?) ##
+					handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
+					self._sync_hack_handles[ reg ] = handle
 		return self._sync_hack_handles
 
 	_image_editor_handle = None
@@ -305,14 +308,8 @@ class BlenderHackWindows( BlenderHack ): pass	#TODO
 class BlenderHackOSX( BlenderHack ): pass		# TODO
 
 class BlenderHackLinux( BlenderHack ):
-	def _create_embed_widget_helper(self, sock, callback):
-		print('[[ on plug dnd helper ]]')
-		DND.make_destination(sock)
-		sock.connect(
-			'drag-drop', callback,
-		)
 
-	def create_embed_widget(self, on_dnd=None, on_resize=None):
+	def create_embed_widget(self, on_dnd=None, on_resize=None, on_plug=None):
 		'''
 		Tricks to force our own drag'n'drop callbacks:
 			1. wnck-helper shades and sets the window to set-keep-below,
@@ -325,16 +322,41 @@ class BlenderHackLinux( BlenderHack ):
 		eb = gtk.EventBox()
 		eb.set_border_width(4)
 
-		if on_dnd:
+		if on_dnd and not on_plug:
 			sock.connect('plug-added', self._create_embed_widget_helper, on_dnd)
 			DND.make_destination(eb)
 			eb.connect( 'drag-drop', on_dnd)
+		elif on_plug and on_dnd:
+			sock.connect(
+				'plug-added', 
+				self._create_embed_widget_helper2, 
+				on_dnd, on_plug,
+			)
+			DND.make_destination(eb)
+			eb.connect( 'drag-drop', on_dnd)
+
+		elif on_dnd: assert 0	# TODO
+
 
 		if on_resize:
 			sock.connect('size-allocate', on_resize)	# REQUIRED by blender
 
 		eb.add( sock )
 		return sock, eb
+
+	def _create_embed_widget_helper(self, sock, callback):
+		print('[[ on plug dnd helper ]]')
+		DND.make_destination(sock)
+		sock.connect(
+			'drag-drop', callback,
+		)
+	def _create_embed_widget_helper2(self, sock, on_dnd_callback, on_plug_callback):
+		print('[[ on plug dnd helper2 ]]')
+		on_plug_callback(sock)
+		DND.make_destination(sock)
+		sock.connect(
+			'drag-drop', on_dnd_callback,
+		)
 
 
 
@@ -403,6 +425,9 @@ class BlenderHackLinux( BlenderHack ):
 				xsocket.add_id( xid )
 				print('OK', xsocket, type(xsocket))
 				return xid
+		## we must update gtk main again here,
+		## because gtk update could be slaved to blender's redraw 
+		while gtk.gtk_events_pending(): gtk.gtk_main_iteration()
 
 	def on_plug_debug(self, xsocket):
 		print('----------on plug debug', xsocket)

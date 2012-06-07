@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# it is required that chrome is run first from this shell script - allows proper port shutdown #
+killall chromium-browser
+chromium-browser &
+
 #python IcarusTouch/src/main.py &
 
 ## assumes that Nautilus opens with window named "Home"

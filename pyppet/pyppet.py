@@ -372,31 +372,50 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 
 	def start(self):
+		self.active = False
+		try:
+			lsock = self.socket(self.listen_host, self.listen_port)
+		except:
+			print('ERROR: [websocket server] failed to listen on port: %s' %self.listen_port)
+			return False
+
 		print('--starting websocket server thread--')
 		self.active = True
 		threading._start_new_thread(
-			self.loop, ()
+			self.loop, (lsock,)
 		)
+		return True
 
-	def loop(self):
-		lsock = self.socket(self.listen_host, self.listen_port)
+	def stop(self):
+		if self.active:
+			print('--stopping websocket server thread--')
+			self.active = False
+			time.sleep(1)
+			#self.send_close()
+			#raise self.EClose(closed)
+
+
+	def loop(self, lsock):
 		while self.active:
-			time.sleep(0.1)
+			time.sleep(0.0333)
 			try:
 				self.poll()
-				ready = select.select([lsock], [], [], 1)[0]
+				ready = select.select([lsock], [], [], 0.01)[0]
 				if lsock in ready: startsock, address = lsock.accept()
 				else: continue
 			except Exception: continue
 			## keep outside of try for debugging ##
-			self.top_new_client(startsock, address)	# calls new_client()
+			self.top_new_client(startsock, address)	# sets.client and calls new_client()
+		print('[[websocket thread clean exit]]')
+		lsock.close()
+		#lsock.shutdown()
 
 	def new_client(self): print('new client', self.client)
 
 	_bps_start = None
 	_bps = 0
 
-	def update( self, context ):
+	def update( self, context ):	# called from main
 		if not self.client: return
 		msg = { 
 			'meshes':{}, 
@@ -555,11 +574,16 @@ def make_forking_server( host, port, callback ):
 class WebServer( object ):
 	CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 
-	def close(self): self.httpd.close()
+	def close(self):
+		if self.httpd:
+			self.httpd.server_close()	# this is REQUIRED
 
-	def init_webserver(self, port=8080, forking=False, timeout=0):
-		self.hires_progressive_textures = True
+	def init_webserver(self, host='localhost', port=8080, forking=False, timeout=0):
+		self.host = host
 		self.httpd_port = port
+
+		self.hires_progressive_textures = True
+
 		if forking:
 			self.httpd = make_forking_server( self.host, self.httpd_port, self.httpd_reply )
 		else:
@@ -733,9 +757,8 @@ class WebServer( object ):
 
 
 class Server( WebServer ):
-	def __init__(self, host='localhost'):
-		self.host = host
-		self.init_webserver()
+	def __init__(self, host='localhost', port=8080):
+		self.init_webserver( host=host, port=port )
 		self.clients = {}
 
 	def enable_streaming( self, client ):
@@ -5006,9 +5029,9 @@ class PyppetUI( PyppetAPI ):
 		#self.window.show_all()
 		popup.show()
 
-		for i in range(3): bpy.ops.screen.screen_set( delta=1 )
-		bpy.ops.wm.window_duplicate()
-		for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
+		#for i in range(3): bpy.ops.screen.screen_set( delta=1 )
+		#bpy.ops.wm.window_duplicate()
+		#for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
 
 		#####################################
 		self._bottom_toggle_button.set_active(False)
@@ -5040,13 +5063,16 @@ class PyppetUI( PyppetAPI ):
 		####################
 
 
-	def embed_blender_window(self,b):
+	def embed_blender_window(self,button):
+		button.set_no_show_all(True)	# only allow single embed
+		button.hide()
 		self._blender_embed_toolbar.set_no_show_all(False)
 		self._blender_embed_toolbar.show()
 
 		xsock, container = self.create_embed_widget(
 			on_dnd = self.drop_on_view,
 			on_resize = self.on_resize_blender,	# REQUIRED
+			on_plug = self.on_plug_blender,		# REQUIRED
 		)
 
 		xsock.set_border_width(10)
@@ -5088,7 +5114,7 @@ class App( PyppetUI ):
 		self.server = Server()
 		self.client = Client()
 		self.websocket_server = WebSocketServer( listen_port=8081 )
-		self.websocket_server.start()
+		self.websocket_server.start()	# polls in a thread
 
 		self.audio = AudioThread()
 		self.audio.start()
@@ -5112,9 +5138,12 @@ class App( PyppetUI ):
 
 
 	def exit(self, arg):
+		os.system('killall chromium-browser')
+
 		self.audio.exit()
 		self.active = False
-		self.websocket_server.active = False
+		self.websocket_server.stop()
+		self.server.close()
 		sdl.Quit()
 		print('...quit blender...')
 		bpy.ops.wm.quit_blender()	# fixes hang on exit
@@ -6027,9 +6056,10 @@ class WiimotesWidget(object):
 
 #####################################
 if __name__ == '__main__':
-	os.system('killall chromium-browser')
-	os.system('chromium-browser localhost:8080 &')
-	time.sleep(1.0)
+	## chrome is already open by shell script, this only sets the page to localhost,
+	## this is required otherwise python can not close the ports its listening on.
+	os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
+	time.sleep(0.1)
 	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 	Pyppet.mainloop()
 

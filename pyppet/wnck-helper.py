@@ -54,7 +54,7 @@ else:
 	for win in wins:
 		## make_below allows drag and drop/move in parent window to work
 		## otherwise parent window must use always-on-top ##
-		win.make_below()
+		win.make_below()	# REQUIRED FOR BLENDER
 		win.shade()
 		print( 'XID=%s' %win.get_xid() )
 
