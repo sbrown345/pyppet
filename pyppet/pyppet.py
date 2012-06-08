@@ -2206,7 +2206,7 @@ class AbstractArmature(object):
 		breakable = gtk.CheckButton('breakable joints')
 
 		hybrid = gtk.CheckButton('hybrid-IK')
-		hybrid_weight = Slider( name='hybrid-IK weight', value=100, min=0.01, max=200 )
+		hybrid_weight = Slider( name='hybrid-IK weight', force_title_above=True, value=100, min=0.01, max=200 )
 		hybrid_bd = gtk.CheckButton('hybrid-IK bidirectional targets')
 		hybrid_bd.set_tooltip_text('IK targets are also affected by the physics rig')
 		hybrid_bd_power = Slider( name='hybrid-IK bidirectional power', value=0.1, max=0.5 )
@@ -2237,7 +2237,8 @@ class AbstractArmature(object):
 		)
 
 		b = gtk.Button('create %s' %self.__class__.__name__)
-		row.pack_start( b, expand=False )
+		b.set_border_width(5)
+		row.pack_start( b, expand=True )
 		b.connect(
 			'clicked',
 			func,
@@ -2255,20 +2256,27 @@ class AbstractArmature(object):
 			collides_with_self,
 		)
 
-		root.pack_start( stretch, expand=False )
-		root.pack_start( breakable, expand=False )
-		root.pack_start( break_thresh.widget, expand=False )
-		root.pack_start( damage_thresh.widget, expand=False )
+		split = gtk.HBox()
+		root.pack_start( split )
+		page1 = gtk.VBox()
+		page2 = gtk.VBox()
+		split.pack_start( page1 )
+		split.pack_start( page2 )
 
-		root.pack_start( hybrid, expand=False )
-		root.pack_start( hybrid_weight.widget, expand=False )
-		root.pack_start( hybrid_bd, expand=False )
-		root.pack_start( hybrid_bd_power.widget, expand=False )
+		page1.pack_start( stretch, expand=False )
+		page1.pack_start( breakable, expand=False )
+		page2.pack_start( break_thresh.widget, expand=False )
+		page2.pack_start( damage_thresh.widget, expand=False )
 
-		root.pack_start( gravity, expand=False )
-		root.pack_start( allow_unconnected, expand=False )
-		root.pack_start( collision, expand=False )
-		root.pack_start( collides_with_self, expand=False )
+		page1.pack_start( hybrid, expand=False )
+		page2.pack_start( hybrid_weight.widget, expand=False )
+		page1.pack_start( hybrid_bd, expand=False )
+		page2.pack_start( hybrid_bd_power.widget, expand=False )
+
+		page1.pack_start( gravity, expand=False )
+		page1.pack_start( allow_unconnected, expand=False )
+		page1.pack_start( collision, expand=False )
+		page1.pack_start( collides_with_self, expand=False )
 		return root
 
 

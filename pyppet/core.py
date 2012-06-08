@@ -796,7 +796,7 @@ XDND = ExternalDND()
 
 ############## Simple Driveable Slider ##############
 class Slider(object):
-	def __init__(self, object=None, name=None, title=None, target_index=None, value=0, min=0, max=1, border_width=2, driveable=True, no_show_all=False, tooltip=None, integer=False, callback=None, precision=2):
+	def __init__(self, object=None, name=None, title=None, target_index=None, value=0, min=0, max=1, border_width=2, driveable=True, no_show_all=False, tooltip=None, integer=False, callback=None, precision=2, force_title_above=False):
 		self.min = min
 		self.max = max
 
@@ -804,7 +804,7 @@ class Slider(object):
 		if title is not None: self.title = title
 		else: self.title = name.replace('_',' ')
 
-		if len(self.title) < 20:
+		if len(self.title) < 20 and not force_title_above:
 			self.widget = gtk.Frame()
 			self.modal = row = gtk.HBox()
 			row.pack_start( gtk.Label(self.title), expand=False )
