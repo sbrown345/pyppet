@@ -11,10 +11,17 @@ if sys.version_info[0] >= 3:
 	import urllib.request
 	import urllib.parse
 
+import cv
+import highgui as gui
+DEFAULT_WEBCAM_CAPTURE = gui.CreateCameraCapture(0)
+
+
 #import libclutter_gtk as clutter
 import gtk3 as gtk
 import icons
 import Blender
+
+
 
 #assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
 gtk.init()	# comes after clutter init

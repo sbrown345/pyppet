@@ -2,11 +2,13 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6a'
+VERSION = '1.9.6b'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
 from random import *
+
+PYPPET_LITE = 'pyppet-lite' in sys.argv
 
 ## make sure we can import from same directory ##
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -4931,6 +4933,7 @@ class PyppetUI( PyppetAPI ):
 		w = ENGINE.get_wrapper(ob)
 		w.reset_collision_type()
 
+
 	def create_ui(self, context):
 		self._left_tools_modals = {}
 		######################
@@ -4977,10 +4980,11 @@ class PyppetUI( PyppetAPI ):
 
 		################# google chrome ######################
 		#self._chrome_xsocket = gtk.Socket()
-		self._chrome_xsocket, chrome_container = self.create_embed_widget(
-			on_dnd = self.drop_on_view,
-		)
-		self._main_body_split.pack_start( chrome_container, expand=True )
+		if not PYPPET_LITE:
+			self._chrome_xsocket, chrome_container = self.create_embed_widget(
+				on_dnd = self.drop_on_view,
+			)
+			self._main_body_split.pack_start( chrome_container, expand=True )
 
 		############### Extra Tools #################
 		#______________________________________________________#
@@ -5008,9 +5012,17 @@ class PyppetUI( PyppetAPI ):
 		############### Blender Embed Windows ##############
 		self._blender_embed_toolbar = gtk.VBox()
 		self._blender_embed_toolbar.set_border_width( 10 )
-		vpane.add2(
-			self._blender_embed_toolbar
-		)
+
+		if PYPPET_LITE:
+			self._main_body_split.pack_start(
+				self._blender_embed_toolbar,
+				expand=True,
+			)
+
+		else:
+			vpane.add2(
+				self._blender_embed_toolbar
+			)
 		self._blender_embed_toolbar.hide()
 		self._blender_embed_toolbar.set_no_show_all(True)
 
@@ -5050,22 +5062,22 @@ class PyppetUI( PyppetAPI ):
 		#####################################
 		self._bottom_toggle_button.set_active(False)
 
-
-		if self.server.httpd:
-			name = 'Chromium'
-			xid = self.do_xembed( self._chrome_xsocket, name)
-			if not xid:
-				time.sleep(2)
+		if not PYPPET_LITE:
+			if self.server.httpd:
+				name = 'Chromium'
 				xid = self.do_xembed( self._chrome_xsocket, name)
 				if not xid:
-					msg = gtk.Label('ERROR [chromium browser not installed]' )
-					self._main_body_split.pack_start( msg )
-					msg.show()
+					time.sleep(2)
+					xid = self.do_xembed( self._chrome_xsocket, name)
+					if not xid:
+						msg = gtk.Label('ERROR [chromium browser not installed]' )
+						self._main_body_split.pack_start( msg )
+						msg.show()
 
-		else:
-			msg = gtk.Label('ERROR [port 8080] (streaming disabled)' )
-			self._main_body_split.pack_start( msg )
-			msg.show()
+			else:
+				msg = gtk.Label('ERROR [port 8080] (streaming disabled)' )
+				self._main_body_split.pack_start( msg )
+				msg.show()
 
 		##### OLD STUFF #####
 		#self.do_xembed( bxsock, 'Blender' )
@@ -5104,51 +5116,53 @@ class PyppetUI( PyppetAPI ):
 class App( PyppetUI ):
 	def __init__(self):
 		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
+		self._gtk_updated = False
 
-		self.playback_blender_anim = False
-		self.physics_running = False
+		if '--debug' not in sys.argv:
+			self.playback_blender_anim = False
+			self.physics_running = False
 
-		self.reset()		# PyppetAPI Public
-		self.register( self.update_header ) # listen to active object change
-		self.register( self.update_footer )
+			self.reset()		# PyppetAPI Public
+			self.register( self.update_header ) # listen to active object change
+			self.register( self.update_footer )
 
-		self.play_wave_on_record = True
-		self.wave_playing = False
-		self.wave_speaker = None
+			self.play_wave_on_record = True
+			self.wave_playing = False
+			self.wave_speaker = None
 
-		self._rec_start_time = time.time()
-		self._rec_shape_keys_cache = {}
-		self._rec_objects = {}	# recording buffers
-		self._rec_saved_objects = {}	# commited passes
-		self._rec_saved_shape_keys = {}	# commited shape key passes
+			self._rec_start_time = time.time()
+			self._rec_shape_keys_cache = {}
+			self._rec_objects = {}	# recording buffers
+			self._rec_saved_objects = {}	# commited passes
+			self._rec_saved_shape_keys = {}	# commited shape key passes
 
-		self.preview = False
-		self.recording = False
-		self.active = True
+			self.preview = False
+			self.recording = False
+			self.active = True
 
-		#self.lock = threading._allocate_lock()
+			#self.lock = threading._allocate_lock()
 
-		self.server = Server()
-		self.client = Client()
-		self.websocket_server = WebSocketServer( listen_port=8081 )
-		self.websocket_server.start()	# polls in a thread
+			self.server = Server()
+			self.client = Client()
+			self.websocket_server = WebSocketServer( listen_port=8081 )
+			self.websocket_server.start()	# polls in a thread
 
-		self.audio = AudioThread()
-		self.audio.start()
+			self.audio = AudioThread()
+			self.audio.start()
 
-		self.camera_randomize = False
-		self.camera_focus = 1.5
-		self.camera_aperture = 0.15
-		self.camera_maxblur = 1.0
+			self.camera_randomize = False
+			self.camera_focus = 1.5
+			self.camera_aperture = 0.15
+			self.camera_maxblur = 1.0
 
-		self.progressive_baking = True
+			self.progressive_baking = True
 
-		self._blender_embed_windows = []
-		self._blender_embed_toolbar = None
+			self._blender_embed_windows = []
+			self._blender_embed_toolbar = None
 
-		self.blender_good_frames = 0
-		self.blender_dropped_frames = 0
-		self._mainloop_prev_time = time.time()
+			self.blender_good_frames = 0
+			self.blender_dropped_frames = 0
+			self._mainloop_prev_time = time.time()
 
 
 
@@ -5199,6 +5213,30 @@ class App( PyppetUI ):
 
 
 	####################################################
+	def debug_create_ui(self):
+		'''
+		the problem with the webcam must be in blender itself,
+		something in blender is locking up V4L,
+		TODO compile blender without BGE (BGE has videotexture)
+			compile WITH_FFMPEG set to off should do the trick
+		'''
+		self.window = win = gtk.Window()
+		root = gtk.VBox()
+		win.add( root )
+		root.pack_start( gtk.Label('hello world'), expand=False )
+
+		widget = Webcam.Widget( root )
+		self.webcam = widget.webcam
+		self.webcam.start_thread()
+
+		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender
+
+		win.show_all()
+
+	def debug_mainloop(self):
+		while True:
+			self.update_blender_and_gtk()
+
 	def mainloop(self):
 		drops = 0
 		while self.active:
@@ -6073,13 +6111,19 @@ class WiimotesWidget(object):
 
 #####################################
 if __name__ == '__main__':
-	## chrome is already open by shell script, this only sets the page to localhost,
-	## this is required otherwise python can not close the ports its listening on.
-	#os.system('chromium-browser --app=http://localhost:8080 &')	# opens new window with name Untitled
-	os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
-	time.sleep(0.1)
-	Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
-	Pyppet.mainloop()
+	if '--debug' in sys.argv:
+		Pyppet.debug_create_ui()
+		Pyppet.debug_mainloop()
+
+	else:
+		if not PYPPET_LITE:
+			## chrome is already open by shell script, this only sets the page to localhost,
+			## this is required otherwise python can not close the ports its listening on.
+			#os.system('chromium-browser --app=http://localhost:8080 &')	# opens new window with name Untitled
+			os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
+			time.sleep(0.1)
+		Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
+		Pyppet.mainloop()
 
 
 

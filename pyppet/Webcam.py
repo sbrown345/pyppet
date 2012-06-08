@@ -1,9 +1,10 @@
 #!/usr/bin/python
 # updated june 2012
 import os, sys, time, ctypes, threading
-import cv
-import highgui as gui
-import gtk3 as gtk
+#import cv
+#import highgui as gui
+#import gtk3 as gtk
+from core import *
 
 def debug_image_struct( img ):
 	print( img )
@@ -163,10 +164,11 @@ class WebCamera(object):
 
 	def __init__(self, width=640, height=480, active=True):
 		self.active = active
-		self.lock = None
+		self.lock = threading._allocate_lock()
 		self.index = 0
 		#self.ready = os.path.exists('/dev/video0')		# Only on ubuntu, breaks fedora
-		self.cam = gui.CreateCameraCapture(self.index)
+		#self.cam = gui.CreateCameraCapture(self.index)
+		self.cam = DEFAULT_WEBCAM_CAPTURE
 		print(self.cam)
 		self.ready = True
 
@@ -232,6 +234,7 @@ class WebCamera(object):
 		_gray32 = self._gray32
 
 		if self.active:
+			print('trying to get frame...')
 			## QueryFrame and GrabFrame both block forever when this is run from Blender ##
 			#_frame = self.cam.QueryFrame()	# Just a combination of cvGrabFrame and cvRetrieveFrame
 			ready = self.cam.GrabFrame()
@@ -340,13 +343,15 @@ class WebCamera(object):
 		gui.ReleaseCapture( self.cam )
 		print('[[webcam thread - clean exit]]')
 
+Singleton = WebCamera( active=True )
+
 class Widget(object):
 	def exit(self, arg):
 		self.active = False
 		self.webcam.active = False
 
-	def __init__(self, parent, active=False ):
-		self.webcam = WebCamera( active=active )
+	def __init__(self, parent, active=True ):
+		self.webcam = Singleton
 		self.active = active
 		self.root = root = gtk.HBox()
 		root.set_border_width( 2 )
@@ -374,11 +379,9 @@ class Widget(object):
 			self.webcam.active = self.active
 
 if __name__ == '__main__':
-	gtk.init()
-
 	win = gtk.Window()
 	win.set_title( 'OpenCV+GTK' )
-	widget = Widget( win, active=True )
+	widget = Widget( win )
 	win.connect('destroy', widget.exit )
 	win.show_all()
 
