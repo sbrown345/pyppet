@@ -1,9 +1,24 @@
 #!/usr/bin/python
-# updated june 2012 - TODO fix me, CvtColor
+# updated june 2012
 import os, sys, time, ctypes, threading
 import cv
 import highgui as gui
 import gtk3 as gtk
+
+def debug_image_struct( img ):
+	print( img )
+	print( 'channels: %s' %img.nChannels )
+	print( 'width: %s' %img.width )
+	print( 'height: %s' %img.height )
+	print( 'depth: %s' %img.depth )
+	print( 'origin: %s' %img.origin )
+	print( 'alpha: %s' %img.alphaChannel )
+	print( 'align: %s' %img.align )
+	print( 'order: %s' %img.dataOrder )
+	print( 'roi: %s' %img.roi )
+	#roi = img.roi.contents
+	#print( 'roi-x-offset: %s' %roi.xOffset )
+	#print( 'roi-y-offset: %s' %roi.yOffset )
 
 
 class LayerConfig(object):
@@ -208,6 +223,7 @@ class WebCamera(object):
 
 		self.comp_image = cv.CreateImage( (self.width,self.height), cv.IPL_DEPTH_8U, 3 )
 
+		self._hack_image = cv.CreateImage( (self.width,self.height), cv.IPL_DEPTH_8U, 3 )
 
 	def iterate( self ):
 		_rgb8 = self._rgb8
@@ -216,18 +232,21 @@ class WebCamera(object):
 		_gray32 = self._gray32
 
 		if self.active:
-			if False:	# TODO fix me - probably use gstreamer for frame capture
-				print('getting frame...')
-				_frame = self.cam.QueryFrame()	# IplImage from highgui
-				print('got it!', _frame, dir(_frame))
-			else:
-				_frame = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_8U, 3)
-				cv.cvSet( _frame, cv.CvScalar(255,0,0) )
-
-
+			## QueryFrame and GrabFrame both block forever when this is run from Blender ##
+			#_frame = self.cam.QueryFrame()	# Just a combination of cvGrabFrame and cvRetrieveFrame
+			ready = self.cam.GrabFrame()
+			if not ready:
+				print('...................... waiting for frame ....................')
+				return
+			_frame = self.cam.RetrieveFrame( 0 )	# streamidx
+			print(_frame)
+			#debug_image_struct( _frame )
+			#debug_image_struct( self._hack_image )
+			cv.cvConvert( _frame, self._hack_image ) # OpenCV2 trick - makes compatible with CvtColor
+			_frame = self._hack_image
 
 			cv.cvSet( self.comp_image, cv.CvScalar(255,255,255) )
-			#cv.cvSet( self.comp_image, cv.CvScalar(0,0,0) )
+
 			prev = self.comp_image
 			for layer in self.layers:
 				if not layer.active: continue
@@ -309,14 +328,17 @@ class WebCamera(object):
 	def start_thread(self, lock=None):
 		assert lock or self.lock
 		if lock: self.lock = lock
-		if self.ready: threading._start_new_thread( self.loop, () )
-		else: print('Warning: no webcam found')
+		if self.ready:
+			threading._start_new_thread( self.loop, () )
+		else:
+			print('Warning: no webcam found')
 
 	def loop(self):
-		print('webcam begin thread...')
-		while self.active:
-			self.iterate()
-		print('webcam thread exit')
+		print('[[webcam begin thread]]')
+		self.active = True
+		while self.active: self.iterate()
+		gui.ReleaseCapture( self.cam )
+		print('[[webcam thread - clean exit]]')
 
 class Widget(object):
 	def exit(self, arg):
@@ -366,11 +388,8 @@ if __name__ == '__main__':
 	while widget.active:
 		#widget.webcam.iterate()		# threading is way better
 		lock.acquire()
-
-		if gtk.gtk_events_pending():
-			while gtk.gtk_events_pending():
-				gtk.gtk_main_iteration()
+		while gtk.gtk_events_pending():
+			gtk.gtk_main_iteration()
 		lock.release()
-
 
 

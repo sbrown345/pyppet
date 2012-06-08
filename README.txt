@@ -28,6 +28,7 @@ Known Issues:
 	. Drag'n'drop will freeze up if you drag over the blender window before its embedded
 		[ workaround: always embed blenders window before using drag and drop ]
 
+	. Webcam and Kinect are broken!
 
 =============================================================
 

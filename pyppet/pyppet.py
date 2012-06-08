@@ -373,7 +373,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 	webGL = WebGL()
 	RELOAD_TEXTURES = []
 
-
+	active = False
 	def start(self):
 		self.active = False
 		try:
@@ -5069,6 +5069,8 @@ class PyppetUI( PyppetAPI ):
 		#self.do_xembed( self._kivy_xsocket, "IcarusTouch")
 		####################
 
+		#self.webcam.start_thread( self.lock )
+
 
 	def embed_blender_window(self,button):
 		button.set_no_show_all(True)	# only allow single embed
@@ -5146,6 +5148,7 @@ class App( PyppetUI ):
 
 	def exit(self, arg):
 		#os.system('killall chromium-browser')
+		self.webcam.active = False
 		self.audio.exit()
 		self.active = False
 		self.websocket_server.stop()
@@ -5287,7 +5290,6 @@ class App( PyppetUI ):
 
 			#self.client.update( self.context )
 			self.websocket_server.update( self.context )
-
 
 
 ######## Pyppet Singleton #########
@@ -5814,11 +5816,12 @@ class ToolsUI( object ):
 
 		box = self.new_page( icons.WEBCAM )	# webcam
 		widget = Webcam.Widget( box )
-		self.webcam = widget.webcam
+		Pyppet.webcam = self.webcam = widget.webcam
+
 		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender embed window to assign to material
 
-		#self.webcam.start_thread( self.lock )	# TODO reenable webcam streaming
-		self.webcam.lock = self.lock
+		#self.webcam.start_thread( self.lock )	# TODO fix me
+		#self.webcam.lock = self.lock
 
 		box = self.new_page( icons.KINECT )		# kinect page
 		widget = Kinect.Widget( box )
