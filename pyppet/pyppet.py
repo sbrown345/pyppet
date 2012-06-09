@@ -756,6 +756,18 @@ class WebServer( object ):
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]
 
+		elif path.startswith('/RPC/'):
+			if path.startswith('/RPC/select/'):
+				uid = path.split('/')[-1]
+				print('RPC', uid)
+				for ob in bpy.context.scene.objects: ob.select=False
+				ob = get_object_by_UID( uid )
+				ob.select = True
+				bpy.context.scene.objects.active = ob
+
+				start_response('200 OK', [('Content-Length','0')])
+				return []
+
 		else:
 			print( 'SERVER ERROR: invalid path', path )
 

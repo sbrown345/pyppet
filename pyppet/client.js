@@ -5,6 +5,12 @@ var USE_SHADOWS = true;
 var DISP_BIAS_MAGIC = 0.07;
 var DISP_SCALE_MAGIC = 1.0;
 
+
+var projector = new THREE.Projector();	// for picking
+var mouse = { x: 0, y: 0 };				// for picking
+var INTERSECTED = null;				// for picking
+var testing;
+
 var SELECTED = null;
 
 var WIRE_MATERIAL = new THREE.MeshLambertMaterial(
@@ -115,9 +121,11 @@ function on_message(e) {
 
 
 			if (USE_MODIFIERS) {
-				m.shader.color.r = ob.color[0];
-				m.shader.color.g = ob.color[1];
-				m.shader.color.b = ob.color[2];
+				if (m != INTERSECTED) {
+					m.shader.color.r = ob.color[0];
+					m.shader.color.g = ob.color[1];
+					m.shader.color.b = ob.color[2];
+				}
 				m.shader.uniforms[ "uShininess" ].value = ob.spec;
 				if (m.multires) {
 					m.shader.uniforms[ "uDisplacementBias" ].value = ob.disp_bias-DISP_BIAS_MAGIC;
@@ -1037,11 +1045,66 @@ MyController = function ( object, domElement ) {
 	};
 
 
+	this.mouseup = function( event ) {
+		if ( ! _this.enabled ) return;
+		event.preventDefault();
+		event.stopPropagation();
+
+		if ( INTERSECTED ) {
+			var tex = THREE.ImageUtils.loadTexture(
+				'/RPC/select/'+INTERSECTED.name, undefined, on_texture_ready 
+			);
+			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+			//INTERSECTED = null;
+		}
+
+		if (_this.MODE=='TRACK') { _state = STATE.NONE; }
+		else if (_this.MODE=='FREE') {
+			switch ( event.button ) {
+				case 0: forwardSpeed = 0; break;
+				case 2: forwardSpeed = 0; break;
+			}
+		}
+	};
+
+
 	this.mousedown = function( event ) {
 		console.log('>> mouse down');
 		if ( ! _this.enabled ) return;
 		event.preventDefault();
 		event.stopPropagation();
+
+		// PICKING //
+		var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+		projector.unprojectVector( vector, camera );
+		var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
+
+		var intersects = ray.intersectObjects( scene.children );
+		//var obs = [];
+		//for (name in Objects) obs.push( Objects[name] )
+		//var intersects = ray.intersectObjects( obs );
+		testing = intersects;
+
+		if ( intersects.length > 0 ) {
+			for (var i=0; i < intersects.length; i ++) {
+				var intersect = intersects[ i ];
+				if (intersect.object.name) {	// ensure top level mesh with a name (UID)
+					if ( INTERSECTED != intersect.object ) {
+						if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+
+						INTERSECTED = intersect.object;
+						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+						INTERSECTED.material.color.setHex( 0xff0000 );
+					}
+				}
+			}
+		} else {
+			if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+			INTERSECTED = null;
+		}
+		/////////////////////////////////////////////////////////////////////
+
+
 		if (_this.MODE=='TRACK') { _this.mousedown_TRACK(event); }
 		else if (_this.MODE=='FREE') { _this.mousedown_FREE(event); }
 		randomize = true;
@@ -1069,6 +1132,10 @@ MyController = function ( object, domElement ) {
 
 	this.mousemove = function( event ) {
 		if ( ! _this.enabled ) return;
+		/////////////////////////////// PICKING /////////////////////////////////////
+		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
 		////////////////// SPIN ///////////////////
 		raw_mouseX = ( event.clientX - windowHalfX );
 		raw_mouseY = ( event.clientY - windowHalfY );
@@ -1095,18 +1162,6 @@ MyController = function ( object, domElement ) {
 	};
 
 
-	this.mouseup = function( event ) {
-		if ( ! _this.enabled ) return;
-		event.preventDefault();
-		event.stopPropagation();
-		if (_this.MODE=='TRACK') { _state = STATE.NONE; }
-		else if (_this.MODE=='FREE') {
-			switch ( event.button ) {
-				case 0: forwardSpeed = 0; break;
-				case 2: forwardSpeed = 0; break;
-			}
-		}
-	};
 
 
 	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
@@ -1219,16 +1274,6 @@ MyController = function ( object, domElement ) {
 		this.forward.normalize();
 	};
 
-
-/*
-	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
-
-	this.domElement.addEventListener( 'mousemove', onMouseMove, false );
-	this.domElement.addEventListener( 'mousedown', onMouseDown, false );
-	this.domElement.addEventListener( 'mouseup', onMouseUp, false );
-	this.domElement.addEventListener( 'keydown', onKeyDown, false );
-	this.domElement.addEventListener( 'keyup', onKeyUp, false );
-*/
 
 };
 
