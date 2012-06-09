@@ -1055,7 +1055,7 @@ MyController = function ( object, domElement ) {
 				'/RPC/select/'+INTERSECTED.name, undefined, on_texture_ready 
 			);
 			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-			//INTERSECTED = null;
+			INTERSECTED = null;
 		}
 
 		if (_this.MODE=='TRACK') { _state = STATE.NONE; }
@@ -1090,16 +1090,17 @@ MyController = function ( object, domElement ) {
 				var intersect = intersects[ i ];
 				if (intersect.object.name) {	// ensure top level mesh with a name (UID)
 					if ( INTERSECTED != intersect.object ) {
-						if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+						//if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 
 						INTERSECTED = intersect.object;
 						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-						INTERSECTED.material.color.setHex( 0xff0000 );
+						INTERSECTED.shader.color.setHex( 0xff0000 );
+						break;
 					}
 				}
 			}
 		} else {
-			if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+			//if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 			INTERSECTED = null;
 		}
 		/////////////////////////////////////////////////////////////////////
