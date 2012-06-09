@@ -106,6 +106,7 @@ function on_message(e) {
 			m.has_progressive_textures = ob.ptex;
 			m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
+
 			m.position.x = ob.pos[0];
 			m.position.y = ob.pos[1];
 			m.position.z = ob.pos[2];
@@ -118,7 +119,6 @@ function on_message(e) {
 			m.quaternion.x = ob.rot[1];
 			m.quaternion.y = ob.rot[2];
 			m.quaternion.z = ob.rot[3];
-
 
 			if (USE_MODIFIERS) {
 				if (m != INTERSECTED) {
@@ -144,7 +144,7 @@ function on_message(e) {
 
 					var vidx=0;
 					for (var i=0; i <= ob.verts.length-3; i += 3) {
-						var v = m.geometry_base.vertices[ vidx ].position;
+						var v = m.geometry_base.vertices[ vidx ];
 						v.x = ob.verts[ i ];
 						v.y = ob.verts[ i+2 ];
 						v.z = -ob.verts[ i+1 ];
@@ -191,7 +191,7 @@ function on_message(e) {
 
 	for (var name in msg['FX']) {
 		var fx = FX[ name ];
-		fx.enabled = msg['FX'][name][0];
+		fx.enabled = msg['FX'][name][0];	// something BUGGY here TODO
 		var uniforms = msg['FX'][name][1];
 		if (fx.uniforms) {
 			for (var n in uniforms) { fx.uniforms[ n ].value = uniforms[ n ]; }
@@ -634,7 +634,6 @@ function animate() {
 
 				// update hull //
 				mesh.geometry.vertices = mesh.geometry_base.vertices;
-				//mesh.geometry.__dirtyVertices = true;
 				mesh.geometry.NeedUpdateVertices = true;
 
 				var modifier = new THREE.SubdivisionModifier( subsurf );
@@ -643,7 +642,6 @@ function animate() {
 				geo.mergeVertices();		// BAD?  required? //
 
 				modifier.modify( geo );
-				//geo.__dirtyTangents = true;
 				geo.NeedUpdateTangents = true;
 				geo.computeTangents();		// requires UV's
 				//geo.computeFaceNormals();
