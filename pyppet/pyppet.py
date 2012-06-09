@@ -629,10 +629,10 @@ class WebServer( object ):
 
 		if webgl and self.THREE:
 			h.append( '<script type="text/javascript" src="/javascripts/Three.js"></script>' )
-
+			h.append( '<script type="text/javascript" src="/javascripts/loaders/ColladaLoader.js"></script>' )
 			h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
-
 			h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
+
 			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
 				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
 

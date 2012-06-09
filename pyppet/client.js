@@ -183,9 +183,11 @@ function on_message(e) {
 		if (CONTROLLER.MODE != 'RANDOM') { CONTROLLER.set_mode('RANDOM'); }
 		CONTROLLER.randomize = true;
 	}
+	/*
 	postprocessing.bokeh_uniforms[ "focus" ].value = msg.camera.focus;
 	postprocessing.bokeh_uniforms[ "aperture" ].value = msg.camera.aperture;
 	postprocessing.bokeh_uniforms[ "maxblur" ].value = msg.camera.maxblur;
+	*/
 
 	for (var name in msg['FX']) {
 		var fx = FX[ name ];
@@ -198,6 +200,7 @@ function on_message(e) {
 			for (var n in uniforms) { fx.screenUniforms[ n ].value = uniforms[ n ]; }
 		}
 	}
+
 
 
 }
@@ -430,11 +433,10 @@ function init() {
 	geometry = new THREE.Geometry(),
 	floor = -0.04, step = 1, size = 14;
 	for ( var i = 0; i <= size / step * 2; i ++ ) {
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( - size, floor, i * step - size ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3(   size, floor, i * step - size ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size, floor, -size ) ) );
-		geometry.vertices.push( new THREE.Vertex( new THREE.Vector3( i * step - size,  floor, size ) ) );
-
+		geometry.vertices.push( new THREE.Vector3( - size, floor, i * step - size ) );
+		geometry.vertices.push( new THREE.Vector3(   size, floor, i * step - size ) );
+		geometry.vertices.push( new THREE.Vector3( i * step - size, floor, -size ) );
+		geometry.vertices.push( new THREE.Vector3( i * step - size,  floor, size ) );
 	}
 	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
 	scene.add( line );
@@ -632,7 +634,8 @@ function animate() {
 
 				// update hull //
 				mesh.geometry.vertices = mesh.geometry_base.vertices;
-				mesh.geometry.__dirtyVertices = true;
+				//mesh.geometry.__dirtyVertices = true;
+				mesh.geometry.NeedUpdateVertices = true;
 
 				var modifier = new THREE.SubdivisionModifier( subsurf );
 				var geo = THREE.GeometryUtils.clone( mesh.geometry_base );
@@ -640,7 +643,8 @@ function animate() {
 				geo.mergeVertices();		// BAD?  required? //
 
 				modifier.modify( geo );
-				geo.__dirtyTangents = true;
+				//geo.__dirtyTangents = true;
+				geo.NeedUpdateTangents = true;
 				geo.computeTangents();		// requires UV's
 				//geo.computeFaceNormals();
 				//geo.computeVertexNormals();
@@ -658,35 +662,6 @@ function animate() {
 	if (DEBUG==true) { render_debug(); }
 	else { render(); }
 }
-
-
-/* not working!!
-geo.geometryGroups = undefined;
-geo.geometryGroupsList = [];
-mesh.geometry = geo;
-geo.__dirtyVertices = true;
-geo.__dirtyMorphTargets = true;
-geo.__dirtyElements = true;
-geo.__dirtyUvs = true;
-geo.__dirtyNormals = true;
-geo.__dirtyTangents = true;
-geo.__dirtyColors = true;
-*/
-
-//mesh.geometry.geometryGroups = undefined;		// no help
-//mesh.geometry.geometryGroupsList = undefined;	// crashes
-
-/* ######## this updates the mesh, but only shows faces < base length ########
-mesh.geometry.vertices = geo.vertices;
-mesh.geometry.faces = geo.faces;
-//mesh.geometry.faceUvs = geo.faceUvs;
-//mesh.geometry.faceVertexUvs = geo.faceVertexUvs;
-mesh.geometry.__dirtyVertices = true;
-mesh.geometry.__dirtyElements = true;
-mesh.geometry.__dirtyNormals = true;
-mesh.geometry.__dirtyColors = true;
-mesh.geometry.__dirtyTangents = true;
-*/
 
 
 var _prev_width = window.innerWidth;
