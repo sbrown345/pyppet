@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6b'
+VERSION = '1.9.6c'
 ################################################################
 import os, sys, time, subprocess, threading, math, ctypes
 import wave
@@ -467,6 +467,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 						}
 					)
 					# e also contains: radius, rotation, size_x,size_y,size_z, stiffness, type, use_negative
+
+				pak['color'] = [ round(x,3) for x in ob.color ]
+
 
 			elif ob.type == 'LAMP':
 				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
@@ -5557,7 +5560,7 @@ class MaterialsUI(object):
 		Pyppet.register( self.on_active_object_changed )
 
 	def on_active_object_changed(self, ob, expand_material=None):
-		if ob.type != 'MESH': return
+		if ob.type not in ('MESH','META'): return
 
 		self.widget.remove( self.root )
 		self.root = root = gtk.VBox()
@@ -5572,73 +5575,74 @@ class MaterialsUI(object):
 		hsv.set_color( *gtk.rgb2hsv(r,g,b) )
 		hsv.connect('changed', self.color_changed, ob, 'color', None)
 
-		exs = []
-		for mat in ob.data.materials:
-			ex = gtk.Expander( mat.name ); exs.append( ex )
-			eb = gtk.EventBox()	# expander background is colorized
-			root.pack_start( eb, expand=False )
-			eb.add( ex )
+		if ob.type == 'MESH':
+			exs = []
+			for mat in ob.data.materials:
+				ex = gtk.Expander( mat.name ); exs.append( ex )
+				eb = gtk.EventBox()	# expander background is colorized
+				root.pack_start( eb, expand=False )
+				eb.add( ex )
 
-			subeb = gtk.Frame()	# not colorized
-			bx = gtk.VBox(); subeb.add( bx )
-			ex.add( subeb )
-			#if mat == ob.active_material: ex.set_expanded(True)
-			if mat.name == expand_material: ex.set_expanded(True)
+				subeb = gtk.Frame()	# not colorized
+				bx = gtk.VBox(); subeb.add( bx )
+				ex.add( subeb )
+				#if mat == ob.active_material: ex.set_expanded(True)
+				if mat.name == expand_material: ex.set_expanded(True)
 
-			DND.make_source( ex, mat )
+				DND.make_source( ex, mat )
 
-			color = rgb2gdk(*mat.diffuse_color)
-			eb.modify_bg( gtk.STATE_NORMAL, color )
+				color = rgb2gdk(*mat.diffuse_color)
+				eb.modify_bg( gtk.STATE_NORMAL, color )
 
-			#row = gtk.HBox(); bx.pack_start( row, expand=False )
-			#row.pack_start( gtk.Label() )
-			#b = gtk.ColorButton( color )
-			#b.connect('color-set', self.color_set, color, mat, 'diffuse_color', eb)
-			#row.pack_start( b, expand=False )
-			#color = rgb2gdk(*mat.specular_color)
-			#b = gtk.ColorButton( color )
-			#b.connect('color-set', self.color_set, color, mat, 'specular_color', eb)
-			#row.pack_start( b, expand=False )
-			#row.pack_start( gtk.Label() )
-
-
-			hsv = gtk.HSV()
-			hsv.set_color( *gtk.rgb2hsv(*mat.diffuse_color) )
-			hsv.connect('changed', self.color_changed, mat, 'diffuse_color', eb)
-			bx.pack_start( hsv, expand=False )
-
-			#hsv = gtk.HSV()		# some bug with GTK, two HSV's can not be used in tabs???
-			#hsv.set_color( *gtk.rgb2hsv(*mat.specular_color) )
-			#hsv.connect('changed', self.color_changed, mat, 'specular_color', eb)
-			#note.append_page( hsv, gtk.Label('spec') )
+				#row = gtk.HBox(); bx.pack_start( row, expand=False )
+				#row.pack_start( gtk.Label() )
+				#b = gtk.ColorButton( color )
+				#b.connect('color-set', self.color_set, color, mat, 'diffuse_color', eb)
+				#row.pack_start( b, expand=False )
+				#color = rgb2gdk(*mat.specular_color)
+				#b = gtk.ColorButton( color )
+				#b.connect('color-set', self.color_set, color, mat, 'specular_color', eb)
+				#row.pack_start( b, expand=False )
+				#row.pack_start( gtk.Label() )
 
 
-			subex = gtk.Expander( icons.SETTINGS )
-			subex.set_border_width(2)
-			bx.pack_start( subex, expand=False )
-			bxx = gtk.VBox(); subex.add( bxx )
+				hsv = gtk.HSV()
+				hsv.set_color( *gtk.rgb2hsv(*mat.diffuse_color) )
+				hsv.connect('changed', self.color_changed, mat, 'diffuse_color', eb)
+				bx.pack_start( hsv, expand=False )
 
-			slider = SimpleSlider( mat, name='diffuse_intensity', title='', max=1.0, driveable=True, tooltip='diffuse' )
-			bxx.pack_start( slider.widget, expand=False )
+				#hsv = gtk.HSV()		# some bug with GTK, two HSV's can not be used in tabs???
+				#hsv.set_color( *gtk.rgb2hsv(*mat.specular_color) )
+				#hsv.connect('changed', self.color_changed, mat, 'specular_color', eb)
+				#note.append_page( hsv, gtk.Label('spec') )
 
-			slider = SimpleSlider( mat, name='specular_intensity', title='', max=1.0, driveable=True, tooltip='specular' )
-			bxx.pack_start( slider.widget, expand=False )
 
-			slider = SimpleSlider( mat, name='specular_hardness', title='', max=500, driveable=True, tooltip='hardness' )
-			bxx.pack_start( slider.widget, expand=False )
+				subex = gtk.Expander( icons.SETTINGS )
+				subex.set_border_width(2)
+				bx.pack_start( subex, expand=False )
+				bxx = gtk.VBox(); subex.add( bxx )
 
-			slider = SimpleSlider( mat, name='emit', title='', max=1.0, driveable=True, tooltip='emission' )	# max is 2.0
-			bxx.pack_start( slider.widget, expand=False )
+				slider = SimpleSlider( mat, name='diffuse_intensity', title='', max=1.0, driveable=True, tooltip='diffuse' )
+				bxx.pack_start( slider.widget, expand=False )
 
-			slider = SimpleSlider( mat, name='ambient', title='', max=1.0, driveable=True, tooltip='ambient' )
-			bxx.pack_start( slider.widget, expand=False )
+				slider = SimpleSlider( mat, name='specular_intensity', title='', max=1.0, driveable=True, tooltip='specular' )
+				bxx.pack_start( slider.widget, expand=False )
 
-		#if len(exs)==1: exs[0].set_expanded(True)
+				slider = SimpleSlider( mat, name='specular_hardness', title='', max=500, driveable=True, tooltip='hardness' )
+				bxx.pack_start( slider.widget, expand=False )
 
-		root.pack_start( gtk.Label() )
-		b = gtk.Button('new material')
-		b.connect('clicked', self.add_material, ob)
-		root.pack_start( b, expand=False )
+				slider = SimpleSlider( mat, name='emit', title='', max=1.0, driveable=True, tooltip='emission' )	# max is 2.0
+				bxx.pack_start( slider.widget, expand=False )
+
+				slider = SimpleSlider( mat, name='ambient', title='', max=1.0, driveable=True, tooltip='ambient' )
+				bxx.pack_start( slider.widget, expand=False )
+
+			#if len(exs)==1: exs[0].set_expanded(True)
+
+			root.pack_start( gtk.Label() )
+			b = gtk.Button('new material')
+			b.connect('clicked', self.add_material, ob)
+			root.pack_start( b, expand=False )
 
 		self.root.show_all()
 

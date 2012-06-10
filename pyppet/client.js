@@ -52,16 +52,21 @@ function on_message(e) {
 			);
 			var resolution = 32;
 			var meta = new THREE.MarchingCubes( resolution, mat );
+
+			meta.scale.set(		// actually no need to stream this since its fixed for now
+				msg['metas'][name]['scl'][0],
+				msg['metas'][name]['scl'][2],
+				msg['metas'][name]['scl'][1]
+			);
+
 			scene.add( meta );
 			METABALLS[ name ] = meta;
 		}
 		var meta = METABALLS[ name ];
-
-		meta.scale.set(
-			msg['metas'][name]['scl'][0],
-			msg['metas'][name]['scl'][2],
-			msg['metas'][name]['scl'][1]
-		);
+		var ob = msg['metas'][name];
+		meta.material.color.r = ob.color[0];
+		meta.material.color.g = ob.color[1];
+		meta.material.color.b = ob.color[2];
 
 		meta.reset();
 
