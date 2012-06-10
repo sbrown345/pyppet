@@ -426,6 +426,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 			'meshes':{}, 
 			'lights':{}, 
 			'metas':{},
+			'curves':{},
 			'FX':{},
 			'camera': {
 				'rand':Pyppet.camera_randomize,
@@ -440,7 +441,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		streaming_meshes = []
 		for ob in context.scene.objects:
-			if ob.type not in ('META','MESH','LAMP'): continue
+			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
@@ -449,8 +450,21 @@ class WebSocketServer( websocket.WebSocketServer ):
 			rot = (rot.w, rot.x, rot.y, rot.z)
 			pak = { 'pos':loc, 'rot':rot, 'scl':scl }
 
-			if ob.type == 'META':
-				# note Three.js marching cubes supports: x,y,z, radius, negative
+			if ob.type == 'CURVE':
+				msg[ 'curves' ][ '__%s__'%UID(ob) ] = pak
+				pak[ 'splines' ] = splines = []
+				for spline in ob.data.splines:
+					# ignore handles for now - TODO
+					s = {
+						'closed' : spline.use_cyclic_u,
+						'points' : [ bez.co.to_tuple() for bez in spline.bezier_points ]
+					}
+					splines.append( s )
+
+
+			elif ob.type == 'META':
+				# note Three.js marching cubes metaball x,y,z is normalized to 0.0-1.0 range,
+				# use fixed size scale as workaround #
 				msg[ 'metas' ][ '__%s__'%UID(ob) ] = pak
 				pak['elements'] = elements = []
 				#pak['scl'] = ob.dimensions.to_tuple()	# use dimensions instead of scale - TODO ignore rotation?
@@ -652,6 +666,10 @@ class WebServer( object ):
 			h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
 			h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
 			h.append( '<script type="text/javascript" src="/javascripts/MarchingCubes.js"></script>' )
+			h.append( '<script type="text/javascript" src="/javascripts/ShaderGodRays.js"></script>' )
+
+			h.append( '<script type="text/javascript" src="/javascripts/Curve.js"></script>' )
+			h.append( '<script type="text/javascript" src="/javascripts/geometries/TubeGeometry.js"></script>' )
 
 			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
 				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )

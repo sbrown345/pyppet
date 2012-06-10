@@ -18,6 +18,9 @@ sudo yum install libXi-devel
 sudo yum install chromium
 #sudo yum install google-chrome-stable
 
+sudo yum install gcc gcc-c++ libXi libXi-devel libXmu libXmu-devel freeglut freeglut-devel
+sudo yum install libusb-devel
+
 sudo yum install bluez-libs-devel
 #sudo apt-get install bluez bluetooth libbluetooth3-dev git cmake
 sudo yum install git cmake
