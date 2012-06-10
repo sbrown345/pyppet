@@ -1,3 +1,7 @@
+// WebGL Pyppet Client
+// Blender Research Lab. PH (brett hartshorn)
+// License: BSD
+
 var DEBUG = false;
 var USE_MODIFIERS = true;
 var USE_SHADOWS = true;
@@ -32,6 +36,7 @@ var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare
 
 var Objects = {};
 var LIGHTS = {};
+var METABALLS = {};
 
 var dbugmsg = null;
 function on_message(e) {
@@ -39,12 +44,44 @@ function on_message(e) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
+	for (var name in msg['metas']) {
+		if ( name in METABALLS == false ) {
+			console.log('>> new metaball');
+			var mat = new THREE.MeshPhongMaterial( 
+				{ color: 0x000000, specular: 0x888888, ambient: 0x000000, shininess: 250, perPixel: true }
+			);
+			var resolution = 32;
+			var meta = new THREE.MarchingCubes( resolution, mat );
+			scene.add( meta );
+			METABALLS[ name ] = meta;
+		}
+		var meta = METABALLS[ name ];
+
+		meta.scale.set(
+			msg['metas'][name]['scl'][0],
+			msg['metas'][name]['scl'][2],
+			msg['metas'][name]['scl'][1]
+		);
+
+		meta.reset();
+
+		for (var i=0; i < msg['metas'][name]['elements'].length; i ++) {
+			var ball = msg['metas'][name]['elements'][ i ];
+			// convert radius to strength and subtract
+			meta.addBall(
+				ball.x+0.5, ball.z+0.5, ball.y+0.5,
+				0.01+ball.radius, 100
+			);
+		}
+	}
+
 	for (var name in msg['lights']) {
 		var light;
 		var ob = msg['lights'][ name ];
 
-		if ( name in LIGHTS == false ) {	// Three.js bug, new lights are not added to old materials
+		if ( name in LIGHTS == false ) {
 			console.log('>> new light');
+			// note when adding new lights, old materials need to be reloaded
 
 			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
 			scene.add( light );

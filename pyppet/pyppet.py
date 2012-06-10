@@ -425,6 +425,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 		msg = { 
 			'meshes':{}, 
 			'lights':{}, 
+			'metas':{},
 			'FX':{},
 			'camera': {
 				'rand':Pyppet.camera_randomize,
@@ -439,7 +440,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		streaming_meshes = []
 		for ob in context.scene.objects:
-			if ob.type not in ('MESH','LAMP'): continue
+			if ob.type not in ('META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
@@ -448,7 +449,26 @@ class WebSocketServer( websocket.WebSocketServer ):
 			rot = (rot.w, rot.x, rot.y, rot.z)
 			pak = { 'pos':loc, 'rot':rot, 'scl':scl }
 
-			if ob.type == 'LAMP':
+			if ob.type == 'META':
+				# note Three.js marching cubes supports: x,y,z, radius, negative
+				msg[ 'metas' ][ '__%s__'%UID(ob) ] = pak
+				pak['elements'] = elements = []
+				#pak['scl'] = ob.dimensions.to_tuple()	# use dimensions instead of scale - TODO ignore rotation?
+				#sx,sy,sz = ob.dimensions
+				sx = sy = sz = 10.0
+				pak['scl'] = (sx,sy,sz)
+				for e in ob.data.elements:
+					elements.append(
+						{
+							'x':e.co.x / sx,
+							'y':e.co.y / sy, 
+							'z':e.co.z / sz,  
+							'radius':e.radius
+						}
+					)
+					# e also contains: radius, rotation, size_x,size_y,size_z, stiffness, type, use_negative
+
+			elif ob.type == 'LAMP':
 				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
 				pak['energy'] = ob.data.energy
 				pak['color'] = [ round(a,3) for a in ob.data.color ]
@@ -456,7 +476,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 				pak['scale'] = ob.webgl_lens_flare_scale
 
 			elif ob.type == 'MESH':
-				#print('sending mesh',ob)
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 				specular = None
 				if ob.data.materials:
@@ -488,7 +507,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 					if mod.type == 'SUBSURF':
 						subsurf += mod.levels		# mod.render_levels
 				pak[ 'subsurf' ] = subsurf
-
 				pak['ptex'] = ob.webgl_progressive_textures
 				pak['norm'] = ob.webgl_normal_map
 
@@ -510,8 +528,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 			data.vertices.foreach_get( 'co', verts )
 			bpy.data.meshes.remove( data )
 			verts = [ round(a,3) for a in verts ]	# optimize!
-
-
 
 			pak[ 'verts' ] = verts
 
@@ -632,6 +648,7 @@ class WebServer( object ):
 			h.append( '<script type="text/javascript" src="/javascripts/loaders/ColladaLoader.js"></script>' )
 			h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
 			h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
+			h.append( '<script type="text/javascript" src="/javascripts/MarchingCubes.js"></script>' )
 
 			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
 				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
