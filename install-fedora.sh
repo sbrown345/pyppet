@@ -1,12 +1,6 @@
 #!/bin/bash
 sudo yum clean all
 
-sudo yum install gnome-tweak-tool
-mkdir ~/.theme
-cp -Rv Great-White-GTK/ ~/.theme/.
-gnome-tweak-tool
-
-
 sudo yum install SDL-devel
 sudo yum install opencv-devel
 sudo yum install ode-devel
@@ -22,8 +16,9 @@ sudo yum install openexr-devel
 sudo yum install libXi-devel
 
 sudo yum install chromium
-sudo yum install google-chrome-stable
+#sudo yum install google-chrome-stable
 
+sudo yum install bluez-libs-devel
 #sudo apt-get install bluez bluetooth libbluetooth3-dev git cmake
 sudo yum install git cmake
 
