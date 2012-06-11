@@ -453,11 +453,19 @@ class WebSocketServer( websocket.WebSocketServer ):
 			if ob.type == 'CURVE':
 				msg[ 'curves' ][ '__%s__'%UID(ob) ] = pak
 				pak[ 'splines' ] = splines = []
+				pak[ 'segments_v' ] = ob.data.bevel_resolution
+				pak[ 'radius' ] = ob.data.bevel_depth
+
 				for spline in ob.data.splines:
-					# ignore handles for now - TODO
+					if len( spline.points ):	# favor NURBS style spline
+						points = [ (v.co.x,v.co.y,v.co.z) for v in spline.points ]	# vec is len 4?
+					else:					# fallback to bezier spline
+						points = [ bez.co.to_tuple() for bez in spline.bezier_points ]
+
 					s = {
 						'closed' : spline.use_cyclic_u,
-						'points' : [ bez.co.to_tuple() for bez in spline.bezier_points ]
+						'points' : points,
+						'segments_u' : ob.data.resolution_u * spline.resolution_u,
 					}
 					splines.append( s )
 

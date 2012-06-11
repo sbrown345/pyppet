@@ -26,7 +26,7 @@ var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
 ws = new Websock();
-ws.open( 'ws://' + HOST + ':8081' );
+ws.open( 'ws://' + HOST + ':8081' );	// global var "HOST" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 
 
 var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
@@ -41,57 +41,86 @@ var CURVES = {};
 
 var dbugmsg = null;
 
+
+
+function generate_extruded_splines( parent, ob ) {
+
+	for (var i=0; i < ob.splines.length; i ++) {
+		var spline = ob.splines[ i ];
+		var extrude_path;
+		var a = [];
+		for (var j=0; j<spline.points.length; j ++) {
+			var vec = spline.points[ j ];
+			a.push( new THREE.Vector3(vec[0], vec[2], -vec[1]) )
+		}
+		if (spline.closed) {
+			extrude_path = new THREE.ClosedSplineCurve3( a );
+		} else {
+			extrude_path = new THREE.SplineCurve3( a );
+		}
+
+		var geometry = new THREE.TubeGeometry(
+			extrude_path,
+			spline.segments_u, 	// using curve.resolution_u * spline.resolution_u
+			ob.radius+0.001, 		// using curve.bevel_depth
+			ob.segments_v+1, 	// using curve.bevel_resolution
+			spline.closed, 
+			false
+		);
+
+		// 3d shape
+		var tubeMesh = THREE.SceneUtils.createMultiMaterialObject(geometry, [
+		  new THREE.MeshLambertMaterial({
+		      color: 0xff00ff,
+		      opacity: (geometry.debug) ? 0.2 : 0.8,
+		      transparent: true
+		  }),
+		 new THREE.MeshBasicMaterial({
+		    color: 0x000000,
+		    opacity: 0.5,
+		    wireframe: true
+		})]);
+
+		parent.add( tubeMesh );
+	}
+}
+
 function on_message(e) {
 	var data = ws.rQshiftStr();
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
 	for (var name in msg['curves']) {
-		var ob = msg['curves'][name];
-
 		if ( name in CURVES == false ) {
 			console.log('>> new curve');
-			for (var i=0; i < ob.splines.length; i ++) {
-				var spline = ob.splines[ i ];
-				var extrude_path;
-				var a = [];
-				for (var j=0; j<spline.points.length; j ++) {
-					var vec = spline.points[ j ];
-					a.push( new THREE.Vector3(vec[0], vec[1], vec[2]) )
-				}
-				if (spline.closed) {
-					extrude_path = new THREE.ClosedSplineCurve3( a );
-				} else {
-					extrude_path = new THREE.SplineCurve3( a );
-				}
-				var segments = 20;
-				var radiusSegments = 3;
-				var geometry = new THREE.TubeGeometry(
-					extrude_path,
-					segments, 
-					2, 
-					radiusSegments, 
-					spline.closed, 
-					false
-				);
-
-				// 3d shape
-				var tubeMesh = THREE.SceneUtils.createMultiMaterialObject(geometry, [
-				  new THREE.MeshLambertMaterial({
-				      color: 0xff00ff,
-				      opacity: (geometry.debug) ? 0.2 : 0.8,
-				      transparent: true
-				  }),
-				 new THREE.MeshBasicMaterial({
-				    color: 0x000000,
-				    opacity: 0.5,
-				    wireframe: true
-				})]);
-
-				scene.add( tubeMesh );
-				CURVES[ name ] = tubeMesh;	// TODO support multiple splines per object
-			}
+			CURVES[ name ] = new THREE.Object3D();
+			scene.add( CURVES[name] );
+			CURVES[name].useQuaternion = true;
 		}
+		var parent = CURVES[ name ];
+		var ob = msg['curves'][name];
+
+		if ( parent.children.length ) parent.remove( parent.children[0] );  // TODO remove all children
+
+		generate_extruded_splines(
+			parent,
+			ob
+		);
+
+		parent.position.x = ob.pos[0];
+		parent.position.y = ob.pos[1];
+		parent.position.z = ob.pos[2];
+
+		parent.scale.x = ob.scl[0];
+		parent.scale.y = ob.scl[1];
+		parent.scale.z = ob.scl[2];
+
+		//parent.quaternion.w = ob.rot[0];	// TODO swap points server side and enable this
+		//parent.quaternion.x = ob.rot[1];
+		//parent.quaternion.y = ob.rot[2];
+		//parent.quaternion.z = ob.rot[3];
+
+
 	}
 
 	for (var name in msg['metas']) {
