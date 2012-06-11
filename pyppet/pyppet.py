@@ -2,13 +2,22 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6c'
+VERSION = '1.9.6d'
 ################################################################
-import os, sys, time, subprocess, threading, math, ctypes
+import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
 from random import *
 
 PYPPET_LITE = 'pyppet-lite' in sys.argv
+
+if 'pyppet-server' in sys.argv:
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.connect(("gmail.com",80))
+	HOST_NAME = s.getsockname()[0]
+	s.close()
+	del s
+else:
+	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ## make sure we can import from same directory ##
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -648,7 +657,7 @@ class WebServer( object ):
 		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
 		else: print('missing ./javascripts/Three.js')
 
-	def get_header(self, title='http://localhost', webgl=False):
+	def get_header(self, title='http://%s'%HOST_NAME, webgl=False):
 		h = [
 			'<!DOCTYPE html><html lang="en">',
 			'<head><title>%s</title>' %title,
@@ -687,7 +696,10 @@ class WebServer( object ):
 			######################### Pyppet WebGL Client ##############################
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 			h.append( '<script type="text/javascript">' )
-			h.append( 'var HOST = "%s";' %socket.gethostbyname(socket.gethostname()) )
+
+			h.append( 'var HOST = "%s";' %HOST_NAME )
+
+
 			if self.hires_progressive_textures:
 				h.append( 'var MAX_PROGRESSIVE_TEXTURE = 2048;' )
 				h.append( 'var MAX_PROGRESSIVE_NORMALS = 1024;' )
