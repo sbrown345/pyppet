@@ -2,11 +2,13 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6e'
+VERSION = '1.9.6f'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
 from random import *
+
+STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
 PYPPET_LITE = 'pyppet-lite' in sys.argv
 
@@ -20,6 +22,8 @@ if 'pyppet-server' in sys.argv:
 	except:
 		HOST_NAME = socket.gethostbyname(socket.gethostname())
 else:
+	## it depends on the linux, but most likely socket.gethostbyname is going to return the local address,
+	## not the internet address we need ##
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ## make sure we can import from same directory ##
@@ -381,69 +385,17 @@ class WebGL(object):
 #####################
 
 class GameGrid( object ):
-	clients = {}	# ip : camera/player location
-
-
-
-#####################
-class WebSocketServer( websocket.WebSocketServer ):
 	MAX_VERTS = 2000
-	buffer_size = 8096*2
-	client = None
-	webGL = WebGL()
 	RELOAD_TEXTURES = []
 
-	active = False
-	def start(self):
-		self.active = False
-		try:
-			lsock = self.socket(self.listen_host, self.listen_port)
-		except:
-			print('ERROR: [websocket server] failed to listen on port: %s' %self.listen_port)
-			return False
+	clients = {}	# ip : camera/player location
+	@classmethod
+	def create_stream_message( self, context, sock ):
+		ip,port = sock.getsockname()
+		assert ip in self.clients
 
-		print('--starting websocket server thread--')
-		self.active = True
-		threading._start_new_thread(
-			self.loop, (lsock,)
-		)
-		return True
+		player_location = mathutils.Vector( self.clients[ip] )
 
-	def stop(self):
-		if self.active:
-			print('--stopping websocket server thread--')
-			self.active = False
-			time.sleep(1)
-			#self.send_close()
-			#raise self.EClose(closed)
-
-
-	def loop(self, lsock):
-		while self.active:
-			time.sleep(0.0333)
-			try:
-				self.poll()
-				ready = select.select([lsock], [], [], 0.01)[0]
-				if lsock in ready: startsock, address = lsock.accept()
-				else: continue
-			except Exception: continue
-			## keep outside of try for debugging ##
-			self.top_new_client(startsock, address)	# sets.client and calls new_client()
-		print('[[websocket thread clean exit]]')
-		lsock.close()
-		#lsock.shutdown()
-
-	def new_client(self):
-		ip,port = self.client.getsockname()
-		if ip in GameGrid.clients: print('RELOADING CLIENT:', ip)
-		else: print('NEW CLIENT:', ip)
-		GameGrid.clients[ ip ] = [.0,.0,.0]
-
-	_bps_start = None
-	_bps = 0
-
-	def update( self, context ):	# called from main
-		if not self.client: return
 		msg = { 
 			'meshes':{}, 
 			'lights':{}, 
@@ -458,13 +410,16 @@ class WebSocketServer( websocket.WebSocketServer ):
 			},
 		}
 
-		for fx in  self.webGL.effects:
-			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
 
 		streaming_meshes = []
 		for ob in context.scene.objects:
 			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
+
+			## do not stream objects too far from camera/player ##
+			distance = (player_location - ob.matrix_world.to_translation()).length
+			if distance > STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE: continue
+
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
@@ -579,10 +534,75 @@ class WebSocketServer( websocket.WebSocketServer ):
 			pak[ 'verts' ] = verts
 
 
+		return msg
 
-		## dump to json ##
+
+#####################
+class WebSocketServer( websocket.WebSocketServer ):
+	buffer_size = 8096*2
+	client = None
+	webGL = WebGL()
+
+	active = False
+	def start(self):
+		self.active = False
+		try:
+			lsock = self.socket(self.listen_host, self.listen_port)
+		except:
+			print('ERROR: [websocket server] failed to listen on port: %s' %self.listen_port)
+			return False
+
+		print('--starting websocket server thread--')
+		self.active = True
+		threading._start_new_thread(
+			self.loop, (lsock,)
+		)
+		return True
+
+	def stop(self):
+		if self.active:
+			print('--stopping websocket server thread--')
+			self.active = False
+			time.sleep(1)
+			#self.send_close()
+			#raise self.EClose(closed)
+
+
+	def loop(self, lsock):
+		while self.active:
+			time.sleep(0.0333)
+			try:
+				self.poll()
+				ready = select.select([lsock], [], [], 0.01)[0]
+				if lsock in ready: startsock, address = lsock.accept()
+				else: continue
+			except Exception: continue
+			## keep outside of try for debugging ##
+			self.top_new_client(startsock, address)	# sets.client and calls new_client()
+		print('[[websocket thread clean exit]]')
+		lsock.close()
+		#lsock.shutdown()
+
+	def new_client(self):
+		ip,port = self.client.getsockname()
+		if ip in GameGrid.clients: print('RELOADING CLIENT:', ip)
+		else: print('NEW CLIENT:', ip)
+		GameGrid.clients[ ip ] = [.0,.0,.0]
+
+	_bps_start = None
+	_bps = 0
+
+	def update( self, context ):	# called from main
+		if not self.client: return
+
+		msg = GameGrid.create_stream_message( context, self.client )
+
+		for fx in  self.webGL.effects:
+			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
+
+
+		## dump to json and encode to bytes ##
 		data = json.dumps( msg )
-		#print(data)
 		rawbytes = data.encode('utf-8')
 		cqueue = [ rawbytes ]
 
@@ -5436,6 +5456,7 @@ class App( PyppetUI ):
 						a = bpy.data.objects.new(name=ip, object_data=None)
 						self.context.scene.objects.link( a )
 						a.empty_draw_type = 'SPHERE'
+						a.empty_draw_size = STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
 					x,y,z = GameGrid.clients[ ip ]
 					a = bpy.data.objects[ ip ]
 					a.location.x = x
