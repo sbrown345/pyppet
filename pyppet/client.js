@@ -516,6 +516,7 @@ ws.on('message', on_message);
 
 function on_open(e) {
 	console.log(">> WebSockets.onopen");
+	setTimeout( update_server, 1000 );
 }
 ws.on('open', on_open);
 
@@ -524,7 +525,13 @@ function on_close(e) {
 }
 ws.on('close', on_close);
 
+function update_server() {
+	THREE.ImageUtils.loadTexture(
+		'/RPC/player/'+camera.position.x+','+(-camera.position.z)+','+camera.position.y, 
+		undefined, on_texture_ready );
+	setTimeout( update_server, 2000 );
 
+}
 
 //////////////////////////////////////////////////////////////////////
 var container;

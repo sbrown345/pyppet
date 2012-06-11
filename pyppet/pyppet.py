@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6d'
+VERSION = '1.9.6e'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
@@ -12,10 +12,13 @@ PYPPET_LITE = 'pyppet-lite' in sys.argv
 
 if 'pyppet-server' in sys.argv:
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.connect(("gmail.com",80))
-	HOST_NAME = s.getsockname()[0]
-	s.close()
-	del s
+	try:
+		s.connect(("gmail.com",80))	# may fail if not connected to internet
+		HOST_NAME = s.getsockname()[0]
+		s.close()
+		del s
+	except:
+		HOST_NAME = socket.gethostbyname(socket.gethostname())
 else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
@@ -377,6 +380,12 @@ class WebGL(object):
 
 #####################
 
+class GameGrid( object ):
+	clients = {}	# ip : camera/player location
+
+
+
+#####################
 class WebSocketServer( websocket.WebSocketServer ):
 	MAX_VERTS = 2000
 	buffer_size = 8096*2
@@ -424,7 +433,11 @@ class WebSocketServer( websocket.WebSocketServer ):
 		lsock.close()
 		#lsock.shutdown()
 
-	def new_client(self): print('new client', self.client)
+	def new_client(self):
+		ip,port = self.client.getsockname()
+		if ip in GameGrid.clients: print('RELOADING CLIENT:', ip)
+		else: print('NEW CLIENT:', ip)
+		GameGrid.clients[ ip ] = [.0,.0,.0]
 
 	_bps_start = None
 	_bps = 0
@@ -815,7 +828,17 @@ class WebServer( object ):
 			return [ data ]
 
 		elif path.startswith('/RPC/'):
-			if path.startswith('/RPC/select/'):
+			if path.startswith('/RPC/player/'):
+				cam = [float(a) for a in path.split('/')[-1].split(',')]
+				print('CAMERA', cam)
+
+				assert client in GameGrid.clients
+				GameGrid.clients[ client ] = cam
+
+				start_response('200 OK', [('Content-Length','0')])
+				return []
+
+			elif path.startswith('/RPC/select/'):
 				uid = path.split('/')[-1]
 				print('RPC', uid)
 				for ob in bpy.context.scene.objects: ob.select=False
@@ -5406,6 +5429,19 @@ class App( PyppetUI ):
 
 			#self.client.update( self.context )
 			self.websocket_server.update( self.context )
+
+			if GameGrid.clients:
+				for ip in GameGrid.clients:
+					if ip not in bpy.data.objects:
+						a = bpy.data.objects.new(name=ip, object_data=None)
+						self.context.scene.objects.link( a )
+						a.empty_draw_type = 'SPHERE'
+					x,y,z = GameGrid.clients[ ip ]
+					a = bpy.data.objects[ ip ]
+					a.location.x = x
+					a.location.y = y
+					a.location.z = z
+
 
 
 ######## Pyppet Singleton #########
