@@ -26,6 +26,8 @@ else:
 	## not the internet address we need ##
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
+print('[HOST_NAME: %s]'%HOST_NAME)
+
 ## make sure we can import from same directory ##
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
@@ -298,6 +300,7 @@ def dump_collada( ob, center=False ):
 	O.matrix_world = ob.matrix_world.copy()
 	O.select = True
 
+
 	############## dump collada ###########
 	url = '/tmp/%s.dae' %name
 	S = Blender.Scene( Pyppet.context.scene )
@@ -383,18 +386,50 @@ class WebGL(object):
 
 
 #####################
+class Player( object ):
+	def __init__(self, ip):
+		self.address = ip
+		#self.location = mathutils.Vector()
+
+		if ip not in bpy.data.objects:
+			a = bpy.data.objects.new(name=ip, object_data=None)
+			Pyppet.context.scene.objects.link( a )
+			a.empty_draw_type = 'SPHERE'
+			a.empty_draw_size = STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
+
+		self.empty = bpy.data.objects[ ip ]
+		self.location = self.empty.location
+
+		#a.location.x = x
+		#a.location.y = y
+		#a.location.z = z
+
+	def set_location(self, loc):
+		self.location.x = loc[0]
+		self.location.y = loc[1]
+		self.location.z = loc[2]
+
+
 
 class GameGrid( object ):
 	MAX_VERTS = 2000
 	RELOAD_TEXTURES = []
 
 	clients = {}	# ip : camera/player location
+
+	@classmethod
+	def add_player( self, ip ):
+		player = Player( ip )
+		self.clients[ ip ] = player
+
+
 	@classmethod
 	def create_stream_message( self, context, sock ):
 		ip,port = sock.getsockname()
 		assert ip in self.clients
 
-		player_location = mathutils.Vector( self.clients[ip] )
+		#player_location = mathutils.Vector( self.clients[ip] )
+		player_location = self.clients[ip].location
 
 		msg = { 
 			'meshes':{}, 
@@ -545,6 +580,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	active = False
 	def start(self):
+		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
 		self.active = False
 		try:
 			lsock = self.socket(self.listen_host, self.listen_port)
@@ -586,8 +622,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 	def new_client(self):
 		ip,port = self.client.getsockname()
 		if ip in GameGrid.clients: print('RELOADING CLIENT:', ip)
-		else: print('NEW CLIENT:', ip)
-		GameGrid.clients[ ip ] = [.0,.0,.0]
+		else:
+			print('NEW CLIENT:', ip)
+			GameGrid.add_player( ip )
+
+		player = GameGrid.clients[ ip ]
+
 
 	_bps_start = None
 	_bps = 0
@@ -668,6 +708,7 @@ class WebServer( object ):
 			self.httpd.server_close()	# this is REQUIRED
 
 	def init_webserver(self, host='localhost', port=8080, forking=False, timeout=0):
+		print('[INIT WEBSERVER: %s %s]' %(host, port))
 		self.host = host
 		self.httpd_port = port
 
@@ -853,7 +894,8 @@ class WebServer( object ):
 				print('CAMERA', cam)
 
 				assert client in GameGrid.clients
-				GameGrid.clients[ client ] = cam
+				player = GameGrid.clients[ client ]
+				player.set_location( cam )
 
 				start_response('200 OK', [('Content-Length','0')])
 				return []
@@ -5255,9 +5297,9 @@ class App( PyppetUI ):
 
 			#self.lock = threading._allocate_lock()
 
-			self.server = Server()
+			self.server = Server( HOST_NAME )
 			self.client = Client()
-			self.websocket_server = WebSocketServer( listen_port=8081 )
+			self.websocket_server = WebSocketServer( listen_host=HOST_NAME, listen_port=8081 )
 			self.websocket_server.start()	# polls in a thread
 
 			self.audio = AudioThread()
@@ -5450,18 +5492,7 @@ class App( PyppetUI ):
 			#self.client.update( self.context )
 			self.websocket_server.update( self.context )
 
-			if GameGrid.clients:
-				for ip in GameGrid.clients:
-					if ip not in bpy.data.objects:
-						a = bpy.data.objects.new(name=ip, object_data=None)
-						self.context.scene.objects.link( a )
-						a.empty_draw_type = 'SPHERE'
-						a.empty_draw_size = STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
-					x,y,z = GameGrid.clients[ ip ]
-					a = bpy.data.objects[ ip ]
-					a.location.x = x
-					a.location.y = y
-					a.location.z = z
+
 
 
 
