@@ -5,7 +5,7 @@ import os, sys, ctypes, math, time
 
 import cv
 import gtk3 as gtk
-import libfreenect_sync as freenect
+#import libfreenect_sync as freenect	# freenect_sync is broken on fedora!!
 import threading
 
 

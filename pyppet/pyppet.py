@@ -8,7 +8,7 @@ import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
 from random import *
 
-STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
+DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
 PYPPET_LITE = 'pyppet-lite' in sys.argv
 
@@ -389,25 +389,24 @@ class WebGL(object):
 class Player( object ):
 	def __init__(self, ip):
 		self.address = ip
+		self.objects = []
 		#self.location = mathutils.Vector()
 
 		if ip not in bpy.data.objects:
 			a = bpy.data.objects.new(name=ip, object_data=None)
 			Pyppet.context.scene.objects.link( a )
 			a.empty_draw_type = 'SPHERE'
-			a.empty_draw_size = STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
+			a.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
 
-		self.empty = bpy.data.objects[ ip ]
-		self.location = self.empty.location
-
-		#a.location.x = x
-		#a.location.y = y
-		#a.location.z = z
+		self.sphere = bpy.data.objects[ ip ]
+		self.location = self.sphere.location
 
 	def set_location(self, loc):
 		self.location.x = loc[0]
 		self.location.y = loc[1]
 		self.location.z = loc[2]
+
+	def get_streaming_max_distance(self): return self.sphere.empty_draw_size
 
 
 
@@ -429,7 +428,7 @@ class GameGrid( object ):
 		assert ip in self.clients
 
 		#player_location = mathutils.Vector( self.clients[ip] )
-		player_location = self.clients[ip].location
+		player = self.clients[ip]
 
 		msg = { 
 			'meshes':{}, 
@@ -447,14 +446,20 @@ class GameGrid( object ):
 
 
 		streaming_meshes = []
+		far_objects = []
+
 		for ob in context.scene.objects:
 			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
 
 			## do not stream objects too far from camera/player ##
-			distance = (player_location - ob.matrix_world.to_translation()).length
-			if distance > STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE: continue
+			distance = (player.location - ob.matrix_world.to_translation()).length
+			if distance > player.get_streaming_max_distance():
+				far_objects.append( ob )
+				continue
 
+			if ob not in player.objects:		# keep track of what objects player knows about
+				player.objects.append( ob )
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
@@ -4751,8 +4756,17 @@ class PyppetUI( PyppetAPI ):
 		footer = root = gtk.HBox()
 		modal2.add( footer )
 
+		if ob.type == 'EMPTY':
+			header.pack_start( gtk.Label(ob.name), expand=False )
+			header.pack_start( gtk.Label() )
+			slider = Slider(
+				ob, name='empty_draw_size', title='size', tooltip='empty draw size',
+				min=0.001, max=100.0,
+			)
+			header.pack_start( slider.widget )
 
-		if ob.type == 'ARMATURE':
+
+		elif ob.type == 'ARMATURE':
 			header.pack_start( gtk.Label(ob.name), expand=False )
 
 			b = gtk.ToggleButton( icons.XRAY )
