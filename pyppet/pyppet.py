@@ -390,7 +390,6 @@ class Player( object ):
 	def __init__(self, ip):
 		self.address = ip
 		self.objects = []
-		#self.location = mathutils.Vector()
 
 		if ip not in bpy.data.objects:
 			a = bpy.data.objects.new(name=ip, object_data=None)
@@ -398,15 +397,40 @@ class Player( object ):
 			a.empty_draw_type = 'SPHERE'
 			a.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
 
-		self.sphere = bpy.data.objects[ ip ]
-		self.location = self.sphere.location
+			b = bpy.data.objects.new(name=ip+'-half_degraded', object_data=None)
+			Pyppet.context.scene.objects.link( b )
+			b.empty_draw_type = 'SPHERE'
+			b.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*2
+			b.parent = a
+
+			c = bpy.data.objects.new(name=ip+'-fully_degraded', object_data=None)
+			Pyppet.context.scene.objects.link( c )
+			c.empty_draw_type = 'SPHERE'
+			c.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*4
+			c.parent = a
+
+			for ob in (a,b,c):
+				ob.lock_location = [True]*3
+				ob.lock_scale = [True]*3
+				ob.lock_rotation = [True]*3
+
+		self.streaming_boundry = bpy.data.objects[ ip ]
+		self.streaming_boundry_half_degraded = bpy.data.objects[ ip+'-half_degraded' ]
+		self.streaming_boundry_fully_degraded = bpy.data.objects[ ip+'-fully_degraded' ]
+		self.location = self.streaming_boundry.location
 
 	def set_location(self, loc):
 		self.location.x = loc[0]
 		self.location.y = loc[1]
 		self.location.z = loc[2]
 
-	def get_streaming_max_distance(self): return self.sphere.empty_draw_size
+	def get_streaming_max_distance(self, degraded=False ):
+		if degraded == 'half':
+			return self.streaming_boundry_half_degraded.empty_draw_size
+		elif degraded == 'full':
+			return self.streaming_boundry_fully_degraded.empty_draw_size
+		else:
+			return self.streaming_boundry.empty_draw_size
 
 
 
@@ -446,17 +470,30 @@ class GameGrid( object ):
 
 
 		streaming_meshes = []
-		far_objects = []
+		far_objects = []		# far objects the player has not loaded yet
 
 		for ob in context.scene.objects:
 			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
 
 			## do not stream objects too far from camera/player ##
+			## if something is far, do not stream mesh data ##
+			far = False
 			distance = (player.location - ob.matrix_world.to_translation()).length
 			if distance > player.get_streaming_max_distance():
-				far_objects.append( ob )
-				continue
+				far = True
+				if ob not in player.objects:
+					if far_objects:
+						far_objects.append( ob )
+						continue
+					else:
+						far_objects.append( ob )	# let far obs slip thru one at a time
+				elif distance < player.get_streaming_max_distance( degraded='half' ):
+					if random() > 0.5: continue
+				elif distance < player.get_streaming_max_distance( degraded='full' ):
+					if random() > 0.25: continue
+				else:
+					continue
 
 			if ob not in player.objects:		# keep track of what objects player knows about
 				player.objects.append( ob )
@@ -537,7 +574,7 @@ class GameGrid( object ):
 
 				if ob == context.active_object: pak[ 'selected' ] = True
 				if ob.webgl_stream_mesh or ob == context.active_object:
-					if len(ob.data.vertices) < self.MAX_VERTS:
+					if len(ob.data.vertices) < self.MAX_VERTS and not far:
 						streaming_meshes.append( ob )
 
 				if ob.name in self.RELOAD_TEXTURES:
@@ -549,8 +586,8 @@ class GameGrid( object ):
 					if mod.type == 'SUBSURF':
 						subsurf += mod.levels		# mod.render_levels
 				pak[ 'subsurf' ] = subsurf
-				pak['ptex'] = ob.webgl_progressive_textures
-				pak['norm'] = ob.webgl_normal_map
+				pak[ 'ptex' ] = ob.webgl_progressive_textures
+				pak[ 'norm' ] = ob.webgl_normal_map
 
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
