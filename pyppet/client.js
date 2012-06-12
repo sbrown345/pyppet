@@ -343,36 +343,47 @@ var dbugdae = null;
 function on_collada_ready( collada ) {
 	console.log( '>> collada loaded' );
 	dbugdae = collada;
-	mesh = collada.scene.children[0];
+	var _mesh = collada.scene.children[0];
+	_mesh.updateMatrix();
+	_mesh.matrixAutoUpdate = false;
+	var mesh = new THREE.LOD();
+	mesh.name = _mesh.name;
+	mesh.addLevel( _mesh, 100 );
+	mesh.updateMatrix();
+	//mesh.matrixAutoUpdate = false;
+
+
+
 	mesh.useQuaternion = true;			// ensure Quaternion
-	mesh.geometry.computeTangents();		// requires UV's
+	_mesh.geometry.computeTangents();		// requires UV's
 	mesh.has_progressive_textures = false;	// enabled from websocket stream
-	mesh._material_ = mesh.material;
+	mesh._material_ = _mesh.material;
 
 	// hijack material color to pass info from blender //
-	if (mesh.material.color.r) {
+	if (_mesh.material.color.r) {
 		mesh.multires = true;
 		mesh.has_displacement = true;
 	} else {
 		mesh.multires = false;
 		mesh.has_displacement = false;
 	}
-	if (mesh.material.color.g) {	// mesh deformed with an armature will not have AO
+	if (_mesh.material.color.g) {	// mesh deformed with an armature will not have AO
 		mesh.has_AO = true;
 	} else {
 		mesh.has_AO = false;
 	}
 
 	mesh.shader = mesh.material = create_normal_shader( mesh.name, mesh.has_displacement, mesh.has_AO );
+	_mesh.material = mesh.shader;
 
 	if (USE_SHADOWS) {
-		mesh.castShadow = true;
-		mesh.receiveShadow = true;
+		_mesh.castShadow = true;
+		_mesh.receiveShadow = true;
 	}
 
 	if (USE_MODIFIERS) {
-		mesh.geometry.dynamic = true;		// required
-		mesh.geometry_base = THREE.GeometryUtils.clone(mesh.geometry);
+		_mesh.geometry.dynamic = true;		// required
+		mesh.geometry_base = THREE.GeometryUtils.clone(_mesh.geometry);
 		mesh.material = WIRE_MATERIAL;
 	}
 
@@ -602,6 +613,9 @@ function init() {
 	}
 	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
+
+	renderer.sortObjects = false;		// LOD
+	//renderer.autoUpdateScene = false;	// LOD
 
 	if (DEBUG==false) {
 		setupFX( renderer, scene, camera );
@@ -843,6 +857,7 @@ function animate() {
 				if ( mesh.subsurf ) { subsurf=mesh.subsurf; }
 				else if ( mesh.multires ) { subsurf=1; }
 
+				/*
 				// update hull //
 				mesh.geometry.vertices = mesh.geometry_base.vertices;
 				mesh.geometry.NeedUpdateVertices = true;
@@ -863,6 +878,7 @@ function animate() {
 				hack.castShadow = true;
 				hack.receiveShadow = true;
 				mesh.add( hack );
+				*/
 			}
 		}
 	}
@@ -924,6 +940,13 @@ function render() {
 	//scene.overrideMaterial = DEPTH_MATERIAL;
 	//FX['BASE'].overrideMaterial = DEPTH_MATERIAL;
 	//renderer.autoUpdateObjects = true;
+
+	scene.updateMatrixWorld();
+	THREE.SceneUtils.traverseHierarchy(
+		scene, 
+		function ( node ) { if ( node instanceof THREE.LOD ) node.update( camera ) } 
+	);
+
 	composer.render( 0.1 );
 /*
 	renderer.clear();

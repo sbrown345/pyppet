@@ -394,22 +394,20 @@ class Player( object ):
 		if ip not in bpy.data.objects:
 			a = bpy.data.objects.new(name=ip, object_data=None)
 			Pyppet.context.scene.objects.link( a )
-			a.empty_draw_type = 'SPHERE'
 			a.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
 
 			b = bpy.data.objects.new(name=ip+'-half_degraded', object_data=None)
 			Pyppet.context.scene.objects.link( b )
-			b.empty_draw_type = 'SPHERE'
 			b.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*2
 			b.parent = a
 
 			c = bpy.data.objects.new(name=ip+'-fully_degraded', object_data=None)
 			Pyppet.context.scene.objects.link( c )
-			c.empty_draw_type = 'SPHERE'
 			c.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*4
 			c.parent = a
 
 			for ob in (a,b,c):
+				ob.empty_draw_type = 'SPHERE'
 				ob.lock_location = [True]*3
 				ob.lock_scale = [True]*3
 				ob.lock_rotation = [True]*3
