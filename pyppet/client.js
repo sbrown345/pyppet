@@ -38,6 +38,7 @@ var Objects = {};
 var LIGHTS = {};
 var METABALLS = {};
 var CURVES = {};
+var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
 var dbugmsg = null;
 
@@ -242,7 +243,7 @@ function on_message(e) {
 			m.quaternion.z = ob.rot[3];
 
 			if (USE_MODIFIERS && m.base_mesh) {
-				if (m != INTERSECTED) {
+				if (INTERSECTED == null || name != INTERSECTED.name) {
 					m.shader.color.r = ob.color[0];
 					m.shader.color.g = ob.color[1];
 					m.shader.color.b = ob.color[2];
@@ -322,9 +323,6 @@ function on_message(e) {
 			for (var n in uniforms) { fx.screenUniforms[ n ].value = uniforms[ n ]; }
 		}
 	}
-
-
-
 }
 
 function debug_geo( geo ) {
@@ -348,6 +346,7 @@ function on_collada_ready( collada ) {
 	_mesh.useQuaternion = true;
 	_mesh.updateMatrix();
 	_mesh.matrixAutoUpdate = false;
+	MESHES.push( _mesh );
 
 	if ( Objects[_mesh.name] ) {
 		// SECOND LOAD: loading LOD base level //
@@ -1464,10 +1463,12 @@ MyController = function ( object, domElement ) {
 		projector.unprojectVector( vector, camera );
 		var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
 
-		var intersects = ray.intersectObjects( scene.children );
+		// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
+		// it will not traverse the children, that is why it fails on THREE.LOD.
+		//var intersects = ray.intersectObjects( scene.children );
 		//var obs = [];
-		//for (name in Objects) obs.push( Objects[name] )
-		//var intersects = ray.intersectObjects( obs );
+		//for (name in MESHES) obs.push( MESHES[name] )
+		var intersects = ray.intersectObjects( MESHES );
 		testing = intersects;
 
 		if ( intersects.length > 0 ) {
@@ -1479,7 +1480,7 @@ MyController = function ( object, domElement ) {
 
 						INTERSECTED = intersect.object;
 						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-						INTERSECTED.shader.color.setHex( 0xff0000 );
+						INTERSECTED.material.color.setHex( 0xff0000 );
 						break;
 					}
 				}
