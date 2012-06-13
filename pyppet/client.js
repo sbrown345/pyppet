@@ -225,7 +225,7 @@ function on_message(e) {
 			if (ob.selected) { SELECTED = m; }
 
 			m.has_progressive_textures = ob.ptex;
-			m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
+			if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
 
 			m.position.x = ob.pos[0];
@@ -241,7 +241,7 @@ function on_message(e) {
 			m.quaternion.y = ob.rot[2];
 			m.quaternion.z = ob.rot[3];
 
-			if (USE_MODIFIERS) {
+			if (USE_MODIFIERS && m.base_mesh) {
 				if (m != INTERSECTED) {
 					m.shader.color.r = ob.color[0];
 					m.shader.color.g = ob.color[1];
@@ -254,7 +254,7 @@ function on_message(e) {
 				}
 			}
 
-			if (USE_MODIFIERS) {
+			if (USE_MODIFIERS && m.base_mesh) {
 				if (m.subsurf != ob.subsurf) {
 					m.dirty_modifiers = true;
 					m.subsurf = ob.subsurf;
@@ -265,13 +265,13 @@ function on_message(e) {
 
 					var vidx=0;
 					for (var i=0; i <= ob.verts.length-3; i += 3) {
-						var v = m.geometry_base.vertices[ vidx ];
+						var v = m.base_mesh.geometry_base.vertices[ vidx ];
 						v.x = ob.verts[ i ];
 						v.y = ob.verts[ i+2 ];
 						v.z = -ob.verts[ i+1 ];
 						vidx++;
 					}
-					m.geometry_base.computeCentroids();
+					m.base_mesh.geometry_base.computeCentroids();
 					//m.geometry_base.computeFaceNormals();
 					//m.geometry_base.computeVertexNormals();
 				}
@@ -346,50 +346,79 @@ function on_collada_ready( collada ) {
 	var _mesh = collada.scene.children[0];
 	_mesh.updateMatrix();
 	_mesh.matrixAutoUpdate = false;
-	var mesh = new THREE.LOD();
-	mesh.name = _mesh.name;
-	mesh.addLevel( _mesh, 100 );
-	mesh.updateMatrix();
-	//mesh.matrixAutoUpdate = false;
+
+	if ( Objects[_mesh.name] ) {
+		// SECOND LOAD: loading LOD base level //
+		var lod = Objects[ _mesh.name ];
+		lod.addLevel( _mesh, 20 );
+		lod.base_mesh = _mesh;
+
+		if (USE_SHADOWS) {
+			_mesh.castShadow = true;
+			_mesh.receiveShadow = true;
+		}
+
+		if (USE_MODIFIERS) {
+			_mesh.geometry.dynamic = true;		// required
+			_mesh.geometry_base = THREE.GeometryUtils.clone(_mesh.geometry);
+			//_mesh.material = WIRE_MATERIAL;
+		}
+
+		_mesh.geometry.computeTangents();		// requires UV's
+
+		// hijack material color to pass info from blender //
+		if (_mesh.material.color.r) {
+			lod.multires = true;
+			lod.has_displacement = true;
+		} else {
+			lod.multires = false;
+			lod.has_displacement = false;
+		}
+		if (_mesh.material.color.g) {	// mesh deformed with an armature will not have AO
+			lod.has_AO = true;
+		} else {
+			lod.has_AO = false;
+		}
+
+		lod.shader = create_normal_shader(		// triggers progressive texture loading
+			lod.name,
+			lod.has_displacement,
+			lod.has_AO
+		);
+		_mesh.material = lod.shader;
 
 
-
-	mesh.useQuaternion = true;			// ensure Quaternion
-	_mesh.geometry.computeTangents();		// requires UV's
-	mesh.has_progressive_textures = false;	// enabled from websocket stream
-	mesh._material_ = _mesh.material;
-
-	// hijack material color to pass info from blender //
-	if (_mesh.material.color.r) {
-		mesh.multires = true;
-		mesh.has_displacement = true;
 	} else {
-		mesh.multires = false;
-		mesh.has_displacement = false;
-	}
-	if (_mesh.material.color.g) {	// mesh deformed with an armature will not have AO
-		mesh.has_AO = true;
-	} else {
-		mesh.has_AO = false;
+		// FIRST LOAD: loading LOD far level //
+
+		var mesh = new THREE.LOD();
+		mesh.name = _mesh.name;
+		mesh.base_mesh = null;
+		mesh.addLevel( _mesh, 40 );
+		mesh.updateMatrix();
+		//mesh.matrixAutoUpdate = false;
+
+		mesh.useQuaternion = true;			// ensure Quaternion
+		mesh.has_progressive_textures = false;	// enabled from websocket stream
+
+		// TODO best performance, no UV's, no textures, vertex colors?
+		mesh.shader = null;
+
+		mesh.dirty_modifiers = true;
+
+
+		Objects[ mesh.name ] = mesh;
+		scene.add( mesh );
+
+		var loader = new THREE.ColladaLoader();
+		loader.options.convertUpAxis = true;
+		loader.load(
+			'/objects/'+mesh.name+'.dae?hires', 
+			on_collada_ready
+		);
 	}
 
-	mesh.shader = mesh.material = create_normal_shader( mesh.name, mesh.has_displacement, mesh.has_AO );
-	_mesh.material = mesh.shader;
 
-	if (USE_SHADOWS) {
-		_mesh.castShadow = true;
-		_mesh.receiveShadow = true;
-	}
-
-	if (USE_MODIFIERS) {
-		_mesh.geometry.dynamic = true;		// required
-		mesh.geometry_base = THREE.GeometryUtils.clone(_mesh.geometry);
-		mesh.material = WIRE_MATERIAL;
-	}
-
-	Objects[ mesh.name ] = mesh;
-	mesh.dirty_modifiers = true;
-	scene.add( mesh );
 }
 
 
