@@ -287,6 +287,7 @@ function on_message(e) {
 			Objects[ name ] = null;
 			var loader = new THREE.ColladaLoader();
 			loader.options.convertUpAxis = true;
+			loader.options.centerGeometry = true;
 			loader.load(
 				'/objects/'+raw_name+'.dae', 
 				on_collada_ready
@@ -350,7 +351,7 @@ function on_collada_ready( collada ) {
 	if ( Objects[_mesh.name] ) {
 		// SECOND LOAD: loading LOD base level //
 		var lod = Objects[ _mesh.name ];
-		lod.addLevel( _mesh, 20 );
+		lod.addLevel( _mesh, 10 );
 		lod.base_mesh = _mesh;
 
 		if (USE_SHADOWS) {
@@ -390,11 +391,12 @@ function on_collada_ready( collada ) {
 
 	} else {
 		// FIRST LOAD: loading LOD far level //
+		_mesh.material.vertexColors = THREE.VertexColors;
 
 		var mesh = new THREE.LOD();
 		mesh.name = _mesh.name;
 		mesh.base_mesh = null;
-		mesh.addLevel( _mesh, 40 );
+		mesh.addLevel( _mesh, 20 );
 		mesh.updateMatrix();
 		//mesh.matrixAutoUpdate = false;
 
@@ -412,6 +414,7 @@ function on_collada_ready( collada ) {
 
 		var loader = new THREE.ColladaLoader();
 		loader.options.convertUpAxis = true;
+		loader.options.centerGeometry = true;
 		loader.load(
 			'/objects/'+mesh.name+'.dae?hires', 
 			on_collada_ready

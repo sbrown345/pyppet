@@ -259,14 +259,13 @@ SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
 SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
 #######################################################
 
-def dump_collada( ob, center=False ):
+def dump_collada( ob, center=False, hires=False ):
 	name = ob.name
 	state = save_selection()
 	for o in Pyppet.context.scene.objects: o.select = False
 
 	hack = bpy.data.materials.new(name='tmp')
 	hack.diffuse_color = [0,0,0]
-
 	mods = []
 	for mod in ob.modifiers:
 
@@ -289,9 +288,11 @@ def dump_collada( ob, center=False ):
 	data.calc_normals()
 
 	############## clear materials and assign hack material #######
-	for i,mat in enumerate(data.materials): data.materials[ i ] = None
-	if data.materials: data.materials[0] = hack
-	else: data.materials.append( hack )
+	if hires:
+		print('[DUMPING HIRES COLLADA: %s]' %ob)
+		for i,mat in enumerate(data.materials): data.materials[ i ] = None
+		if data.materials: data.materials[0] = hack
+		else: data.materials.append( hack )
 
 	############## create temp object for export ############
 	uid = UID( ob )
@@ -302,7 +303,8 @@ def dump_collada( ob, center=False ):
 
 
 	############## dump collada ###########
-	url = '/tmp/%s.dae' %name
+	if hires: url = '/tmp/%s(hires).dae' %name
+	else: url = '/tmp/%s.dae' %name
 	S = Blender.Scene( Pyppet.context.scene )
 	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
 
@@ -897,6 +899,8 @@ class WebServer( object ):
 				ob = get_object_by_UID( uid )
 				if arg == 'center':
 					return [ dump_collada(ob,center=True) ]
+				elif arg == 'hires':
+					return [ dump_collada(ob,hires=True) ]
 				else:
 					return [ dump_collada(ob) ]
 
@@ -5097,9 +5101,9 @@ class PyppetUI( PyppetAPI ):
 					print('image reload', slot.texture.image)
 					slot.texture.image.reload()
 
-		if ob.name not in WebSocketServer.RELOAD_TEXTURES:
+		if ob.name not in GameGrid.RELOAD_TEXTURES:
 			print('rebake request', ob.name)
-			WebSocketServer.RELOAD_TEXTURES.append( ob.name )
+			GameGrid.RELOAD_TEXTURES.append( ob.name )
 
 
 	def toggle_pose_mode(self,button):
