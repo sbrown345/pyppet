@@ -287,7 +287,7 @@ function on_message(e) {
 			Objects[ name ] = null;
 			var loader = new THREE.ColladaLoader();
 			loader.options.convertUpAxis = true;
-			loader.options.centerGeometry = true;
+			//loader.options.centerGeometry = true;
 			loader.load(
 				'/objects/'+raw_name+'.dae', 
 				on_collada_ready
@@ -345,12 +345,19 @@ function on_collada_ready( collada ) {
 	console.log( '>> collada loaded' );
 	dbugdae = collada;
 	var _mesh = collada.scene.children[0];
+	_mesh.useQuaternion = true;
 	_mesh.updateMatrix();
 	_mesh.matrixAutoUpdate = false;
 
 	if ( Objects[_mesh.name] ) {
 		// SECOND LOAD: loading LOD base level //
 		var lod = Objects[ _mesh.name ];
+
+		_mesh.position.set(0,0,0);
+		_mesh.scale.set(1,1,1);
+		_mesh.quaternion.set(0,0,0,1);
+		_mesh.updateMatrix();
+
 		lod.addLevel( _mesh, 10 );
 		lod.base_mesh = _mesh;
 
@@ -393,30 +400,36 @@ function on_collada_ready( collada ) {
 		// FIRST LOAD: loading LOD far level //
 		_mesh.material.vertexColors = THREE.VertexColors;
 
-		var mesh = new THREE.LOD();
-		mesh.name = _mesh.name;
-		mesh.base_mesh = null;
-		mesh.addLevel( _mesh, 20 );
-		mesh.updateMatrix();
+		var lod = new THREE.LOD();
+		lod.name = _mesh.name;
+		lod.base_mesh = null;
+		lod.useQuaternion = true;			// ensure Quaternion
+		lod.has_progressive_textures = false;	// enabled from websocket stream
+		// TODO best performance, no UV's, no textures, vertex colors?
+		lod.shader = null;
+		lod.dirty_modifiers = true;
+
+		lod.position.copy( _mesh.position );
+		lod.scale.copy( _mesh.scale );
+		lod.quaternion.copy( _mesh.quaternion );
+
+		_mesh.position.set(0,0,0);
+		_mesh.scale.set(1,1,1);
+		_mesh.quaternion.set(0,0,0,1);
+		_mesh.updateMatrix();
+
+		lod.addLevel( _mesh, 20 );
+		lod.updateMatrix();
 		//mesh.matrixAutoUpdate = false;
 
-		mesh.useQuaternion = true;			// ensure Quaternion
-		mesh.has_progressive_textures = false;	// enabled from websocket stream
-
-		// TODO best performance, no UV's, no textures, vertex colors?
-		mesh.shader = null;
-
-		mesh.dirty_modifiers = true;
-
-
-		Objects[ mesh.name ] = mesh;
-		scene.add( mesh );
+		Objects[ lod.name ] = lod;
+		scene.add( lod );
 
 		var loader = new THREE.ColladaLoader();
 		loader.options.convertUpAxis = true;
 		loader.options.centerGeometry = true;
 		loader.load(
-			'/objects/'+mesh.name+'.dae?hires', 
+			'/objects/'+lod.name+'.dae?hires', 
 			on_collada_ready
 		);
 	}

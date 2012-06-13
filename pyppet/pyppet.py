@@ -281,7 +281,11 @@ def dump_collada( ob, center=False, hires=False ):
 			mods.append( mod )
 
 	############## collaspe modifiers into mesh data #############
-	data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
+	if hires:
+		data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
+	else:
+		data = create_LOD( ob )
+
 	for mod in mods: mod.show_viewport = True  # restore modifiers
 
 	data.transform( SWAP_MESH )	# flip YZ for Three.js
@@ -301,7 +305,6 @@ def dump_collada( ob, center=False, hires=False ):
 	O.matrix_world = ob.matrix_world.copy()
 	O.select = True
 
-
 	############## dump collada ###########
 	if hires: url = '/tmp/%s(hires).dae' %name
 	else: url = '/tmp/%s.dae' %name
@@ -316,6 +319,17 @@ def dump_collada( ob, center=False, hires=False ):
 
 	restore_selection( state )
 	return open(url,'rb').read()
+
+
+def create_LOD( ob, ratio=0.2 ):
+	# TODO generate mapping, cache #
+	mod = ob.modifiers.new(name='temp', type='DECIMATE' )
+	mod.ratio = ratio
+	mesh = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
+	ob.modifiers.remove( mod )
+	return mesh
+
+
 
 #####################################
 
