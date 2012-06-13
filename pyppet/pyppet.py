@@ -281,7 +281,7 @@ def dump_collada( ob, center=False, hires=False ):
 			mods.append( mod )
 
 	############## collaspe modifiers into mesh data #############
-	if hires:
+	if hires or len(ob.data.vertices) <= 12:
 		data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
 	else:
 		data = create_LOD( ob )
