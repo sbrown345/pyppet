@@ -244,9 +244,13 @@ function on_message(e) {
 
 			if (USE_MODIFIERS && m.base_mesh) {
 				if (INTERSECTED == null || name != INTERSECTED.name) {
-					m.shader.color.r = ob.color[0];
-					m.shader.color.g = ob.color[1];
-					m.shader.color.b = ob.color[2];
+					for (var i=0; i<m.children.length; i++) {
+						m.children[ i ].material.color.setRGB(
+							ob.color[0],
+							ob.color[1],
+							ob.color[2]
+						);
+					}
 				}
 				m.shader.uniforms[ "uShininess" ].value = ob.spec;
 				if (m.multires) {
@@ -1458,36 +1462,32 @@ MyController = function ( object, domElement ) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		// PICKING //
-		var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
-		projector.unprojectVector( vector, camera );
-		var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
 
-		// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
-		// it will not traverse the children, that is why it fails on THREE.LOD.
-		//var intersects = ray.intersectObjects( scene.children );
-		//var obs = [];
-		//for (name in MESHES) obs.push( MESHES[name] )
-		var intersects = ray.intersectObjects( MESHES );
-		testing = intersects;
+		if (event.button==2) {	// right click selects like in blender
+			// PICKING //
+			var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+			projector.unprojectVector( vector, camera );
+			var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
 
-		if ( intersects.length > 0 ) {
-			for (var i=0; i < intersects.length; i ++) {
-				var intersect = intersects[ i ];
-				if (intersect.object.name) {	// ensure top level mesh with a name (UID)
-					if ( INTERSECTED != intersect.object ) {
-						//if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+			// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
+			// it will not traverse the children, that is why it fails on THREE.LOD.
+			//var intersects = ray.intersectObjects( scene.children );
+			var intersects = ray.intersectObjects( MESHES );
+			testing = intersects;
 
-						INTERSECTED = intersect.object;
-						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-						INTERSECTED.material.color.setHex( 0xff0000 );
-						break;
+			if ( intersects.length > 0 ) {
+				for (var i=0; i < intersects.length; i ++) {
+					var intersect = intersects[ i ];
+					if (intersect.object.name && intersect.object.visible) {
+						if ( INTERSECTED != intersect.object ) {
+							INTERSECTED = intersect.object;
+							INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+							INTERSECTED.material.color.setHex( 0xff0000 );
+							break;
+						}
 					}
 				}
-			}
-		} else {
-			//if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-			INTERSECTED = null;
+			} else { INTERSECTED = null; }
 		}
 		/////////////////////////////////////////////////////////////////////
 
