@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6f'
+VERSION = '1.9.6g'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
@@ -264,73 +264,90 @@ bpy.types.Object.is_lod_proxy = BoolProperty(
 	default=False)
 
 def dump_collada( ob, center=False, hires=False ):
-	name = ob.name
-	state = save_selection()
+	name = ob.name; state = save_selection(); uid = UID( ob )
 	for o in Pyppet.context.scene.objects: o.select = False
 
+	############### ugly ################
 	hack = bpy.data.materials.new(name='tmp')
 	hack.diffuse_color = [0,0,0]
-	mods = []
+	mods = []	# to restore later #
 	for mod in ob.modifiers:
-
 		## hijacked color to pass some hints to Three.js ##
 		#if mod.type == 'MULTIRES':
 		#	hack.diffuse_color.r = 1.0
 		if mod.type == 'ARMATURE':
 			hack.diffuse_color.g = 1.0
-
 		#if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
 		if mod.type in ('ARMATURE', 'SUBSURF') and mod.show_viewport:
 			mod.show_viewport = False
-			mods.append( mod )
+			mods.append( mod )	
+	###################################
 
-	############## collaspe modifiers into mesh data #############
-	if hires or len(ob.data.vertices) <= 12:
+
+	if not hires and len(ob.data.vertices) >= 12:	# if lowres LOD
+		print('[ DUMPING LOWRES ]')
+
+		url = '/tmp/%s(lowres).dae' %name
+
+		## check for pre-generated proxy ##
+		proxy = None
+		for child in ob.children:
+			if child.is_lod_proxy:
+				proxy = child; break
+		if not proxy:	# otherwise generate a new one #
+			data = create_LOD( ob )
+			data.transform( SWAP_MESH )	# flip YZ for Three.js
+			data.calc_normals()
+
+			proxy = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
+			Pyppet.context.scene.objects.link( proxy )
+			proxy.is_lod_proxy = True
+			proxy.draw_type = 'WIRE'
+
+		proxy.hide_select = False	# if True this blocks selecting even here in python!
+		proxy.parent = None	# make sure to clear parent before collada export
+		proxy.matrix_world = ob.matrix_world.copy()		
+		proxy.select = True
+		proxy.name = '__%s__'%uid
+		assert '.' not in proxy.name	# ensure name is unique
+		## ctypes hack avoids polling issue ##
+		Blender.Scene( Pyppet.context.scene ).collada_export( url, True )
+		proxy.name = 'LOD'	# need to rename
+
+		proxy.matrix_world.identity()
+		proxy.rotation_euler.x = -math.pi/2
+		proxy.parent = ob
+		proxy.hide_select = True
+
+
+	else: 	# hires
+		print('[ DUMPING HIRES ]')
+		url = '/tmp/%s(hires).dae' %name
+
 		data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
-	else:
-		data = create_LOD( ob )
-
-	for mod in mods: mod.show_viewport = True  # restore modifiers
-
-	data.transform( SWAP_MESH )	# flip YZ for Three.js
-	data.calc_normals()
-
-	############## clear materials and assign hack material #######
-	if hires:
-		print('[DUMPING HIRES COLLADA: %s]' %ob)
+		data.transform( SWAP_MESH )	# flip YZ for Three.js
+		data.calc_normals()
 		for i,mat in enumerate(data.materials): data.materials[ i ] = None
 		if data.materials: data.materials[0] = hack
 		else: data.materials.append( hack )
 
-	############## create temp object for export ############
-	uid = UID( ob )
-	O = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
-	assert '.' not in O.name	# ensure name is unique
-	Pyppet.context.scene.objects.link( O )
-	O.matrix_world = ob.matrix_world.copy()
-	O.select = True
+		############## create temp object for export ############
+		tmp = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
+		assert '.' not in tmp.name	# ensure name is unique
+		Pyppet.context.scene.objects.link( tmp )
+		tmp.matrix_world = ob.matrix_world.copy()
+		tmp.select = True
 
-	############## dump collada ###########
-	if hires: url = '/tmp/%s(hires).dae' %name
-	else: url = '/tmp/%s.dae' %name
-	S = Blender.Scene( Pyppet.context.scene )
-	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
+		## ctypes hack avoids polling issue ##
+		Blender.Scene( Pyppet.context.scene ).collada_export( url, True )
 
-	############## clean up ###########
-	O.select=False
-	if hires:	# if hires throw away the copy
-		Pyppet.context.scene.objects.unlink(O)
-		O.user_clear()
-		bpy.data.objects.remove(O)
-	else:	# else save the low res version
-		O.name = '_LOD_'	# need this to make sure name remains unique
-		O.is_lod_proxy = True
-		O.matrix_world.identity()
-		O.rotation_euler.x = -math.pi/2
-		O.parent = ob
-		O.draw_type = 'WIRE'
-		O.hide_select = True
+		## clean up ##
+		Pyppet.context.scene.objects.unlink(tmp)
+		tmp.user_clear()
+		bpy.data.objects.remove(tmp)
 
+	#__________________________________________________________________#
+	for mod in mods: mod.show_viewport = True  # restore modifiers
 	restore_selection( state )
 	return open(url,'rb').read()
 
@@ -705,6 +722,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	def update( self, context ):	# called from main
 		if not self.client: return
+		#if not GameGrid.clients: return
 
 		msg = GameGrid.create_stream_message( context, self.client )
 

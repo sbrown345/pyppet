@@ -588,7 +588,7 @@ function update_server() {
 	THREE.ImageUtils.loadTexture(
 		'/RPC/player/'+camera.position.x+','+(-camera.position.z)+','+camera.position.y, 
 		undefined, on_texture_ready );
-	setTimeout( update_server, 2000 );
+	setTimeout( update_server, 3000 );
 
 }
 
