@@ -1206,7 +1206,7 @@ MyController = function ( object, domElement ) {
 	 */
 
 	var _this = this,
-	STATE = { NONE : -1, ROTATE : 0, ZOOM : 1, PAN : 2 };
+	STATE = { NONE : -1, ROTATE : 1, ZOOM : 0, PAN : 2 };
 
 	this.object = object;
 	this.domElement = ( domElement !== undefined ) ? domElement : document;

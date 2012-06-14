@@ -258,6 +258,10 @@ def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
 SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
 #######################################################
+bpy.types.Object.is_lod_proxy = BoolProperty(
+	name='is LOD proxy',
+	description='prevents the LOD proxy from being streamed directly to WebGL client',
+	default=False)
 
 def dump_collada( ob, center=False, hires=False ):
 	name = ob.name
@@ -301,6 +305,7 @@ def dump_collada( ob, center=False, hires=False ):
 	############## create temp object for export ############
 	uid = UID( ob )
 	O = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
+	assert '.' not in O.name	# ensure name is unique
 	Pyppet.context.scene.objects.link( O )
 	O.matrix_world = ob.matrix_world.copy()
 	O.select = True
@@ -312,10 +317,19 @@ def dump_collada( ob, center=False, hires=False ):
 	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
 
 	############## clean up ###########
-	Pyppet.context.scene.objects.unlink(O)
-	O.user_clear()
 	O.select=False
-	bpy.data.objects.remove(O)
+	if hires:	# if hires throw away the copy
+		Pyppet.context.scene.objects.unlink(O)
+		O.user_clear()
+		bpy.data.objects.remove(O)
+	else:	# else save the low res version
+		O.name = '_LOD_'	# need this to make sure name remains unique
+		O.is_lod_proxy = True
+		O.matrix_world.identity()
+		O.rotation_euler.x = -math.pi/2
+		O.parent = ob
+		O.draw_type = 'WIRE'
+		O.hide_select = True
 
 	restore_selection( state )
 	return open(url,'rb').read()
@@ -487,6 +501,7 @@ class GameGrid( object ):
 		far_objects = []		# far objects the player has not loaded yet
 
 		for ob in context.scene.objects:
+			if ob.is_lod_proxy: continue
 			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
 
