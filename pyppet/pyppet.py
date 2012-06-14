@@ -264,6 +264,7 @@ bpy.types.Object.is_lod_proxy = BoolProperty(
 	default=False)
 
 def dump_collada( ob, center=False, hires=False ):
+	assert Pyppet.context.mode !='EDIT'
 	name = ob.name; state = save_selection(); uid = UID( ob )
 	for o in Pyppet.context.scene.objects: o.select = False
 
@@ -303,6 +304,11 @@ def dump_collada( ob, center=False, hires=False ):
 			Pyppet.context.scene.objects.link( proxy )
 			proxy.is_lod_proxy = True
 			proxy.draw_type = 'WIRE'
+
+			proxy.select = True
+			bpy.context.scene.objects.active = proxy	# required by smart_project
+			bpy.ops.uv.smart_project()		# no need to be in edit mode
+
 
 		proxy.hide_select = False	# if True this blocks selecting even here in python!
 		proxy.parent = None	# make sure to clear parent before collada export
