@@ -1,6 +1,13 @@
 // WebGL Pyppet Client
 // Blender Research Lab. PH (brett hartshorn)
 // License: BSD
+/*
+This error can happen if you assign the same shader to different meshes,
+or forget to computeTangents before assignment.
+ [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
+*/
+
+
 
 var DEBUG = false;
 var USE_MODIFIERS = true;
@@ -361,7 +368,7 @@ function on_collada_ready( collada ) {
 		_mesh.quaternion.set(0,0,0,1);
 		_mesh.updateMatrix();
 
-		lod.addLevel( _mesh, 10 );
+		lod.addLevel( _mesh, 5 );
 		lod.base_mesh = _mesh;
 
 		if (USE_SHADOWS) {
@@ -391,17 +398,26 @@ function on_collada_ready( collada ) {
 			lod.has_AO = false;
 		}
 
-		lod.shader = create_normal_shader(		// triggers progressive texture loading
+		lod.shader = create_normal_shader(
 			lod.name,
 			lod.has_displacement,
-			lod.has_AO
+			lod.has_AO,
+			on_texture_ready		// allows progressive texture loading
 		);
 		_mesh.material = lod.shader;
 
 
 	} else {
 		// FIRST LOAD: loading LOD far level //
-		_mesh.material.vertexColors = THREE.VertexColors;
+		//_mesh.material.vertexColors = THREE.VertexColors;	// not a good idea
+		_mesh.geometry.computeTangents();		// requires UV's
+		_mesh.material = create_normal_shader(
+			_mesh.name,
+			false,				// displacement
+			false,				// AO
+			undefined			// allows progressive texture loading
+		);
+
 
 		var lod = new THREE.LOD();
 		lod.name = _mesh.name;
@@ -421,7 +437,7 @@ function on_collada_ready( collada ) {
 		_mesh.quaternion.set(0,0,0,1);
 		_mesh.updateMatrix();
 
-		lod.addLevel( _mesh, 20 );
+		lod.addLevel( _mesh, 10 );
 		lod.updateMatrix();
 		//mesh.matrixAutoUpdate = false;
 
@@ -436,8 +452,6 @@ function on_collada_ready( collada ) {
 			on_collada_ready
 		);
 	}
-
-
 }
 
 
@@ -519,18 +533,18 @@ function request_progressive_texture() {
 }
 
 
-function create_normal_shader( name, displacement, AO ) {
+function create_normal_shader( name, displacement, AO, callback ) {
 	// material parameters
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, on_texture_ready );
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, on_texture_ready );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, callback );
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, callback );
 	if (AO) {
-		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, on_texture_ready );
+		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, callback );
 	}
-	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, on_texture_ready );
+	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, callback );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
 	if (AO) {
@@ -550,7 +564,7 @@ function create_normal_shader( name, displacement, AO ) {
 
 	if (displacement) {
 		console.log(name + ' has displacement');
-		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|256', undefined, on_texture_ready );
+		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|256', undefined, callback );
 		uniforms[ "uDisplacementBias" ].value = 0.0;
 		uniforms[ "uDisplacementScale" ].value = 0.0;
 	} else {
