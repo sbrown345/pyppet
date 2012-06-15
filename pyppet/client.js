@@ -369,7 +369,7 @@ function on_collada_ready( collada ) {
 		_mesh.updateMatrix();
 
 		lod.addLevel( _mesh, 5 );
-		lod.base_mesh = _mesh;
+		lod.base_mesh = _mesh;		// subdiv mod uses: lod.base_mesh.geometry_base
 
 		if (USE_SHADOWS) {
 			_mesh.castShadow = true;
@@ -906,41 +906,41 @@ function setupFX( renderer, scene, camera ) {
 function animate() {
 	// subdiv modifier //
 	for (n in Objects) {
-		var mesh = Objects[ n ];
-		dbug = mesh;
-		if (mesh && USE_MODIFIERS) {
-			if (mesh === SELECTED) { mesh.visible=true; }	// show hull
-			else { mesh.visible=false; }	// hide hull
+		var lod = Objects[ n ];
 
-			if (mesh.dirty_modifiers) {
-				mesh.dirty_modifiers = false;
+		if (USE_MODIFIERS && lod && lod.base_mesh) {
+			//if (mesh === SELECTED) { mesh.visible=true; }	// show hull
+			//else { mesh.visible=false; }	// hide hull
+
+			if (lod.dirty_modifiers && lod.LODs[0].object3D.visible) {
+				lod.dirty_modifiers = false;
 
 				var subsurf = 0;
-				if ( mesh.subsurf ) { subsurf=mesh.subsurf; }
-				else if ( mesh.multires ) { subsurf=1; }
+				if ( lod.subsurf ) { subsurf=lod.subsurf; }
+				else if ( lod.multires ) { subsurf=1; }
 
-				/*
 				// update hull //
-				mesh.geometry.vertices = mesh.geometry_base.vertices;
-				mesh.geometry.NeedUpdateVertices = true;
+				//mesh.geometry.vertices = mesh.geometry_base.vertices;
+				//mesh.geometry.NeedUpdateVertices = true;
 
 				var modifier = new THREE.SubdivisionModifier( subsurf );
-				var geo = THREE.GeometryUtils.clone( mesh.geometry_base );
-
+				var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
 				geo.mergeVertices();		// BAD?  required? //
-
 				modifier.modify( geo );
+
 				geo.NeedUpdateTangents = true;
 				geo.computeTangents();		// requires UV's
 				//geo.computeFaceNormals();
 				//geo.computeVertexNormals();
 
-				if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
-				var hack = new THREE.Mesh(geo, mesh.shader)
+				//if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
+				var hack = new THREE.Mesh(geo, lod.shader)
 				hack.castShadow = true;
 				hack.receiveShadow = true;
-				mesh.add( hack );
-				*/
+
+				lod.remove( lod.children[1] );
+				lod.LODs[ 0 ].object3D = hack;
+				lod.add( hack );
 			}
 		}
 	}
