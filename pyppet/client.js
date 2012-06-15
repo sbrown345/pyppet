@@ -235,7 +235,6 @@ function on_message(e) {
 			m.has_progressive_textures = ob.ptex;
 			if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
-
 			m.position.x = ob.pos[0];
 			m.position.y = ob.pos[1];
 			m.position.z = ob.pos[2];
@@ -250,6 +249,8 @@ function on_message(e) {
 			m.quaternion.z = ob.rot[3];
 
 			if (USE_MODIFIERS && m.base_mesh) {
+				m.auto_subdivision = ob.auto_subdiv;
+
 				if (INTERSECTED == null || name != INTERSECTED.name) {
 					for (var i=0; i<m.children.length; i++) {
 						m.children[ i ].material.color.setRGB(
@@ -399,14 +400,15 @@ function on_collada_ready( collada ) {
 		}
 		//if (_mesh.material.color.b) { lod.auto_subdivision = true; }
 		//else { lod.auto_subdivison = false; }
-		lod.auto_subdivision = true;	// hijack material hack broken?
-
 
 		lod.shader = create_normal_shader(
-			lod.name,
-			lod.has_displacement,
-			lod.has_AO,
-			on_texture_ready		// allows progressive texture loading
+			{
+				name :			lod.name,
+				displacement :	lod.has_displacement,
+				ao :				lod.has_AO,
+				diffuse_size :	256,
+				callback :		on_texture_ready		// allows progressive texture loading
+			}
 		);
 		_mesh.material = lod.shader;
 
@@ -416,11 +418,10 @@ function on_collada_ready( collada ) {
 		//_mesh.material.vertexColors = THREE.VertexColors;	// not a good idea
 		_mesh.geometry.computeTangents();		// requires UV's
 		_mesh.material = create_normal_shader(
-			_mesh.name,
-			false,				// displacement
-			false,				// AO
-			undefined,			// on loaded callback
-			'/bake/LOD/'
+			{
+				name :	_mesh.name,
+				prefix :	'/bake/LOD/'
+			}
 		);
 
 
@@ -432,6 +433,8 @@ function on_collada_ready( collada ) {
 		// TODO best performance, no UV's, no textures, vertex colors?
 		lod.shader = null;
 		lod.dirty_modifiers = true;
+		lod.auto_subdivision = false;
+
 
 		lod.position.copy( _mesh.position );
 		lod.scale.copy( _mesh.scale );
@@ -538,18 +541,38 @@ function request_progressive_texture() {
 }
 
 
-function create_normal_shader( name, displacement, AO, callback, prefix ) {
-	// material parameters
-	if (prefix === undefined) prefix = '/bake/'
+//function create_normal_shader( name, displacement, AO, callback, prefix ) {
+function create_normal_shader( params ) {
+	var name = params.name;
+	var displacement = params.displacement;
+	var AO = params.ao;
+	var callback = params.callback;
+	var prefix = params.prefix;
+	var diffuse_size = params.diffuse_size;
+	var normals_size = params.normals_size;
+	var ao_size = params.ao_size;
+	var disp_size = params.displacement_size;
+
+	// defaults //
+	if (prefix === undefined) prefix = '/bake/';
+	if (diffuse_size === undefined) diffuse_size = 128;
+	if (normals_size === undefined) normals_size = 128;
+	if (ao_size === undefined) ao_size = 128;
+	if (disp_size === undefined) disp_size = 128;
+
 
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?TEXTURE|64', undefined, callback );
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?NORMALS|128', undefined, callback );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture(
+		prefix+name+'.jpg?TEXTURE|'+diffuse_size, undefined, callback
+	);
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture(
+		prefix+name+'.jpg?NORMALS|'+normals_size, undefined, callback
+	);
 	if (AO) {
-		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?AO|64', undefined, callback );
+		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?AO|'+ao_size, undefined, callback );
 	}
 	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, callback );
 
@@ -571,7 +594,9 @@ function create_normal_shader( name, displacement, AO, callback, prefix ) {
 
 	if (displacement) {
 		console.log(name + ' has displacement');
-		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?DISPLACEMENT|256', undefined, callback );
+		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture(
+			prefix+name+'.jpg?DISPLACEMENT|'+disp_size, undefined, callback 
+		);
 		uniforms[ "uDisplacementBias" ].value = 0.0;
 		uniforms[ "uDisplacementScale" ].value = 0.0;
 	} else {

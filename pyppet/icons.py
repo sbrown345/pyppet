@@ -3,6 +3,8 @@ BLENDER = '🐵'
 PLUS = '＋'
 PIN = '📌'
 
+SUBSURF = '⛶'
+
 BIDIRECTIONAL = '⥂'
 
 POSITIVE_OFFSET = '⊕'

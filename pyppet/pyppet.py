@@ -125,6 +125,8 @@ bpy.types.Object.webgl_progressive_textures = BoolProperty(
 
 bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
 
+bpy.types.Object.webgl_auto_subdivison = BoolProperty( name='auto subdivide', default=False )
+
 bpy.types.Object.webgl_normal_map = FloatProperty(
     name="normal map scale", description="normal map scale for webGL client", 
     default=0.75)
@@ -650,6 +652,7 @@ class GameGrid( object ):
 				pak[ 'subsurf' ] = subsurf
 				pak[ 'ptex' ] = ob.webgl_progressive_textures
 				pak[ 'norm' ] = ob.webgl_normal_map
+				pak[ 'auto_subdiv' ] = ob.webgl_auto_subdivison
 
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
@@ -885,10 +888,10 @@ class WebServer( object ):
 				h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
 				h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
 			else:
-				h.append( 'var MAX_PROGRESSIVE_TEXTURE = 256;' )
-				h.append( 'var MAX_PROGRESSIVE_NORMALS = 128;' )
-				h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 128;' )
-				h.append( 'var MAX_PROGRESSIVE_DEFAULT = 128;' )
+				h.append( 'var MAX_PROGRESSIVE_TEXTURE = 512;' )
+				h.append( 'var MAX_PROGRESSIVE_NORMALS = 512;' )
+				h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
+				h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
 
 
 			h.append( self.CLIENT_SCRIPT )
@@ -5142,6 +5145,13 @@ class PyppetUI( PyppetAPI ):
 			b.set_tooltip_text('stream mesh to webGL client')
 			b.set_active(ob.webgl_stream_mesh)
 			b.connect('toggled', lambda b,o: setattr(o,'webgl_stream_mesh',b.get_active()), ob)
+			header.pack_start( b, expand=False )
+
+			b = gtk.ToggleButton( icons.SUBSURF )
+			b.set_relief( gtk.RELIEF_NONE )
+			b.set_tooltip_text('auto subdivide in webGL client (only when camera is near mesh)')
+			b.set_active(ob.webgl_auto_subdivison)
+			b.connect('toggled', lambda b,o: setattr(o,'webgl_auto_subdivison',b.get_active()), ob)
 			header.pack_start( b, expand=False )
 
 			b = gtk.ToggleButton( icons.PROGRESSIVE_TEXTURES )
