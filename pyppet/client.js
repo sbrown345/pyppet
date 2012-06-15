@@ -273,7 +273,7 @@ function on_message(e) {
 				}
 
 				if (ob.verts) {
-					m.dirty_modifiers = true;
+					if (m.subsurf) m.dirty_modifiers = true;	// TODO make compatible with: usersubsurf+autosubsurf ?
 
 					var vidx=0;
 					for (var i=0; i <= ob.verts.length-3; i += 3) {
@@ -368,7 +368,7 @@ function on_collada_ready( collada ) {
 		_mesh.quaternion.set(0,0,0,1);
 		_mesh.updateMatrix();
 
-		lod.addLevel( _mesh, 5 );
+		lod.addLevel( _mesh, 8 );
 		lod.base_mesh = _mesh;		// subdiv mod uses: lod.base_mesh.geometry_base
 
 		if (USE_SHADOWS) {
@@ -397,6 +397,10 @@ function on_collada_ready( collada ) {
 		} else {
 			lod.has_AO = false;
 		}
+		//if (_mesh.material.color.b) { lod.auto_subdivision = true; }
+		//else { lod.auto_subdivison = false; }
+		lod.auto_subdivision = true;	// hijack material hack broken?
+
 
 		lod.shader = create_normal_shader(
 			lod.name,
@@ -415,7 +419,8 @@ function on_collada_ready( collada ) {
 			_mesh.name,
 			false,				// displacement
 			false,				// AO
-			undefined			// allows progressive texture loading
+			undefined,			// on loaded callback
+			'/bake/LOD/'
 		);
 
 
@@ -437,7 +442,7 @@ function on_collada_ready( collada ) {
 		_mesh.quaternion.set(0,0,0,1);
 		_mesh.updateMatrix();
 
-		lod.addLevel( _mesh, 10 );
+		lod.addLevel( _mesh, 12 );
 		lod.updateMatrix();
 		//mesh.matrixAutoUpdate = false;
 
@@ -533,16 +538,18 @@ function request_progressive_texture() {
 }
 
 
-function create_normal_shader( name, displacement, AO, callback ) {
+function create_normal_shader( name, displacement, AO, callback, prefix ) {
 	// material parameters
+	if (prefix === undefined) prefix = '/bake/'
+
 	var ambient = 0x111111, diffuse = 0xbbbbbb, specular = 0x171717, shininess = 50;
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
-	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?TEXTURE|64', undefined, callback );
-	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?NORMALS|128', undefined, callback );
+	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?TEXTURE|64', undefined, callback );
+	uniforms[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?NORMALS|128', undefined, callback );
 	if (AO) {
-		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?AO|64', undefined, callback );
+		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?AO|64', undefined, callback );
 	}
 	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, callback );
 
@@ -564,7 +571,7 @@ function create_normal_shader( name, displacement, AO, callback ) {
 
 	if (displacement) {
 		console.log(name + ' has displacement');
-		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?DISPLACEMENT|256', undefined, callback );
+		uniforms[ "tDisplacement" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?DISPLACEMENT|256', undefined, callback );
 		uniforms[ "uDisplacementBias" ].value = 0.0;
 		uniforms[ "uDisplacementScale" ].value = 0.0;
 	} else {
@@ -908,11 +915,11 @@ function animate() {
 	for (n in Objects) {
 		var lod = Objects[ n ];
 
-		if (USE_MODIFIERS && lod && lod.base_mesh) {
+		if (USE_MODIFIERS && lod && lod.base_mesh && lod.LODs[0].object3D.visible) {
 			//if (mesh === SELECTED) { mesh.visible=true; }	// show hull
 			//else { mesh.visible=false; }	// hide hull
 
-			if (lod.dirty_modifiers && lod.LODs[0].object3D.visible) {
+			if (lod.dirty_modifiers ) {
 				lod.dirty_modifiers = false;
 
 				var subsurf = 0;
@@ -941,6 +948,54 @@ function animate() {
 				lod.remove( lod.children[1] );
 				lod.LODs[ 0 ].object3D = hack;
 				lod.add( hack );
+
+			} else if (lod.auto_subdivision){
+
+				if (distance_to_camera(lod) < lod.LODs[0].visibleAtDistance/2) {
+
+					var subsurf = 0;
+					if ( lod.subsurf ) { subsurf=lod.subsurf; }
+					else if ( lod.multires ) { subsurf=1; }
+					subsurf ++;
+
+					var modifier = new THREE.SubdivisionModifier( subsurf );
+					var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
+					geo.mergeVertices();		// BAD?  required? //
+					modifier.modify( geo );
+
+					geo.NeedUpdateTangents = true;
+					geo.computeTangents();		// requires UV's
+
+					var hack = new THREE.Mesh(geo, lod.shader)
+					hack.castShadow = true;
+					hack.receiveShadow = true;
+
+					lod.remove( lod.children[1] );
+					lod.LODs[ 0 ].object3D = hack;
+					lod.add( hack );
+
+				} else {
+
+					var subsurf = 0;
+					if ( lod.subsurf ) { subsurf=lod.subsurf; }
+					else if ( lod.multires ) { subsurf=1; }
+
+					var modifier = new THREE.SubdivisionModifier( subsurf );
+					var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
+					geo.mergeVertices();		// BAD?  required? //
+					modifier.modify( geo );
+
+					geo.NeedUpdateTangents = true;
+					geo.computeTangents();		// requires UV's
+
+					var hack = new THREE.Mesh(geo, lod.shader)
+					hack.castShadow = true;
+					hack.receiveShadow = true;
+
+					lod.remove( lod.children[1] );
+					lod.LODs[ 0 ].object3D = hack;
+					lod.add( hack );
+				}
 			}
 		}
 	}
@@ -950,6 +1005,12 @@ function animate() {
 	else { render(); }
 }
 
+function distance_to_camera( ob ) {
+		camera.matrixWorldInverse.getInverse( camera.matrixWorld );
+		var inverse  = camera.matrixWorldInverse;
+		var distance = -( inverse.elements[2] * ob.matrixWorld.elements[12] + inverse.elements[6] * ob.matrixWorld.elements[13] + inverse.elements[10] * ob.matrixWorld.elements[14] + inverse.elements[14] );
+		return distance;
+}
 
 var _prev_width = window.innerWidth;
 var _prev_height = window.innerHeight;

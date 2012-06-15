@@ -207,7 +207,7 @@ class BlenderHack( object ):
 	BAKE_MODES = 'AO NORMALS SHADOW DISPLACEMENT TEXTURE SPEC_INTENSITY SPEC_COLOR'.split()
 	BAKE_BYTES = 0
 	## can only be called from inside the ImageEditor redraw callback ##
-	def bake_image( self, ob, type='AO', size=64, refresh=False ):
+	def bake_image( self, ob, type='AO', size=64, refresh=False, extra_objects=[] ):
 		assert type in self.BAKE_MODES
 		width = height = size
 		name = ob.name
@@ -230,17 +230,27 @@ class BlenderHack( object ):
 
 			print('---------- baking image ->', ob.name)
 
+			bpy.ops.object.mode_set( mode='OBJECT' )
+
+			restore_hide_select = ob.hide_select
+			ob.hide_select = False
 			restore_active = self.context.active_object
 			restore = []
 			for o in self.context.selected_objects:
 				o.select = False
 				restore.append( o )
 			ob.select = True
-			self.context.scene.objects.active = ob
+			self.context.scene.objects.active = ob	# required
 
-			## TRICK, enter edit-mode and create a new image, this sets it as active in the ImageEditor
-			if self.context.mode != 'EDIT': bpy.ops.object.mode_set( mode='EDIT' )
-			else: print('[[ already in edit mode ]]')
+			if extra_objects:
+				self.context.scene.render.use_bake_selected_to_active = True
+				for o in extra_objects: o.select = True
+				#self.context.scene.render.bake_distance = 0.01
+			else:
+				self.context.scene.render.use_bake_selected_to_active = False
+
+
+			bpy.ops.object.mode_set( mode='EDIT' )
 
 			bpy.ops.mesh.select_all( action='SELECT' )	# ensure all faces selected
 			bpy.ops.image.new(
@@ -250,9 +260,9 @@ class BlenderHack( object ):
 			bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
 
 			self.context.scene.render.bake_type = type
-			self.context.scene.render.bake_margin = 5
+			self.context.scene.render.bake_margin = 4
 			self.context.scene.render.use_bake_normalize = True
-			self.context.scene.render.use_bake_selected_to_active = False	# required
+			#self.context.scene.render.use_bake_selected_to_active = False	# required
 			self.context.scene.render.use_bake_lores_mesh = False		# should be True
 			self.context.scene.render.use_bake_multires = False
 			if type=='DISPLACEMENT':	# can also apply to NORMALS
@@ -276,6 +286,7 @@ class BlenderHack( object ):
 
 			for ob in restore: ob.select=True
 			self.context.scene.objects.active = restore_active
+			ob.hide_select = restore_hide_select
 
 			## 128 color PNG can beat JPG by half ##
 			if type == 'DISPLACEMENT':

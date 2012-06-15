@@ -278,6 +278,9 @@ def dump_collada( ob, center=False, hires=False ):
 		#	hack.diffuse_color.r = 1.0
 		if mod.type == 'ARMATURE':
 			hack.diffuse_color.g = 1.0
+
+		hack.diffuse_color.b = 1.0
+
 		#if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
 		if mod.type in ('ARMATURE', 'SUBSURF') and mod.show_viewport:
 			mod.show_viewport = False
@@ -305,9 +308,16 @@ def dump_collada( ob, center=False, hires=False ):
 			proxy.is_lod_proxy = True
 			proxy.draw_type = 'WIRE'
 
+			bpy.ops.object.mode_set( mode='OBJECT' )
+
+			active = bpy.context.scene.objects.active
 			proxy.select = True
 			bpy.context.scene.objects.active = proxy	# required by smart_project
 			bpy.ops.uv.smart_project()		# no need to be in edit mode
+			proxy.data.update()			# required
+			#bpy.ops.object.shade_smooth()
+			bpy.context.scene.objects.active = active
+
 
 
 		proxy.hide_select = False	# if True this blocks selecting even here in python!
@@ -975,7 +985,18 @@ class WebServer( object ):
 			print( 'PATH', path, arg)
 			uid = path.split('/')[-1][ :-4 ]	# strip ".jpg"
 			ob = get_object_by_UID( uid )
-			data = Pyppet.bake_image( ob, *arg.split('|') )
+			if path.startswith('/bake/LOD/'):
+				for child in ob.children:
+					if child.is_lod_proxy:
+						data = Pyppet.bake_image(
+							child, 
+							*arg.split('|'),
+							extra_objects=[ob]
+						)
+						break
+			else:
+				data = Pyppet.bake_image( ob, *arg.split('|') )
+
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]
 
