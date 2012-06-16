@@ -367,6 +367,14 @@ function on_collada_ready( collada ) {
 	_mesh.matrixAutoUpdate = false;
 	MESHES.push( _mesh );
 
+	if (USE_SHADOWS) {
+		_mesh.castShadow = true;
+		_mesh.receiveShadow = true;
+	}
+
+	_mesh.geometry.computeTangents();	// requires UV's, this must come before material is assigned
+
+
 	if ( Objects[_mesh.name] ) {
 		// SECOND LOAD: loading LOD base level //
 		var lod = Objects[ _mesh.name ];
@@ -379,19 +387,11 @@ function on_collada_ready( collada ) {
 		lod.addLevel( _mesh, 8 );
 		lod.base_mesh = _mesh;		// subdiv mod uses: lod.base_mesh.geometry_base
 
-		if (USE_SHADOWS) {
-			_mesh.castShadow = true;
-			_mesh.receiveShadow = true;
-		}
-
 		if (USE_MODIFIERS) {
 			_mesh.geometry.dynamic = true;		// required
 			_mesh.geometry_base = THREE.GeometryUtils.clone(_mesh.geometry);
 			//_mesh.material = WIRE_MATERIAL;
 		}
-
-		_mesh.geometry.computeTangents();		// requires UV's
-
 
 		lod.shader = create_normal_shader(
 			{
@@ -408,7 +408,7 @@ function on_collada_ready( collada ) {
 	} else {
 		// FIRST LOAD: loading LOD far level //
 		//_mesh.material.vertexColors = THREE.VertexColors;	// not a good idea
-		_mesh.geometry.computeTangents();		// requires UV's
+
 		_mesh.material = create_normal_shader(
 			{
 				name :	_mesh.name,
@@ -421,7 +421,6 @@ function on_collada_ready( collada ) {
 		lod.base_mesh = null;
 		lod.useQuaternion = true;			// ensure Quaternion
 		lod.has_progressive_textures = false;	// enabled from websocket stream
-		// TODO best performance, no UV's, no textures, vertex colors?
 		lod.shader = null;
 		lod.dirty_modifiers = true;
 		lod.auto_subdivision = false;
@@ -959,6 +958,8 @@ function animate() {
 				var hack = new THREE.Mesh(geo, lod.shader)
 				hack.castShadow = true;
 				hack.receiveShadow = true;
+				hack.name = lod.name;							// required for picking
+				MESHES[ MESHES.indexOf(lod.children[1]) ] = hack;	// required for picking
 
 				lod.remove( lod.children[1] );
 				lod.LODs[ 0 ].object3D = hack;
