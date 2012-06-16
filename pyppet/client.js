@@ -140,6 +140,11 @@ function on_message(e) {
 			var resolution = 32;
 			var meta = new THREE.MarchingCubes( resolution, mat );
 
+			if (USE_SHADOWS) {
+				meta.castShadow = true;
+				meta.receiveShadow = true;
+			}
+
 			meta.scale.set(		// actually no need to stream this since its fixed for now
 				msg['metas'][name]['scl'][0],
 				msg['metas'][name]['scl'][2],
@@ -161,7 +166,7 @@ function on_message(e) {
 			var ball = ob['elements'][ i ];
 			// convert radius to strength and subtract
 			meta.addBall(
-				ball.x+0.5, ball.z+0.5, ball.y+0.5,
+				ball.x+0.5, ball.z+0.5, -ball.y+0.5,
 				0.01+ball.radius, 100
 			);
 		}
