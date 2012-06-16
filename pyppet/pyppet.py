@@ -5850,6 +5850,8 @@ class MaterialsUI(object):
 		if ob.type == 'MESH':
 			exs = []
 			for mat in ob.data.materials:
+				if not mat: continue
+
 				ex = gtk.Expander( mat.name ); exs.append( ex )
 				eb = gtk.EventBox()	# expander background is colorized
 				root.pack_start( eb, expand=False )

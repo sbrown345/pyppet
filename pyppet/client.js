@@ -428,7 +428,7 @@ function on_collada_ready( collada ) {
 
 		lod.multires = false;
 		lod.has_displacement = false;
-		lod.has_AO = true;
+		lod.has_AO = false;	// TODO fix baking to hide LOD proxy
 
 		lod.position.copy( _mesh.position );
 		lod.scale.copy( _mesh.scale );
@@ -611,26 +611,7 @@ function create_normal_shader( params ) {
 
 
 
-ws.on('message', on_message);
 
-function on_open(e) {
-	console.log(">> WebSockets.onopen");
-	setTimeout( update_server, 1000 );
-}
-ws.on('open', on_open);
-
-function on_close(e) {
-	console.log(">> WebSockets.onclose");
-}
-ws.on('close', on_close);
-
-function update_server() {
-	THREE.ImageUtils.loadTexture(
-		'/RPC/player/'+camera.position.x+','+(-camera.position.z)+','+camera.position.y, 
-		undefined, on_texture_ready );
-	setTimeout( update_server, 3000 );
-
-}
 
 //////////////////////////////////////////////////////////////////////
 var container;
@@ -1741,14 +1722,30 @@ MyController = function ( object, domElement ) {
 
 
 
-
-
-
-
-
-
-///////////////////////////////////////////////////////////////////////////
 ///////////////////// init and run ///////////////////
+
 init();
+
+ws.on('message', on_message);
+
+function on_open(e) {
+	console.log(">> WebSockets.onopen");
+	setTimeout( update_server, 1000 );
+}
+ws.on('open', on_open);
+
+function on_close(e) {
+	console.log(">> WebSockets.onclose");
+}
+ws.on('close', on_close);
+
+function update_server() {
+	THREE.ImageUtils.loadTexture(
+		'/RPC/player/'+camera.position.x+','+(-camera.position.z)+','+camera.position.y, 
+		undefined, on_texture_ready );
+	setTimeout( update_server, 3000 );
+
+}
+
 animate();
 
