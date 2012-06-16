@@ -526,6 +526,7 @@ class GameGrid( object ):
 				'aperture':Pyppet.camera_aperture,
 				'maxblur':Pyppet.camera_maxblur,
 			},
+			'godrays': Pyppet.godrays,
 		}
 
 
@@ -4612,14 +4613,20 @@ class PyppetUI( PyppetAPI ):
 		note = gtk.Notebook(); ex.add( note )
 
 		widget = self.websocket_server.webGL.get_fx_widget_page1()
-		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+		note.append_page( widget, gtk.Label( icons.FX_LAYERS1 ) )
 		widget = self.websocket_server.webGL.get_fx_widget_page2()
-		note.append_page( widget, gtk.Label( icons.FX_LAYERS ) )
+		note.append_page( widget, gtk.Label( icons.FX_LAYERS2 ) )
 
 		page = gtk.VBox()
+
 		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
 		b.connect( self, path='camera_randomize' )
 		page.pack_start( b.widget, expand=False )
+
+		b = CheckButton( 'godrays', tooltip='toggle godrays effect' )
+		b.connect( self, path='godrays' )
+		page.pack_start( b.widget, expand=False )
+
 		for name in 'camera_focus camera_aperture camera_maxblur'.split():
 			if name == 'camera_aperture':
 				slider = SimpleSlider( self, name=name, title=name, max=0.2, driveable=True )
@@ -5442,12 +5449,14 @@ class App( PyppetUI ):
 			self.audio = AudioThread()
 			self.audio.start()
 
+			########## webgl ############
 			self.camera_randomize = False
 			self.camera_focus = 1.5
 			self.camera_aperture = 0.15
 			self.camera_maxblur = 1.0
-
 			self.progressive_baking = True
+			self.godrays = False
+			###########################
 
 			self._blender_embed_windows = []
 			self._blender_embed_toolbar = None

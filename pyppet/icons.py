@@ -59,7 +59,10 @@ OUTLINER_ICON = '⑆'
 TOOLS = '𝙩𝙤𝙤𝙡𝙨'
 
 FX = '𝗙𝗫'
-FX_LAYERS = '☄'
+FX_LAYERS1 = '≗'
+FX_LAYERS2 = '≘'
+
+
 
 REFRESH = '⟳'
 

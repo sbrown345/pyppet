@@ -326,7 +326,7 @@ function on_message(e) {
 
 	for (var name in msg['FX']) {
 		var fx = FX[ name ];
-		fx.enabled = msg['FX'][name][0];	// something BUGGY here TODO
+		fx.enabled = msg['FX'][name][0];
 		var uniforms = msg['FX'][name][1];
 		if (fx.uniforms) {
 			for (var n in uniforms) { fx.uniforms[ n ].value = uniforms[ n ]; }
@@ -335,6 +335,13 @@ function on_message(e) {
 			for (var n in uniforms) { fx.screenUniforms[ n ].value = uniforms[ n ]; }
 		}
 	}
+
+	if (msg.godrays) {
+		if (postprocessing.enabled == false) enable_godrays();
+	} else {
+		if (postprocessing.enabled == true) disable_godrays();
+	}
+
 }
 
 function debug_geo( geo ) {
@@ -701,23 +708,38 @@ function init() {
 	if (DEBUG==false) {
 		setupFX( renderer, scene, camera );
 		//setupDOF( renderer );
-		//setupGodRays( renderer );
+		setupGodRays();
 	}
 }
 
 
 var DEPTH_MATERIAL;
-var postprocessing = { enabled  : true };
+var postprocessing = { enabled  : false };
 var materialDepth;
 
-function setupGodRays( renderer ) {
+
+function enable_godrays() {
+	//renderer.sortObjects = false;
+	renderer.autoClear = false;
+	renderer.setClearColorHex( bgColor, 1 );
+	postprocessing.enabled = true;
+}
+function disable_godrays() {
+	//renderer.sortObjects = false;
+	//renderer.autoClear = true;	# bloom wants autoclear off
+	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
+	postprocessing.enabled = false;
+	scene.overrideMaterial = null;
+
+
+}
+
+
+
+function setupGodRays() {
 	materialDepth = new THREE.MeshDepthMaterial();
 	var materialScene = new THREE.MeshBasicMaterial( { color: 0x000000, shading: THREE.FlatShading } );
 
-
-	renderer.sortObjects = false;
-	renderer.autoClear = false;
-	renderer.setClearColorHex( bgColor, 1 );
 
 	//////////////////// init-postproc ////////////////
 	postprocessing.scene = new THREE.Scene();
@@ -1054,51 +1076,17 @@ function render() {
 	var delta = clock.getDelta();
 	CONTROLLER.update( delta );
 
-	// render shadow map
-	//renderer.autoUpdateObjects = false;
-	//renderer.initWebGLObjects( scene );
-	//renderer.updateShadowMap( scene, camera );
-
-
-/*
-	// render cube map
-	mesh.visible = false;
-	renderer.autoClear = true;
-	cubeCamera.updatePosition( mesh.position );
-	cubeCamera.updateCubeMap( renderer, scene );
-	renderer.autoClear = false;
-	mesh.visible = true;
-*/
-
-
-	// render scene
-	//scene.overrideMaterial = DEPTH_MATERIAL;
-	//FX['BASE'].overrideMaterial = DEPTH_MATERIAL;
-	//renderer.autoUpdateObjects = true;
-
 	scene.updateMatrixWorld();
 	THREE.SceneUtils.traverseHierarchy(
 		scene, 
 		function ( node ) { if ( node instanceof THREE.LOD ) node.update( camera ) } 
 	);
 
-	composer.render( 0.1 );
-/*
-	renderer.clear();
-
-	// Render scene into texture
-
-	scene.overrideMaterial = null;
-	renderer.render( scene, camera, postprocessing.rtTextureColor, true );
-
-	// Render depth into texture
-
-	scene.overrideMaterial = DEPTH_MATERIAL;
-	renderer.render( scene, camera, postprocessing.rtTextureDepth, true );
-
-	// Render bokeh composite
-	renderer.render( postprocessing.scene, postprocessing.camera );
-*/
+	if ( postprocessing.enabled ) {
+		render_godrays();
+	} else {
+		composer.render( 0.1 );
+	}
 
 }
 
