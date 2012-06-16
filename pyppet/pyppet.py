@@ -260,35 +260,38 @@ def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
 SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
 #######################################################
+
 bpy.types.Object.is_lod_proxy = BoolProperty(
 	name='is LOD proxy',
 	description='prevents the LOD proxy from being streamed directly to WebGL client',
 	default=False)
+
+
+## optimize the collada by using this blank material ##
+if '_blank_material_' not in bpy.data.materials:
+	BLANK_MATERIAL = bpy.data.materials.new(name='_blank_material_')
+	BLANK_MATERIAL.diffuse_color = [1,1,1]
+BLANK_MATERIAL = bpy.data.materials[ '_blank_material_' ]
+
+def _dump_collada_data_helper( data ):
+	data.transform( SWAP_MESH )	# flip YZ for Three.js
+	data.calc_normals()
+	for i,mat in enumerate(data.materials): data.materials[ i ] = None
+	if data.materials: data.materials[0] = BLANK_MATERIAL
+	else: data.materials.append( BLANK_MATERIAL )
+
 
 def dump_collada( ob, center=False, hires=False ):
 	assert Pyppet.context.mode !='EDIT'
 	name = ob.name; state = save_selection(); uid = UID( ob )
 	for o in Pyppet.context.scene.objects: o.select = False
 
-	############### ugly ################
-	hack = bpy.data.materials.new(name='tmp')
-	hack.diffuse_color = [0,0,0]
 	mods = []	# to restore later #
 	for mod in ob.modifiers:
-		## hijacked color to pass some hints to Three.js ##
-		#if mod.type == 'MULTIRES':
-		#	hack.diffuse_color.r = 1.0
-		if mod.type == 'ARMATURE':
-			hack.diffuse_color.g = 1.0
-
-		hack.diffuse_color.b = 1.0
-
 		#if mod.type in ('ARMATURE', 'MULTIRES', 'SUBSURF') and mod.show_viewport:
 		if mod.type in ('ARMATURE', 'SUBSURF') and mod.show_viewport:
 			mod.show_viewport = False
 			mods.append( mod )	
-	###################################
-
 
 	if not hires and len(ob.data.vertices) >= 12:	# if lowres LOD
 		print('[ DUMPING LOWRES ]')
@@ -302,8 +305,7 @@ def dump_collada( ob, center=False, hires=False ):
 				proxy = child; break
 		if not proxy:	# otherwise generate a new one #
 			data = create_LOD( ob )
-			data.transform( SWAP_MESH )	# flip YZ for Three.js
-			data.calc_normals()
+			_dump_collada_data_helper( data )
 
 			proxy = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
 			Pyppet.context.scene.objects.link( proxy )
@@ -319,7 +321,6 @@ def dump_collada( ob, center=False, hires=False ):
 			proxy.data.update()			# required
 			#bpy.ops.object.shade_smooth()
 			bpy.context.scene.objects.active = active
-
 
 
 		proxy.hide_select = False	# if True this blocks selecting even here in python!
@@ -343,11 +344,7 @@ def dump_collada( ob, center=False, hires=False ):
 		url = '/tmp/%s(hires).dae' %name
 
 		data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
-		data.transform( SWAP_MESH )	# flip YZ for Three.js
-		data.calc_normals()
-		for i,mat in enumerate(data.materials): data.materials[ i ] = None
-		if data.materials: data.materials[0] = hack
-		else: data.materials.append( hack )
+		_dump_collada_data_helper( data )
 
 		############## create temp object for export ############
 		tmp = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
@@ -988,6 +985,8 @@ class WebServer( object ):
 			print( 'PATH', path, arg)
 			uid = path.split('/')[-1][ :-4 ]	# strip ".jpg"
 			ob = get_object_by_UID( uid )
+
+			data = None
 			if path.startswith('/bake/LOD/'):
 				for child in ob.children:
 					if child.is_lod_proxy:
@@ -997,7 +996,8 @@ class WebServer( object ):
 							extra_objects=[ob]
 						)
 						break
-			else:
+
+			if not data:	# fallback for meshes that are already low resolution without a proxy
 				data = Pyppet.bake_image( ob, *arg.split('|') )
 
 			start_response('200 OK', [('Content-Length',str(len(data)))])

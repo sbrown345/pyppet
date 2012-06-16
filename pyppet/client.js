@@ -385,21 +385,6 @@ function on_collada_ready( collada ) {
 
 		_mesh.geometry.computeTangents();		// requires UV's
 
-		// hijack material color to pass info from blender //
-		if (_mesh.material.color.r) {
-			lod.multires = true;
-			lod.has_displacement = true;
-		} else {
-			lod.multires = false;
-			lod.has_displacement = false;
-		}
-		if (_mesh.material.color.g) {	// mesh deformed with an armature will not have AO
-			lod.has_AO = true;
-		} else {
-			lod.has_AO = false;
-		}
-		//if (_mesh.material.color.b) { lod.auto_subdivision = true; }
-		//else { lod.auto_subdivison = false; }
 
 		lod.shader = create_normal_shader(
 			{
@@ -424,7 +409,6 @@ function on_collada_ready( collada ) {
 			}
 		);
 
-
 		var lod = new THREE.LOD();
 		lod.name = _mesh.name;
 		lod.base_mesh = null;
@@ -435,6 +419,9 @@ function on_collada_ready( collada ) {
 		lod.dirty_modifiers = true;
 		lod.auto_subdivision = false;
 
+		lod.multires = false;
+		lod.has_displacement = false;
+		lod.has_AO = true;
 
 		lod.position.copy( _mesh.position );
 		lod.scale.copy( _mesh.scale );
