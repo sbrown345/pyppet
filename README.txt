@@ -10,9 +10,12 @@ Basic Usage:
 Installing:
 	./install-fedora.sh
 
+Tested With:
+	Fedora			( primary dev platform )
+	Ubuntu/Debian	( not well tested anymore )
 
 Known Issues:
-	. Only works on Fedora, (Ubuntu is broken)
+	. Ubuntu/Debian users need to make a sym-link for "chromium-browser" to "chromium"
 
 	. Xembed only works on Linux
 

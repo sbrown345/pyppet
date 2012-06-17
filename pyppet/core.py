@@ -315,8 +315,8 @@ class BlenderHack( object ):
 	def drop_on_view(self, wid, con, x, y, time):
 		ob = self.context.active_object
 		if type(DND.source_object) is bpy.types.Material:
-			print('material dropped')
 			mat = DND.source_object
+			print('[material dropped: %s]'%mat)
 			index = 0
 			for index in range( len(ob.data.materials) ):
 				if ob.data.materials[ index ] == mat: break

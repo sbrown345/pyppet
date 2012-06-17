@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
 # License: BSD
 ################################################################
-VERSION = '1.9.6g'
+VERSION = '1.9.7a'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
@@ -584,7 +584,7 @@ class GameGrid( object ):
 						'segments_u' : ob.data.resolution_u * spline.resolution_u,
 						'color' : [1,1,1],
 					}
-					if len(ob.data.materials):
+					if len(ob.data.materials) and spline.material_index < len(ob.data.materials) and ob.data.materials[ spline.material_index ]:
 						s['color'] = [ round(x,3) for x in ob.data.materials[spline.material_index].diffuse_color ]
 
 					splines.append( s )
@@ -5081,75 +5081,95 @@ class PyppetUI( PyppetAPI ):
 			combo.set_tooltip_text( 'view draw type' )
 			combo.connect('changed', lambda c,o: setattr(o,'draw_type',c.get_active_text()), ob)
 
-
-			wrapper = ENGINE.get_wrapper( ob )
-			if not wrapper.is_subgeom:	# sub-geom not allowed to have a body
-
-				g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
-				g.set_no_show_all(True)
-
-				Mslider = Slider(
-					ob, name='ode_mass', title='', tooltip='mass',
-					min=0.001, max=100.0, no_show_all=True,
+			if ob.is_lod_proxy:	# prevent physics on LOD proxies
+				pass
+			elif ob.type == 'CURVE':
+				slider = Slider(
+					ob.data, name='bevel_depth', title='bevel', tooltip='bevel depth',
+					min=0.0, max=1.0,
 				)
+				header.pack_start( slider.widget )
 
-				if ob.ode_use_body:
-					g.show()
-					Mslider.widget.show()
-				else:
-					g.hide()	# can't be in pose-mode bug! TODO fix me
-					Mslider.widget.hide()
+				slider = Slider(
+					ob.data, name='bevel_resolution', title='resolution V', tooltip='bevel resolution',
+					min=0, max=12, integer=True,
+				)
+				header.pack_start( slider.widget )
 
-				b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
-				b.set_tooltip_text('toggle body physics')
-				header.pack_start( b, expand=False )
-				b.set_active( ob.ode_use_body )
-				b.connect('toggled', self.toggle_body, g, Mslider.widget)
-
-				g.set_tooltip_text('toggle gravity')
-				header.pack_start( g, expand=False )
-				g.set_active( ob.ode_use_gravity )
-				g.connect('toggled', self.toggle_gravity)
-
-				header.pack_start(Mslider.widget, expand=True)
-
-
-
-			combo = gtk.ComboBoxText()
-			Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, border_width=0, no_show_all=True, tooltip='friction' )
-			Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, border_width=0, no_show_all=True, tooltip='bounce' )
-
-			b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
-			b.set_tooltip_text('toggle collision')
-			footer.pack_start( b, expand=False )
-			b.set_active( ob.ode_use_collision )
-			b.connect('toggled', self.toggle_collision, combo, Fslider.widget, Bslider.widget)
-
-			footer.pack_start( combo, expand=False )
-			for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
-				combo.append('id', type)
-				if type == ob.game.collision_bounds_type:
-					gtk.combo_box_set_active( combo, i )
-			combo.set_tooltip_text( 'collision type' )
-			combo.connect('changed',self.change_collision_type, ob )
-
-			footer.pack_start( Fslider.widget )
-			footer.pack_start( Bslider.widget )
-
-			if ob.ode_use_collision:
-				combo.show()
-				Fslider.widget.show()
-				Bslider.widget.show()
+				slider = Slider(
+					ob.data, name='resolution_u', title='resolution U', tooltip='resolution U (affecting all child splines)',
+					min=1, max=24, integer=True,
+				)
+				footer.pack_start( slider.widget )
 
 			else:
-				combo.hide()
-				Fslider.widget.hide()
-				Bslider.widget.hide()
+				wrapper = ENGINE.get_wrapper( ob )
+				if not wrapper.is_subgeom:	# sub-geom not allowed to have a body
 
-			combo.set_no_show_all(True)
+					g = gtk.ToggleButton( icons.GRAVITY ); g.set_relief( gtk.RELIEF_NONE )
+					g.set_no_show_all(True)
 
-			#root.pack_start( gtk.Label() )
+					Mslider = Slider(
+						ob, name='ode_mass', title='', tooltip='mass',
+						min=0.001, max=100.0, no_show_all=True,
+					)
 
+					if ob.ode_use_body:
+						g.show()
+						Mslider.widget.show()
+					else:
+						g.hide()	# can't be in pose-mode bug! TODO fix me
+						Mslider.widget.hide()
+
+					b = gtk.ToggleButton( icons.BODY ); b.set_relief( gtk.RELIEF_NONE )
+					b.set_tooltip_text('toggle body physics')
+					header.pack_start( b, expand=False )
+					b.set_active( ob.ode_use_body )
+					b.connect('toggled', self.toggle_body, g, Mslider.widget)
+
+					g.set_tooltip_text('toggle gravity')
+					header.pack_start( g, expand=False )
+					g.set_active( ob.ode_use_gravity )
+					g.connect('toggled', self.toggle_gravity)
+
+					header.pack_start(Mslider.widget, expand=True)
+
+
+
+				combo = gtk.ComboBoxText()
+				Fslider = SimpleSlider( ob, name='ode_friction', title='', max=2.0, border_width=0, no_show_all=True, tooltip='friction' )
+				Bslider = SimpleSlider( ob, name='ode_bounce', title='', max=1.0, border_width=0, no_show_all=True, tooltip='bounce' )
+
+				b = gtk.ToggleButton( icons.COLLISION ); b.set_relief( gtk.RELIEF_NONE )
+				b.set_tooltip_text('toggle collision')
+				footer.pack_start( b, expand=False )
+				b.set_active( ob.ode_use_collision )
+				b.connect('toggled', self.toggle_collision, combo, Fslider.widget, Bslider.widget)
+
+				footer.pack_start( combo, expand=False )
+				for i,type in enumerate( 'BOX SPHERE CAPSULE CYLINDER'.split() ):
+					combo.append('id', type)
+					if type == ob.game.collision_bounds_type:
+						gtk.combo_box_set_active( combo, i )
+				combo.set_tooltip_text( 'collision type' )
+				combo.connect('changed',self.change_collision_type, ob )
+
+				footer.pack_start( Fslider.widget )
+				footer.pack_start( Bslider.widget )
+
+				if ob.ode_use_collision:
+					combo.show()
+					Fslider.widget.show()
+					Bslider.widget.show()
+
+				else:
+					combo.hide()
+					Fslider.widget.hide()
+					Bslider.widget.hide()
+
+				combo.set_no_show_all(True)
+
+			############################################################
 			header.pack_start( gtk.Label() )
 
 			b = gtk.ToggleButton( icons.STREAMING )
@@ -5837,22 +5857,23 @@ class MaterialsUI(object):
 		Pyppet.register( self.on_active_object_changed )
 
 	def on_active_object_changed(self, ob, expand_material=None):
-		if ob.type not in ('MESH','META'): return
+		if ob.type not in ('MESH','META', 'CURVE'): return
 
 		self.widget.remove( self.root )
 		self.root = root = gtk.VBox()
 		self.widget.add( self.root )
 		root.set_border_width(2)
 
-		ex = gtk.Expander( 'webgl-tint' )
-		ex.set_expanded(True)
-		root.pack_start( ex, expand=False )
-		hsv = gtk.HSV(); ex.add( hsv )
-		r,g,b,a = ob.color
-		hsv.set_color( *gtk.rgb2hsv(r,g,b) )
-		hsv.connect('changed', self.color_changed, ob, 'color', None)
+		if ob.type != 'CURVE':
+			ex = gtk.Expander( 'webgl-tint' )
+			ex.set_expanded(True)
+			root.pack_start( ex, expand=False )
+			hsv = gtk.HSV(); ex.add( hsv )
+			r,g,b,a = ob.color
+			hsv.set_color( *gtk.rgb2hsv(r,g,b) )
+			hsv.connect('changed', self.color_changed, ob, 'color', None)
 
-		if ob.type == 'MESH':
+		if ob.type in ('MESH','CURVE'):
 			exs = []
 			for mat in ob.data.materials:
 				if not mat: continue
@@ -5895,6 +5916,7 @@ class MaterialsUI(object):
 				#hsv.connect('changed', self.color_changed, mat, 'specular_color', eb)
 				#note.append_page( hsv, gtk.Label('spec') )
 
+				if ob.type == 'CURVE': continue
 
 				subex = gtk.Expander( icons.SETTINGS )
 				subex.set_border_width(2)

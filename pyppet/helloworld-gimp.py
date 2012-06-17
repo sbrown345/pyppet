@@ -1,6 +1,8 @@
 # run: ~/Blender/blender --python helloworld-gimp.py
 '''
 notes:
+	THIS IS BROKEN
+
 	looks like there is a problem that if:
 		. a new image is created and not saved, then,
 		. gimp prompts "do you want to save", but,

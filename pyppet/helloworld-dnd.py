@@ -17,7 +17,7 @@ class MyApp( BlenderHackLinux ):
 
 		self.window = win = gtk.Window()
 		win.connect('destroy', lambda w: setattr(self,'active',False) )
-		win.set_title( 'GtkBlender SDK' )
+		win.set_title( 'hello world DND' )
 		self.root = root = gtk.VBox()
 		win.add( root )
 
@@ -32,18 +32,14 @@ class MyApp( BlenderHackLinux ):
 		someobject = 'hello world (source)'
 		DND.make_source( button, someobject, 'arg2', 'arg3', 'arg4' )
 
-		self.blender_container = eb = gtk.EventBox()
-		root.pack_start( self.blender_container )
 
-		DND.make_destination(eb)
-		extra_arg = 'hello world (destination)'
-		eb.connect(
-			'drag-drop', self.on_drop,
-			extra_arg,	'another arg' # more extra args can go here
+		xsocket, container = self.create_embed_widget(
+			on_dnd = self.on_drop,
+			on_resize = self.on_resize_blender,		# REQUIRED
+			on_plug = self.on_plug_blender,		# REQUIRED
 		)
-
-		xsocket, container = self.create_blender_xembed_socket()
-		eb.add( container )
+		self.blender_container = container
+		root.pack_start( self.blender_container )
 
 		win.show_all()				# window and all widgets shown first
 		xid = self.do_xembed( xsocket, 'Blender' )	# this must come last
@@ -52,14 +48,12 @@ class MyApp( BlenderHackLinux ):
 	def on_click(self, button):
 		print('you clicked')
 
-	def on_drop(self, widget, gcontext, x, y, time, extra_arg, xxx):
+	def on_drop(self, widget, gcontext, x, y, time):
 		print( 'this is the widget you dropped on', widget )
 		print( 'this is the widget you dragged from', DND.source_widget)
 		print( 'mouse:', x,y )
-		print( 'extra argument from destination-side', extra_arg )
 		print( 'first extra argument from source-side', DND.source_object )
 		print( 'all extra arguments from source-side', DND.source_args )
-		print( 'ANOTHER ARG', xxx)
 
 	def mainloop(self):
 		self.active = True

@@ -71,16 +71,16 @@ function generate_extruded_splines( parent, ob ) {
 			extrude_path,
 			spline.segments_u, 	// using curve.resolution_u * spline.resolution_u
 			ob.radius+0.001, 		// using curve.bevel_depth
-			ob.segments_v+1, 	// using curve.bevel_resolution
+			ob.segments_v+3, 	// using curve.bevel_resolution
 			spline.closed, 
 			false
 		);
 
-		var material = new THREE.MeshLambertMaterial({
-		      color: 0xff00ff,
-		      opacity: (geometry.debug) ? 0.2 : 0.8,
-		      transparent: true
-		});
+		//var material = new THREE.MeshLambertMaterial( {color: 0xff00ff} );
+		var material = new THREE.MeshPhongMaterial( 
+				{ color: 0x000000, specular: 0x888888, ambient: 0x000000, shininess: 250, perPixel: true }
+		);
+
 		var wire_material = new THREE.MeshBasicMaterial({
 		    color: 0x000000,
 		    opacity: 0.5,
@@ -88,10 +88,11 @@ function generate_extruded_splines( parent, ob ) {
 		});
 
 		// 3d shape
-		var tubeMesh = THREE.SceneUtils.createMultiMaterialObject(
-			geometry, 
-			[ material, wire_material ]
-		);
+		//var tubeMesh = THREE.SceneUtils.createMultiMaterialObject(
+		//	geometry, 
+		//	[ material, wire_material ]
+		//);
+		var tubeMesh = new THREE.Mesh( geometry, material );
 		tubeMesh.shader = material;
 
 		if (USE_SHADOWS) {
