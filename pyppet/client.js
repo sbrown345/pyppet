@@ -76,19 +76,28 @@ function generate_extruded_splines( parent, ob ) {
 			false
 		);
 
-		// 3d shape
-		var tubeMesh = THREE.SceneUtils.createMultiMaterialObject(geometry, [
-		  new THREE.MeshLambertMaterial({
+		var material = new THREE.MeshLambertMaterial({
 		      color: 0xff00ff,
 		      opacity: (geometry.debug) ? 0.2 : 0.8,
 		      transparent: true
-		  }),
-		 new THREE.MeshBasicMaterial({
+		});
+		var wire_material = new THREE.MeshBasicMaterial({
 		    color: 0x000000,
 		    opacity: 0.5,
 		    wireframe: true
-		})]);
+		});
 
+		// 3d shape
+		var tubeMesh = THREE.SceneUtils.createMultiMaterialObject(
+			geometry, 
+			[ material, wire_material ]
+		);
+		tubeMesh.shader = material;
+
+		if (USE_SHADOWS) {
+			tubeMesh.castShadow = true;
+			tubeMesh.receiveShadow = true;
+		}
 		parent.add( tubeMesh );
 	}
 }
@@ -108,7 +117,7 @@ function on_message(e) {
 		var parent = CURVES[ name ];
 		var ob = msg['curves'][name];
 
-		if ( parent.children.length ) parent.remove( parent.children[0] );  // TODO remove all children
+		while ( parent.children.length ) parent.remove( parent.children[0] );
 
 		generate_extruded_splines(
 			parent,
@@ -128,6 +137,14 @@ function on_message(e) {
 		//parent.quaternion.y = ob.rot[2];
 		//parent.quaternion.z = ob.rot[3];
 
+		for (var i=0; i<parent.children.length; i++) {
+			var child = parent.children[ i ];
+			var spline = ob.splines[ i ];
+			child.shader.color.r = spline.color[0];
+			child.shader.color.g = spline.color[1];
+			child.shader.color.b = spline.color[2];
+
+		}
 
 	}
 

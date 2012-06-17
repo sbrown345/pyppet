@@ -582,7 +582,11 @@ class GameGrid( object ):
 						'closed' : spline.use_cyclic_u,
 						'points' : points,
 						'segments_u' : ob.data.resolution_u * spline.resolution_u,
+						'color' : [1,1,1],
 					}
+					if len(ob.data.materials):
+						s['color'] = [ round(x,3) for x in ob.data.materials[spline.material_index].diffuse_color ]
+
 					splines.append( s )
 
 
@@ -1023,12 +1027,13 @@ class WebServer( object ):
 				return []
 
 			elif path.startswith('/RPC/select/'):
-				uid = path.split('/')[-1]
-				print('RPC', uid)
-				for ob in bpy.context.scene.objects: ob.select=False
-				ob = get_object_by_UID( uid )
-				ob.select = True
-				bpy.context.scene.objects.active = ob
+				if bpy.context.mode == 'OBJECT':
+					uid = path.split('/')[-1]
+					print('RPC', uid)
+					for ob in bpy.context.scene.objects: ob.select=False
+					ob = get_object_by_UID( uid )
+					ob.select = True
+					bpy.context.scene.objects.active = ob
 
 				start_response('200 OK', [('Content-Length','0')])
 				return []
