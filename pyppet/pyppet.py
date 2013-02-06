@@ -1,8 +1,8 @@
 # _*_ coding: utf-8 _*_
-# Pyppet2 - Copyright The Blender Research Lab. 2012 (Brett Hartshorn)
-# License: BSD
+# Pyppet2 - Copyright Brett Hartshorn 2012-2013
+# License: "New" BSD
 ################################################################
-VERSION = '1.9.7a'
+VERSION = '1.9.7b'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
