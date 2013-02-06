@@ -486,8 +486,10 @@ class OdeSingleton(object):
 
 
 LOCK = threading._allocate_lock()
-ENGINE = OdeSingleton( lock=LOCK )
-
+if hasattr(ode, 'InitODE'):
+	ENGINE = OdeSingleton( lock=LOCK )
+else:
+	ENGINE = None
 
 ############################################################
 class Joint( object ):

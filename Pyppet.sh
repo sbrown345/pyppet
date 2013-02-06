@@ -17,9 +17,11 @@ rm -rf /tmp/texture-cache
 #wine ~/blender-mingw/blender.exe --python ./pyppet.py
 echo $1
 
-bits=`getconf LONG_BIT`
-if [ $bits -eq 32 ]; then
-	bin/blender32bits/blender $1 -noaudio --python ./pyppet/pyppet.py
-else
-	bin/blender64bits/blender $1 -noaudio --python ./pyppet/pyppet.py
-fi
+#bits=`getconf LONG_BIT`
+#if [ $bits -eq 32 ]; then
+#	bin/blender32bits/blender $1 -noaudio --python ./pyppet/pyppet.py
+#else
+#	bin/blender64bits/blender $1 -noaudio --python ./pyppet/pyppet.py
+#fi
+
+blender $1 -noaudio --python ./pyppet/pyppet.py

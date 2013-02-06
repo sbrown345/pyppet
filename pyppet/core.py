@@ -14,8 +14,10 @@ if sys.version_info[0] >= 3:
 import cv
 import highgui as gui
 if hasattr(gui,'CreateCameraCapture'):
+	USE_OPENCV = True
 	DEFAULT_WEBCAM_CAPTURE = gui.CreateCameraCapture(0)
 else:
+	USE_OPENCV = False
 	DEFAULT_WEBCAM_CAPTURE = None
 
 #import libclutter_gtk as clutter

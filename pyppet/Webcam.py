@@ -343,7 +343,10 @@ class WebCamera(object):
 		gui.ReleaseCapture( self.cam )
 		print('[[webcam thread - clean exit]]')
 
-Singleton = WebCamera( active=True )
+if USE_OPENCV:
+	Singleton = WebCamera( active=True )
+else:
+	Singleton = None
 
 class Widget(object):
 	def exit(self, arg):

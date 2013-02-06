@@ -4,6 +4,10 @@
 import os, sys, ctypes, math, time
 
 import cv
+USE_OPENCV = True
+if not hasattr(cv,'CreateMemStorage'):
+	USE_OPENCV = False
+
 import gtk3 as gtk
 #import libfreenect_sync as freenect	# freenect_sync is broken on fedora!!
 import threading
@@ -85,8 +89,9 @@ class Point(object):
 
 class Shape(object):
 	HAND = None
-	storage_hull = cv.CreateMemStorage(0)
-	storage_defects = cv.CreateMemStorage(0)
+	if USE_OPENCV:
+		storage_hull = cv.CreateMemStorage(0)
+		storage_defects = cv.CreateMemStorage(0)
 
 	def touches( self, other ):
 		pt1, pt2 = self.rectangle
@@ -265,7 +270,8 @@ class Shape(object):
 class Kinect( object ):
 	BUFFER = []
 	PREVIEW_IMAGE = None
-	DEPTH16RAW = cv.CreateImage((640,480), cv.IPL_DEPTH_16S, 1)
+	if USE_OPENCV:
+		DEPTH16RAW = cv.CreateImage((640,480), cv.IPL_DEPTH_16S, 1)
 
 	## gui options ##
 	show_depth = False
@@ -463,10 +469,11 @@ class ProcessShapes( object ):
 
 
 class ProcessContours( object ):
-	DEPTH640 = cv.CreateImage((640,480), cv.IPL_DEPTH_8U, 3)
-	#DEPTH320 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
-	DEPTH240 = cv.CreateImage((240,180), cv.IPL_DEPTH_8U, 3)
-	DEPTH8 = cv.CreateImage((640,480), 8, 1)
+	if USE_OPENCV:
+		DEPTH640 = cv.CreateImage((640,480), cv.IPL_DEPTH_8U, 3)
+		#DEPTH320 = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
+		DEPTH240 = cv.CreateImage((240,180), cv.IPL_DEPTH_8U, 3)
+		DEPTH8 = cv.CreateImage((640,480), 8, 1)
 
 	def __init__(self):
 		self.active = False

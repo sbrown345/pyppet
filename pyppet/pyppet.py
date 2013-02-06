@@ -1269,8 +1269,12 @@ class AudioThread(object):
 		self.context = al.CreateContext( self.output )
 		al.MakeContextCurrent( self.context )
 		self.microphone = Microphone( analysis=True, streaming=False )
-		self.synth = SynthMachine()
-		self.synth.setup()
+
+		if hasattr(fluid,'new_fluid_synth'):
+			self.synth = SynthMachine()
+			self.synth.setup()
+		else:
+			self.synth = None
 
 	def update(self):		# called from main #
 		if self.active: self.microphone.sync()
@@ -1278,7 +1282,7 @@ class AudioThread(object):
 	def loop(self):
 		while self.active:
 			self.microphone.update()
-			self.synth.update()
+			if self.synth: self.synth.update()
 			time.sleep(0.05)
 		print('[audio thread finished]')
 		self.microphone.close()
@@ -1293,7 +1297,7 @@ class AudioThread(object):
 		print('[audio thread exit]')
 		self.active = False
 		time.sleep(0.1)
-		self.synth.active = False
+		if self.synth: self.synth.active = False
 
 		#ctx=al.GetCurrentContext()
 		#dev = al.GetContextsDevice(ctx)
@@ -5102,7 +5106,7 @@ class PyppetUI( PyppetAPI ):
 				)
 				footer.pack_start( slider.widget )
 
-			else:
+			elif ENGINE:
 				wrapper = ENGINE.get_wrapper( ob )
 				if not wrapper.is_subgeom:	# sub-geom not allowed to have a body
 
@@ -5371,8 +5375,10 @@ class PyppetUI( PyppetAPI ):
 
 		page = gtk.Frame()
 		note.append_page( page, gtk.Label(icons.KEYBOARD) )
-		w = self.audio.synth.channels[0].get_widget()
-		page.add( w )
+
+		if self.audio.synth:
+			w = self.audio.synth.channels[0].get_widget()
+			page.add( w )
 
 		##################################
 		self.window.connect('destroy', self.exit )
@@ -5496,7 +5502,8 @@ class App( PyppetUI ):
 
 	def exit(self, arg):
 		#os.system('killall chromium-browser')
-		self.webcam.active = False
+		if hasattr(self,'webcam'): self.webcam.active = False
+
 		self.audio.exit()
 		self.active = False
 		self.websocket_server.stop()
@@ -5606,7 +5613,7 @@ class App( PyppetUI ):
 			models = self.entities.values()
 			for mod in models: mod.update_poses()
 
-			if ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
+			if ENGINE and ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
 
 			DriverManager.update()	# needs to come after solver updates and Dynamic Targets?
 
@@ -6194,20 +6201,20 @@ class ToolsUI( object ):
 		box = self.new_page( icons.GAMEPAD )	# gamepad page
 		self.gamepads_widget = GamepadsWidget( box )
 
-		box = self.new_page( icons.WEBCAM )	# webcam
-		widget = Webcam.Widget( box )
-		Pyppet.webcam = self.webcam = widget.webcam
+		if USE_OPENCV:
+			box = self.new_page( icons.WEBCAM )	# webcam
+			widget = Webcam.Widget( box )
+			Pyppet.webcam = self.webcam = widget.webcam
+			DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender embed window to assign to material
 
-		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender embed window to assign to material
+			#self.webcam.start_thread( self.lock )	# TODO fix me
+			#self.webcam.lock = self.lock
 
-		#self.webcam.start_thread( self.lock )	# TODO fix me
-		#self.webcam.lock = self.lock
-
-		box = self.new_page( icons.KINECT )		# kinect page
-		widget = Kinect.Widget( box )
-		self.kinect = widget.kinect
-		DND.make_source( widget.dnd_container, 'KINECT' )	# make drag source
-		widget.start_threads( self.lock )
+			box = self.new_page( icons.KINECT )		# kinect page
+			widget = Kinect.Widget( box )
+			self.kinect = widget.kinect
+			DND.make_source( widget.dnd_container, 'KINECT' )	# make drag source
+			widget.start_threads( self.lock )
 
 		box = self.new_page( icons.WIIMOTE )	# wiimote page
 		self.wiimotes_widget = WiimotesWidget( box )

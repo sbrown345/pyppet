@@ -1,8 +1,13 @@
 #!/usr/bin/python
+# apt-get install python-wnck
 # apt-get install gnome-python-extras
 # can not be run in the the same process with gtk3 #
 import os, sys, time
-import wnck
+try:
+	import wnck
+except ImportError:
+	print('ERROR: wnck not installed - Ubuntu users can: "sudo apt-get install python-wnck"')
+	sys.exit()
 
 NAME = 'Blender'
 use_startswith = '--use-starts-with' in sys.argv
