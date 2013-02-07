@@ -25,6 +25,11 @@ import gtk3 as gtk
 import icons
 import Blender
 
+import math
+
+## make sure we can import and load data from same directory ##
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
 
 #assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
