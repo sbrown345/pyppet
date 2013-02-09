@@ -1,7 +1,10 @@
+## Server Module ##
+
 import os, sys, time
 
-#import gtk3 as gtk
-#import math
+## make sure we can import and load data from same directory ##
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
 ################# Server ################
 import wsgiref
@@ -15,6 +18,7 @@ import json
 
 import bpy, mathutils
 from bpy.props import *
+
 
 from core import *
 
@@ -693,7 +697,7 @@ class WebServer( object ):
 	def __init__(self, host=HOST_NAME, port=8080):
 		self.init_webserver( host=host, port=port )
 
-	def update(self, context):
+	def update(self, context=None):
 		if self.httpd: self.httpd.handle_request()
 
 	def close(self):
@@ -929,3 +933,128 @@ class WebServer( object ):
 
 
 #-----------------------------------------------------------------------
+class Remote3dsMax(object):
+	def __init__(self, exe_path=None, use_wine=True):
+		if not exe_path:
+			exe_path = os.path.expanduser('~/.wine/drive_c/Program Files/Autodesk/3ds Max 2009/3dsmax.exe')
+		assert os.path.isfile( exe_path )
+		self.exe_path = exe_path
+		self.use_wine = use_wine
+		self._wait_for_loading = []
+
+	def run(self):
+		cmd = []
+		if self.use_wine: cmd.append( 'wine' )
+
+		cmd = [self.exe_path, '-q', '-u', 'MAXScript', 'pyppet/stream_api.ms']
+		print(cmd)
+		self._proc = subprocess.Popen( cmd )
+
+	def update(self, clipboard):
+		#print( dir(clipboard) )
+		txt = clipboard.wait_for_text()
+		print(txt)
+
+		if txt.startswith('@'):
+			cmd, cat, args = txt[1:].split('@')
+			obname, args = args.split('~')
+			exargs = None
+			if '*' in args:
+				args, exargs = args.split('*')
+			# args is pos, scl, quat #
+			pos,scl,quat = args.split('|')
+			pos = eval(pos)
+			scl = eval(scl)
+
+			print('objectname',obname)
+			print('args',args)
+			print(quat)
+
+			######################################################################
+			## API ##
+
+			if cmd == 'UPDATE:STREAM':
+				exargs or None
+				if exargs: # streaming mesh
+					verts = [ eval(v) for v in verts.split('][') ]
+
+				db.update_object(name, pos, scl, quat)
+
+			if cmd == 'UPDATE:SELECT':
+				#db.update_object(name, pos, scl, quat, select=bool(eval(exarg)))
+				print('select',name)
+
+			elif cmd == 'SAVING:3DS':
+				self._wait_for_loading.append( obname )
+
+			elif cmd == 'LOAD:3DS':
+				assert obname == self._wait_for_loading.pop()
+				## TODO blender fbx loading
+				obnames = bpy.data.objects.key()
+
+				bpy.ops.import_scene.autodesk_3ds(
+					filepath=os.path.expanduser('~/.wine/drive_c/%s.3ds'%obname), 
+					filter_glob="*.3ds", 
+					constrain_size=10, 
+					use_image_search=False, 
+					use_apply_transform=True, 
+					axis_forward='Y', 
+					axis_up='Z'
+				)
+				for name in bpy.data.objects.keys():
+					if name not in obnames:
+						print('new import', name)
+
+			elif cmd == '@database:add_object@':
+				self._wait_for_loading.append( obname )
+				db.add_object(name, cat, pos, rot, scl)
+
+
+
+class TestApp( BlenderHackLinux ):
+	def __init__(self):
+		assert self.setup_blender_hack( bpy.context )
+
+		self.window = win = gtk.Window()
+		win.connect('destroy', lambda w: setattr(self,'active',False) )
+		win.set_title( 'tools' )	# note blender name not allowed here
+		self.root = root = gtk.VBox()
+		win.add( root )
+
+
+		frame = gtk.Frame()
+		frame.set_border_width( 10 )
+		root.pack_start( frame, expand=False )
+		button = gtk.Button('connect 3dsMax')
+		button.set_border_width( 10 )
+		button.connect('clicked', self.connect_3dsmax)
+		frame.add( button )
+
+		win.show_all()				# window and all widgets shown first
+		self.clipboard = self.window.get_clipboard()  # clipboard is current workaround for talking to 3dsmax
+
+		self.webserver = WebServer()
+		self.websocket_server = WebSocketServer( listen_host=HOST_NAME, listen_port=8081 )
+		self.websocket_server.start()	# polls in a thread
+
+		self._3dsmax = None
+
+
+	def connect_3dsmax(self, button):
+		print('you clicked')
+		self._3dsmax = Remote3dsMax()
+		self._3dsmax.run()
+
+
+	def mainloop(self):
+		self.active = True
+		while self.active:
+			self.update_blender_and_gtk()
+			self.webserver.update()
+			if self._3dsmax: self._3dsmax.update( self.clipboard )
+
+if __name__ == '__main__':
+	print('running server test...')
+	test = TestApp()
+	test.mainloop()
+	print('webserver test complete.')

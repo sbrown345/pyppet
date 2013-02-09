@@ -25,6 +25,7 @@ import gtk3 as gtk
 import icons
 import Blender
 
+import subprocess
 import math
 
 ## make sure we can import and load data from same directory ##
