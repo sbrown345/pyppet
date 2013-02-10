@@ -933,14 +933,24 @@ class WebServer( object ):
 
 
 #-----------------------------------------------------------------------
+
+
+
+
+
+#-----------------------------------------------------------------------
 class Remote3dsMax(object):
-	def __init__(self, exe_path=None, use_wine=True):
+	def __init__(self, api, exe_path=None, use_wine=True):
 		if not exe_path:
 			exe_path = os.path.expanduser('~/.wine/drive_c/Program Files/Autodesk/3ds Max 2009/3dsmax.exe')
 		assert os.path.isfile( exe_path )
 		self.exe_path = exe_path
 		self.use_wine = use_wine
 		self._wait_for_loading = []
+
+		import Database
+		self.db = Database.create_database( api )
+
 
 	def run(self):
 		cmd = []
@@ -951,22 +961,29 @@ class Remote3dsMax(object):
 		self._proc = subprocess.Popen( cmd )
 
 	def update(self, clipboard):
-		#print( dir(clipboard) )
-		txt = clipboard.wait_for_text()
-		print(txt)
+		try:
+			txt = clipboard.wait_for_text()
+		except ValueError: #NULL pointer access
+			txt = ''
 
 		if txt.startswith('@'):
+			db = self.db
+
 			cmd, cat, args = txt[1:].split('@')
-			obname, args = args.split('~')
+			name, args = args.split('~')
 			exargs = None
 			if '*' in args:
 				args, exargs = args.split('*')
+
 			# args is pos, scl, quat #
 			pos,scl,quat = args.split('|')
 			pos = eval(pos)
 			scl = eval(scl)
+			_, w, x,y,z = quat.replace(')','').split()
+			quat = (float(w),float(x),float(y),float(z))
 
-			print('objectname',obname)
+			print('CMD',cmd)
+			print('objectname',name)
 			print('args',args)
 			print(quat)
 
@@ -978,17 +995,19 @@ class Remote3dsMax(object):
 				if exargs: # streaming mesh
 					verts = [ eval(v) for v in verts.split('][') ]
 
-				db.update_object(name, pos, scl, quat)
+				db.update_object(name, pos, scl, quat, category=cat)
 
 			if cmd == 'UPDATE:SELECT':
 				#db.update_object(name, pos, scl, quat, select=bool(eval(exarg)))
 				print('select',name)
 
 			elif cmd == 'SAVING:3DS':
-				self._wait_for_loading.append( obname )
+				self._wait_for_loading.append( name )
 
 			elif cmd == 'LOAD:3DS':
-				assert obname == self._wait_for_loading.pop()
+				assert name == self._wait_for_loading.pop()
+				assert os.path.isfile( os.path.expanduser('~/.wine/drive_c/%s.3ds'%obname) )
+
 				## TODO blender fbx loading
 				obnames = bpy.data.objects.key()
 
@@ -997,17 +1016,18 @@ class Remote3dsMax(object):
 					filter_glob="*.3ds", 
 					constrain_size=10, 
 					use_image_search=False, 
-					use_apply_transform=True, 
+					use_apply_transform=False, 
 					axis_forward='Y', 
 					axis_up='Z'
 				)
-				for name in bpy.data.objects.keys():
-					if name not in obnames:
-						print('new import', name)
+				for n in bpy.data.objects.keys():
+					if n not in obnames:
+						print('new import', n)
 
 			elif cmd == '@database:add_object@':
-				self._wait_for_loading.append( obname )
-				db.add_object(name, cat, pos, rot, scl)
+
+				self._wait_for_loading.append( name )
+				db.add_object(name, pos, scl, quat, category=category)
 
 
 
@@ -1042,7 +1062,7 @@ class TestApp( BlenderHackLinux ):
 
 	def connect_3dsmax(self, button):
 		print('you clicked')
-		self._3dsmax = Remote3dsMax()
+		self._3dsmax = Remote3dsMax( bpy )
 		self._3dsmax.run()
 
 

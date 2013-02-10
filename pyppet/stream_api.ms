@@ -125,7 +125,8 @@ function on_geometry_changed ev id = (
 		setClipboardText( txt )
 		dump_object( ob )
 		sleep 0.01
-		setClipboardText( "@LOAD:3DS@" )
+		txt = "@LOAD:3DS@" + cname + "@" + ob.name + "~" + ob.position as string + "|" + ob.scale as string + "|" + ob.rotation as string + "*" + data
+		setClipboardText( txt )
 		sleep 0.09
 	) else (
 
