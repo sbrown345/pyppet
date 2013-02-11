@@ -947,6 +947,7 @@ class Remote3dsMax(object):
 		self.exe_path = exe_path
 		self.use_wine = use_wine
 		self._wait_for_loading = []
+		self._prevload = None
 
 		import Database
 		self.db = Database.create_database( api )
@@ -982,10 +983,11 @@ class Remote3dsMax(object):
 			_, w, x,y,z = quat.replace(')','').split()
 			quat = (float(w),float(x),float(y),float(z))
 
-			print('CMD',cmd)
-			print('objectname',name)
-			print('args',args)
-			print(quat)
+			if cmd != 'UPDATE:STREAM':
+				print('CMD',cmd)
+				print('objectname',name)
+				print('args',args)
+				print(quat)
 
 			######################################################################
 			## API ##
@@ -1001,35 +1003,74 @@ class Remote3dsMax(object):
 				#db.update_object(name, pos, scl, quat, select=bool(eval(exarg)))
 				print('select',name)
 
-			elif cmd == 'SAVING:3DS':
-				self._wait_for_loading.append( name )
+			elif cmd == 'SAVING:3DS': ## TODO check this is sending from stream_api.ms
+				if name not in self._wait_for_loading:
+					self._wait_for_loading.append( name )
 
 			elif cmd == 'LOAD:3DS':
-				assert name == self._wait_for_loading.pop()
-				assert os.path.isfile( os.path.expanduser('~/.wine/drive_c/%s.3ds'%obname) )
+				if name not in self._wait_for_loading and self._prevload == (cmd,name):
+					print('<loading new 3ds>', name)
+					return
 
-				## TODO blender fbx loading
-				obnames = bpy.data.objects.key()
+				#TODO-enable-when-catching-saveing:3ds##assert name == self._wait_for_loading.pop()
+				self.load_3ds( name )
 
-				bpy.ops.import_scene.autodesk_3ds(
-					filepath=os.path.expanduser('~/.wine/drive_c/%s.3ds'%obname), 
-					filter_glob="*.3ds", 
-					constrain_size=10, 
-					use_image_search=False, 
-					use_apply_transform=False, 
-					axis_forward='Y', 
-					axis_up='Z'
-				)
-				for n in bpy.data.objects.keys():
-					if n not in obnames:
-						print('new import', n)
+				## temp hack because we are not catching SAVING:3DS ##
+				self._prevload = (cmd,name)
 
+				
 			elif cmd == '@database:add_object@':
+				#self._wait_for_loading.append( name )
 
-				self._wait_for_loading.append( name )
 				db.add_object(name, pos, scl, quat, category=category)
+				self.load_3ds( name )
 
 
+	def load_3ds(self, name):
+		assert os.path.isfile( os.path.expanduser('~/.wine/drive_c/%s.3ds'%name) )
+
+		## TODO blender fbx loading
+		obnames = bpy.data.objects.keys()
+
+		bpy.ops.import_scene.autodesk_3ds(
+			filepath=os.path.expanduser('~/.wine/drive_c/%s.3ds'%name), 
+			filter_glob="*.3ds", 
+			constrain_size=10, 
+			use_image_search=False, 
+			use_apply_transform=False, 
+			axis_forward='Y', 
+			axis_up='Z'
+		)
+
+		remove = []
+		loaded = []
+		for n in bpy.data.objects.keys():
+			if n not in obnames:
+				print('new import', n)
+				ob = bpy.data.objects[ n ]
+				print(ob.type)
+				if ob.type == 'MESH':
+					iname = ob.name.split('.')[0]
+					if iname in bpy.data.objects.keys():
+						ob.rotation_mode = 'QUATERNION'
+						instance = bpy.data.objects[ iname ]
+						if instance.type == 'EMPTY':
+							instance.name = 'xxx'
+							remove.append( instance )
+							ob.name = iname
+							db.objects[iname] = ob ## replace instance in database
+							loaded.append( ob )
+						else:
+							instance.data = ob.data
+							remove.append( ob )
+							loaded.append( instance )
+
+
+		while remove:
+			ob = remove.pop()
+			bpy.context.scene.objects.unlink(ob)
+
+		return loaded
 
 class TestApp( BlenderHackLinux ):
 	def __init__(self):

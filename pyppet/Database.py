@@ -16,9 +16,10 @@ class Database(object):
 		ob = self.objects[name]
 		ob.location = position
 		ob.scale = scale
+		ob.rotation_quaternion = quat
 
 	def add_object(self, name, position, scale, quat, category=None, data=None):
-
+		print('<db adding new object>', name)
 		################ body #################
 		self.objects[name] = ob = bpy.data.objects.new( name=name, object_data=data )
 		#ob.hide_select = True

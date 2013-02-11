@@ -56,6 +56,8 @@ function on_object_select ob = (
 		if appendIfUnique watching_transforms ob.name do (
 			when transform ob changes var do on_object_transformed var
 
+			dump_object( ob )
+
 			--# connection to Bender's database format: add_object, add_texture, add_material
 			cname = getClassName ob
 			txt = "@database:new_object@" + cname + "@" + ob.name + "~" + ob.position as string + "|" + ob.scale as string + "|" + ob.rotation as string
