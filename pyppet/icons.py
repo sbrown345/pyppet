@@ -1,9 +1,9 @@
 # _*_ coding: utf-8 _*_
 BLENDER = '🐵'
 PLUS = '＋'
-PIN = '📌'
+PIN = '!'  #'📌'
 
-SUBSURF = '⛶'
+SUBSURF = 'subsurf-' #'⛶'
 
 BIDIRECTIONAL = '⥂'
 
@@ -13,7 +13,7 @@ NEGATIVE_OFFSET = '⊝'
 SHAPE_KEYS = '𝙎𝙝𝙖𝙥𝙚s'
 SHAPE_KEYS_ICON = '𝙎𝙝𝙖𝙥𝙚𝙨'
 ACTIVE_BONE = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
-ACTIVE_BONE_ICON = '🍖'
+ACTIVE_BONE_ICON = 'bone-' #'🍖'
 
 DYNAMIC_TARGETS = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
 DYNAMIC_TARGETS_ICON = '🎯'
@@ -27,7 +27,7 @@ PROGRESSIVE_TEXTURES = '🔀'
 
 DROP_HERE = '𝘥𝘳𝘰𝘱-𝘩𝘦𝘳𝘦'
 
-STREAMING = '🔛'
+STREAMING = 'streaming' #'🔛'
 
 WIREFRAME = '⬚'
 NAME = '⎁'
@@ -76,13 +76,13 @@ SOUTH_WEST_ARROW = '⬋'
 
 SOUTH_ARROW = '⇩'
 
-CAMERA = '🎥'
+CAMERA = 'camera' #'🎥'
 
 MODE = '⬕'
 
 POSE = '☊'
 
-SPEAKER = '🔊'
+SPEAKER = 'sound' #'🔊'
 
 LIGHT = '☼'
 
@@ -90,7 +90,7 @@ MATERIAL = '▧'
 
 TEXTURE = '▩'
 
-MICROPHONE = '🎤'
+MICROPHONE = 'microphone' #'🎤'
 
 SINE_WAVE = '∿'
 
@@ -107,31 +107,31 @@ DND = ' ⎗ '
 
 MULTIPLY = '⨉'
 
-DRIVERS_ICON = '🔄'
+DRIVERS_ICON = '>' #'🔄'
 DRIVER = '⎆'
 DRIVERS = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
 
 FORCES_ICON = '𝙁𝙤𝙧𝙘𝙚𝙨'
 FORCES = '𝙁𝙤𝙧𝙘𝙚𝙨'
 
-WEBCAM = '📹'
+WEBCAM =  'Cam' #'📹'
 KINECT = '㉿'
-GAMEPAD = '🎮'
+GAMEPAD = 'Pad' #'🎮'
 WIIMOTE = '⍠'
 
-DEVICES_ICON = '🔌'
+DEVICES_ICON = 'dev:' #'🔌'
 DEVICES = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
 
 PHYSICS_ICON = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
 PHYSICS = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
 
-MODIFIERS_ICON = '🔧'
+MODIFIERS_ICON = 'mod:' #'🔧'
 MODIFIERS = '𝙈𝙤𝙙𝙞𝙛𝙞𝙚𝙧𝙨'
 
-CONSTRAINTS_ICON = '🔗'
+CONSTRAINTS_ICON = 'cns:' #'🔗'
 CONSTRAINTS = '𝘾𝙤𝙣𝙨𝙩𝙧𝙖𝙞𝙣𝙩𝙨'
 
-MATERIALS_ICON = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
+MATERIALS_ICON = 'mats:'
 MATERIALS = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
 
 SETTINGS = 'settings'
@@ -166,14 +166,14 @@ PYPPET = 'Pyppet'
 PLAY = '⊳'
 RECORD = '⊚'
 
-PHYSICS_RIG_ICON = RAGDOLL = '💀'
-PHYSICS_RIG = 'physics rig'
+PHYSICS_RIG_ICON = RAGDOLL = 'ragdoll' #'💀'
+PHYSICS_RIG = 'physics-rig'
 
-BIPED = '🏃'
+BIPED = 'biped' #'🏃'
 
 ROPE = '⟅'
 
-JOINTS_ICON = JOINT = '💪'
+JOINTS_ICON = JOINT = 'joint' #'💪'
 JOINTS = 'joints'
 
 TRANSFORM = '⇨'

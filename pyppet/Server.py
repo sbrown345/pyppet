@@ -947,7 +947,8 @@ class Remote3dsMax(object):
 		self.exe_path = exe_path
 		self.use_wine = use_wine
 		self._wait_for_loading = []
-		self._prevload = None
+		self._load_3ds_files = []
+		self._prevcmd = None
 
 		import Database
 		self.db = Database.create_database( api )
@@ -976,6 +977,15 @@ class Remote3dsMax(object):
 			if '*' in args:
 				args, exargs = args.split('*')
 
+			if txt != self._prevcmd:
+				print('-'*80)
+				print(cmd)
+				print(name)
+				print(args)
+			self._prevcmd = txt
+			#)))))))))))))))))))))))))))))))))))))))))))))
+
+
 			# args is pos, scl, quat #
 			pos,scl,quat = args.split('|')
 			pos = eval(pos)
@@ -983,19 +993,14 @@ class Remote3dsMax(object):
 			_, w, x,y,z = quat.replace(')','').split()
 			quat = (float(w),float(x),float(y),float(z))
 
-			if cmd != 'UPDATE:STREAM':
-				print('CMD',cmd)
-				print('objectname',name)
-				print('args',args)
-				print(quat)
 
 			######################################################################
 			## API ##
 
-			if cmd == 'UPDATE:STREAM':
+			if cmd == 'UPDATE:STREAM' and name in db.objects:
 				exargs or None
 				if exargs: # streaming mesh
-					verts = [ eval(v) for v in verts.split('][') ]
+					verts = [ eval('(%s)'%v) for v in exargs.split('][') ]
 
 				db.update_object(name, pos, scl, quat, category=cat)
 
@@ -1008,28 +1013,31 @@ class Remote3dsMax(object):
 					self._wait_for_loading.append( name )
 
 			elif cmd == 'LOAD:3DS':
-				if name not in self._wait_for_loading and self._prevload == (cmd,name):
-					print('<loading new 3ds>', name)
-					return
-
 				#TODO-enable-when-catching-saveing:3ds##assert name == self._wait_for_loading.pop()
-				self.load_3ds( name )
-
-				## temp hack because we are not catching SAVING:3DS ##
-				self._prevload = (cmd,name)
+				loaded = self.load_3ds( name )
 
 				
-			elif cmd == '@database:add_object@':
+			elif cmd == '@database:add_object@' and name not in db.objects:
 				#self._wait_for_loading.append( name )
 
 				db.add_object(name, pos, scl, quat, category=category)
 				self.load_3ds( name )
 
 
-	def load_3ds(self, name):
-		assert os.path.isfile( os.path.expanduser('~/.wine/drive_c/%s.3ds'%name) )
+	def load_3ds(self, name): ## FBX import is missing in blender
+		path = os.path.expanduser('~/.wine/drive_c/%s.3ds'%name)
+		assert os.path.isfile( path )
+		db = self.db
 
-		## TODO blender fbx loading
+		stat = os.stat( path )
+		uid = (path, stat.st_mtime)
+		if uid in self._load_3ds_files:
+			### note: do not load file if it hasn't been updated yet, by checking the modified time "mtime"
+			return
+
+		self._load_3ds_files.append( uid )
+		print('LOADING new 3ds',uid)
+
 		obnames = bpy.data.objects.keys()
 
 		bpy.ops.import_scene.autodesk_3ds(
@@ -1037,7 +1045,7 @@ class Remote3dsMax(object):
 			filter_glob="*.3ds", 
 			constrain_size=10, 
 			use_image_search=False, 
-			use_apply_transform=False, 
+			use_apply_transform=True, 
 			axis_forward='Y', 
 			axis_up='Z'
 		)
@@ -1048,11 +1056,12 @@ class Remote3dsMax(object):
 			if n not in obnames:
 				print('new import', n)
 				ob = bpy.data.objects[ n ]
+				ob.rotation_mode = 'QUATERNION'
 				print(ob.type)
 				if ob.type == 'MESH':
 					iname = ob.name.split('.')[0]
 					if iname in bpy.data.objects.keys():
-						ob.rotation_mode = 'QUATERNION'
+						print('REPLACE')
 						instance = bpy.data.objects[ iname ]
 						if instance.type == 'EMPTY':
 							instance.name = 'xxx'
@@ -1064,11 +1073,15 @@ class Remote3dsMax(object):
 							instance.data = ob.data
 							remove.append( ob )
 							loaded.append( instance )
+					else:
+						print('ADD')
+						db.objects[iname] = ob
+						loaded.append( ob )
 
 
 		while remove:
 			ob = remove.pop()
-			bpy.context.scene.objects.unlink(ob)
+			#bpy.context.scene.objects.unlink(ob)
 
 		return loaded
 

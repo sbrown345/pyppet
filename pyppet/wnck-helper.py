@@ -61,7 +61,7 @@ else:
 		## otherwise parent window must use always-on-top ##
 		win.make_below()	# REQUIRED FOR BLENDER
 		win.shade()
-		print( 'XID=%s' %win.get_xid() )
+		print( 'XID=%s' %win.get_xid() )  ## this is read on stdout in core.py API do_xembed
 
 screen.force_update()
 

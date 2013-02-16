@@ -481,6 +481,10 @@ class BlenderHackLinux( BlenderHack ):
 
 
 	def get_window_xid( self, name ):
+		'''
+		see wnck-helper.py for logic,
+		if name in window-full-name, then its xid will be returned.
+		'''
 		SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 		wnck_helper = os.path.join(SCRIPT_DIR, 'wnck-helper.py')
 		assert os.path.isfile( wnck_helper )
@@ -1444,8 +1448,10 @@ class PopupWindow(object):
 		#win.set_skip_taskbar_hint(True)
 		#win.set_size_request( width, height )
 		#win.set_opacity( 0.9 )
-		win.set_decorated( False )
-		win.set_deletable( deletable )
+
+		## DEPRECATE POPUP WINDOW ##
+		#win.set_decorated( False )
+		#win.set_deletable( deletable )
 
 		self.root = gtk.EventBox()
 		win.add( self.root )
@@ -1479,10 +1485,10 @@ class PopupWindow(object):
 		header.pack_start( b, expand=False )
 
 
-		b = gtk.ToggleButton('🌁'); b.set_border_width(1)
-		b.set_active(True)
-		b.connect('toggled', self.toggle_transparent)
-		header.pack_start( b, expand=False )
+		#b = gtk.ToggleButton('🌁'); b.set_border_width(1)
+		#b.set_active(True)
+		#b.connect('toggled', self.toggle_transparent)
+		#header.pack_start( b, expand=False )
 
 		if fullscreen:
 			b = gtk.ToggleButton( icons.FULLSCREEN ); b.set_relief( gtk.RELIEF_NONE )
@@ -1567,6 +1573,7 @@ def _on_detach( widget, gcontext ):
 class Detachable( object ):
 	_detachable_target_ = gtk.target_entry_new( 'detachable',2,0)	#gtk.TARGET_OTHER_APP )	
 	def make_detachable(self,widget, on_detach):
+		return # DEPRECATED - dnd is unsafe (kde only?)
 		self.widget.drag_source_set(
 			gtk.GDK_BUTTON1_MASK, 
 			self._detachable_target_, 1, 

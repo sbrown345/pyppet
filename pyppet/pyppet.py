@@ -4273,7 +4273,7 @@ class PyppetUI( PyppetAPI ):
 
 		if not PYPPET_LITE:
 			if self.server.httpd:
-				name = 'Chromium'
+				name = 'Mozilla Firefox' #'Chromium'
 				xid = self.do_xembed( self._chrome_xsocket, name)
 				if not xid:
 					time.sleep(2)
@@ -5340,7 +5340,7 @@ if __name__ == '__main__':
 			## chrome is already open by shell script, this only sets the page to localhost,
 			## this is required otherwise python can not close the ports its listening on.
 			#os.system('chromium-browser --app=http://localhost:8080 &')	# opens new window with name Untitled
-			os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
+			#os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
 			time.sleep(0.1)
 		Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
 		Pyppet.mainloop()
