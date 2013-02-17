@@ -3084,6 +3084,7 @@ class PyppetUI( PyppetAPI ):
 
 	def update_footer(self, ob):
 		if ob.type != 'MESH': return
+		return # DEPRECATED
 		print('updating footer')
 		self._textures_widget_container.remove( self._textures_widget_modal )
 		self._textures_widget_modal = root = gtk.VBox()
@@ -3215,7 +3216,7 @@ class PyppetUI( PyppetAPI ):
 		frame = gtk.Frame()
 		root = gtk.VBox(); frame.add( root )
 
-		bx = gtk.HBox(); root.pack_start( bx )
+		bx = gtk.VBox(); root.pack_start( bx )
 
 		p = gtk.CheckButton()
 		p.set_active(True)
@@ -3378,10 +3379,10 @@ class PyppetUI( PyppetAPI ):
 
 		right = []
 
-		b = gtk.Button( icons.BLENDER )
-		b.connect('clicked', self.embed_blender_window)
-		b.set_tooltip_text( 'embed blender window' )
-		right.append( b )
+		#b = gtk.Button( icons.BLENDER )
+		#b.connect('clicked', self.embed_blender_window)
+		#b.set_tooltip_text( 'embed blender window' )
+		#right.append( b )
 
 		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
@@ -3420,25 +3421,21 @@ class PyppetUI( PyppetAPI ):
 	def create_tools( self, parent ):
 		self._left_tools = gtk.VBox()
 		self._left_tools.set_border_width( 2 )
-		self._right_tools = gtk.HBox()
-		self._right_tools.set_border_width( 4 )
+		self._right_tools = gtk.VBox()
+		self._right_tools.set_border_width( 2 )
 
 		## add left tools to parent - in scrolled window
 		sw = gtk.ScrolledWindow()
 		sw.add_with_viewport( self._left_tools )
 		sw.set_policy(True,False)
-		sw.set_size_request( 250, 200 )
-		parent.pack_start( sw, expand=False )
+		#sw.set_size_request( 250, 200 )
+		parent.pack_start( sw, expand=True )
 		## add right tools to parent - PACK_END
 		#parent.pack_end( self._right_tools, expand=False )
 
 
 		#################### outliner ##################
 		box = self._right_tools
-		self.outlinerUI = OutlinerUI()
-		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
-		ex.add( self.outlinerUI.widget )
-		box.pack_start( ex.widget, expand=False )
 
 		tool = ModifiersTool(
 			icons.MODIFIERS, 
@@ -3522,6 +3519,33 @@ class PyppetUI( PyppetAPI ):
 				slider = Slider( self, name=name, title=name, max=3.0, driveable=True )
 			page.pack_start( slider.widget, expand=False )
 		note.append_page(page, gtk.Label( icons.CAMERA) )
+
+
+		ex = DetachableExpander( 'animation', short_name='animation', expanded=False )
+		self._left_tools.pack_start( ex.widget, expand=False )
+		note = gtk.Notebook()
+		ex.add( note )
+		note.set_tab_pos( gtk.POS_BOTTOM )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.RECORD) )
+		page.add( self.get_recording_widget() )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.SINE_WAVE) )
+		page.add( self.get_wave_widget() )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.TEXTURE) )
+		page.add( self.get_textures_widget() )
+
+		page = gtk.Frame()
+		note.append_page( page, gtk.Label(icons.KEYBOARD) )
+
+		if self.audio.synth:
+			w = self.audio.synth.channels[0].get_widget()
+			page.add( w )
+
 
 		return self._left_tools, self._right_tools
 
@@ -4164,26 +4188,41 @@ class PyppetUI( PyppetAPI ):
 		root.pack_start( self.toolbar_header.widget, expand=False )
 		#---------------------------------------------------------------
 
-		vpane = gtk.VPaned()
-		root.pack_start( vpane, expand=True )
+		#vpane = gtk.VPaned()
+		#root.pack_start( vpane, expand=True )
 
 		#---------------------------------------------------------------
-		self._main_body_split = split = gtk.HBox()
-		vpane.add1( split )
+		self._main_body_split = split = gtk.VBox()
+		root.pack_start( split, expand=True )
 
-		############ create tools  ###########
-		left_tools, right_tools = self.create_tools( self._main_body_split )
+		############ create tools popup  ###########
+		self._tools_page = gtk.HBox()
+
+		self.outlinerUI = OutlinerUI()
+		ex = DetachableExpander( icons.OUTLINER, icons.OUTLINER_ICON )
+		ex.add( self.outlinerUI.widget )
+		self._tools_page.pack_start( ex.widget, expand=False )
+
+
+		self.toolbar_footer = self.create_footer()
+
+		left_tools, right_tools = self.create_tools( self._tools_page )
+		_popup = PopupWindow(
+			child= self._tools_page, 
+			toolbar=self.toolbar_footer.widget)
+
 
 		#_________________________________________
 		## RIGHT TOOLS ##
-		self.root.pack_start( right_tools, expand=False )
+		#self.root.pack_start( right_tools, expand=False )
 
-		self.toolbar_footer = self.create_footer()
-		root.pack_start( self.toolbar_footer.widget, expand=False )
+		#root.pack_start( self.toolbar_footer.widget, expand=False )
+
+
 
 
 		self.main_notebook = note = gtk.Notebook()		# TODO store blenders here
-		note.set_tab_pos( gtk.POS_BOTTOM )
+		#note.set_tab_pos( gtk.POS_BOTTOM )
 
 		################# google chrome ######################
 		#self._chrome_xsocket = gtk.Socket()
@@ -4201,75 +4240,50 @@ class PyppetUI( PyppetAPI ):
 			self.toolsUI.devices_widget,
 		)
 
-		if '--popup-tools' in sys.argv:
-			frame = gtk.Frame()
-			popup = PopupWindow(
-				child=self.toolsUI.widget, 
-				toolbar=frame)
-			popup.window.show_all()
-
-		else:
-			##############################
-			##		right tools mini tools			#
-			##############################
-			left_tools.pack_start( self.toolsUI.widget )
-			frame = gtk.Frame()
+		##############################
+		##		right tools mini tools			#
+		##############################
+		left_tools.pack_start( self.toolsUI.widget )
+		frame = gtk.Frame()
 
 
 		############### Blender Embed Windows ##############
-		self._blender_embed_toolbar = gtk.VBox()
-		self._blender_embed_toolbar.set_border_width( 10 )
+		if False:
+			self._blender_embed_toolbar = gtk.VBox()
+			self._blender_embed_toolbar.set_border_width( 10 )
 
-		if PYPPET_LITE:
+			#if PYPPET_LITE:
 			self._main_body_split.pack_start(
 				self._blender_embed_toolbar,
 				expand=True,
 			)
 
-		else:
-			vpane.add2(
-				self._blender_embed_toolbar
-			)
-		self._blender_embed_toolbar.hide()
-		self._blender_embed_toolbar.set_no_show_all(True)
+			#else:
+			#	vpane.add2(
+			#		self._blender_embed_toolbar
+			#	)
+			self._blender_embed_toolbar.hide()
+			self._blender_embed_toolbar.set_no_show_all(True)
 
 
 
 		## FOOTER ##
-		self.footer = note = gtk.Notebook()
-		self.root.pack_start( self.footer, expand=False )
-		note.set_tab_pos( gtk.POS_BOTTOM )
 
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.RECORD) )
-		page.add( self.get_recording_widget() )
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.SINE_WAVE) )
-		page.add( self.get_wave_widget() )
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.TEXTURE) )
-		page.add( self.get_textures_widget() )
-
-		page = gtk.Frame()
-		note.append_page( page, gtk.Label(icons.KEYBOARD) )
-
-		if self.audio.synth:
-			w = self.audio.synth.channels[0].get_widget()
-			page.add( w )
+		self._tools_page.pack_start( right_tools, expand=False )
+		
 
 		##################################
 		self.window.connect('destroy', self.exit )
 		#self.window.show_all()
 		popup.show()
+		_popup.window.show_all()
 
 		#for i in range(3): bpy.ops.screen.screen_set( delta=1 )
 		#bpy.ops.wm.window_duplicate()
 		#for i in range(3): bpy.ops.screen.screen_set( delta=-1 )
 
 		#####################################
-		self._bottom_toggle_button.set_active(False)
+		#self._bottom_toggle_button.set_active(False)
 
 		if not PYPPET_LITE:
 			if self.server.httpd:
@@ -4279,7 +4293,7 @@ class PyppetUI( PyppetAPI ):
 					time.sleep(2)
 					xid = self.do_xembed( self._chrome_xsocket, name)
 					if not xid:
-						msg = gtk.Label('ERROR [chromium browser not installed]' )
+						msg = gtk.Label('ERROR [firefox browser not installed]' )
 						self._main_body_split.pack_start( msg )
 						msg.show()
 
@@ -4300,8 +4314,8 @@ class PyppetUI( PyppetAPI ):
 
 		#self.webcam.start_thread( self.lock )
 
-
-	def embed_blender_window(self,button):
+	## UNSTABLE
+	def embed_blender_window_deprecated(self,button):
 		button.set_no_show_all(True)	# only allow single embed
 		button.hide()
 		self._blender_embed_toolbar.set_no_show_all(False)
@@ -4333,7 +4347,7 @@ class App( PyppetUI ):
 
 			self.reset()		# PyppetAPI Public
 			self.register( self.update_header ) # listen to active object change
-			self.register( self.update_footer )
+			#self.register( self.update_footer )
 
 			self.play_wave_on_record = True
 			self.wave_playing = False

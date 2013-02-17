@@ -741,6 +741,15 @@ class ToolWindow(object):
 class SimpleDND(object):
 	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )# GTK's confusing API
 
+	def _thread_hack(self):
+		i = 0
+		while self.dragging: #and i < 10000:
+			if gtk.gtk_events_pending():
+				gtk.gtk_main_iteration()
+			time.sleep(0.01)
+			i += 1
+		print('EXIT THREAD HACK', i)
+
 	def __init__(self):
 		self.dragging = False
 		self.source_widget = None	# the destination may want to use the source widget directly
@@ -771,6 +780,7 @@ class SimpleDND(object):
 		self._callback = None
 		self._args = None
 
+		start_new_thread(self._thread_hack)
 
 	def drag_end(self, w,c):
 		print('DRAG END')
