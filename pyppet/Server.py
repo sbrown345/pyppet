@@ -22,7 +22,13 @@ from bpy.props import *
 
 from core import *
 
-
+Pyppet = NotImplemented
+def set_bpy_api( api ):
+	'''
+	set something that supports Blender's bpy API
+	'''
+	global Pyppet
+	Pyppet = api
 
 
 if 'pyppet-server' in sys.argv:
@@ -696,8 +702,23 @@ class WebServer( object ):
 
 	def __init__(self, host=HOST_NAME, port=8080):
 		self.init_webserver( host=host, port=port )
+		print('webserver init complete')
+		print('-'*80)
+
+	def open_firefox(self):
+		print('open_firefox')
+		cmd = [
+			'firefox', 
+			'-new-instance', 
+			'-new-window', 
+			'http://%s:%s'%(self.host,self.httpd_port)
+		]
+		print(cmd)
+		p = subprocess.Popen( cmd )
+		return p
 
 	def update(self, context=None):
+		#print('webserver update from mainloop', context)
 		if self.httpd: self.httpd.handle_request()
 
 	def close(self):
@@ -713,19 +734,25 @@ class WebServer( object ):
 		if forking:
 			self.httpd = make_forking_server( self.host, self.httpd_port, self.httpd_reply )
 		else:
-			try:
-				self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
-			except:
-				print('ERROR: failed to bind to port', self.httpd_port)
-				self.httpd = None
 
+			#try:  ## this would be required for non-server client/peers ##
+			#	self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+			#except:
+			#	print('ERROR: failed to bind to port', self.httpd_port)
+			#	self.httpd = None
+
+			self.httpd = wsgiref.simple_server.make_server( self.host, self.httpd_port, self.httpd_reply )
+
+		print(self.httpd)
 		if self.httpd:
 			self.httpd.timeout = timeout
 
 		self.THREE = None
 		path = os.path.join(SCRIPT_DIR, 'javascripts/Three.js')
-		if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
-		else: print('ERROR: missing ./javascripts/Three.js')
+		#if os.path.isfile( path ): self.THREE = open( path, 'rb' ).read()
+		#else: print('ERROR: missing ./javascripts/Three.js')
+		self.THREE = open( path, 'rb' ).read()
+		#print(self.THREE)
 
 	def get_header(self, title='http://%s'%HOST_NAME, webgl=False):
 		h = [
@@ -792,6 +819,7 @@ class WebServer( object ):
 		raise NotImplemented
 
 	def httpd_reply( self, env, start_response ):	# main entry point for http server
+		print('httpd_reply', env)
 		agent = env['HTTP_USER_AGENT']		# browser type
 		if agent == 'Python-urllib/3.2': return self.httpd_reply_python( env, start_response )
 		else: return self.httpd_reply_browser( env, start_response )
@@ -801,6 +829,7 @@ class WebServer( object ):
 		host = env['HTTP_HOST']
 		client = env['REMOTE_ADDR']
 		arg = env['QUERY_STRING']
+		print('http_reply_browser', path, host, client, arg)
 
 		relpath = os.path.join( SCRIPT_DIR, path[1:] )
 
@@ -823,10 +852,11 @@ class WebServer( object ):
 			start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
 			f.write( self.get_header() )
 
-			if self.clients:
-				f.write('<h2>Streaming Clients</h2><ul>')
-				for a in self.clients: f.write('<li><a href="http://%s">%s</a></li>' %(a,a))
-				f.write('</ul>')
+			## peer UDP is deprecated
+			#if self.clients:
+			#	f.write('<h2>Streaming Clients</h2><ul>')
+			#	for a in self.clients: f.write('<li><a href="http://%s">%s</a></li>' %(a,a))
+			#	f.write('</ul>')
 			#if self.servers:
 			#	f.write('<h2>Streaming Servers</h2><ul>')
 			#	for a in self.servers: f.write('<li>%s</li>' %a)

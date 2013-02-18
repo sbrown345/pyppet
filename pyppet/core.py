@@ -1445,7 +1445,7 @@ class PopupWindow(object):
 			self._system_header_hack.hide()
 
 	'''disable set_keep_above for non-popup style window'''
-	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=True, fullscreen=False):
+	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=False, fullscreen=False):
 		self.object = None
 		if not toolbar: self.toolbar = toolbar = gtk.Frame(); toolbar.add( gtk.Label() )
 		self.toolbar = toolbar
@@ -1481,16 +1481,16 @@ class PopupWindow(object):
 		vbox.pack_start( header, expand=False )
 
 
-		b = gtk.ToggleButton('⟔'); b.set_border_width(0)
+		#b = gtk.ToggleButton('⟔'); b.set_border_width(0)
 		#b.set_relief( gtk.RELIEF_NONE )
-		b.set_active(True)
-		b.connect('button-press-event', self.on_resize)
-		header.pack_start( b, expand=False )
+		#b.set_active(True)
+		#b.connect('button-press-event', self.on_resize)
+		#header.pack_start( b, expand=False )
 
 		header.pack_start( toolbar )
 
 		b = gtk.ToggleButton('∸'); b.set_border_width(1)
-		b.set_active(True)
+		if set_keep_above: b.set_active(True)
 		b.connect('toggled', lambda b: win.set_keep_above(b.get_active()))
 		header.pack_start( b, expand=False )
 
@@ -1583,14 +1583,15 @@ def _on_detach( widget, gcontext ):
 class Detachable( object ):
 	_detachable_target_ = gtk.target_entry_new( 'detachable',2,0)	#gtk.TARGET_OTHER_APP )	
 	def make_detachable(self,widget, on_detach):
-		return # DEPRECATED - dnd is unsafe (kde only?)
-		self.widget.drag_source_set(
-			gtk.GDK_BUTTON1_MASK, 
-			self._detachable_target_, 1, 
-			gtk.GDK_ACTION_COPY
-		)
-		self.widget.connect('drag-end', on_detach)
-
+		## DEPRECATED - not safe even with thread hack TODO FIXME
+		#self.widget.drag_source_set(
+		#	gtk.GDK_BUTTON1_MASK, 
+		#	self._detachable_target_, 1, 
+		#	gtk.GDK_ACTION_COPY
+		#)
+		#self.widget.connect('drag-end', on_detach)
+		pass
+		
 
 class DetachableExpander( Detachable ):
 

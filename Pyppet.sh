@@ -4,7 +4,7 @@
 #killall chromium-browser
 #chromium-browser &
 killall firefox
-firefox -new-instance -new-window http://localhost:8080 &
+#firefox -new-instance -new-window http://localhost:8080 &
 
 
 rm -rf /tmp/texture-cache

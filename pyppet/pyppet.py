@@ -73,6 +73,7 @@ from bpy.props import *
 
 
 import Server
+Server.set_bpy_api( bpy )	# pass Blender's bpy Main
 
 def load_gtk_css( style, path='malys-revolt2/gtk-3.0/gtk.css' ):
 	#def load_gtk_css( style, path='Greyness-GTK/gtk-3.0/gtk.css' ):
@@ -4284,6 +4285,9 @@ class PyppetUI( PyppetAPI ):
 
 		#####################################
 		#self._bottom_toggle_button.set_active(False)
+
+		self.server.open_firefox()
+		time.sleep(4)
 
 		if not PYPPET_LITE:
 			if self.server.httpd:
