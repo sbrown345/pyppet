@@ -22,6 +22,8 @@ from bpy.props import *
 
 from core import *
 
+DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
+
 Pyppet = NotImplemented
 def set_bpy_api( api ):
 	'''
@@ -68,17 +70,25 @@ bpy.types.Object.webgl_normal_map = FloatProperty(
     name="normal map scale", description="normal map scale for webGL client", 
     default=0.75)
 
-
+## ID of zero is a dead object ##
 bpy.types.Object.UID = IntProperty(
     name="unique ID", description="unique ID for webGL client", 
     default=0, min=0, max=2**14)
 
 def get_object_by_UID( uid ):
 	if type(uid) is str: uid = int( uid.replace('_','') )
-	for ob in bpy.data.objects:
-		if ob.UID == uid: return ob
-	print('UID not found', uid)
-	assert 0
+	ids = []
+	ob = None
+	for o in bpy.data.objects:
+		if o.UID:
+			if o.UID == uid: ob = o
+			ids.append( o.UID )
+			print(o.name, o.UID)
+
+	assert len(ids) == len( set(ids) )
+
+	if not ob: print('UID not found', uid)
+	return ob
 
 def UID( ob ):
 	'''
@@ -89,6 +99,7 @@ def UID( ob ):
 	ids = [o.UID for o in bpy.data.objects]
 	if not ob.UID or ids.count( ob.UID ) > 1:
 		ob.UID = max( ids ) + 1
+	assert ob.UID
 	return ob.UID
 
 #--------------------------------------------------
@@ -169,7 +180,10 @@ def _dump_collada_data_helper( data ):
 
 def dump_collada( ob, center=False, hires=False ):
 	assert Pyppet.context.mode !='EDIT'
-	name = ob.name; state = save_selection(); uid = UID( ob )
+	name = ob.name
+	state = save_selection()
+	uid = UID( ob )
+	print('Object:%s UID:%s'%(ob,uid))
 	for o in Pyppet.context.scene.objects: o.select = False
 
 	mods = []	# to restore later #
@@ -339,8 +353,16 @@ class Player( object ):
 	def __init__(self, ip):
 		self.address = ip
 		self.objects = []
+		## TODO expose these options with GTK
+		self.camera_randomize = False
+		self.camera_focus = 1.5
+		self.camera_aperture = 0.15
+		self.camera_maxblur = 1.0
+		self.godrays = False
+
 
 		if ip not in bpy.data.objects:
+			print('creating new player gizmos')
 			a = bpy.data.objects.new(name=ip, object_data=None)
 			Pyppet.context.scene.objects.link( a )
 			a.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
@@ -408,14 +430,13 @@ class GameGrid( object ):
 			'curves':{},
 			'FX':{},
 			'camera': {
-				'rand':Pyppet.camera_randomize,
-				'focus':Pyppet.camera_focus,
-				'aperture':Pyppet.camera_aperture,
-				'maxblur':Pyppet.camera_maxblur,
+				'rand':player.camera_randomize,
+				'focus':player.camera_focus,
+				'aperture':player.camera_aperture,
+				'maxblur':player.camera_maxblur,
 			},
-			'godrays': Pyppet.godrays,
+			'godrays': player.godrays,
 		}
-
 
 		streaming_meshes = []
 		far_objects = []		# far objects the player has not loaded yet
@@ -423,7 +444,9 @@ class GameGrid( object ):
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue
 			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
-			if ob.type=='MESH' and not ob.data.uv_textures: continue	# UV's required to generate tangents
+			if ob.type=='MESH' and not ob.data.uv_textures:
+				print('WARN: not streaming mesh without uvmapping', ob.name)
+				continue	# UV's required to generate tangents
 
 			## do not stream objects too far from camera/player ##
 			## if something is far, do not stream mesh data ##
@@ -619,6 +642,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 		ip,port = self.client.getsockname()
 		if ip in GameGrid.clients: print('RELOADING CLIENT:', ip)
 		else:
+			print('_'*80)
 			print('NEW CLIENT:', ip)
 			GameGrid.add_player( ip )
 
@@ -660,25 +684,27 @@ class WebSocketServer( websocket.WebSocketServer ):
 		wlist = [self.client]
 
 		ins, outs, excepts = select.select(rlist, wlist, [], 1)
-		if excepts: raise Exception("Socket exception")
+		if excepts: raise Exception("[websocket] Socket exception")
 
 		if self.client in outs:
 			# Send queued target data to the client
 			try:
 				pending = self.send_frames(cqueue)
-				if pending: print('failed to send', pending)
+				if pending: print('[websocket] failed to send', pending)
+				else: pass #print('[websocket sent]', cqueue)
 			except:
+				print('[websocket error] can not send_frames')
 				self.client = None
 
 		elif not outs:
-			print('client not ready to read....')
+			print('[websocket] client not ready to read....')
 
 		if self.client in ins:
 			# Receive client data, decode it, and send it back
 			frames, closed = self.recv_frames()
 			print('got from client', frames)
 			if closed:
-				print('CLOSING CLIENT')
+				print('[websocket] CLOSING CLIENT')
 				try:
 					self.send_close()
 					raise self.EClose(closed)
@@ -819,7 +845,7 @@ class WebServer( object ):
 		raise NotImplemented
 
 	def httpd_reply( self, env, start_response ):	# main entry point for http server
-		print('httpd_reply', env)
+		#print('httpd_reply', env)
 		agent = env['HTTP_USER_AGENT']		# browser type
 		if agent == 'Python-urllib/3.2': return self.httpd_reply_python( env, start_response )
 		else: return self.httpd_reply_browser( env, start_response )
@@ -829,7 +855,7 @@ class WebServer( object ):
 		host = env['HTTP_HOST']
 		client = env['REMOTE_ADDR']
 		arg = env['QUERY_STRING']
-		print('http_reply_browser', path, host, client, arg)
+		#print('http_reply_browser', path, host, client, arg)
 
 		relpath = os.path.join( SCRIPT_DIR, path[1:] )
 
@@ -879,9 +905,15 @@ class WebServer( object ):
 
 
 		elif path.startswith('/objects/'):
+			## mini API for getting objects in different formats, example:
+			## http://server/objects/a.dae
+			## http://server/objects/a.obj  (TODO)
+
 			url = path[ 9 : ]
 			name = path.split('/')[-1]
 			if name.endswith('.dae'):
+				print('dump collada request', name)
+
 				start_response('200 OK', [('Content-Type','text/xml; charset=utf-8')])
 				uid = name[ : -4 ]
 				ob = get_object_by_UID( uid )
@@ -902,11 +934,13 @@ class WebServer( object ):
 
 
 		elif path.startswith('/javascripts/'):
+			## serve static javascript files
 			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8')])
 			data = open( relpath, 'rb' ).read()
 			return [ data ]
 
 		elif path.startswith('/bake/'):
+			## bake texture maps backend ##
 			print( 'PATH', path, arg)
 			uid = path.split('/')[-1][ :-4 ]	# strip ".jpg"
 			ob = get_object_by_UID( uid )
@@ -934,14 +968,19 @@ class WebServer( object ):
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]
 
-		elif path.startswith('/RPC/'):
-			if path.startswith('/RPC/player/'):
-				cam = [float(a) for a in path.split('/')[-1].split(',')]
-				print('CAMERA', cam)
 
-				assert client in GameGrid.clients
+		elif path.startswith('/RPC/'):
+			## tiny remote procedure call API
+			if path.startswith('/RPC/player/'):
+				pos = [float(a) for a in path.split('/')[-1].split(',')]
+
+				if client not in GameGrid.clients:
+					print('new player', pos)
+					## hook point for backends to connect auth server
+					GameGrid.add_player( client )
+
 				player = GameGrid.clients[ client ]
-				player.set_location( cam )
+				player.set_location( pos )
 
 				start_response('200 OK', [('Content-Length','0')])
 				return []

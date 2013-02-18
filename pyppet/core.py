@@ -32,6 +32,7 @@ import math
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
+PYPPET_LITE = 'pyppet-lite' in sys.argv
 
 #assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
 gtk.init()	# comes after clutter init
@@ -47,6 +48,18 @@ MODIFIER_TYPES_MINI = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRRO
 
 
 CONSTRAINT_TYPES = ('COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE', 'COPY_TRANSFORMS', 'DAMPED_TRACK', 'LOCKED_TRACK', 'TRACK_TO', 'LIMIT_DISTANCE', 'LIMIT_LOCATION', 'LIMIT_ROTATION', 'LIMIT_SCALE', 'MAINTAIN_VOLUME', 'TRANSFORM', 'CLAMP_TO', 'IK', 'SPLINE_IK', 'STRETCH_TO', 'ACTION', 'CHILD_OF', 'FLOOR', 'FOLLOW_PATH', 'PIVOT', 'RIGID_BODY_JOINT', 'SCRIPT', 'SHRINKWRAP', 'CAMERA_SOLVER', 'OBJECT_SOLVER', 'FOLLOW_TRACK')
+
+
+def save_selection():
+	r = {}
+	for ob in bpy.context.scene.objects: r[ ob.name ] = ob.select
+	return r
+
+def restore_selection( state ):
+	for name in state:
+		bpy.context.scene.objects[ name ].select = state[name]
+
+
 
 def clear_cloth_caches():
 	for ob in bpy.data.objects:
@@ -1445,7 +1458,7 @@ class PopupWindow(object):
 			self._system_header_hack.hide()
 
 	'''disable set_keep_above for non-popup style window'''
-	def __init__(self, title='', width=100, height=40, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=False, fullscreen=False):
+	def __init__(self, title='', width=None, height=None, child=None, toolbar=None, skip_pager=False, deletable=False, on_close=None, set_keep_above=False, fullscreen=False):
 		self.object = None
 		if not toolbar: self.toolbar = toolbar = gtk.Frame(); toolbar.add( gtk.Label() )
 		self.toolbar = toolbar
@@ -1453,6 +1466,9 @@ class PopupWindow(object):
 		self.window = win = gtk.Window()
 		win.set_title( title )
 		win.set_position( gtk.WIN_POS_MOUSE )
+		if width and height:
+			win.set_size_request( width, height )
+
 		if set_keep_above: win.set_keep_above(True)
 		if skip_pager: win.set_skip_pager_hint(True)
 		#win.set_skip_taskbar_hint(True)
@@ -1760,19 +1776,19 @@ class Toolbar(object):
 	simple toolbar with a center modal area,
 	optional left and right extra tools.
 	'''
-	def __init__(self, left_tools=[], right_tools=[], modal_frame=None):
+	def __init__(self, left_tools=[], right_tools=[], modal_frame=None, expand=False):
 		self.widget = root = gtk.HBox()
 		root.set_border_width(2)
 
 		for a in left_tools:
 			root.pack_start( a, expand=False )
 
-		root.pack_start( gtk.Label() )
+		if expand: root.pack_start( gtk.Label() )
 		self._frame = modal_frame or gtk.Frame()
 		self._modal = gtk.Label()
 		self._frame.add( self._modal )
 		root.pack_start( self._frame )
-		root.pack_start( gtk.Label() )
+		if expand: root.pack_start( gtk.Label() )
 
 		for a in right_tools:
 			root.pack_start( a, expand=False )

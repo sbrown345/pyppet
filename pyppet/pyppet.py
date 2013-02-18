@@ -15,8 +15,7 @@ if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
 from core import *		# core API
 
-DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
-PYPPET_LITE = 'pyppet-lite' in sys.argv
+assert hasattr( Blender.Scene( bpy.context.scene ), 'collada_export' )  # blender must be compiled with Collada support!
 
 
 
@@ -116,15 +115,6 @@ def color_set( button, color, ob ):
 	ob.color[2] = b
 
 
-
-def save_selection():
-	r = {}
-	for ob in Pyppet.context.scene.objects: r[ ob.name ] = ob.select
-	return r
-
-def restore_selection( state ):
-	for name in state:
-		Pyppet.context.scene.objects[ name ].select = state[name]
 
 
 
@@ -3503,23 +3493,24 @@ class PyppetUI( PyppetAPI ):
 		widget = self.websocket_server.webGL.get_fx_widget_page2()
 		note.append_page( widget, gtk.Label( icons.FX_LAYERS2 ) )
 
-		page = gtk.VBox()
 
-		b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
-		b.connect( self, path='camera_randomize' )
-		page.pack_start( b.widget, expand=False )
+		if 0:	# TODO get gui from players
+			page = gtk.VBox()
+			b = CheckButton( 'randomize', tooltip='toggle randomize camera' )
+			b.connect( self, path='camera_randomize' )
+			page.pack_start( b.widget, expand=False )
 
-		b = CheckButton( 'godrays', tooltip='toggle godrays effect' )
-		b.connect( self, path='godrays' )
-		page.pack_start( b.widget, expand=False )
+			b = CheckButton( 'godrays', tooltip='toggle godrays effect' )
+			b.connect( self, path='godrays' )
+			page.pack_start( b.widget, expand=False )
 
-		for name in 'camera_focus camera_aperture camera_maxblur'.split():
-			if name == 'camera_aperture':
-				slider = Slider( self, name=name, title=name, max=0.2, driveable=True )
-			else:
-				slider = Slider( self, name=name, title=name, max=3.0, driveable=True )
-			page.pack_start( slider.widget, expand=False )
-		note.append_page(page, gtk.Label( icons.CAMERA) )
+			for name in 'camera_focus camera_aperture camera_maxblur'.split():
+				if name == 'camera_aperture':
+					slider = Slider( self, name=name, title=name, max=0.2, driveable=True )
+				else:
+					slider = Slider( self, name=name, title=name, max=3.0, driveable=True )
+				page.pack_start( slider.widget, expand=False )
+			note.append_page(page, gtk.Label( icons.CAMERA) )
 
 
 		ex = DetachableExpander( 'animation', short_name='animation', expanded=False )
@@ -4181,6 +4172,8 @@ class PyppetUI( PyppetAPI ):
 			on_close=self.exit,
 			set_keep_above=False,
 			fullscreen=True,
+			width=800,
+			height=480
 		)
 		self.window = popup.window
 
@@ -4210,7 +4203,10 @@ class PyppetUI( PyppetAPI ):
 		left_tools, right_tools = self.create_tools( self._tools_page )
 		_popup = PopupWindow(
 			child= self._tools_page, 
-			toolbar=self.toolbar_footer.widget)
+			toolbar=self.toolbar_footer.widget,
+			width=480,
+			height=320
+		)
 
 
 		#_________________________________________
@@ -4378,12 +4374,8 @@ class App( PyppetUI ):
 			self.audio.start()
 
 			########## webgl ############
-			self.camera_randomize = False
-			self.camera_focus = 1.5
-			self.camera_aperture = 0.15
-			self.camera_maxblur = 1.0
 			self.progressive_baking = True
-			self.godrays = False
+
 			###########################
 
 			self._blender_embed_windows = []
