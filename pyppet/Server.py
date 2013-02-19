@@ -24,14 +24,13 @@ from core import *
 
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
+## hook into external API's ##
+#bpy = NotImplemented
 Pyppet = NotImplemented
-def set_bpy_api( api ):
-	'''
-	set something that supports Blender's bpy API
-	'''
+def set_api( blender_api=None, user_api=None ):
 	global Pyppet
-	Pyppet = api
-
+	Pyppet = user_api
+##############################
 
 if 'pyppet-server' in sys.argv:
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -106,7 +105,7 @@ def UID( ob ):
 
 def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 	state = save_selection()
-	for ob in Pyppet.context.scene.objects: ob.select = False
+	for ob in bpy.context.scene.objects: ob.select = False
 	ob = bpy.data.objects[ name ]
 
 	parent = ob.parent
@@ -140,8 +139,25 @@ def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 
 	#bpy.ops.wm.collada_export( filepath='/tmp/dump.dae', check_existing=False, selected=True )
 	url = '/tmp/%s.dae' %name
-	S = Blender.Scene( Pyppet.context.scene )
-	S.collada_export( url, True )	# using ctypes collada_export avoids polling issue
+	S = Blender.Scene( bpy.context.scene )
+	S.collada_export(  
+			url, 
+			0, #apply modifiers 
+			0, #mesh-view/render
+			1, #selected only
+			0, #include children
+			0, #include armatures,
+			1, #deform bones only
+			0, #active uv only
+			1, #include uv textures
+			1, #include material textures
+			1, #use tex copies
+			0, #use object instances
+			0, #sort by name
+			0, #second lift compatible
+			)
+
+
 
 	if center: ob.location = loc
 
@@ -179,12 +195,12 @@ def _dump_collada_data_helper( data ):
 
 
 def dump_collada( ob, center=False, hires=False ):
-	assert Pyppet.context.mode !='EDIT'
+	assert bpy.context.mode !='EDIT'
 	name = ob.name
 	state = save_selection()
 	uid = UID( ob )
 	print('Object:%s UID:%s'%(ob,uid))
-	for o in Pyppet.context.scene.objects: o.select = False
+	for o in bpy.context.scene.objects: o.select = False
 
 	mods = []	# to restore later #
 	for mod in ob.modifiers:
@@ -208,7 +224,7 @@ def dump_collada( ob, center=False, hires=False ):
 			_dump_collada_data_helper( data )
 
 			proxy = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
-			Pyppet.context.scene.objects.link( proxy )
+			bpy.context.scene.objects.link( proxy )
 			proxy.is_lod_proxy = True
 			proxy.draw_type = 'WIRE'
 
@@ -230,7 +246,25 @@ def dump_collada( ob, center=False, hires=False ):
 		proxy.name = '__%s__'%uid
 		assert '.' not in proxy.name	# ensure name is unique
 		## ctypes hack avoids polling issue ##
-		Blender.Scene( Pyppet.context.scene ).collada_export( url, True )
+		Blender.Scene( bpy.context.scene ).collada_export(  
+			url, 
+			0, #apply modifiers 
+			0, #mesh-view/render
+			1, #selected only
+			0, #include children
+			0, #include armatures,
+			1, #deform bones only
+			0, #active uv only
+			1, #include uv textures
+			1, #include material textures
+			1, #use tex copies
+			0, #use object instances
+			0, #sort by name
+			0, #second lift compatible
+			)
+
+
+
 		proxy.name = 'LOD'	# need to rename
 
 		proxy.matrix_world.identity()
@@ -254,7 +288,22 @@ def dump_collada( ob, center=False, hires=False ):
 		tmp.select = True
 
 		## ctypes hack avoids polling issue ##
-		Blender.Scene( Pyppet.context.scene ).collada_export( url, True )
+		Blender.Scene( Pyppet.context.scene ).collada_export( 
+			url, 
+			0, #apply modifiers 
+			0, #mesh-view/render
+			1, #selected only
+			0, #include children
+			0, #include armatures,
+			1, #deform bones only
+			0, #active uv only
+			1, #include uv textures
+			1, #include material textures
+			1, #use tex copies
+			0, #use object instances
+			0, #sort by name
+			0, #second lift compatible
+			)
 
 		## clean up ##
 		Pyppet.context.scene.objects.unlink(tmp)

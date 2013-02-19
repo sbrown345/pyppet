@@ -23936,7 +23936,7 @@ collada_export = _rpythonic_function_(		"collada_export", ctypes.c_int, [
 	("sce",		ctypes.POINTER(Scene)),
 	("filepath",		ctypes.POINTER(ctypes.c_char)),
 	("apply_modifiers",		ctypes.c_int),
-	("export_mesh_type",		ctypes.c_void_p),
+	("export_mesh_type",		ctypes.c_int),  # ENUM: BC_MESH_TYPE_VIEW, BC_MESH_TYPE_RENDER (some modifiers have different view/render settings)
 	("selected",		ctypes.c_int),
 	("include_children",		ctypes.c_int),
 	("include_armatures",		ctypes.c_int),

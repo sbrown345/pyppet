@@ -83,9 +83,6 @@ import bpy, mathutils
 from bpy.props import *
 
 
-import Server
-Server.set_bpy_api( bpy )	# pass Blender's bpy Main
-
 def load_gtk_css( style, path='malys-revolt2/gtk-3.0/gtk.css' ):
 	#def load_gtk_css( style, path='Greyness-GTK/gtk-3.0/gtk.css' ):
 	style.remove_provider( gtk.css_provider_get_default() )
@@ -125,19 +122,6 @@ def color_set( button, color, ob ):
 	ob.color[0] = r
 	ob.color[1] = g
 	ob.color[2] = b
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -4351,6 +4335,13 @@ class PyppetUI( PyppetAPI ):
 
 ##########################################################
 class App( PyppetUI ):
+	def start_webserver(self):
+		self.server = Server.WebServer()
+		#self.client = Client()
+		self.websocket_server = Server.WebSocketServer( listen_host=Server.HOST_NAME, listen_port=8081 )
+		self.websocket_server.start()	# polls in a thread
+
+
 	def __init__(self):
 		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
 		self._gtk_updated = False
@@ -4379,10 +4370,8 @@ class App( PyppetUI ):
 
 			#self.lock = threading._allocate_lock()
 
-			self.server = Server.WebServer()
-			#self.client = Client()
-			self.websocket_server = Server.WebSocketServer( listen_host=Server.HOST_NAME, listen_port=8081 )
-			self.websocket_server.start()	# polls in a thread
+			self.server = None
+			self.websocket_server = None
 
 			## EXPERIMENTAL - audio stuff ##
 			if USE_OPENAL:
@@ -4481,7 +4470,6 @@ class App( PyppetUI ):
 		print('enter main')
 		drops = 0
 		while self.active:
-			print('hi')
 			now = time.time()
 			drop_frame = False
 			dt = 1.0 / ( now - self._mainloop_prev_time )
@@ -4508,7 +4496,7 @@ class App( PyppetUI ):
 				self.update_blender_and_gtk()
 
 			now = now - self._rec_start_time
-			print('now',now)
+
 			if self.wave_playing and self.wave_speaker:
 				self.wave_speaker.update()
 				#print('wave time', self.wave_speaker.seconds)
@@ -4585,6 +4573,13 @@ class App( PyppetUI ):
 
 ######## Pyppet Singleton #########
 Pyppet = App()
+
+import Server
+Server.set_api( 
+	blender_api=bpy,	# pass Blender's bpy Main
+	user_api=Pyppet  	## TODO clean this up in Server.py
+)
+Pyppet.start_webserver()
 
 #bpy.types.Scene.use_gtk = bpy.props.BoolProperty(
 #	name='enable gtk', 
