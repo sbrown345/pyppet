@@ -42,9 +42,8 @@ def _load_ctypes_lib( name ):
 			elif __os.path.isfile( '/usr/local/lib64/%s'%name ) and not IS32BIT: return ctypes.CDLL('/usr/local/lib64/%s'%name)
 			elif __os.path.isfile( '/usr/lib/%s'%name ): return ctypes.CDLL('/usr/lib/%s'%name)
 			elif __os.path.isfile( './%s'%name ): return ctypes.CDLL('./%s'%name)
-			else:	# fallback
-				try: return ctypes.CDLL(name)
-				except: return ctypes.CDLL('')
+			else:	# no fallback
+				return None
 
 		elif sys.platform == 'darwin':
 			name += '.dylib'
@@ -710,8 +709,7 @@ _clib_name_ = 'libopencv_highgui'
 print('loading lib', _clib_name_)
 print( os.path.abspath( os.path.curdir ) )
 CTYPES_DLL = _load_ctypes_lib( _clib_name_ )
-assert CTYPES_DLL
-print( CTYPES_DLL._name )
+
 
 ## macro globals ##
 CV_WINDOW_AUTOSIZE = 1

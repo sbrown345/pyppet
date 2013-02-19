@@ -23935,7 +23935,21 @@ collada_import = _rpythonic_function_(		"collada_import", ctypes.c_int, [
 collada_export = _rpythonic_function_(		"collada_export", ctypes.c_int, [
 	("sce",		ctypes.POINTER(Scene)),
 	("filepath",		ctypes.POINTER(ctypes.c_char)),
-	("selected",		ctypes.c_int),] )
+	("apply_modifiers",		ctypes.c_int),
+	("export_mesh_type",		ctypes.c_void_p),
+	("selected",		ctypes.c_int),
+	("include_children",		ctypes.c_int),
+	("include_armatures",		ctypes.c_int),
+	("deform_bones_only",		ctypes.c_int),
+	("active_uv_only",		ctypes.c_int),
+	("include_uv_textures",		ctypes.c_int),
+	("include_material_textures",		ctypes.c_int),
+	("use_texture_copies",		ctypes.c_int),
+	("use_object_instantiation",		ctypes.c_int),
+	("sort_by_name",		ctypes.c_int),
+	("second_life",		ctypes.c_int),
+	]
+)
 
 
 _rpythonic_convert_structs_to_objects()

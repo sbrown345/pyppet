@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 ################################################################
-VERSION = '1.9.7b'
+VERSION = '1.9.7c'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
@@ -12,12 +12,19 @@ from random import *
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
-
+print('='*80)
+print('loading core')
 from core import *		# core API
+print('='*80)
+print('checking for collada export')
+# blender apt-get native builds are missing Collada support
+if hasattr( Blender.Scene( bpy.context.scene ), 'collada_export' ):
+	USE_COLLADA = True
+else:
+	USE_COLLADA = False
 
-assert hasattr( Blender.Scene( bpy.context.scene ), 'collada_export' )  # blender must be compiled with Collada support!
-
-
+print('='*80)
+print('INIT-1 OK')
 
 if sys.platform.startswith('win'):
 	#dll = ctypes.CDLL('')	# this won't work on Windows
@@ -54,7 +61,12 @@ if sys.platform.startswith('win'):
 from openGL import *
 import SDL as sdl
 import fluidsynth as fluid
+
 import openal as al
+if hasattr(al,'OpenDevice'): USE_OPENAL = True
+else: USE_OPENAL = False
+
+
 import fftw
 #import cv
 #import highgui as gui
@@ -4160,7 +4172,9 @@ class PyppetUI( PyppetAPI ):
 	def create_ui(self, context):
 		self._left_tools_modals = {}
 		######################
+		print('make vbox')
 		self.root = root = gtk.VBox()
+		print(root)
 		root.set_border_width( 10 )
 
 
@@ -4370,8 +4384,12 @@ class App( PyppetUI ):
 			self.websocket_server = Server.WebSocketServer( listen_host=Server.HOST_NAME, listen_port=8081 )
 			self.websocket_server.start()	# polls in a thread
 
-			self.audio = AudioThread()
-			self.audio.start()
+			## EXPERIMENTAL - audio stuff ##
+			if USE_OPENAL:
+				self.audio = AudioThread()
+				self.audio.start()
+			else:
+				self.audio = None
 
 			########## webgl ############
 			self.progressive_baking = True
@@ -4384,7 +4402,7 @@ class App( PyppetUI ):
 			self.blender_good_frames = 0
 			self.blender_dropped_frames = 0
 			self._mainloop_prev_time = time.time()
-
+			print('------------init-complete---------------')
 
 
 
@@ -4460,8 +4478,10 @@ class App( PyppetUI ):
 			self.update_blender_and_gtk()
 
 	def mainloop(self):
+		print('enter main')
 		drops = 0
 		while self.active:
+			print('hi')
 			now = time.time()
 			drop_frame = False
 			dt = 1.0 / ( now - self._mainloop_prev_time )
@@ -4488,7 +4508,7 @@ class App( PyppetUI ):
 				self.update_blender_and_gtk()
 
 			now = now - self._rec_start_time
-
+			print('now',now)
 			if self.wave_playing and self.wave_speaker:
 				self.wave_speaker.update()
 				#print('wave time', self.wave_speaker.seconds)
@@ -5341,6 +5361,7 @@ class WiimotesWidget(object):
 
 #####################################
 if __name__ == '__main__':
+	print('__main__')
 	if '--debug' in sys.argv:
 		Pyppet.debug_create_ui()
 		Pyppet.debug_mainloop()
@@ -5352,7 +5373,9 @@ if __name__ == '__main__':
 			#os.system('chromium-browser --app=http://localhost:8080 &')	# opens new window with name Untitled
 			#os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
 			time.sleep(0.1)
+		print('-----create ui------')
 		Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
+		print('-----main loop------')
 		Pyppet.mainloop()
 
 

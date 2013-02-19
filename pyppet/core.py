@@ -22,6 +22,11 @@ else:
 
 #import libclutter_gtk as clutter
 import gtk3 as gtk
+
+if hasattr(gtk, 'target_entry_new'): GTK3 = True
+else: GTK3 = False
+
+
 import icons
 import Blender
 
@@ -750,9 +755,13 @@ class ToolWindow(object):
 
 
 
+
 ################## simple drag'n'drop API ################
 class SimpleDND(object):
-	target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )# GTK's confusing API
+	if GTK3:
+		target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )# GTK's confusing API
+	else:
+		target = None
 
 	def _thread_hack(self):
 		i = 0
@@ -841,7 +850,12 @@ DND = SimpleDND()	# singleton
 
 class ExternalDND( SimpleDND ):	# NOT WORKING YET!! #
 	#target = gtk.target_entry_new( 'text/plain',2,gtk.TARGET_OTHER_APP )
-	target = gtk.target_entry_new( 'file://',2,gtk.TARGET_OTHER_APP )
+
+	if GTK3:
+		target = gtk.target_entry_new( 'file://',2,gtk.TARGET_OTHER_APP )
+	else:
+		target = None
+
 	#('text/plain', gtk.TARGET_OTHER_APP, 0),	# gnome
 	#('text/uri-list', gtk.TARGET_OTHER_APP, 1),	# XFCE
 	#('TEXT', 0, 2),
@@ -1597,7 +1611,9 @@ def _on_detach( widget, gcontext ):
 	w.window.show_all()
 
 class Detachable( object ):
-	_detachable_target_ = gtk.target_entry_new( 'detachable',2,0)	#gtk.TARGET_OTHER_APP )	
+	if GTK3:
+		_detachable_target_ = gtk.target_entry_new( 'detachable',2,0)	#gtk.TARGET_OTHER_APP )	
+
 	def make_detachable(self,widget, on_detach):
 		## DEPRECATED - not safe even with thread hack TODO FIXME
 		#self.widget.drag_source_set(

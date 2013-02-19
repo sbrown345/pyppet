@@ -50,10 +50,8 @@ def _load_ctypes_lib( name ):
 			elif __os.path.isfile( '/usr/lib64/%s.0'%name ):	# Fedora style
 				return ctypes.CDLL('/usr/lib64/%s.0'%name )
 
-			else:	# fallback
-				print('[ falling back to loading from current process ]')
-				try: return ctypes.CDLL(name)
-				except: return ctypes.CDLL('')
+			else:	# no fallback
+				return None
 
 		elif sys.platform == 'darwin':
 			name += '.dylib'
@@ -484,7 +482,7 @@ def _rpythonic_make_nice_global_enums_():
 def _rpythonic_clean_up_missing_functions_():
 	G = globals()
 	for f in RPYTHONIC_WRAPPER_FUNCTIONS_FAILURES:
-		G.pop( f ); print('FAILED',f)
+		G.pop( f )
 	print( "C functions loaded: %s" %len(RPYTHONIC_WRAPPER_FUNCTIONS) )
 	print( "C functions failed: %s" %len(RPYTHONIC_WRAPPER_FUNCTIONS_FAILURES) )
 

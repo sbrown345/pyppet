@@ -708,7 +708,8 @@ def _rpythonic_strip_prefixes_( prefixes ):
 
 
 
-_clib_name_ = 'libgtk-3'
+_clib_name_ = 'libgtk-3'  ## gtk3 is normal standard
+#_clib_name_ = 'libgtk-x11-2.0'  # old Gtk2  # debian /usr/lib/i386-linux-gnu/libgtk-x11-2.0.so
 print('loading lib', _clib_name_)
 print( os.path.abspath( os.path.curdir ) )
 CTYPES_DLL = _load_ctypes_lib( _clib_name_ )

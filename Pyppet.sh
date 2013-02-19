@@ -27,4 +27,16 @@ echo $1
 #	bin/blender64bits/blender $1 -noaudio --python ./pyppet/pyppet.py
 #fi
 
-blender $1 -noaudio --python ./pyppet/pyppet.py
+#--------------------------------------------------------------------------------#
+# need to use local blender because the one in ubuntu repos do not include Collada
+#blender $1 --python ./pyppet/pyppet.py
+
+## to run DerFish'es build: apt-get install python3.3
+~/b26_54590_32bit_noomp/blender $1 --python ./pyppet/pyppet.py
+
+
+## this fails even with gtk2, when trying create a gtk element
+#(blender:6889): GLib-WARNING **: unknown option bit(s) set
+#(blender:6889): GLib-CRITICAL **: g_regex_match_full: assertion `regex != NULL' failed
+#~/blender.org-265-crashes/blender $1 -noaudio --python ./pyppet/pyppet.py
+
