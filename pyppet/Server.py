@@ -494,7 +494,7 @@ class GameGrid( object ):
 			if ob.is_lod_proxy: continue
 			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures:
-				print('WARN: not streaming mesh without uvmapping', ob.name)
+				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
 
 			## do not stream objects too far from camera/player ##

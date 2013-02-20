@@ -13,10 +13,10 @@ NEGATIVE_OFFSET = '⊝'
 SHAPE_KEYS = '𝙎𝙝𝙖𝙥𝙚s'
 SHAPE_KEYS_ICON = '𝙎𝙝𝙖𝙥𝙚𝙨'
 ACTIVE_BONE = '𝘼𝙘𝙩𝙞𝙫𝙚 𝘽𝙤𝙣𝙚'
-ACTIVE_BONE_ICON = 'bone-' #'🍖'
+ACTIVE_BONE_ICON = 'BN' #'🍖'
 
 DYNAMIC_TARGETS = '𝘿𝙮𝙣𝙖𝙢𝙞𝙘 𝙏𝙖𝙧𝙜𝙚𝙩𝙨'
-DYNAMIC_TARGETS_ICON = '🎯'
+DYNAMIC_TARGETS_ICON = 'DT'
 
 
 WEIGHT = '⥤'
@@ -107,7 +107,7 @@ DND = ' ⎗ '
 
 MULTIPLY = '⨉'
 
-DRIVERS_ICON = '>' #'🔄'
+DRIVERS_ICON = 'DR' #'🔄'
 DRIVER = '⎆'
 DRIVERS = '𝘿𝙧𝙞𝙫𝙚𝙧𝙨'
 
@@ -119,19 +119,19 @@ KINECT = '㉿'
 GAMEPAD = 'Pad' #'🎮'
 WIIMOTE = '⍠'
 
-DEVICES_ICON = 'dev:' #'🔌'
+DEVICES_ICON = 'DE' #'🔌'
 DEVICES = '𝘿𝙚𝙫𝙞𝙘𝙚𝙨'
 
 PHYSICS_ICON = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
 PHYSICS = '𝙋𝙝𝙮𝙨𝙞𝙘𝙨'
 
-MODIFIERS_ICON = 'mod:' #'🔧'
+MODIFIERS_ICON = 'MO' #'🔧'
 MODIFIERS = '𝙈𝙤𝙙𝙞𝙛𝙞𝙚𝙧𝙨'
 
-CONSTRAINTS_ICON = 'cns:' #'🔗'
+CONSTRAINTS_ICON = 'CO' #'🔗'
 CONSTRAINTS = '𝘾𝙤𝙣𝙨𝙩𝙧𝙖𝙞𝙣𝙩𝙨'
 
-MATERIALS_ICON = 'mats:'
+MATERIALS_ICON = 'MA'
 MATERIALS = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
 
 SETTINGS = 'settings'
@@ -166,14 +166,14 @@ PYPPET = 'Pyppet'
 PLAY = '⊳'
 RECORD = '⊚'
 
-PHYSICS_RIG_ICON = RAGDOLL = 'ragdoll' #'💀'
+PHYSICS_RIG_ICON = RAGDOLL = 'RA' #'💀'
 PHYSICS_RIG = 'physics-rig'
 
 BIPED = 'biped' #'🏃'
 
 ROPE = '⟅'
 
-JOINTS_ICON = JOINT = 'joint' #'💪'
+JOINTS_ICON = JOINT = 'JO' #'💪'
 JOINTS = 'joints'
 
 TRANSFORM = '⇨'

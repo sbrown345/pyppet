@@ -4156,9 +4156,7 @@ class PyppetUI( PyppetAPI ):
 	def create_ui(self, context):
 		self._left_tools_modals = {}
 		######################
-		print('make vbox')
 		self.root = root = gtk.VBox()
-		print(root)
 		root.set_border_width( 10 )
 
 
@@ -4210,7 +4208,6 @@ class PyppetUI( PyppetAPI ):
 		#_________________________________________
 		## RIGHT TOOLS ##
 		#self.root.pack_start( right_tools, expand=False )
-
 		#root.pack_start( self.toolbar_footer.widget, expand=False )
 
 
@@ -4221,11 +4218,14 @@ class PyppetUI( PyppetAPI ):
 
 		################# google chrome ######################
 		#self._chrome_xsocket = gtk.Socket()
-		if not PYPPET_LITE:
-			self._chrome_xsocket, chrome_container = self.create_embed_widget(
-				on_dnd = self.drop_on_view,
-			)
-			self._main_body_split.pack_start( chrome_container, expand=True )
+		#if not PYPPET_LITE:
+		self._chrome_xsocket, chrome_container = self.create_embed_widget(
+			on_dnd = self.drop_on_view,
+		)
+		self._main_view_split = gtk.HBox()
+		self._main_body_split.pack_start( self._main_view_split, expand=True )
+		self._main_view_split.pack_start( chrome_container, expand=True )
+		self._main_view_split.pack_start( right_tools, expand=False )
 
 		############### Extra Tools #################
 		#______________________________________________________#
@@ -4263,8 +4263,7 @@ class PyppetUI( PyppetAPI ):
 
 
 		## FOOTER ##
-
-		self._tools_page.pack_start( right_tools, expand=False )
+		#self._tools_page.pack_start( right_tools, expand=False )
 		
 
 		##################################
@@ -4311,6 +4310,7 @@ class PyppetUI( PyppetAPI ):
 		####################
 
 		#self.webcam.start_thread( self.lock )
+
 
 	## UNSTABLE
 	def embed_blender_window_deprecated(self,button):
