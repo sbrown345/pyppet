@@ -26,6 +26,7 @@ else:
 print('='*80)
 print('INIT-1 OK')
 
+
 if sys.platform.startswith('win'):
 	#dll = ctypes.CDLL('')	# this won't work on Windows
 	#print(dll, dll._handle)	# _handle is a number address, changes each time
@@ -3020,6 +3021,7 @@ def set_transform( ob, pos, rot, set_body=False ):
 
 
 class PyppetUI( PyppetAPI ):
+
 	def toggle_record( self, button, selected_only, preview, record_physics, record_objects, record_shapes ):
 		if button.get_active():
 			self.start_record( 
@@ -3370,6 +3372,11 @@ class PyppetUI( PyppetAPI ):
 		#b.connect('clicked', self.embed_blender_window)
 		#b.set_tooltip_text( 'embed blender window' )
 		#right.append( b )
+		if os.path.isfile( self._3dsmax.exe_path ):
+			b = gtk.Button( '3dsMax' )
+			b.connect('clicked', self.open_3dsmax)
+			b.set_tooltip_text( 'open 3dsmax' )
+			right.append( b )
 
 		self._bottom_toggle_button = b = gtk.ToggleButton( icons.BOTTOM_UI ); b.set_relief( gtk.RELIEF_NONE )
 		b.set_active(True)
@@ -4310,7 +4317,7 @@ class PyppetUI( PyppetAPI ):
 		####################
 
 		#self.webcam.start_thread( self.lock )
-
+		return self.window
 
 	## UNSTABLE
 	def embed_blender_window_deprecated(self,button):
@@ -5369,7 +5376,8 @@ if __name__ == '__main__':
 			#os.system('chromium-browser localhost:8080 &')	# dbus opens a new tab
 			time.sleep(0.1)
 		print('-----create ui------')
-		Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
+		win = Pyppet.create_ui( bpy.context )	# bpy.context still valid before mainloop
+		Pyppet.setup_3dsmax( win.get_clipboard() )
 		print('-----main loop------')
 		Pyppet.mainloop()
 

@@ -126,6 +126,8 @@ class BlenderContextCopy(object):
 		for name in copy: setattr( self, name, copy[name] )
 		self.blender_has_cursor = False	# extra
 
+
+
 class BlenderHack( object ):
 	'''
 	gtk.gtk_main_iteration() is safe to use outside of blender's mainloop,
@@ -147,6 +149,15 @@ class BlenderHack( object ):
 	_blender_min_width = 240
 	_blender_min_height = 320
 
+
+	def open_3dsmax(self, button=None): self._3dsmax.run()
+	def setup_3dsmax(self, clipboard):
+		# system clipboard is current workaround for talking to 3dsmax
+		#import Server
+		self._clipboard = clipboard
+
+
+
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
 		## TODO store region types, and order
@@ -162,6 +173,10 @@ class BlenderHack( object ):
 
 
 	def setup_blender_hack(self, context):
+		import Server
+		self._3dsmax = Server.Remote3dsMax( bpy )
+
+
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
 
 		self.default_blender_screen = context.screen.name
@@ -214,6 +229,9 @@ class BlenderHack( object ):
 								)
 							reg.tag_redraw()
 							break
+
+		if self._3dsmax:
+			self._3dsmax.update( self._clipboard )
 
 		# even updating GTK first wont fix the freeze on DND over blenders window! #
 		Blender.iterate( self.evil_C, draw=not drop_frame)

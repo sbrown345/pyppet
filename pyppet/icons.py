@@ -131,7 +131,7 @@ MODIFIERS = '𝙈𝙤𝙙𝙞𝙛𝙞𝙚𝙧𝙨'
 CONSTRAINTS_ICON = 'CO' #'🔗'
 CONSTRAINTS = '𝘾𝙤𝙣𝙨𝙩𝙧𝙖𝙞𝙣𝙩𝙨'
 
-MATERIALS_ICON = 'MA'
+MATERIALS_ICON = 'Materials'
 MATERIALS = '𝙈𝙖𝙩𝙚𝙧𝙞𝙖𝙡𝙨'
 
 SETTINGS = 'settings'

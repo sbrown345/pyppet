@@ -12,7 +12,7 @@ class Database(object):
 		'''add new object - 3dsmax stream sends update first'''
 		if name not in self.objects:
 			self.add_object(name, position, scale, quat, category=category, data=data)
-
+		print('<db update object>', name, position)
 		ob = self.objects[name]
 		ob.location = position
 		ob.scale = scale

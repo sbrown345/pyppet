@@ -1,4 +1,5 @@
 ## Server Module ##
+## TODO websocket client to server
 
 import os, sys, time
 
@@ -21,6 +22,7 @@ from bpy.props import *
 
 
 from core import *
+from random import *
 
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
@@ -47,6 +49,7 @@ else:
 	## not the internet address we need ##
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
+#HOST_NAME = '192.168.0.14'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 
@@ -1061,7 +1064,6 @@ class Remote3dsMax(object):
 	def __init__(self, api, exe_path=None, use_wine=True):
 		if not exe_path:
 			exe_path = os.path.expanduser('~/.wine/drive_c/Program Files/Autodesk/3ds Max 2009/3dsmax.exe')
-		assert os.path.isfile( exe_path )
 		self.exe_path = exe_path
 		self.use_wine = use_wine
 		self._wait_for_loading = []
@@ -1115,7 +1117,11 @@ class Remote3dsMax(object):
 			######################################################################
 			## API ##
 
-			if cmd == 'UPDATE:STREAM' and name in db.objects:
+			if cmd == 'UPDATE:STREAM':
+				if name not in db.objects:
+					print('adding new object from update stream')
+					db.add_object(name, pos, scl, quat)
+
 				exargs or None
 				if exargs: # streaming mesh
 					verts = [ eval('(%s)'%v) for v in exargs.split('][') ]
@@ -1123,8 +1129,7 @@ class Remote3dsMax(object):
 				db.update_object(name, pos, scl, quat, category=cat)
 
 			if cmd == 'UPDATE:SELECT':
-				#db.update_object(name, pos, scl, quat, select=bool(eval(exarg)))
-				print('select',name)
+				pass
 
 			elif cmd == 'SAVING:3DS': ## TODO check this is sending from stream_api.ms
 				if name not in self._wait_for_loading:
@@ -1135,10 +1140,11 @@ class Remote3dsMax(object):
 				loaded = self.load_3ds( name )
 
 				
-			elif cmd == '@database:add_object@' and name not in db.objects:
+			elif cmd == '@database:add_object@':
 				#self._wait_for_loading.append( name )
+				if name not in db.objects:
+					db.add_object(name, pos, scl, quat, category=category)
 
-				db.add_object(name, pos, scl, quat, category=category)
 				self.load_3ds( name )
 
 
@@ -1223,7 +1229,7 @@ class TestApp( BlenderHackLinux ):
 		frame.add( button )
 
 		win.show_all()				# window and all widgets shown first
-		self.clipboard = self.window.get_clipboard()  # clipboard is current workaround for talking to 3dsmax
+		self._clipboard = self.window.get_clipboard()  # clipboard is current workaround for talking to 3dsmax
 
 		self.webserver = WebServer()
 		self.websocket_server = WebSocketServer( listen_host=HOST_NAME, listen_port=8081 )
@@ -1241,9 +1247,9 @@ class TestApp( BlenderHackLinux ):
 	def mainloop(self):
 		self.active = True
 		while self.active:
-			self.update_blender_and_gtk()
+			self.update_blender_and_gtk() # includes: self._3dsmax.update( self._clipboard )
 			self.webserver.update()
-			if self._3dsmax: self._3dsmax.update( self.clipboard )
+			#if self._3dsmax: self._3dsmax.update( self.clipboard )
 
 if __name__ == '__main__':
 	print('running server test...')
