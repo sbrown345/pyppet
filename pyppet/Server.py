@@ -1122,11 +1122,13 @@ class Remote3dsMax(object):
 					print('adding new object from update stream')
 					db.add_object(name, pos, scl, quat)
 
-				exargs or None
-				if exargs: # streaming mesh
-					verts = [ eval('(%s)'%v) for v in exargs[1:-1].split('][') ]
-
-				db.update_object(name, pos, scl, quat, category=cat)
+				# TODO switch this back on when we can load FBX or something else (.3ds breaks triangles and vertex order)
+				#if exargs: # streaming mesh
+				#	verts = [ eval('(%s)'%v) for v in exargs[1:-1].split('][') ]
+				#else:
+				#	verts = None
+				verts = None
+				db.update_object(name, pos, scl, quat, category=cat, vertices=verts)
 
 			if cmd == 'UPDATE:SELECT':
 				pass

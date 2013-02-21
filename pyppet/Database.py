@@ -8,7 +8,7 @@ class Database(object):
 		global bpy
 		bpy = api
 
-	def update_object(self, name, position, scale, quat, category=None, data=None):
+	def update_object(self, name, position, scale, quat, category=None, data=None, vertices=None):
 		'''add new object - 3dsmax stream sends update first'''
 		if name not in self.objects:
 			self.add_object(name, position, scale, quat, category=category, data=data)
@@ -17,6 +17,20 @@ class Database(object):
 		ob.location = position
 		ob.scale = scale
 		ob.rotation_quaternion = quat
+
+		## vertex mesh streaming ##
+		if vertices and ob.data:
+			mesh = ob.data
+			n1 = len(mesh.vertices)
+			n2 = len(vertices)
+			if n1 != n2:
+				print('missmatch', n1, n2)
+			if n2 >= n1:
+				print('mesh update')
+				for i,v in enumerate(mesh.vertices):
+					x,y,z = vertices[i]
+					v.co.x=x; v.co.y=y; v.co.z=z ## assign vertex location ##
+		############################
 
 	def add_object(self, name, position, scale, quat, category=None, data=None):
 		print('<db adding new object>', name)
