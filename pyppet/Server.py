@@ -1124,7 +1124,7 @@ class Remote3dsMax(object):
 
 				exargs or None
 				if exargs: # streaming mesh
-					verts = [ eval('(%s)'%v) for v in exargs.split('][') ]
+					verts = [ eval('(%s)'%v) for v in exargs[1:-1].split('][') ]
 
 				db.update_object(name, pos, scl, quat, category=cat)
 

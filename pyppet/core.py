@@ -55,6 +55,11 @@ MODIFIER_TYPES_MINI = ('SUBSURF', 'MULTIRES', 'ARRAY', 'HOOK', 'LATTICE', 'MIRRO
 CONSTRAINT_TYPES = ('COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE', 'COPY_TRANSFORMS', 'DAMPED_TRACK', 'LOCKED_TRACK', 'TRACK_TO', 'LIMIT_DISTANCE', 'LIMIT_LOCATION', 'LIMIT_ROTATION', 'LIMIT_SCALE', 'MAINTAIN_VOLUME', 'TRANSFORM', 'CLAMP_TO', 'IK', 'SPLINE_IK', 'STRETCH_TO', 'ACTION', 'CHILD_OF', 'FLOOR', 'FOLLOW_PATH', 'PIVOT', 'RIGID_BODY_JOINT', 'SCRIPT', 'SHRINKWRAP', 'CAMERA_SOLVER', 'OBJECT_SOLVER', 'FOLLOW_TRACK')
 
 
+def set_selection(ob):
+	for o in bpy.context.scene.objects:
+		if o.name == ob.name: ob.select = True
+		else: ob.select = False
+
 def save_selection():
 	r = {}
 	for ob in bpy.context.scene.objects: r[ ob.name ] = ob.select

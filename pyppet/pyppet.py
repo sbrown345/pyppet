@@ -4119,9 +4119,9 @@ class PyppetUI( PyppetAPI ):
 					print('image reload', slot.texture.image)
 					slot.texture.image.reload()
 
-		if ob.name not in GameGrid.RELOAD_TEXTURES:
+		if ob.name not in Server.GameGrid.RELOAD_TEXTURES:
 			print('rebake request', ob.name)
-			GameGrid.RELOAD_TEXTURES.append( ob.name )
+			Server.GameGrid.RELOAD_TEXTURES.append( ob.name )
 
 
 	def toggle_pose_mode(self,button):
@@ -4719,6 +4719,7 @@ class OutlinerUI( object ):
 		names = context.scene.objects.keys()
 		update = []
 		for name in names:
+			if name.startswith('127.'): continue
 			if name not in self.objects: update.append( name )
 		remove = []
 		for name in self.objects:
@@ -4738,7 +4739,7 @@ class OutlinerUI( object ):
 
 			b = gtk.Button(name)
 			DND.make_source( b, wrap )		#self.callback, name )
-			b.connect('clicked', lambda b,o: setattr(o,'select',True), ob)
+			b.connect('clicked', lambda b,o: set_selection(o), ob)
 			b.set_relief( gtk.RELIEF_NONE )
 			root.pack_start( b, expand=False )
 
