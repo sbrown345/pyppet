@@ -24,7 +24,7 @@ class Database(object):
 			n1 = len(mesh.vertices)
 			n2 = len(vertices)
 			if n1 != n2:
-				print('missmatch', n1, n2)
+				print('missmatch', n1, n2)  ## this bug is caused by 3ds import
 			if n2 >= n1:
 				print('mesh update')
 				for i,v in enumerate(mesh.vertices):

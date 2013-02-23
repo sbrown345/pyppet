@@ -4119,9 +4119,9 @@ class PyppetUI( PyppetAPI ):
 					print('image reload', slot.texture.image)
 					slot.texture.image.reload()
 
-		if ob.name not in Server.GameGrid.RELOAD_TEXTURES:
+		if ob.name not in Server.GameManager.RELOAD_TEXTURES:
 			print('rebake request', ob.name)
-			Server.GameGrid.RELOAD_TEXTURES.append( ob.name )
+			Server.GameManager.RELOAD_TEXTURES.append( ob.name )
 
 
 	def toggle_pose_mode(self,button):

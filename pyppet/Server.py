@@ -402,9 +402,16 @@ class WebGL(object):
 
 #####################
 class Player( object ):
-	def __init__(self, ip):
+	def __init__(self, ip, websocket=None):
+		'''
+		self.objects is a list of objects that the client should know about from its message stream,
+		it can also be used as a cache.
+		'''
 		self.address = ip
-		self.objects = []
+		self.websocket = websocket
+
+		self.objects = []	## list of objects client in client message stream
+
 		## TODO expose these options with GTK
 		self.camera_randomize = False
 		self.camera_focus = 1.5
@@ -453,27 +460,16 @@ class Player( object ):
 		else:
 			return self.streaming_boundry.empty_draw_size
 
-
-
-class GameGrid( object ):
-	MAX_VERTS = 2000
-	RELOAD_TEXTURES = []
-
-	clients = {}	# ip : camera/player location
-
-	@classmethod
-	def add_player( self, ip ):
-		player = Player( ip )
-		self.clients[ ip ] = player
-
-
-	@classmethod
-	def create_stream_message( self, context, sock ):
-		ip,port = sock.getsockname()
-		assert ip in self.clients
-
+	################################ convert to stream #######################################
+	def create_stream_message( self, context ):
+		'''
+		packs all data in message stream into a dictionary,
+		the dict is converted into json and later streamed to the client.
+		'''
+		#ip,port = sock.getsockname()
+		#assert ip in self.clients
 		#player_location = mathutils.Vector( self.clients[ip] )
-		player = self.clients[ip]
+		#player = GameManager.clients[ self.address ]
 
 		msg = { 
 			'meshes':{}, 
@@ -482,12 +478,12 @@ class GameGrid( object ):
 			'curves':{},
 			'FX':{},
 			'camera': {
-				'rand':player.camera_randomize,
-				'focus':player.camera_focus,
-				'aperture':player.camera_aperture,
-				'maxblur':player.camera_maxblur,
+				'rand':self.camera_randomize,
+				'focus':self.camera_focus,
+				'aperture':self.camera_aperture,
+				'maxblur':self.camera_maxblur,
 			},
-			'godrays': player.godrays,
+			'godrays': self.godrays,
 		}
 
 		streaming_meshes = []
@@ -503,24 +499,24 @@ class GameGrid( object ):
 			## do not stream objects too far from camera/player ##
 			## if something is far, do not stream mesh data ##
 			far = False
-			distance = (player.location - ob.matrix_world.to_translation()).length
-			if distance > player.get_streaming_max_distance():
+			distance = (self.location - ob.matrix_world.to_translation()).length
+			if distance > self.get_streaming_max_distance():
 				far = True
-				if ob not in player.objects:
+				if ob not in self.objects:
 					if far_objects:
 						far_objects.append( ob )
 						continue
 					else:
 						far_objects.append( ob )	# let far obs slip thru one at a time
-				elif distance < player.get_streaming_max_distance( degraded='half' ):
+				elif distance < self.get_streaming_max_distance( degraded='half' ):
 					if random() > 0.5: continue
-				elif distance < player.get_streaming_max_distance( degraded='full' ):
+				elif distance < self.get_streaming_max_distance( degraded='full' ):
 					if random() > 0.25: continue
 				else:
 					continue
 
-			if ob not in player.objects:		# keep track of what objects player knows about
-				player.objects.append( ob )
+			if ob not in self.objects:		# keep track of what objects player knows about
+				self.objects.append( ob )
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
@@ -643,14 +639,45 @@ class GameGrid( object ):
 		return msg
 
 
-#####################
+
+
+class GameManager( object ):
+	MAX_VERTS = 2000
+	RELOAD_TEXTURES = []
+
+	clients = {}	# ip : camera/player location
+
+	@classmethod
+	def add_player( self, ip, websocket=None ):
+		player = Player( ip, websocket=websocket )
+		self.clients[ ip ] = player
+		return player
+
+
+##################################################
 class WebSocketServer( websocket.WebSocketServer ):
 	buffer_size = 8096*2
 	client = None
 	webGL = WebGL()
-
 	active = False
+
+	def new_client(self):  ## websocket.py API ##
+		ip,port = self.client.getsockname()
+		if ip in GameManager.clients: print('[websocket] RELOADING CLIENT:', ip)
+		else:
+			print('_'*80)
+			print('NEW CLIENT:', ip)
+			GameManager.add_player( ip, websocket=self.client )
+		player = GameManager.clients[ ip ]
+
+
 	def start(self):
+		self.daemon = False
+		self.verbose = True
+		
+		self.start_server()
+
+	def start_debug(self):
 		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
 		self.active = False
 		try:
@@ -662,20 +689,11 @@ class WebSocketServer( websocket.WebSocketServer ):
 		print('--starting websocket server thread--')
 		self.active = True
 		threading._start_new_thread(
-			self.loop, (lsock,)
+			self.loop_debug, (lsock,)
 		)
 		return True
 
-	def stop(self):
-		if self.active:
-			print('--stopping websocket server thread--')
-			self.active = False
-			time.sleep(1)
-			#self.send_close()
-			#raise self.EClose(closed)
-
-
-	def loop(self, lsock):
+	def loop_debug(self, lsock):
 		while self.active:
 			time.sleep(0.0333)
 			try:
@@ -686,19 +704,21 @@ class WebSocketServer( websocket.WebSocketServer ):
 			except Exception: continue
 			## keep outside of try for debugging ##
 			self.top_new_client(startsock, address)	# sets.client and calls new_client()
-		print('[[websocket thread clean exit]]')
+		print('[websocket] debug thread exit')
 		lsock.close()
 		#lsock.shutdown()
 
-	def new_client(self):
-		ip,port = self.client.getsockname()
-		if ip in GameGrid.clients: print('RELOADING CLIENT:', ip)
-		else:
-			print('_'*80)
-			print('NEW CLIENT:', ip)
-			GameGrid.add_player( ip )
 
-		player = GameGrid.clients[ ip ]
+	def stop(self):
+		if self.active:
+			print('--stopping websocket server thread--')
+			self.active = False
+			time.sleep(1)
+			#self.send_close()
+			#raise self.EClose(closed)
+
+	## Server has "db", Database contains a GameManager
+
 
 
 	_bps_start = None
@@ -706,9 +726,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	def update( self, context ):	# called from main
 		if not self.client: return
-		#if not GameGrid.clients: return
+		#if not GameManager.clients: return
 
-		msg = GameGrid.create_stream_message( context, self.client )
+		msg = GameManager.create_stream_message( context, self.client )
 
 		for fx in  self.webGL.effects:
 			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
@@ -750,7 +770,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		elif not outs:
 			print('[websocket] client not ready to read....')
+		elif self.client not in outs:
+			print('[websocket ERROR] another client is ready')
 
+
+
+		################ read from client ################
 		if self.client in ins:
 			# Receive client data, decode it, and send it back
 			frames, closed = self.recv_frames()
@@ -762,6 +787,12 @@ class WebSocketServer( websocket.WebSocketServer ):
 					raise self.EClose(closed)
 				except: pass
 				self.client = None
+			elif frames:
+				for frame in frames:
+					print('--got frame from client--')
+					print(frame)
+			elif not closed:
+				print('[websocket ERROR] client sent nothing')
 
 
 
@@ -1026,12 +1057,12 @@ class WebServer( object ):
 			if path.startswith('/RPC/player/'):
 				pos = [float(a) for a in path.split('/')[-1].split(',')]
 
-				if client not in GameGrid.clients:
+				if client not in GameManager.clients:
 					print('new player', pos)
 					## hook point for backends to connect auth server
-					GameGrid.add_player( client )
+					GameManager.add_player( client )
 
-				player = GameGrid.clients[ client ]
+				player = GameManager.clients[ client ]
 				player.set_location( pos )
 
 				start_response('200 OK', [('Content-Length','0')])

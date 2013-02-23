@@ -221,6 +221,7 @@ Sec-WebSocket-Accept: %s\r
         os.dup2(os.open(os.devnull, os.O_RDWR), sys.stdin.fileno())
         os.dup2(os.open(os.devnull, os.O_RDWR), sys.stdout.fileno())
         os.dup2(os.open(os.devnull, os.O_RDWR), sys.stderr.fileno())
+        print('[websocket] daemonized.')
 
     @staticmethod
     def unmask(buf, f):
@@ -569,9 +570,11 @@ Sec-WebSocket-Accept: %s\r
 
         stype = ""
 
-        ready = select.select([sock], [], [], 3)[0]
-        if not ready:
-            raise self.EClose("ignoring socket not ready")
+        ## not required anymore ##
+        #ready = select.select([sock], [], [], 3)[0]
+        #if not ready:
+        #    raise self.EClose("ignoring socket not ready")
+
         # Peek, but do not read the data so that we have a opportunity
         # to SSL wrap the socket first
         handshake = sock.recv(1024, socket.MSG_PEEK)
@@ -788,22 +791,26 @@ Sec-WebSocket-Accept: %s\r
         is a WebSockets client then call new_client() method (which must
         be overridden) for each new client connection.
         """
+        print('[websocket] opening socket..')
         lsock = self.socket(self.listen_host, self.listen_port)
-
+        print(lsock)
         if self.daemon:
+            print('[websocket] starting daemon')
             self.daemonize(keepfd=lsock.fileno(), chdir=self.web)
 
-        self.started()  # Some things need to happen after daemonizing
-
+        #self.started()  # Some things need to happen after daemonizing
+        print('[websocket] override SIGINT')
         # Allow override of SIGINT
         signal.signal(signal.SIGINT, self.do_SIGINT)
         if not multiprocessing:
             # os.fork() (python 2.4) child reaper
             signal.signal(signal.SIGCHLD, self.fallback_SIGCHLD)
-
+        print('[websocket] enter while...')
         while True:
             try:
+                print('trying.')
                 try:
+                    print('trying...')
                     self.client = None
                     startsock = None
                     pid = err = 0
@@ -837,6 +844,7 @@ Sec-WebSocket-Accept: %s\r
                             raise
 
                     if self.run_once:
+                        print('[WEBSOCKET] single client debug')
                         # Run in same process if run_once
                         self.top_new_client(startsock, address)
                         if self.ws_connection :
@@ -844,7 +852,7 @@ Sec-WebSocket-Accept: %s\r
                                     % address[0])
                             break
                     elif multiprocessing:
-                        self.vmsg('%s: new handler Process' % address[0])
+                        print('[WEBSOCKET] %s: new handler Process' % address[0])
                         p = multiprocessing.Process(
                                 target=self.top_new_client,
                                 args=(startsock, address))
@@ -852,7 +860,7 @@ Sec-WebSocket-Accept: %s\r
                         # child will not return
                     else:
                         # python 2.4
-                        self.vmsg('%s: forking handler' % address[0])
+                        print('[WEBSOCKET] %s: forking handler' % address[0])
                         pid = os.fork()
                         if pid == 0:
                             # child handler process
