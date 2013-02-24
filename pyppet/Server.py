@@ -402,6 +402,8 @@ class WebGL(object):
 
 #####################
 class Player( object ):
+	MAX_VERTS = 2000
+
 	def __init__(self, ip, websocket=None):
 		'''
 		self.objects is a list of objects that the client should know about from its message stream,
@@ -601,8 +603,8 @@ class Player( object ):
 					if len(ob.data.vertices) < self.MAX_VERTS and not far:
 						streaming_meshes.append( ob )
 
-				if ob.name in self.RELOAD_TEXTURES:
-					self.RELOAD_TEXTURES.remove( ob.name )
+				if ob.name in GameManager.RELOAD_TEXTURES:
+					GameManager.RELOAD_TEXTURES.remove( ob.name )
 					pak[ 'reload_textures' ] = True
 
 				subsurf = 0
@@ -642,9 +644,7 @@ class Player( object ):
 
 
 class GameManager( object ):
-	MAX_VERTS = 2000
 	RELOAD_TEXTURES = []
-
 	clients = {}	# ip : camera/player location
 
 	@classmethod
@@ -666,30 +666,32 @@ class WebSocketServer( websocket.WebSocketServer ):
 		if ip in GameManager.clients: print('[websocket] RELOADING CLIENT:', ip)
 		else:
 			print('_'*80)
-			print('NEW CLIENT:', ip)
+			print('[websocket] NEW CLIENT:', ip)
 			GameManager.add_player( ip, websocket=self.client )
 		player = GameManager.clients[ ip ]
 
 
-	def start(self):
-		self.daemon = False
+	def start_deprecated(self):
+		self.daemon = False # daemon mode will not work inside blender
 		self.verbose = True
-		
 		self.start_server()
 
-	def start_debug(self):
+	def start(self):
 		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
 		self.active = False
-		try:
-			lsock = self.socket(self.listen_host, self.listen_port)
-		except:
-			print('ERROR: [websocket server] failed to listen on port: %s' %self.listen_port)
-			return False
+		#try:
+		#	sock = self.socket(self.listen_host, self.listen_port)
+		#except:
+		#	print('ERROR [websocket] failed to listen on port: %s' %self.listen_port)
+		#	return False
+		sock = self.socket(self.listen_host, self.listen_port)
+
+		self.active = True
+		self.listen_socket = sock
 
 		print('--starting websocket server thread--')
-		self.active = True
 		threading._start_new_thread(
-			self.loop_debug, (lsock,)
+			self.loop_debug, (sock,)
 		)
 		return True
 
@@ -711,73 +713,82 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	def stop(self):
 		if self.active:
-			print('--stopping websocket server thread--')
 			self.active = False
 			time.sleep(1)
+			print('[websocket] closing main listener socket')
+			self.listen_socket.close()
 			#self.send_close()
 			#raise self.EClose(closed)
-
-	## Server has "db", Database contains a GameManager
 
 
 
 	_bps_start = None
 	_bps = 0
 
-	def update( self, context ):	# called from main
-		if not self.client: return
+	def update( self, context ):	# called from main thread
 		#if not GameManager.clients: return
+		players = []
+		rlist = []# self.listen_socket ]
+		wlist = []
+		for player in GameManager.clients.values():
+			if player.websocket:
+				rlist.append( player.websocket )
+				wlist.append( player.websocket )
+				players.append( player )
 
-		msg = GameManager.create_stream_message( context, self.client )
-
-		for fx in  self.webGL.effects:
-			msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
-
-
-		## dump to json and encode to bytes ##
-		data = json.dumps( msg )
-		rawbytes = data.encode('utf-8')
-		cqueue = [ rawbytes ]
-
-		self._bps += len( rawbytes )
-		now = time.time()
-		if self._bps_start is None or now-self._bps_start > 1.0:
-			#print('kilobytes per second', self._bps/1024)
-			self._bps_start = now
-			self._bps = 0
-			## monkey uncompressed head about 520KB per second ##
-			## monkey head with optimize round(4) is 380KB per second ##
-			## monkey head with optimize round(3) is 350KB per second ##
-
-
-
-		## send the data ##
-		rlist = [self.client]
-		wlist = [self.client]
-
-		ins, outs, excepts = select.select(rlist, wlist, [], 1)
+		ins, outs, excepts = select.select(rlist, wlist, [], 0.01)
 		if excepts: raise Exception("[websocket] Socket exception")
 
-		if self.client in outs:
-			# Send queued target data to the client
+
+		if not outs and players:
+			print('[websocket] no clients ready to read....')
+
+		if self.listen_socket in outs and False:
+			print('[websocket] new client...')
+			sock, address = self.listen_socket.accept()
+			self.top_new_client(sock, address)	# this is part of websocket.py API: it sets self.client=sock, and calls new_client()
+			#outs.remove( self.listen_socket )
+
+		for sock in outs:
+			if sock is self.listen_socket: continue
+
+			player = players[ rlist.index(sock) ]
+			msg = player.create_stream_message( context )
+			print(player, msg)
+
+			for fx in  self.webGL.effects:  ## TODO move to player class
+				msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
+
+			## dump to json and encode to bytes ##
+			rawbytes = json.dumps( msg ).encode('utf-8')
+			cqueue = [ rawbytes ]
+
+			self._bps += len( rawbytes )
+			now = time.time()
+			if self._bps_start is None or now-self._bps_start > 1.0:
+				#print('kilobytes per second', self._bps/1024)
+				self._bps_start = now
+				self._bps = 0
+				## monkey uncompressed head about 520KB per second ##
+				## monkey head with optimize round(4) is 380KB per second ##
+				## monkey head with optimize round(3) is 350KB per second ##
+
+
+			self.client = sock
 			try:
 				pending = self.send_frames(cqueue)
 				if pending: print('[websocket] failed to send', pending)
 				else: pass #print('[websocket sent]', cqueue)
 			except:
 				print('[websocket error] can not send_frames')
-				self.client = None
+			self.client = None
 
-		elif not outs:
-			print('[websocket] client not ready to read....')
-		elif self.client not in outs:
-			print('[websocket ERROR] another client is ready')
+		for sock in ins:
+			if sock is self.listen_socket: continue
+			player = players[ rlist.index(sock) ]
 
+			self.client = sock
 
-
-		################ read from client ################
-		if self.client in ins:
-			# Receive client data, decode it, and send it back
 			frames, closed = self.recv_frames()
 			print('got from client', frames)
 			if closed:
@@ -793,6 +804,10 @@ class WebSocketServer( websocket.WebSocketServer ):
 					print(frame)
 			elif not closed:
 				print('[websocket ERROR] client sent nothing')
+
+			self.client = None
+
+
 
 
 
