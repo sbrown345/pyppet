@@ -14,7 +14,7 @@ import io, socket, select, pickle, urllib
 import urllib.request
 import urllib.parse
 
-import websocket
+from websocket import websockify as websocket
 import json
 
 import bpy, mathutils
@@ -643,6 +643,7 @@ class Player( object ):
 
 
 
+##################################################
 class GameManager( object ):
 	RELOAD_TEXTURES = []
 	clients = {}	# ip : camera/player location
@@ -652,7 +653,6 @@ class GameManager( object ):
 		player = Player( ip, websocket=websocket )
 		self.clients[ ip ] = player
 		return player
-
 
 ##################################################
 class WebSocketServer( websocket.WebSocketServer ):
@@ -691,16 +691,15 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		print('--starting websocket server thread--')
 		threading._start_new_thread(
-			self.loop_debug, (sock,)
+			self.new_client_listener_thread, (sock,)
 		)
 		return True
 
-	def loop_debug(self, lsock):
+	def new_client_listener_thread(self, lsock):
 		while self.active:
-			time.sleep(0.0333)
 			try:
-				self.poll()
-				ready = select.select([lsock], [], [], 0.01)[0]
+				#self.poll()
+				ready = select.select([lsock], [], [], 0.5)[0]
 				if lsock in ready: startsock, address = lsock.accept()
 				else: continue
 			except Exception: continue
@@ -708,20 +707,21 @@ class WebSocketServer( websocket.WebSocketServer ):
 			self.top_new_client(startsock, address)	# sets.client and calls new_client()
 		print('[websocket] debug thread exit')
 		lsock.close()
+		self.listen_socket = None
 		#lsock.shutdown()
 
 
 	def stop(self):
 		if self.active:
 			self.active = False
-			time.sleep(1)
+			time.sleep(0.1)
 			print('[websocket] closing main listener socket')
-			self.listen_socket.close()
+			if self.listen_socket: self.listen_socket.close()
 			#self.send_close()
 			#raise self.EClose(closed)
 
 
-
+	###################### server mainloop ####################
 	_bps_start = None
 	_bps = 0
 
@@ -743,14 +743,15 @@ class WebSocketServer( websocket.WebSocketServer ):
 		if not outs and players:
 			print('[websocket] no clients ready to read....')
 
-		if self.listen_socket in outs and False:
-			print('[websocket] new client...')
-			sock, address = self.listen_socket.accept()
-			self.top_new_client(sock, address)	# this is part of websocket.py API: it sets self.client=sock, and calls new_client()
-			#outs.remove( self.listen_socket )
+		######## bug? can't listen and spawn new clients from main thread?
+		#if self.listen_socket in outs and False:
+		#	print('[websocket] new client...')
+		#	sock, address = self.listen_socket.accept()
+		#	self.top_new_client(sock, address)	# this is part of websocket.py API: it sets self.client=sock, and calls new_client()
+		#	#outs.remove( self.listen_socket )
 
 		for sock in outs:
-			if sock is self.listen_socket: continue
+			#if sock is self.listen_socket: continue
 
 			player = players[ rlist.index(sock) ]
 			msg = player.create_stream_message( context )
@@ -784,7 +785,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 			self.client = None
 
 		for sock in ins:
-			if sock is self.listen_socket: continue
+			#if sock is self.listen_socket: continue
 			player = players[ rlist.index(sock) ]
 
 			self.client = sock
@@ -801,7 +802,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 			elif frames:
 				for frame in frames:
 					print('--got frame from client--')
-					print(frame)
+					print('>>>',frame)
 			elif not closed:
 				print('[websocket ERROR] client sent nothing')
 

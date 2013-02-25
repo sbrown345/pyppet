@@ -105,6 +105,9 @@ function generate_extruded_splines( parent, ob ) {
 
 function on_message(e) {
 	var data = ws.rQshiftStr();
+	//ws.send( array ); // for sending binary data?
+	ws.send_string('hello world from client')
+
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
