@@ -166,6 +166,13 @@ class BlenderHack( object ):
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
 		## TODO store region types, and order
+		#if self.websocket_server:  # this is slower
+		#	print('sync websocket_server from blender redraw..............')
+		#	self.websocket_server.update( bpy.context )
+
+		if self._3dsmax:
+			self._3dsmax.update( self._clipboard )
+
 		self.context = BlenderContextCopy( bpy.context )
 		if not self._gtk_updated:
 			self.lock.acquire()
@@ -235,8 +242,8 @@ class BlenderHack( object ):
 							reg.tag_redraw()
 							break
 
-		if self._3dsmax:
-			self._3dsmax.update( self._clipboard )
+		#if self._3dsmax:  ## moved to blender redraw
+		#	self._3dsmax.update( self._clipboard )
 
 		# even updating GTK first wont fix the freeze on DND over blenders window! #
 		Blender.iterate( self.evil_C, draw=not drop_frame)

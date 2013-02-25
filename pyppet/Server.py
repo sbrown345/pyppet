@@ -52,6 +52,11 @@ else:
 #HOST_NAME = '192.168.0.14'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
+## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
+#test = os.path.expanduser('~/.wine/drive_c/Sphere01.dae')
+#assert os.path.isfile(test)
+#Blender.Scene( bpy.context.scene ).collada_import( test )
+#assert 0
 
 ##################### PyRNA ###################
 bpy.types.Object.webgl_lens_flare_scale = FloatProperty(
@@ -755,7 +760,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 			player = players[ rlist.index(sock) ]
 			msg = player.create_stream_message( context )
-			print(player, msg)
 
 			for fx in  self.webGL.effects:  ## TODO move to player class
 				msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
@@ -791,7 +795,6 @@ class WebSocketServer( websocket.WebSocketServer ):
 			self.client = sock
 
 			frames, closed = self.recv_frames()
-			print('got from client', frames)
 			if closed:
 				print('[websocket] CLOSING CLIENT')
 				try:
@@ -801,8 +804,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 				self.client = None
 			elif frames:
 				for frame in frames:
-					print('--got frame from client--')
-					print('>>>',frame)
+					#print('--got frame from client--')
+					#print('>>>',frame)
+					pass
 			elif not closed:
 				print('[websocket ERROR] client sent nothing')
 
@@ -1202,7 +1206,7 @@ class Remote3dsMax(object):
 		assert os.path.isfile( path )
 		db = self.db
 
-		stat = os.stat( path )
+		stat = os.stat( path ); stat
 		uid = (path, stat.st_mtime)
 		if uid in self._load_3ds_files:
 			### note: do not load file if it hasn't been updated yet, by checking the modified time "mtime"
@@ -1225,7 +1229,11 @@ class Remote3dsMax(object):
 				axis_up='Z'
 			)
 		elif mode == 'dae':
+			print('COLLADA import-----------------')
 			bpy.ops.wm.collada_import( filepath=os.path.expanduser('~/.wine/drive_c/%s.dae'%name) )
+			# need to use ctypes - RuntimeError: Operator bpy.ops.wm.collada_import.poll() failed, context is incorrect
+			#Blender.Scene( bpy.context.scene ).collada_import( os.path.expanduser('~/.wine/drive_c/%s.dae'%name) )
+
 		else:
 			raise RuntimeError
 
@@ -1261,7 +1269,7 @@ class Remote3dsMax(object):
 		while remove:
 			ob = remove.pop()
 			#bpy.context.scene.objects.unlink(ob)
-
+		print('loaded', loaded)
 		return loaded
 
 class TestApp( BlenderHackLinux ):

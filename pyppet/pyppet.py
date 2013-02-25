@@ -4571,7 +4571,6 @@ class App( PyppetUI ):
 				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
 
-			#self.client.update( self.context )
 			self.websocket_server.update( self.context )
 
 
