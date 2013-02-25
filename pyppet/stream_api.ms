@@ -14,7 +14,7 @@ function dump_object ob = (
 	--print "dumping object: "
 	--print ob.name
 
-	path = "C:\\" + ob.name + ".3ds"
+	path = "C:\\" + ob.name + ".dae"
 	exportFile path #noPrompt selectedonly:true
 	print path
 
@@ -123,11 +123,11 @@ function on_geometry_changed ev id = (
 		a.faces = ob.mesh.faces.count
 		a.edges = ob.mesh.edges.count
 		a.data = data
-		txt = "@SAVING:3DS@" + cname + "@" + ob.name + "~" + ob.position as string + "|" + ob.scale as string + "|" + ob.rotation as string + "*" + data
+		txt = "@SAVING:DAE@" + cname + "@" + ob.name + "~" + ob.position as string + "|" + ob.scale as string + "|" + ob.rotation as string + "*" + data
 		setClipboardText( txt )
 		dump_object( ob )
 		sleep 0.01
-		txt = "@LOAD:3DS@" + cname + "@" + ob.name + "~" + ob.position as string + "|" + ob.scale as string + "|" + ob.rotation as string + "*" + data
+		txt = "@LOAD:DAE@" + cname + "@" + ob.name + "~" + ob.position as string + "|" + ob.scale as string + "|" + ob.rotation as string + "*" + data
 		setClipboardText( txt )
 		sleep 0.09
 	) else (

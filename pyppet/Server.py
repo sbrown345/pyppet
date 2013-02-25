@@ -1180,13 +1180,13 @@ class Remote3dsMax(object):
 			if cmd == 'UPDATE:SELECT':
 				pass
 
-			elif cmd == 'SAVING:3DS': ## TODO check this is sending from stream_api.ms
+			elif cmd == 'SAVING:DAE': ## TODO check this is sending from stream_api.ms
 				if name not in self._wait_for_loading:
 					self._wait_for_loading.append( name )
 
-			elif cmd == 'LOAD:3DS':
+			elif cmd == 'LOAD:DAE':
 				#TODO-enable-when-catching-saveing:3ds##assert name == self._wait_for_loading.pop()
-				loaded = self.load_3ds( name )
+				loaded = self.load_mesh( name )
 
 				
 			elif cmd == '@database:add_object@':
@@ -1194,11 +1194,11 @@ class Remote3dsMax(object):
 				if name not in db.objects:
 					db.add_object(name, pos, scl, quat, category=category)
 
-				self.load_3ds( name )
+				self.load_mesh( name )
 
 
-	def load_3ds(self, name): ## FBX import is missing in blender
-		path = os.path.expanduser('~/.wine/drive_c/%s.3ds'%name)
+	def load_mesh(self, name, mode='dae'): ## FBX import is missing in blender
+		path = os.path.expanduser('~/.wine/drive_c/%s.dae'%name)
 		assert os.path.isfile( path )
 		db = self.db
 
@@ -1209,19 +1209,25 @@ class Remote3dsMax(object):
 			return
 
 		self._load_3ds_files.append( uid )
-		print('LOADING new 3ds',uid)
+		print('LOADING new dae',uid)
 
 		obnames = bpy.data.objects.keys()
 
-		bpy.ops.import_scene.autodesk_3ds(
-			filepath=os.path.expanduser('~/.wine/drive_c/%s.3ds'%name), 
-			filter_glob="*.3ds", 
-			constrain_size=10, 
-			use_image_search=False, 
-			use_apply_transform=True, 
-			axis_forward='Y', 
-			axis_up='Z'
-		)
+		## TODO remove harding coding of .wine/drive_c/
+		if mode == '3ds':
+			bpy.ops.import_scene.autodesk_3ds(
+				filepath=os.path.expanduser('~/.wine/drive_c/%s.3ds'%name), 
+				filter_glob="*.3ds", 
+				constrain_size=10, 
+				use_image_search=False, 
+				use_apply_transform=True, 
+				axis_forward='Y', 
+				axis_up='Z'
+			)
+		elif mode == 'dae':
+			bpy.ops.wm.collada_import( filepath=os.path.expanduser('~/.wine/drive_c/%s.dae'%name) )
+		else:
+			raise RuntimeError
 
 		remove = []
 		loaded = []
