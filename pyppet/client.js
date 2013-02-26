@@ -1,10 +1,12 @@
 // WebGL Pyppet Client
-// Blender Research Lab. PH (brett hartshorn)
-// License: BSD
+// Copyright Brett Hartshorn 2012-2013
+// License: "New" BSD
 /*
-This error can happen if you assign the same shader to different meshes,
-or forget to computeTangents before assignment.
- [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
+Notes:
+	This error can happen if you assign the same shader to different meshes,
+	or forget to computeTangents before assignment.
+	 [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
+
 */
 
 
@@ -32,7 +34,7 @@ var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
-ws = new Websock();
+ws = new Websock(); // from the websockify API
 ws.open( 'ws://' + HOST + ':8081' );	// global var "HOST" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 
 
@@ -103,10 +105,26 @@ function generate_extruded_splines( parent, ob ) {
 	}
 }
 
+
+function to_bytes(x,y,z) {
+	var buffer = new ArrayBuffer(12);
+	//var intView = new Int32Array(buffer);
+	var bytesView = new Uint8Array(buffer);
+	var floatView = new Float32Array(buffer);
+	floatView[0] = x;
+	floatView[1] = y;
+	floatView[2] = z;
+	//bits of the 32 bit float
+	//return intView[0].toString(2) + intView[1].toString(2) + intView[2].toString(2);
+	return Array.apply([], bytesView);
+}
+
 function on_message(e) {
 	var data = ws.rQshiftStr();
-	//ws.send( array ); // for sending binary data?
-	ws.send_string('hello world from client');
+	//var arr = [camera.position.x, (-camera.position.z), camera.position.y];
+	var arr = to_bytes( 2.0, 1.0, -100.1 );
+	ws.send( arr ); // for sending binary
+	//ws.send_string( arr );
 
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
@@ -1769,9 +1787,8 @@ ws.on('close', on_close);
 function update_server() {
 	THREE.ImageUtils.loadTexture(
 		'/RPC/player/'+camera.position.x+','+(-camera.position.z)+','+camera.position.y, 
-		undefined, on_texture_ready );
-	setTimeout( update_server, 3000 );
-
+		undefined, on_texture_ready ); // why is on_texture_ready here?
+	//setTimeout( update_server, 3000 );
 }
 
 animate();

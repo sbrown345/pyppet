@@ -1,7 +1,9 @@
 ## Server Module ##
 ## TODO websocket client to server
 
-import os, sys, time
+import os, sys, time, struct
+from base64 import b64encode, b64decode
+
 
 ## make sure we can import and load data from same directory ##
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -804,9 +806,13 @@ class WebSocketServer( websocket.WebSocketServer ):
 				self.client = None
 			elif frames:
 				for frame in frames:
-					#print('--got frame from client--')
-					#print('>>>',frame)
-					pass
+					print('--got frame from client--')
+					print('>>',frame)
+					if len(frame) >= 4:
+						x = struct.unpack('<f', frame[:4])
+						print('>>>x',x)
+					#print( '>b64>>', b64decode(frame) )
+
 			elif not closed:
 				print('[websocket ERROR] client sent nothing')
 

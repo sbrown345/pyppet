@@ -702,6 +702,8 @@ Sec-WebSocket-Accept: %s\r
         if self.path != '/':
             self.msg("%s: Path: '%s'" % (address[0], self.path))
 
+        ## this should be true by default
+        print('[websockify.py] using base64 binary encoding =',self.base64)
 
         # Send server WebSockets handshake response
         #self.msg("sending response [%s]" % response)
