@@ -804,21 +804,27 @@ class WebSocketServer( websocket.WebSocketServer ):
 					raise self.EClose(closed)
 				except: pass
 				self.client = None
+
 			elif frames:
+				ip,port = sock.getsockname()
 				for frame in frames:
 					#print('>>',frame, len(frame))
 					if len(frame)==12:
 						x,y,z = struct.unpack('<fff', frame)
-						#print('x=%s y=%s z=%s' %(x,y,z))
-
-						ip,port = sock.getsockname()
 						if ip in GameManager.clients:
-							#GameManager.add_player( ip )
-
 							player = GameManager.clients[ ip ]
 							player.set_location( (x,y,z) )
 						else:
-							print('ERROR sock not in GameManager.clients')
+							print('[websocket ERROR] ip not in GameManager.clients')
+					elif len(frame)==4:
+						print(frame)
+						uid = struct.unpack('<I', frame)[0]
+						for ob in bpy.context.scene.objects: ob.select=False
+						ob = get_object_by_UID( uid )
+						ob.select = True
+						bpy.context.scene.objects.active = ob
+
+
 
 			elif not closed:
 				print('[websocket ERROR] client sent nothing')

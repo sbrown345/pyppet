@@ -106,7 +106,7 @@ function generate_extruded_splines( parent, ob ) {
 }
 
 
-function to_bytes(x,y,z) {
+function vec3_to_bytes(x,y,z) {
 	var buffer = new ArrayBuffer(12);
 	//var intView = new Int32Array(buffer);
 	var bytesView = new Uint8Array(buffer);
@@ -118,11 +118,20 @@ function to_bytes(x,y,z) {
 	//return intView[0].toString(2) + intView[1].toString(2) + intView[2].toString(2);
 	return Array.apply([], bytesView);
 }
+function int32_to_bytes(x) {
+	var buffer = new ArrayBuffer(4);
+	//var intView = new Int32Array(buffer);
+	var bytesView = new Uint8Array(buffer);
+	var intView = new Uint32Array(buffer);
+	intView[0] = x;
+	return Array.apply([], bytesView);
+}
+
 
 function on_message(e) {
 	var data = ws.rQshiftStr();
 	//var arr = [camera.position.x, (-camera.position.z), camera.position.y];
-	var arr = to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
+	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
 	ws.send( arr ); // for sending binary
 	//ws.send_string( arr );
 
@@ -1540,9 +1549,14 @@ MyController = function ( object, domElement ) {
 		event.stopPropagation();
 
 		if ( INTERSECTED ) {
-			var tex = THREE.ImageUtils.loadTexture(
-				'/RPC/select/'+INTERSECTED.name, undefined, on_texture_ready 
-			);
+			//var tex = THREE.ImageUtils.loadTexture(
+			//	'/RPC/select/'+INTERSECTED.name, undefined, on_texture_ready 
+			//);
+			var i = parseInt( INTERSECTED.name.replace('__','').replace('__','') );
+			var arr = int32_to_bytes( i );
+			ws.send( arr ); // for sending binary
+
+
 			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 			INTERSECTED = null;
 		}
