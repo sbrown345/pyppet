@@ -122,7 +122,7 @@ function to_bytes(x,y,z) {
 function on_message(e) {
 	var data = ws.rQshiftStr();
 	//var arr = [camera.position.x, (-camera.position.z), camera.position.y];
-	var arr = to_bytes( 2.0, 1.0, -100.1 );
+	var arr = to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
 	ws.send( arr ); // for sending binary
 	//ws.send_string( arr );
 

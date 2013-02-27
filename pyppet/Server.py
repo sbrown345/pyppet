@@ -806,12 +806,19 @@ class WebSocketServer( websocket.WebSocketServer ):
 				self.client = None
 			elif frames:
 				for frame in frames:
-					print('--got frame from client--')
-					print('>>',frame)
-					if len(frame) >= 4:
-						x = struct.unpack('<f', frame[:4])
-						print('>>>x',x)
-					#print( '>b64>>', b64decode(frame) )
+					#print('>>',frame, len(frame))
+					if len(frame)==12:
+						x,y,z = struct.unpack('<fff', frame)
+						#print('x=%s y=%s z=%s' %(x,y,z))
+
+						ip,port = sock.getsockname()
+						if ip in GameManager.clients:
+							#GameManager.add_player( ip )
+
+							player = GameManager.clients[ ip ]
+							player.set_location( (x,y,z) )
+						else:
+							print('ERROR sock not in GameManager.clients')
 
 			elif not closed:
 				print('[websocket ERROR] client sent nothing')
