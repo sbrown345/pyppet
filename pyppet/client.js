@@ -128,13 +128,43 @@ function int32_to_bytes(x) {
 }
 
 
+var PreviousMessage = null;
+
+
 function on_message(e) {
-	var data = ws.rQshiftStr();
-	//var arr = [camera.position.x, (-camera.position.z), camera.position.y];
+	// check first byte, if null then read following binary data //
+	var length = ws.rQlen();
+	if (ws.rQpeek8() == 0) { //String.fromCharCode(0)) {
+		on_binary_message( ws.rQshiftBytes().slice(1,length) );
+	} else {
+		on_json_message(   ws.rQshiftStr() );
+	}
 	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
 	ws.send( arr ); // for sending binary
 	//ws.send_string( arr );
 
+}
+
+
+function on_binary_message( bytes ) {
+	var buffer = new ArrayBuffer(2);
+	//var intView = new Int32Array(buffer);
+	var view = new Int16Array( buffer );
+	var bytesView = new Uint8Array(buffer);
+	//var floatView = new Float32Array(buffer);
+	bytesView[0] = bytes[0];
+	bytesView[1] = bytes[1];
+	//bytesView[2] = bytes[2];
+	//bytesView[3] = bytes[3];
+	//var arr = Array.apply([], floatView);
+	//camera.position.x = floatView[0];
+	camera.position.x = view[0] * (1.0/32768.0);
+
+}
+
+
+
+function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 

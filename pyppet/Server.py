@@ -643,6 +643,7 @@ class Player( object ):
 			verts = [ round(a,3) for a in verts ]	# optimize!
 
 			pak[ 'verts' ] = verts
+			print(verts)
 
 
 		return msg
@@ -733,6 +734,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 	_bps = 0
 
 	def update( self, context ):	# called from main thread
+		import random
 		#if not GameManager.clients: return
 		players = []
 		rlist = []# self.listen_socket ]
@@ -761,13 +763,17 @@ class WebSocketServer( websocket.WebSocketServer ):
 			#if sock is self.listen_socket: continue
 
 			player = players[ rlist.index(sock) ]
-			msg = player.create_stream_message( context )
+			if random.random() > 0.4:
+				msg = player.create_stream_message( context )
+				print(msg)
+				for fx in  self.webGL.effects:  ## TODO move to player class
+					msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
+				## dump to json and encode to bytes ##
+				rawbytes = json.dumps( msg ).encode('utf-8')
+			else:
+				#rawbytes = bytes([0]) + struct.pack('<f', 1.0)
+				rawbytes = bytes([0]) + struct.pack('<h', int(0.3333*32768.0))
 
-			for fx in  self.webGL.effects:  ## TODO move to player class
-				msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
-
-			## dump to json and encode to bytes ##
-			rawbytes = json.dumps( msg ).encode('utf-8')
 			cqueue = [ rawbytes ]
 
 			self._bps += len( rawbytes )
