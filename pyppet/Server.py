@@ -469,11 +469,47 @@ class Player( object ):
 		else:
 			return self.streaming_boundry.empty_draw_size
 
+	MESH_FORMAT = (
+		{'name':'UID', 'type':'int16', 'array':1},
+		{'name':'location', 'type':'float32', 'array':3},
+		{'name':'scale', 'type':'float32', 'array':3},
+
+
+	)
+
+	@classmethod
+	def generate_javascript(self):
+		#a = ['var %s = "%s";'%(x['name'].upper(), ord(i) ) for x,i in enumerate(MESH_FORMAT) ]
+		code = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+		a = ['var %s = "%s";'%(x['name'].upper(), code[i] ) for x,i in enumerate(MESH_FORMAT) ]
+
+
+		a.append('function unpack_mesh(data) {')
+		a.append('var r = {};')
+		start = 0; end = 0
+		for x in self.MESH_FORMAT:
+			if x['type'].endswith('32'):
+				size = 4 * x['array']
+			elif x['type'].endswith('16'):
+				size = 2 * x['array']
+
+			end += size
+			x['start'] = start
+			x['end'] = end
+			a.append('r[ %(name)s ] = unpack_%(type)s(data.slice(%(start)s,%(end)s))'%x)
+			start += size
+
+		a.append('return r;')
+		a.append('}')
+		return '\n'.join( a )
+
+
 	################################ convert to stream #######################################
 	def create_stream_message( self, context ):
 		'''
-		packs all data in message stream into a dictionary,
+		packs all header data in message stream into a dictionary,
 		the dict is converted into json and later streamed to the client.
+		create binary message for numeric data
 		'''
 		#ip,port = sock.getsockname()
 		#assert ip in self.clients

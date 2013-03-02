@@ -158,7 +158,7 @@ function on_binary_message( bytes ) {
 	//bytesView[3] = bytes[3];
 	//var arr = Array.apply([], floatView);
 	//camera.position.x = floatView[0];
-	camera.position.x = view[0] * (1.0/32768.0);
+	//camera.position.x = view[0] * (1.0/32768.0);
 
 }
 
@@ -358,6 +358,7 @@ function on_json_message( data ) {
 
 				if (ob.verts) {
 					if (m.subsurf) m.dirty_modifiers = true;	// TODO make compatible with: usersubsurf+autosubsurf ?
+					camera.position.x = 1.95;
 
 					var vidx=0;
 					for (var i=0; i <= ob.verts.length-3; i += 3) {
