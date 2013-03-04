@@ -51,7 +51,8 @@ else:
 	## not the internet address we need ##
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
-#HOST_NAME = '192.168.0.14'
+########### hard code address #######
+#HOST_NAME = '192.168.0.16'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 ## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
@@ -411,12 +412,12 @@ class WebGL(object):
 class Player( object ):
 	MAX_VERTS = 2000
 
-	def __init__(self, ip, websocket=None):
+	def __init__(self, addr, websocket=None):
 		'''
 		self.objects is a list of objects that the client should know about from its message stream,
 		it can also be used as a cache.
 		'''
-		self.address = ip
+		self.address = addr
 		self.websocket = websocket
 
 		self.objects = []	## list of objects client in client message stream
@@ -428,7 +429,7 @@ class Player( object ):
 		self.camera_maxblur = 1.0
 		self.godrays = False
 
-
+		ip = 'client(%s:%s)'%self.address
 		if ip not in bpy.data.objects:
 			print('creating new player gizmos')
 			a = bpy.data.objects.new(name=ip, object_data=None)
@@ -455,6 +456,7 @@ class Player( object ):
 		self.streaming_boundry_half_degraded = bpy.data.objects[ ip+'-half_degraded' ]
 		self.streaming_boundry_fully_degraded = bpy.data.objects[ ip+'-fully_degraded' ]
 		self.location = self.streaming_boundry.location
+		print('[player] new player created:', self.address)
 
 	def set_location(self, loc):
 		self.location.x = loc[0]
@@ -679,7 +681,6 @@ class Player( object ):
 			verts = [ round(a,3) for a in verts ]	# optimize!
 
 			pak[ 'verts' ] = verts
-			print(verts)
 
 
 		return msg
@@ -693,9 +694,11 @@ class GameManager( object ):
 	clients = {}	# ip : camera/player location
 
 	@classmethod
-	def add_player( self, ip, websocket=None ):
-		player = Player( ip, websocket=websocket )
-		self.clients[ ip ] = player
+	def add_player( self, addr, websocket=None ):
+		print('add_player', addr)
+		assert type(addr) is tuple
+		player = Player( addr, websocket=websocket )
+		self.clients[ addr ] = player
 		return player
 
 ##################################################
@@ -706,13 +709,19 @@ class WebSocketServer( websocket.WebSocketServer ):
 	active = False
 
 	def new_client(self):  ## websocket.py API ##
-		ip,port = self.client.getsockname()
-		if ip in GameManager.clients: print('[websocket] RELOADING CLIENT:', ip)
+		server_addr = self.client.getsockname()
+		addr = self.client.getpeername()
+		print('[websocket] server', server_addr)
+		print('[websocket] client', addr)
+
+		if addr in GameManager.clients:
+			print('[websocket] RELOADING CLIENT:', addr )
+			raise SystemExit
 		else:
 			print('_'*80)
-			print('[websocket] NEW CLIENT:', ip)
-			GameManager.add_player( ip, websocket=self.client )
-		player = GameManager.clients[ ip ]
+			print('[websocket] NEW CLIENT:', addr )
+			GameManager.add_player( addr, websocket=self.client )
+		player = GameManager.clients[ addr ]
 
 
 	def start_deprecated(self):
@@ -728,30 +737,27 @@ class WebSocketServer( websocket.WebSocketServer ):
 		#except:
 		#	print('ERROR [websocket] failed to listen on port: %s' %self.listen_port)
 		#	return False
+		self.sockets = []  ## there is probably no speed up having mulitple listen sockets
+		#for i in range(50):
 		sock = self.socket(self.listen_host, self.listen_port)
+		self.sockets.append( sock )
 
 		self.active = True
-		self.listen_socket = sock
+		#self.listen_socket = sock
 
 		print('--starting websocket server thread--')
-		threading._start_new_thread(
-			self.new_client_listener_thread, (sock,)
-		)
+		threading._start_new_thread( self.new_client_listener_thread, ())
 		return True
 
-	def new_client_listener_thread(self, lsock):
+	def new_client_listener_thread(self):
 		while self.active:
-			try:
-				#self.poll()
-				ready = select.select([lsock], [], [], 0.5)[0]
-				if lsock in ready: startsock, address = lsock.accept()
-				else: continue
-			except Exception: continue
-			## keep outside of try for debugging ##
-			self.top_new_client(startsock, address)	# sets.client and calls new_client()
+			ready = select.select(self.sockets, [], [], 0.5)[0]
+			for sock in ready:
+				startsock, address = sock.accept()
+				self.top_new_client(startsock, address)	# sets.client and calls new_client()
 		print('[websocket] debug thread exit')
-		lsock.close()
-		self.listen_socket = None
+		#lsock.close()
+		#self.listen_socket = None
 		#lsock.shutdown()
 
 
@@ -760,7 +766,10 @@ class WebSocketServer( websocket.WebSocketServer ):
 			self.active = False
 			time.sleep(0.1)
 			print('[websocket] closing main listener socket')
-			if self.listen_socket: self.listen_socket.close()
+			#if self.listen_socket: self.listen_socket.close()
+			for sock in self.sockets:
+				sock.close()
+
 			#self.send_close()
 			#raise self.EClose(closed)
 
@@ -781,12 +790,15 @@ class WebSocketServer( websocket.WebSocketServer ):
 				wlist.append( player.websocket )
 				players.append( player )
 
-		ins, outs, excepts = select.select(rlist, wlist, [], 0.01)
+		if len(wlist) > 1: print( wlist )
+		ins, outs, excepts = select.select(rlist, wlist, [], 0.1)
 		if excepts: raise Exception("[websocket] Socket exception")
 
 
 		if not outs and players:
 			print('[websocket] no clients ready to read....')
+			#raise SystemExit  ## need at least a timeout of 0.1
+
 
 		######## bug? can't listen and spawn new clients from main thread?
 		#if self.listen_socket in outs and False:
@@ -799,14 +811,15 @@ class WebSocketServer( websocket.WebSocketServer ):
 			#if sock is self.listen_socket: continue
 
 			player = players[ rlist.index(sock) ]
-			if random.random() > 0.4:
+			if True:
 				msg = player.create_stream_message( context )
-				print(msg)
+				#print(msg)
 				for fx in  self.webGL.effects:  ## TODO move to player class
 					msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
 				## dump to json and encode to bytes ##
 				rawbytes = json.dumps( msg ).encode('utf-8')
-			else:
+
+			else: ## test sending 16bit data ##
 				#rawbytes = bytes([0]) + struct.pack('<f', 1.0)
 				rawbytes = bytes([0]) + struct.pack('<h', int(0.3333*32768.0))
 
@@ -835,7 +848,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 		for sock in ins:
 			#if sock is self.listen_socket: continue
 			player = players[ rlist.index(sock) ]
-
+			#ip,port = sock.getsockname()
+			addr = sock.getpeername()
+			print('[websocket] client', addr)
 			self.client = sock
 
 			frames, closed = self.recv_frames()
@@ -845,19 +860,19 @@ class WebSocketServer( websocket.WebSocketServer ):
 					self.send_close()
 					raise self.EClose(closed)
 				except: pass
+				GameManager.clients.pop( addr )
 				self.client = None
 
 			elif frames:
-				ip,port = sock.getsockname()
 				for frame in frames:
 					#print('>>',frame, len(frame))
 					if len(frame)==12:
 						x,y,z = struct.unpack('<fff', frame)
-						if ip in GameManager.clients:
-							player = GameManager.clients[ ip ]
+						if addr in GameManager.clients:
+							player = GameManager.clients[ addr ]
 							player.set_location( (x,y,z) )
 						else:
-							print('[websocket ERROR] ip not in GameManager.clients')
+							print('[websocket ERROR] client address not in GameManager.clients')
 					elif len(frame)==4:
 						print(frame)
 						uid = struct.unpack('<I', frame)[0]
@@ -944,6 +959,9 @@ class WebServer( object ):
 		self.THREE = open( path, 'rb' ).read()
 		#print(self.THREE)
 
+
+	_port_hack = 8081
+
 	def get_header(self, title='http://%s'%HOST_NAME, webgl=False):
 		h = [
 			'<!DOCTYPE html><html lang="en">',
@@ -984,7 +1002,9 @@ class WebServer( object ):
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 			h.append( '<script type="text/javascript">' )
 
+			#self._port_hack += 1
 			h.append( 'var HOST = "%s";' %HOST_NAME )
+			h.append( 'var HOST_PORT = "%s";' %8081 )
 
 
 			if self.hires_progressive_textures:
@@ -1012,7 +1032,12 @@ class WebServer( object ):
 		#print('httpd_reply', env)
 		agent = env['HTTP_USER_AGENT']		# browser type
 		if agent == 'Python-urllib/3.2': return self.httpd_reply_python( env, start_response )
-		else: return self.httpd_reply_browser( env, start_response )
+		else:
+			#try:
+			return self.httpd_reply_browser( env, start_response )
+			#except:
+			#	print('[ERROR webserver]')
+			#	return []
 
 	def httpd_reply_browser(self, env, start_response ):
 		path = env['PATH_INFO']
@@ -1133,7 +1158,7 @@ class WebServer( object ):
 			return [ data ]
 
 
-		elif path.startswith('/RPC/'):
+		elif path.startswith('/RPC/'): ## DEPRECATED ##
 			## tiny remote procedure call API
 			if path.startswith('/RPC/player/'):
 				pos = [float(a) for a in path.split('/')[-1].split(',')]

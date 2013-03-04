@@ -567,7 +567,7 @@ Sec-WebSocket-Accept: %s\r
         - Send a WebSockets handshake server response.
         - Return the socket for this WebSocket client.
         """
-
+        print('do_handshake', sock, address)
         stype = ""
 
         ## not required anymore ##
@@ -581,6 +581,7 @@ Sec-WebSocket-Accept: %s\r
         #self.msg("Handshake [%s]" % handshake)
 
         if handshake == "":
+            print('ERROR empty handshake')
             raise self.EClose("ignoring empty handshake")
 
         elif handshake.startswith(s2b("<policy-file-request/>")):
@@ -614,6 +615,7 @@ Sec-WebSocket-Accept: %s\r
             stype = "SSL/TLS (wss://)"
 
         elif self.ssl_only:
+            print('ERROR: ssl_only')
             raise self.EClose("non-SSL connection received but disallowed")
 
         else:

@@ -35,7 +35,7 @@ var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
 ws = new Websock(); // from the websockify API
-ws.open( 'ws://' + HOST + ':8081' );	// global var "HOST" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
+ws.open( 'ws://' + HOST + ':' + HOST_PORT );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 
 
 var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
@@ -1820,7 +1820,6 @@ ws.on('message', on_message);
 
 function on_open(e) {
 	console.log(">> WebSockets.onopen");
-	setTimeout( update_server, 1000 );
 }
 ws.on('open', on_open);
 
@@ -1829,12 +1828,6 @@ function on_close(e) {
 }
 ws.on('close', on_close);
 
-function update_server() {
-	THREE.ImageUtils.loadTexture(
-		'/RPC/player/'+camera.position.x+','+(-camera.position.z)+','+camera.position.y, 
-		undefined, on_texture_ready ); // why is on_texture_ready here?
-	//setTimeout( update_server, 3000 );
-}
 
 animate();
 
