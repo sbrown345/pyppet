@@ -409,10 +409,33 @@ class WebGL(object):
 
 #------------------------------------------------------------------------------
 
+import simple_action_api
 
 #####################
 class Player( object ):
 	MAX_VERTS = 2000
+	_action_api = simple_action_api
+
+	def set_action_api(self, api):
+		self._action_api = api
+
+	def new_action(self, code, packed_args):
+		'''
+		This is a hook for custom server logic.
+
+		The api will know how to decode args, args can be packed bytes
+		Player can do actions on objects, TODO option to restrict to self.objects
+		Allowing for a chain of multiple callbacks, TODO define callbacks from Blockly.
+		return the action without calling the callback chain, because higher level logic
+		may want to delay some actions, or inspect the decoded args first.
+		The custom action api may need a reference to the player instance.
+		'''
+		if not self._action_api: return None
+
+		act = self._action_api.new_action( code, packed_args, player=self )
+		assert hasattr(act,'callbacks') and hasattr(act, 'arguments')  ## api check ##
+		return act
+
 
 	def __init__(self, addr, websocket=None):
 		'''
@@ -478,28 +501,6 @@ class Player( object ):
 			return self.streaming_boundry.empty_draw_size
 
 	#####################################################################
-	def set_action_api(self, api):
-		self._action_api = api
-
-	def new_action(self, code, packed_args):
-		'''
-		This is a hook for custom server logic.
-
-		The api will know how to decode args, args can be packed bytes
-		Player can do actions on objects, TODO option to restrict to self.objects
-		Allowing for a chain of multiple callbacks, TODO define callbacks from Blockly.
-		return the action without calling the callback chain, because higher level logic
-		may want to delay some actions, or inspect the decoded args first.
-		The custom action api may need a reference to the player instance.
-		'''
-		if not self._action_api:
-			import simple_action_api
-			self._action_api = simple_action_api
-
-
-		act = self._action_api.new_action( code, packed_args, player=self )
-		assert hasattr(act,'callbacks') and hasattr(act, 'arguments')  ## api check ##
-		return act
 
 	MESH_FORMAT = (
 		{'name':'UID', 'type':'int16', 'array':1},
@@ -909,7 +910,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 						code = frame[0]
 						action = self.new_action(code, frame[1:])
 						## logic here can check action before doing it.
-						action.do()
+						if action: action.do()
 
 
 
@@ -1032,6 +1033,8 @@ class WebServer( object ):
 			######################### Pyppet WebGL Client ##############################
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
 			h.append( '<script type="text/javascript">' )
+			## TODO get this from place where api is set ##
+			h.append( simple_action_api.generate_javascript() )
 
 			#self._port_hack += 1
 			h.append( 'var HOST = "%s";' %HOST_NAME )
