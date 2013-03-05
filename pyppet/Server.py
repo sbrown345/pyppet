@@ -1,5 +1,7 @@
-## Server Module ##
-## TODO websocket client to server
+# Server Module
+# Copyright Brett Hartshorn 2012-2013
+# License: "New" BSD
+
 
 import os, sys, time, struct
 from base64 import b64encode, b64decode
