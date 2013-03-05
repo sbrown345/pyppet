@@ -456,7 +456,11 @@ class Player( object ):
 		self.streaming_boundry_half_degraded = bpy.data.objects[ ip+'-half_degraded' ]
 		self.streaming_boundry_fully_degraded = bpy.data.objects[ ip+'-fully_degraded' ]
 		self.location = self.streaming_boundry.location
+
+		self._action_api = None
 		print('[player] new player created:', self.address)
+
+
 
 	def set_location(self, loc):
 		self.location.x = loc[0]
@@ -470,6 +474,30 @@ class Player( object ):
 			return self.streaming_boundry_fully_degraded.empty_draw_size
 		else:
 			return self.streaming_boundry.empty_draw_size
+
+	#####################################################################
+	def set_action_api(self, api):
+		self._action_api = api
+
+	def new_action(self, code, packed_args):
+		'''
+		This is a hook for custom server logic.
+
+		The api will know how to decode args, args can be packed bytes
+		Player can do actions on objects, TODO option to restrict to self.objects
+		Allowing for a chain of multiple callbacks, TODO define callbacks from Blockly.
+		return the action without calling the callback chain, because higher level logic
+		may want to delay some actions, or inspect the decoded args first.
+		The custom action api may need a reference to the player instance.
+		'''
+		if not self._action_api:
+			import simple_action_api
+			self._action_api = simple_action_api
+
+
+		act = self._action_api.new_action( code, packed_args, player=self )
+		assert hasattr(act,'callbacks') and hasattr(act, 'arguments')  ## api check ##
+		return act
 
 	MESH_FORMAT = (
 		{'name':'UID', 'type':'int16', 'array':1},
@@ -873,13 +901,14 @@ class WebSocketServer( websocket.WebSocketServer ):
 							player.set_location( (x,y,z) )
 						else:
 							print('[websocket ERROR] client address not in GameManager.clients')
-					elif len(frame)==4:
-						print(frame)
-						uid = struct.unpack('<I', frame)[0]
-						for ob in bpy.context.scene.objects: ob.select=False
-						ob = get_object_by_UID( uid )
-						ob.select = True
-						bpy.context.scene.objects.active = ob
+
+					elif frame:
+						## action api ##
+						code = frame[0]
+						action = self.new_action(code, frame[1:])
+						## logic here can check action before doing it.
+						action.do()
+
 
 
 
