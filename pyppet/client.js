@@ -140,8 +140,7 @@ function on_message(e) {
 		on_json_message(   ws.rQshiftStr() );
 	}
 	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
-	ws.send( arr ); // for sending binary
-	//ws.send_string( arr );
+	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
 
 }
 
@@ -377,6 +376,11 @@ function on_json_message( data ) {
 			if (ob.reload_textures) {
 				reload_progressive_textures( m );
 			}
+
+			//if (ob.on_click) {
+			//	m.on_mouse_up_callback = CALLBACKS[ ob.on_click ];
+			//}
+			m.on_mouse_up_callback = CALLBACKS[ "0" ];
 
 		}
 		else if (name in Objects == false) {
@@ -1583,10 +1587,12 @@ MyController = function ( object, domElement ) {
 			//var tex = THREE.ImageUtils.loadTexture(
 			//	'/RPC/select/'+INTERSECTED.name, undefined, on_texture_ready 
 			//);
-			var i = parseInt( INTERSECTED.name.replace('__','').replace('__','') );
-			var arr = int32_to_bytes( i );
-			ws.send( arr ); // for sending binary
-
+			var uid = parseInt( INTERSECTED.name.replace('__','').replace('__','') );
+			//var arr = int32_to_bytes( i );
+			//ws.send( arr ); // for sending binary
+			if (INTERSECTED.on_mouse_up_callback) {
+				INTERSECTED.on_mouse_up_callback( uid );
+			}
 
 			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 			INTERSECTED = null;

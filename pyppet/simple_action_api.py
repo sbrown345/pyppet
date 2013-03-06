@@ -15,16 +15,18 @@ API = {} # function byte id : {'callback':func, 'arguments':[], 'struct-format':
 def new_action( code, args, player=None ):
 	callback = API[code]['callback']
 	kwargs = _decode_args( code, args )
-	return Action( callback, kwargs )
+	print('new_action', code, args)
+	return Action( callback, **kwargs )
 
 
 class Action(object):
 	def __init__(self, callback, **kw):
-		self._callback = callback
-		self._kwargs = kw
+		self.callback = callback
+		self.arguments = kw
 
 	def do(self):
-		self._callback( **self._kwargs )
+		print('doing action')
+		self.callback( **self.arguments )
 
 
 ###################################################
@@ -33,8 +35,18 @@ def _decode_args( code, data ):
 	fmt = API[ code ]['struct-format']
 	args = struct.unpack( fmt, data )
 	kw = {}
-	for name in API[ code ]['arguments']:
-		kw[ name ] = API[ name ]
+	for i,name in enumerate( API[ code ]['arguments'] ):
+		ctype = API[code]['arg-types'][name]
+		if ctype is BlenderProxy:
+			uid = args[i]
+			kw[ name ] = None
+			for o in bpy.data.objects:
+				if o.UID == uid:
+					kw[ name ] = o
+					break
+		else:
+			kw[ name ] = args[i]
+
 	return kw
 
 class BlenderProxy(object): pass
@@ -88,26 +100,28 @@ def generate_javascript():
 	The server needs to call this and insert it into the javascript sent
 	to the client.
 	'''
-	r = []
+	r = ['var CALLBACKS = {']
 	for code in API:
 		a = API[code]['arguments']
-		r.append( 'function _callback_%s( %s )'%(code,','.join(a)) )
-		r.append( '{')
-		r.append( 'var x = [];')
+		r.append( '%s : function ( %s )'%(code,','.join(a)) )
+		r.append( '  {')
+		r.append( '  var x = [];')
 		for i,arg_name in enumerate(a): ## TODO optimize packing
 			ctype = API[code]['arg-types'][arg_name]
 			size = size_of( ctype )
-			r.append( 'var buffer = new ArrayBuffer(%s);'%size )
-			r.append( 'var bytesView = new Uint8Array(buffer);' )
-			r.append( 'x.push( bytesView );')
-			r.append( 'var view = new %s(buffer)' %_ctype_to_js_buffer_type[ctype] )
-			r.append( 'view[ %s ] = %s;'%(i,arg_name) )
+			r.append( '  var buffer = new ArrayBuffer(%s);'%size )
+			r.append( '  var bytesView = new Uint8Array(buffer);' )
+			r.append( '  var view = new %s(buffer);' %_ctype_to_js_buffer_type[ctype] )
+			r.append( '  view[ %s ] = %s;'%(i,arg_name) )
+			r.append( '  x.push( Array.apply([],bytesView) );')
 
+		r.append( '  var arr = [%s];'%ord(code))
+		for i,arg_name in enumerate(a): r.append( '  arr = arr.concat( x[%s] );'%i )
+		r.append('  ws.send( arr ); // send packed data to server')
+		r.append('  return arr;')
+		r.append( '  },')
 
-		r.append( 'var arr = [];')
-		for i,arg_name in enumerate(a): r.append( 'Array.apply(arr, buffers[%s]);'%i )
-		r.append('ws.send( arr ); // send packed data to server')
-		r.append( '}')
+	r.append('};')
 
 	s = '\n'.join(r)
 	print('_'*80)
@@ -118,15 +132,10 @@ def generate_javascript():
 #################################### callbacks #################################
 
 
-def select_callback( uid=BlenderProxy ):
-	assert uid is not BlenderProxy ## this is just used for the introspection kwargs hack
-
-	#elif len(frame)==4:  moved to simple_action_api.py
-	#	print(frame)
-	#	uid = struct.unpack('<I', frame)[0]
-	uid = _unpack()
-	for ob in bpy.context.scene.objects: ob.select=False
-	ob = get_object_by_UID( uid ) # TODO XXXXXXXXXXXX
+def select_callback( ob=BlenderProxy ):
+	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
+	print('select_callback', ob)
+	for o in bpy.context.scene.objects: o.select=False
 	ob.select = True
 	bpy.context.scene.objects.active = ob
 
@@ -138,10 +147,5 @@ _api = {
 
 }
 _generate_api( _api )
-
-
-
-
-
-
+print(API)
 

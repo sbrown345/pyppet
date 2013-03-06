@@ -54,7 +54,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-#HOST_NAME = '192.168.0.16'
+HOST_NAME = '192.168.0.16'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 ## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
@@ -81,6 +81,9 @@ bpy.types.Object.webgl_auto_subdivison = BoolProperty( name='auto subdivide', de
 bpy.types.Object.webgl_normal_map = FloatProperty(
     name="normal map scale", description="normal map scale for webGL client", 
     default=0.75)
+
+bpy.types.Object.webgl_callbacks = StringProperty( name='packed callback codes', default='0' )
+
 
 ## ID of zero is a dead object ##
 bpy.types.Object.UID = IntProperty(
@@ -414,7 +417,6 @@ import simple_action_api
 #####################
 class Player( object ):
 	MAX_VERTS = 2000
-	_action_api = simple_action_api
 
 	def set_action_api(self, api):
 		self._action_api = api
@@ -431,19 +433,19 @@ class Player( object ):
 		The custom action api may need a reference to the player instance.
 		'''
 		if not self._action_api: return None
-
 		act = self._action_api.new_action( code, packed_args, player=self )
-		assert hasattr(act,'callbacks') and hasattr(act, 'arguments')  ## api check ##
+		assert hasattr(act,'callback') and hasattr(act, 'arguments')  ## api check ##
 		return act
 
 
-	def __init__(self, addr, websocket=None):
+	def __init__(self, addr, websocket=None, action_api=simple_action_api):
 		'''
 		self.objects is a list of objects that the client should know about from its message stream,
 		it can also be used as a cache.
 		'''
 		self.address = addr
 		self.websocket = websocket
+		self._action_api = action_api
 
 		self.objects = []	## list of objects client in client message stream
 
@@ -481,8 +483,6 @@ class Player( object ):
 		self.streaming_boundry_half_degraded = bpy.data.objects[ ip+'-half_degraded' ]
 		self.streaming_boundry_fully_degraded = bpy.data.objects[ ip+'-fully_degraded' ]
 		self.location = self.streaming_boundry.location
-
-		self._action_api = None
 		print('[player] new player created:', self.address)
 
 
@@ -691,6 +691,9 @@ class Player( object ):
 				pak[ 'ptex' ] = ob.webgl_progressive_textures
 				pak[ 'norm' ] = ob.webgl_normal_map
 				pak[ 'auto_subdiv' ] = ob.webgl_auto_subdivison
+				if ob.webgl_callbacks:
+					#print('sending', ob.webgl_callbacks)
+					pak[ 'on_click' ] = ob.webgl_callbacks
 
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
@@ -880,10 +883,14 @@ class WebSocketServer( websocket.WebSocketServer ):
 			#if sock is self.listen_socket: continue
 			player = players[ rlist.index(sock) ]
 			#ip,port = sock.getsockname()
-			addr = sock.getpeername()
-			print('[websocket] client', addr)
-			self.client = sock
+			try:
+				addr = sock.getpeername()
+			except OSError:
+				print('[websocket ERROR] can not get peer name, closing client.')
+				GameManager.clients.pop( addr )
+				continue
 
+			self.client = sock
 			frames, closed = self.recv_frames()
 			if closed:
 				print('[websocket] CLOSING CLIENT')
@@ -896,8 +903,11 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 			elif frames:
 				for frame in frames:
-					#print('>>',frame, len(frame))
-					if len(frame)==12:
+					if not frame: continue
+					if frame[0] == 0:
+						frame = frame[1:]
+						if len(frame)!=12: continue
+
 						x,y,z = struct.unpack('<fff', frame)
 						if addr in GameManager.clients:
 							player = GameManager.clients[ addr ]
@@ -905,10 +915,11 @@ class WebSocketServer( websocket.WebSocketServer ):
 						else:
 							print('[websocket ERROR] client address not in GameManager.clients')
 
-					elif frame:
+					else:
+						print('doing custom action...', frame)
 						## action api ##
-						code = frame[0]
-						action = self.new_action(code, frame[1:])
+						code = chr( frame[0] )
+						action = player.new_action(code, frame[1:])
 						## logic here can check action before doing it.
 						if action: action.do()
 
