@@ -167,6 +167,73 @@ function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 
+	for (var name in msg['texts']) {
+		if ( name in TEXTS == false ) {
+			console.log('>> new text');
+			TEXTS[ name ] = new THREE.Object3D();
+			scene.add( TEXTS[name] );
+			TEXTS[name].useQuaternion = true;
+		}
+		var ob = msg['texts'][name];
+		var parent = TEXTS[ name ];
+		while ( parent.children.length ) parent.remove( parent.children[0] );
+
+
+		var text = ob.text,
+			height = 20,
+			size = 70,
+			hover = 30,
+
+			curveSegments = 4,
+
+			bevelThickness = 2,
+			bevelSize = 1.5,
+			bevelSegments = 3,
+			bevelEnabled = true,
+
+			font = "optimer", // helvetiker, optimer, gentilis, droid sans, droid serif
+			weight = "bold", // normal bold
+			style = "normal"; // normal italic
+
+
+		var textGeo = new THREE.TextGeometry( text, {
+
+			size: size,
+			height: height,
+			curveSegments: curveSegments,
+
+			font: font,
+			weight: weight,
+			style: style,
+
+			bevelThickness: bevelThickness,
+			bevelSize: bevelSize,
+			bevelEnabled: bevelEnabled,
+
+			material: 0,
+			extrudeMaterial: 1
+
+		});
+
+
+		var wire_material = new THREE.MeshBasicMaterial({
+		    color: 0x000000,
+		    opacity: 0.5,
+		    wireframe: true
+		});
+
+		var mesh = new THREE.Mesh( textGeo, wire_material );
+		parent.add( mesh );
+
+		parent.position.x = ob.pos[0];
+		parent.position.y = ob.pos[1];
+		parent.position.z = ob.pos[2];
+
+		parent.scale.x = ob.scl[0];
+		parent.scale.y = ob.scl[1];
+		parent.scale.z = ob.scl[2];
+	}
+
 	for (var name in msg['curves']) {
 		if ( name in CURVES == false ) {
 			console.log('>> new curve');
@@ -533,15 +600,18 @@ function on_collada_ready( collada ) {
 		Objects[ lod.name ] = lod;
 		scene.add( lod );
 
-		var loader = new THREE.ColladaLoader();
-		loader.options.convertUpAxis = true;
-		loader.options.centerGeometry = true;
-		loader.load(
-			'/objects/'+lod.name+'.dae?hires', 
-			on_collada_ready
-		);
+		setTimeout( function () {
+			var loader = new THREE.ColladaLoader();
+			loader.options.convertUpAxis = true;
+			loader.options.centerGeometry = true;
+			loader.load(
+				'/objects/' + lod.name + '.dae?hires', 
+				on_collada_ready
+			);	
+		}, 10000 );
 	}
 }
+
 
 
 function reload_progressive_textures( ob ) {

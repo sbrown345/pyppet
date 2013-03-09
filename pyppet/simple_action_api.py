@@ -12,21 +12,26 @@ import ctypes
 API = {} # function byte id : {'callback':func, 'arguments':[], 'struct-format':''}
 
 
-def new_action( code, args, player=None ):
+def new_action( code, args, user=None ):
+	assert user ## require actions be taken by users
 	callback = API[code]['callback']
 	kwargs = _decode_args( code, args )
 	print('new_action', code, args)
-	return Action( callback, **kwargs )
+	return Action( user, callback, kwargs )
 
 
 class Action(object):
-	def __init__(self, callback, **kw):
+	def __init__(self, user, callback, kw):
+		self.user = user
 		self.callback = callback
 		self.arguments = kw
 
 	def do(self):
 		print('doing action')
-		self.callback( **self.arguments )
+		self.callback(
+			self.user,    # pass user to the callback, allows callback to directly write on the websocket
+			**self.arguments
+		)
 
 
 ###################################################
@@ -37,7 +42,8 @@ def _decode_args( code, data ):
 	kw = {}
 	for i,name in enumerate( API[ code ]['arguments'] ):
 		ctype = API[code]['arg-types'][name]
-		if ctype is BlenderProxy:
+
+		if ctype is BlenderProxy: ## special case, get a blender object by UID
 			uid = args[i]
 			kw[ name ] = None
 			for o in bpy.data.objects:
@@ -49,6 +55,7 @@ def _decode_args( code, data ):
 
 	return kw
 
+class UserInstance(object): pass
 class BlenderProxy(object): pass
 _ctypes_to_struct_format = {
 	BlenderProxy    :'I', # object id's are 32bit unsigned int
@@ -56,7 +63,7 @@ _ctypes_to_struct_format = {
 	ctypes.c_int32  :'i',
 	ctypes.c_uint16 :'H',
 	ctypes.c_int16  :'h',
-	ctypes.c_float  : 'f',
+	ctypes.c_float  :'f',
 }
 
 def _introspect( func ):
@@ -67,7 +74,11 @@ def _introspect( func ):
 		'arg-types':{},
 	}
 	spec = inspect.getargspec( func )
-	for arg_name, arg_hint in zip(spec.args, spec.defaults):
+	assert len(spec.args) == len(spec.defaults) ## force defaults (mini API)
+	assert spec.defaults[0] is UserInstance     ## force the first argument to be the User
+
+	for arg_name, arg_hint in zip(spec.args[1:], spec.defaults[1:]):
+		assert arg_hint is not UserInstance ## user instances not allow in packed args, yet. TODO
 		a['arguments'].append( arg_name )
 		a['struct-format'] += _ctypes_to_struct_format[ arg_hint ]
 		a['arg-types'][arg_name] = arg_hint
@@ -130,21 +141,26 @@ def generate_javascript():
 	return s
 
 #################################### callbacks #################################
+## TODO cancel logic
 
-
-def select_callback( ob=BlenderProxy ):
+def select_callback( user=UserInstance, ob=BlenderProxy ):
 	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
-	print('select_callback', ob)
 	for o in bpy.context.scene.objects: o.select=False
 	ob.select = True
 	bpy.context.scene.objects.active = ob
 
+def name_callback( user=UserInstance, ob=BlenderProxy ):
+	for o in bpy.context.scene.objects:
+		if o.type == 'FONT':
+			o.data.body = ob.name
 
+def input_form( user=UserInstance, ob=BlenderProxy, data=[] ):
+	pass
 
 
 _api = {
 	'select': select_callback,
-
+	'name'  : name_callback,
 }
 _generate_api( _api )
 print(API)

@@ -54,7 +54,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-HOST_NAME = '192.168.0.16'
+#HOST_NAME = '192.168.0.16'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 ## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
@@ -433,7 +433,7 @@ class Player( object ):
 		The custom action api may need a reference to the player instance.
 		'''
 		if not self._action_api: return None
-		act = self._action_api.new_action( code, packed_args, player=self )
+		act = self._action_api.new_action( code, packed_args, user=self )
 		assert hasattr(act,'callback') and hasattr(act, 'arguments')  ## api check ##
 		return act
 
@@ -554,6 +554,7 @@ class Player( object ):
 			'lights':{}, 
 			'metas':{},
 			'curves':{},
+			'texts' :{},
 			'FX':{},
 			'camera': {
 				'rand':self.camera_randomize,
@@ -569,7 +570,7 @@ class Player( object ):
 
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue
-			if ob.type not in ('CURVE','META','MESH','LAMP'): continue
+			if ob.type not in ('CURVE','META','MESH','LAMP', 'FONT'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures:
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
@@ -602,7 +603,12 @@ class Player( object ):
 			rot = (rot.w, rot.x, rot.y, rot.z)
 			pak = { 'pos':loc, 'rot':rot, 'scl':scl }
 
-			if ob.type == 'CURVE':
+			if ob.type == 'FONT':
+				msg[ 'texts' ][ '__%s__'%UID(ob) ] = pak
+				pak[ 'text' ] = ob.data.body
+				pak[ 'size' ] = ob.data.size
+
+			elif ob.type == 'CURVE':
 				msg[ 'curves' ][ '__%s__'%UID(ob) ] = pak
 				pak[ 'splines' ] = splines = []
 				pak[ 'segments_v' ] = ob.data.bevel_resolution
@@ -1040,6 +1046,18 @@ class WebServer( object ):
 				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
 
 
+			h.append( '<script src="/javascripts/fonts/gentilis_bold.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/gentilis_regular.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/optimer_bold.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/optimer_regular.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/helvetiker_bold.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/helvetiker_regular.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/droid/droid_sans_regular.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/droid/droid_sans_bold.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/droid/droid_serif_regular.typeface.js"></script>')
+			h.append( '<script src="/javascripts/fonts/droid/droid_serif_bold.typeface.js"></script>')
+
+
 
 			######################### Pyppet WebGL Client ##############################
 			self.CLIENT_SCRIPT = open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8')
@@ -1089,7 +1107,8 @@ class WebServer( object ):
 		host = env['HTTP_HOST']
 		client = env['REMOTE_ADDR']
 		arg = env['QUERY_STRING']
-		#print('http_reply_browser', path, host, client, arg)
+
+		print('http_reply_browser', path, host, client, arg)
 
 		relpath = os.path.join( SCRIPT_DIR, path[1:] )
 
@@ -1146,17 +1165,12 @@ class WebServer( object ):
 			url = path[ 9 : ]
 			name = path.split('/')[-1]
 			if name.endswith('.dae'):
-				print('dump collada request', name)
-
-				start_response('200 OK', [('Content-Type','text/xml; charset=utf-8')])
+				print('[webserver] dump collada request', name)
 				uid = name[ : -4 ]
 				ob = get_object_by_UID( uid )
-				if arg == 'center':
-					return [ dump_collada(ob,center=True) ]
-				elif arg == 'hires':
-					return [ dump_collada(ob,hires=True) ]
-				else:
-					return [ dump_collada(ob) ]
+				data = dump_collada( ob, center=arg=='hires' )
+				start_response('200 OK', [('Content-Type','text/xml; charset=utf-8'), ('Content-Length',str(len(data))) ])
+				return [data]
 
 			elif os.path.isfile( url ):
 				data = open( url, 'rb' ).read()
@@ -1164,13 +1178,13 @@ class WebServer( object ):
 				return [ data ]
 
 			else:
-				print('WARNING: unknown request', path)
+				print('[webserver] WARNING: unknown request', path)
 
 
 		elif path.startswith('/javascripts/'):
 			## serve static javascript files
-			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8')])
 			data = open( relpath, 'rb' ).read()
+			start_response('200 OK', [('Content-Type','text/javascript; charset=utf-8'), ('Content-Length',str(len(data))) ])
 			return [ data ]
 
 		elif path.startswith('/bake/'):
