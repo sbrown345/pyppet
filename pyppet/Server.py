@@ -927,7 +927,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 						code = chr( frame[0] )
 						action = player.new_action(code, frame[1:])
 						## logic here can check action before doing it.
-						if action: action.do()
+						if action:
+							assert action.calling_object
+							action.do()
 
 
 
@@ -1064,6 +1066,7 @@ class WebServer( object ):
 			h.append( '<script type="text/javascript">' )
 			## TODO get this from place where api is set ##
 			h.append( simple_action_api.generate_javascript() )
+			print(h[-1])
 
 			#self._port_hack += 1
 			h.append( 'var HOST = "%s";' %HOST_NAME )

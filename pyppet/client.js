@@ -141,6 +141,7 @@ function on_message(e) {
 	}
 	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
 	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
+	ws.flush();
 
 }
 
