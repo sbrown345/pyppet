@@ -699,11 +699,12 @@ class Player( object ):
 				pak[ 'norm' ] = ob.webgl_normal_map
 				pak[ 'auto_subdiv' ] = ob.webgl_auto_subdivison
 
+				## testing select callback ##
 				proto = simple_action_api.API['select']
 				ob.on_click = proto( ob, ob=ob )
 
 				if ob.on_click:
-					pak[ 'on_click' ] = ob.on_click
+					pak[ 'on_click' ] = chr( ob.on_click ) # turn back into single byte
 
 				a = api_gen.get_custom_attributes( ob, convert_objects=True )
 				if a:

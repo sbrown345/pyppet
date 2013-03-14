@@ -399,10 +399,10 @@ function on_json_message( data ) {
 			m.quaternion.z = ob.rot[3];
 
 			m.custom_attributes = ob.custom_attributes;
-			//if (ob.on_click) {
-			//	m.on_mouse_up_callback = _callbacks_[ ob.on_click ];
-			//}
-			m.on_mouse_up_callback = _callbacks_[ "0" ];
+			if (ob.on_click) {
+				m.on_mouse_up_callback = _callbacks_[ ob.on_click ];
+			}
+			//m.on_mouse_up_callback = _callbacks_[ "0" ];
 
 
 			if (USE_MODIFIERS && m.base_mesh) {
