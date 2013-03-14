@@ -6,13 +6,31 @@ import inspect, struct, ctypes
 import bpy
 from bpy.props import *
 
-bpy.types.Object.on_click = IntProperty(
-    name="function id", description="on click function id", 
-    default=0, min=0, max=2**14)
+#bpy.types.Object.on_click = IntProperty(
+#    name="function id", description="(internal) on click function id", 
+#    default=0, min=0, max=256)
+#
+#bpy.types.Object.on_input = IntProperty(
+#    name="function id", description="(internal) on keyboard input function id", 
+#    default=0, min=0, max=256)
 
-bpy.types.Object.on_input = IntProperty(
-    name="function id", description="on keyboard input function id", 
-    default=0, min=0, max=2**14)
+def get_callbacks( ob ):
+	'''
+	user sets callback by name in Blender using "custom properties" (id-props)
+	'''
+	on_click = on_input = None
+	for prop in ob.items():
+		name, value = prop
+		if name not in ('on_click', 'on_input'): continue
+		if value not in CallbackFunction.callbacks: continue
+
+		c = CallbackFunction.callbacks[ value ]
+		if ob not in CallbackFunction.CACHE: c(ob) # TODO chance this to class method "cache_object"
+
+		if name == 'on_click' and value in CallbackFunction.callbacks: on_click = c
+		elif name == 'on_input' and value in CallbackFunction.callbacks: on_input = c
+
+	return on_click, on_input
 
 
 def get_custom_attributes( ob, convert_objects=False ):
@@ -70,6 +88,7 @@ class CallbackFunction(object):
 		return ord(self.code)
 
 	CALLBACKS = {} ## byte-code : function wrapper
+	callbacks = {} ## orig name : function wrapper
 	TYPES = {}  ## each type will need its own custom unpacking functions that take some ID.
 	@classmethod
 	def register_type(cls, T, unpacker, id_byte_size=4):
@@ -96,6 +115,7 @@ class CallbackFunction(object):
 		spec = inspect.getargspec( func )
 		assert len(spec.args) == len(spec.defaults) ## require all keyword args and typed
 		self.CALLBACKS[ code ] = self
+		self.callbacks[ name ] = self
 
 		self.name = name
 		self.callback = func

@@ -434,7 +434,11 @@ class Player( object ):
 		The custom action api may need a reference to the player instance.
 		'''
 		if not self._action_api: return None
-		act = self._action_api.new_action( code, packed_args, user=self )
+		act = self._action_api.new_action( 
+			code,        # function code
+			packed_args, # byte packed args
+			user=self 
+		)
 		assert hasattr(act,'callback') and hasattr(act, 'arguments')  ## api check ##
 		return act
 
@@ -477,8 +481,7 @@ class Player( object ):
 
 			d = bpy.data.objects.new(name=ip+'-focal-point', object_data=None)
 			Pyppet.context.scene.objects.link( d )
-			d.empty_draw_size = 0.1
-			#c.parent = a
+			d.empty_draw_size = 10.0
 			self.focal_point = d
 
 			for ob in (a,b,c):
@@ -710,12 +713,23 @@ class Player( object ):
 				pak[ 'auto_subdiv' ] = ob.webgl_auto_subdivison
 
 				## testing select callback ##
-				proto = simple_action_api.API['select']
-				ob.on_click = proto( ob, ob=ob )
+				#proto = simple_action_api.API['select']
+				#ob.on_click = proto( ob, ob=ob )
 
-				if ob.on_click:
-					pak[ 'on_click' ] = chr( ob.on_click ) # turn back into single byte
+				#if ob.on_click:
+				#	pak[ 'on_click' ] = chr( ob.on_click ) # turn back into single byte
 
+				on_click, on_input = api_gen.get_callbacks( ob )
+				if on_click:
+					pak[ 'on_click' ] = on_click.code
+				else:
+					print('--testing setup of select callback--')
+					ob['on_click'] = 'select'
+
+				if on_input:
+					pak[ 'on_input' ] = on_input.code
+
+				## this should come after - because get_callbacks above can trigger creation of custom attributes
 				a = api_gen.get_custom_attributes( ob, convert_objects=True )
 				if a:
 					#print('custom attrs', ob, a)
