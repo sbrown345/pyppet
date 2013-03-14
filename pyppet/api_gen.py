@@ -2,7 +2,37 @@
 # Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 
-import inspect, ctypes
+import inspect, struct, ctypes
+import bpy
+from bpy.props import *
+
+bpy.types.Object.on_click = IntProperty(
+    name="function id", description="on click function id", 
+    default=0, min=0, max=2**14)
+
+bpy.types.Object.on_input = IntProperty(
+    name="function id", description="on keyboard input function id", 
+    default=0, min=0, max=2**14)
+
+
+def get_custom_attributes( ob, convert_objects=False ):
+	if ob not in CallbackFunction.CACHE: return None
+
+	if convert_objects:
+		d = {}
+		d.update( CallbackFunction.CACHE[ob] )
+		for n in d:
+			if n in CallbackFunction._shared_namespace:
+				T = CallbackFunction._shared_namespace[n]
+				if T in CallbackFunction.TYPES:
+					a = d[n]
+					if hasattr( a, 'UID' ):
+						d[n] = a.UID
+					else:
+						d[n] = id( a )
+		return d
+	else:
+		return CallbackFunction.CACHE[ ob ]
 
 
 def generate_api( a, **kw ):
@@ -15,7 +45,7 @@ def generate_api( a, **kw ):
 	for i,name in enumerate( a ):
 		func = a[name] # get function
 		byte_code = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'[ i ]
-		api[ byte_code ] = CallbackFunction( func, name, byte_code, **kw )
+		api[ name ] = CallbackFunction( func, name, byte_code, **kw )
 	return api
 
 def register_type(T, unpacker): CallbackFunction.register_type(T,unpacker)
@@ -30,8 +60,17 @@ def generate_javascript():
 
 ##########################################################################
 class CallbackFunction(object):
+	CACHE = {}
+	def __call__(self, _ob, **kw):
+		if _ob not in self.CACHE: self.CACHE[ _ob ] = {}
+		d = self.CACHE[ _ob ]
+		for name in kw:
+			assert name in self.arguments
+			d[name] = kw[name]
+		return ord(self.code)
+
 	CALLBACKS = {} ## byte-code : function wrapper
-	TYPES = {}  ## each type will need its own custom unpacking functions that take use some ID.
+	TYPES = {}  ## each type will need its own custom unpacking functions that take some ID.
 	@classmethod
 	def register_type(cls, T, unpacker, id_byte_size=4):
 		'''
@@ -50,6 +89,9 @@ class CallbackFunction(object):
 		ctypes.c_char_p :'s', # special array of char
 	}
 
+
+	_shared_namespace = {} # keyword args in callbacks are all in the same namespace
+
 	def __init__( self, func, name, code, require_first_argument=None ):
 		spec = inspect.getargspec( func )
 		assert len(spec.args) == len(spec.defaults) ## require all keyword args and typed
@@ -67,7 +109,10 @@ class CallbackFunction(object):
 			assert spec.defaults[0] is require_first_argument
 
 		for arg_name, arg_hint in zip(spec.args, spec.defaults):
-			#assert arg_hint is not UserInstance ## user instances not allow in packed args, yet. TODO
+			if arg_name in self._shared_namespace:
+				assert self._shared_namespace[ arg_name ] is arg_hint
+			self._shared_namespace[ arg_name ] = arg_hint
+
 			self.arguments.append( arg_name )
 			if arg_hint in self._ctypes_to_struct_format:
 				self.struct_format += self._ctypes_to_struct_format[ arg_hint ]
@@ -81,7 +126,7 @@ class CallbackFunction(object):
 
 
 
-	def _decode_args( self, data ):
+	def decode_args( self, data ):
 		'''
 		returns keyword args, (callback needs full keyword typed args)
 		'''
@@ -143,29 +188,33 @@ class CallbackFunction(object):
 
 		r = ['//generated function: %s' %self.name]
 		a = self.arguments
-		r.append( '%s["%s"] = function ( %s ) {'%(global_container_name, self.code, ','.join(a)) )
-		r.append( '  var x = [];')
-		for i,arg_name in enumerate(a): ## TODO optimize packing
-			ctype = self.arg_types[arg_name]
-			size = self.size_of( ctype )
-			r.append( '  var buffer = new ArrayBuffer(%s);'%size )
-			r.append( '  var bytesView = new Uint8Array(buffer);' )
-			if ctype in self.TYPES:
-				r.append( '  var view = new %s(buffer);' %self.proxy_to_js_buffer_type(ctype) )
-				## requires object client side has a "_uid_" attribute
-				r.append( "  var _uid = parseInt( %s._uid_.replace('__','').replace('__','') );"%arg_name)
-				r.append( '  view[ %s ] = _uid;'%i )
-			else:
-				r.append( '  var view = new %s(buffer);' %self._ctype_to_js_buffer_type[ctype] )
-				r.append( '  view[ %s ] = %s;'%(i,arg_name) )
-			r.append( '  x.push( Array.apply([],bytesView) );')
+		#r.append( '%s["%s"] = function ( %s ) {'%(global_container_name, self.code, ','.join(a)) )
+		r.append( '%s["%s"] = function ( args ) {'%(global_container_name, self.code) )
+		#r.append( '  var x = [];')
 
 		## set function code as first byte of array to send ##
 		r.append( '  var arr = [%s]; //function code'%ord(self.code))
 
-		for i,arg_name in enumerate(a): r.append( '  arr = arr.concat( x[%s] );'%i )
+		for i,arg_name in enumerate(a): ## TODO optimize packing
+			ctype = self.arg_types[arg_name]
+			size = self.size_of( ctype )
+			r.append( '  //%s' %arg_name)
+			r.append( '  var buffer = new ArrayBuffer(%s);'%size )
+			r.append( '  var bytesView = new Uint8Array(buffer);' )
+			if ctype in self.TYPES:
+				r.append( '  var view = new %s(buffer);' %self.proxy_to_js_buffer_type(ctype) )
+				r.append( '  if (args.%s._uid_ != undefined) {'%arg_name) # allow object or direct uid
+				r.append( '  view[0] = args.%s._uid_;'%arg_name )
+				r.append( '  } else { view[0] = args.%s }' %arg_name)
+			else:
+				r.append( '  var view = new %s(buffer);' %self._ctype_to_js_buffer_type[ctype] )
+				r.append( '  view[ 0 ] = args.%s;'%arg_name )
+			r.append( '  arr = arr.concat( Array.apply([],bytesView) );')
+
+
+		#for i,arg_name in enumerate(a): r.append( '  arr = arr.concat( x[%s] );'%i )
 		r.append('  ws.send( arr ); // send packed data to server')
-		r.append('  ws.flush(); // send packed data to server')
+		r.append('  ws.flush(); // ensure the servers gets the frame whole')
 		r.append('  return arr;')
 		r.append( '  }')
 

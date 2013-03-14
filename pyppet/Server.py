@@ -28,6 +28,8 @@ from bpy.props import *
 from core import *
 from random import *
 
+import api_gen
+
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
 ## hook into external API's ##
@@ -82,7 +84,6 @@ bpy.types.Object.webgl_normal_map = FloatProperty(
     name="normal map scale", description="normal map scale for webGL client", 
     default=0.75)
 
-bpy.types.Object.webgl_callbacks = StringProperty( name='packed callback codes', default='0' )
 
 
 ## ID of zero is a dead object ##
@@ -697,9 +698,17 @@ class Player( object ):
 				pak[ 'ptex' ] = ob.webgl_progressive_textures
 				pak[ 'norm' ] = ob.webgl_normal_map
 				pak[ 'auto_subdiv' ] = ob.webgl_auto_subdivison
-				if ob.webgl_callbacks:
-					#print('sending', ob.webgl_callbacks)
-					pak[ 'on_click' ] = ob.webgl_callbacks
+
+				proto = simple_action_api.API['select']
+				ob.on_click = proto( ob, ob=ob )
+
+				if ob.on_click:
+					pak[ 'on_click' ] = ob.on_click
+
+				a = api_gen.get_custom_attributes( ob, convert_objects=True )
+				if a:
+					#print('custom attrs', ob, a)
+					pak[ 'custom_attributes'] = a
 
 		for ob in streaming_meshes:
 			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
@@ -912,7 +921,9 @@ class WebSocketServer( websocket.WebSocketServer ):
 					if not frame: continue
 					if frame[0] == 0:
 						frame = frame[1:]
-						if len(frame)!=12: continue
+						if len(frame)!=12:
+							print(frame)
+							continue
 
 						x,y,z = struct.unpack('<fff', frame)
 						if addr in GameManager.clients:
@@ -928,7 +939,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 						action = player.new_action(code, frame[1:])
 						## logic here can check action before doing it.
 						if action:
-							assert action.calling_object
+							#assert action.calling_object
 							action.do()
 
 

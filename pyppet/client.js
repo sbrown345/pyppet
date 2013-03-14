@@ -398,6 +398,13 @@ function on_json_message( data ) {
 			m.quaternion.y = ob.rot[2];
 			m.quaternion.z = ob.rot[3];
 
+			m.custom_attributes = ob.custom_attributes;
+			//if (ob.on_click) {
+			//	m.on_mouse_up_callback = _callbacks_[ ob.on_click ];
+			//}
+			m.on_mouse_up_callback = _callbacks_[ "0" ];
+
+
 			if (USE_MODIFIERS && m.base_mesh) {
 				m.auto_subdivision = ob.auto_subdiv;
 
@@ -444,11 +451,6 @@ function on_json_message( data ) {
 			if (ob.reload_textures) {
 				reload_progressive_textures( m );
 			}
-
-			//if (ob.on_click) {
-			//	m.on_mouse_up_callback = CALLBACKS[ ob.on_click ];
-			//}
-			m.on_mouse_up_callback = CALLBACKS[ "0" ];
 
 		}
 		else if (name in Objects == false) {
@@ -598,6 +600,14 @@ function on_collada_ready( collada ) {
 		lod.updateMatrix();
 		//mesh.matrixAutoUpdate = false;
 
+		// custom attributes (for callbacks)
+		lod.custom_attributes = {};
+		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') )
+		lod.do_mouse_up_callback = function () {
+			lod.on_mouse_up_callback( lod.custom_attributes );
+		};
+
+		// add to scene //
 		Objects[ lod.name ] = lod;
 		scene.add( lod );
 
@@ -1658,11 +1668,14 @@ MyController = function ( object, domElement ) {
 			//var tex = THREE.ImageUtils.loadTexture(
 			//	'/RPC/select/'+INTERSECTED.name, undefined, on_texture_ready 
 			//);
-			var uid = parseInt( INTERSECTED.name.replace('__','').replace('__','') );
+
+			//var uid = parseInt( INTERSECTED.name.replace('__','').replace('__','') );
+
 			//var arr = int32_to_bytes( i );
 			//ws.send( arr ); // for sending binary
-			if (INTERSECTED.on_mouse_up_callback) {
-				INTERSECTED.on_mouse_up_callback( uid );
+			var a = Objects[ INTERSECTED.name ];
+			if (a.on_mouse_up_callback) {
+				a.do_mouse_up_callback();
 			}
 
 			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );

@@ -30,10 +30,10 @@ def generate_javascript(): return api.generate_javascript()
 
 def new_action( code, args, user=None ):
 	assert user ## require actions be taken by users
-	callback = API[code]['callback']
-	kwargs = _decode_args( code, args )
+	wrapper = api.CallbackFunction.CALLBACKS[code]
+	kwargs = wrapper.decode_args( args )
 	print('new_action', code, args)
-	return Action( user, callback, kwargs )
+	return Action( user, wrapper.callback, kwargs )
 
 
 class Action(object):
@@ -45,7 +45,7 @@ class Action(object):
 	def do(self):
 		print('doing action')
 		self.callback(
-			self.user,    # pass user to the callback, allows callback to directly write on the websocket
+			#self.user,    # pass user to the callback, allows callback to directly write on the websocket
 			**self.arguments
 		)
 
@@ -55,19 +55,16 @@ class Action(object):
 
 #################################### callbacks #################################
 ## TODO cancel logic
-
-def select_callback( user=UserInstance, ob=BlenderProxy ):
+def select_callback( ob=BlenderProxy ):
 	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
 	for o in bpy.context.scene.objects: o.select=False
 	ob.select = True
 	bpy.context.scene.objects.active = ob
 
-
-def name_callback( user=UserInstance, ob=BlenderProxy, date=ctypes.c_int16, num=ctypes.c_int32 ):
+def name_callback( user=UserInstance, ob=BlenderProxy ):
 	for o in bpy.context.scene.objects:
 		if o.type == 'FONT':
 			o.data.body = ob.name
-
 
 def input_form( user=UserInstance, ob=BlenderProxy, data=ctypes.c_char_p ):
 	pass
