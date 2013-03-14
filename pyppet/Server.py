@@ -474,6 +474,13 @@ class Player( object ):
 			c.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*4
 			c.parent = a
 
+
+			d = bpy.data.objects.new(name=ip+'-focal-point', object_data=None)
+			Pyppet.context.scene.objects.link( d )
+			d.empty_draw_size = 0.1
+			#c.parent = a
+			self.focal_point = d
+
 			for ob in (a,b,c):
 				ob.empty_draw_type = 'SPHERE'
 				ob.lock_location = [True]*3
@@ -486,7 +493,10 @@ class Player( object ):
 		self.location = self.streaming_boundry.location
 		print('[player] new player created:', self.address)
 
-
+	def set_focal_point(self, pos):
+		self.focal_point.location.x = pos[0]
+		self.focal_point.location.y = pos[1]
+		self.focal_point.location.z = pos[2]
 
 	def set_location(self, loc):
 		self.location.x = loc[0]
@@ -922,14 +932,15 @@ class WebSocketServer( websocket.WebSocketServer ):
 					if not frame: continue
 					if frame[0] == 0:
 						frame = frame[1:]
-						if len(frame)!=12:
+						if len(frame)!=24:
 							print(frame)
 							continue
 
-						x,y,z = struct.unpack('<fff', frame)
+						x1,y1,z1, x2,y2,z2 = struct.unpack('<ffffff', frame)
 						if addr in GameManager.clients:
 							player = GameManager.clients[ addr ]
-							player.set_location( (x,y,z) )
+							player.set_location( (x1,y1,z1) )
+							player.set_focal_point( (x2,y2,z2) )
 						else:
 							print('[websocket ERROR] client address not in GameManager.clients')
 
