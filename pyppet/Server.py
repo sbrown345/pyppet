@@ -551,7 +551,7 @@ class Player( object ):
 		return '\n'.join( a )
 
 
-	def update_message_stream( self, context ):
+	def create_message_stream( self, context ):
 		'''
 		this can be tuned perclient fps - limited to 24fps
 		'''
@@ -561,20 +561,13 @@ class Player( object ):
 			'scl': '',
 
 		}
-		MAP = {
-			'MESH': {
 
-			},
-
-
-		}
-		#for key in a: a[key].update(common)
-
+		msg = {'meshes':{}}
 
 		wobjects = api_gen.get_wrapped_objects()
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue # TODO update skipping logic
-			if ob.type not in ('CURVE','META','MESH','LAMP', 'FONT'): continue
+			if ob.type not in ('MESH',): continue
 			if ob.type=='MESH' and not ob.data.uv_textures:
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
@@ -582,38 +575,27 @@ class Player( object ):
 			if ob not in wobjects: api_gen.wrap_object( ob )
 
 			proxy = wobjects[ ob ]
-			view = proxy[ self ]
-			local_attrs = view.attributes
+			view = proxy( self ) # create new viewer if required, and return it
+			#view = proxy[ self ]
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
 			rot = (rot.w, rot.x, rot.y, rot.z)
-			proxy['pos'] = loc # if was typedef'ed then its send as binary, else sent as json
-			proxy['rot'] = rot
-			proxy['scl'] = scl
+			proxy['pos'] = loc  ## testing upstream properties (parent view)
+			#view['pos'] = loc
+			view['rot'] = rot ## testing local properties
+			view['scl'] = scl
 
-			if view.on_click or view.on_input:
-				view.update_callbacks()
+			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
+			pak = { 'properties' : a.properties }
+			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
-			on_click, on_input = api_gen.get_callbacks( ob )
-			if on_click:
-				pak[ 'on_click' ] = on_click.code
-			#else:
-			#	print('--testing setup of select callback--')
-			#	ob['on_click'] = 'select'
+			if a.on_click: pak['on_click'] = a.on_click.code
+			if a.on_input: pak['on_input'] = a.on_input.code
 
-			if on_input:
-				pak[ 'on_input' ] = on_input.code
-
-			## this should come after - because get_callbacks above can trigger creation of custom attributes
-			a = api_gen.get_custom_attributes( ob, convert_objects=True )
-			if on_click or on_input:
-				assert a
-			if a:
-				print('custom attrs', ob, a)
-				pak[ 'custom_attributes'] = a
-
+		print(msg)
+		return msg
 
 	################################ convert to stream #######################################
 	def create_stream_message( self, context ):
@@ -969,6 +951,10 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 			player = players[ rlist.index(sock) ]
 			if True:
+				msg = player.create_message_stream( context )
+				rawbytes = json.dumps( msg ).encode('utf-8')
+
+			elif False:
 				msg = player.create_stream_message( context )
 				#print(msg)
 				for fx in  self.webGL.effects:  ## TODO move to player class

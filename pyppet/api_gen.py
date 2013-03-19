@@ -108,9 +108,9 @@ class ContainerInternal(object):
 	Wrapper that allows scripts to get into the hidden properties of Container.
 	Scripts call the ObjectView instance to get this wrapper.
 	'''
-	def __init__(self, v): self.__object_view = v
-	def __setattr__(self, name, value): setattr(self.__object_view, '_Container__'+name, value)
-	def __getattr__(self, name): return getattr(self.__object_view, '_Container__'+name)
+	def __init__(self, v): self.__dict__['__object_view'] = v
+	def __setattr__(self, name, value): setattr(self.__dict__['__object_view'], '_Container__'+name, value)
+	def __getattr__(self, name): return getattr(self.__dict__['__object_view'], '_Container__'+name)
 
 
 class Container(object):
@@ -133,14 +133,18 @@ class Container(object):
 		'''
 		if viewer:
 			assert self.__allow_viewers
-			assert viewer not in self.__viewers
-			view = View( 
-				viewer=viewer, 
-				parent=self,        # for upstream properties
-				proxy=self.__proxy, # copy proxy
-			)
-			self.__viewers[ viewer ] = view
-			return view
+			#assert viewer not in self.__viewers
+			if viewer not in self.__viewers:
+				view = View( 
+					viewer=viewer, 
+					parent=self,        # for upstream properties
+					proxy=self.__proxy, # use same proxy
+					allow_upstream_attributes=True,
+					allow_upstream_properties=True,
+					#allow_viewers=True,
+				)
+				self.__viewers[ viewer ] = view
+			return self.__viewers[ viewer ]
 		else:
 			return ContainerInternal(self)
 
@@ -151,14 +155,14 @@ class Container(object):
 		and cache as normal attribute.
 		'''
 		assert not name.startswith('__')
-		setattr(self, name, value)
-		if self.__proxy:  ## a wrapped blender object
+		self.__dict__[name] = value
+		if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
 			setattr(self.__proxy, name, value)
 
 	def __getattr__(self,name):
 		allow = self.__allow_upstream_attributes
 		if (allow is True or name in allow) and self.__parent:
-			return getattr(self.__parent)
+			return getattr(self.__parent, name)
 
 	################### Dict-Like Features ####################
 	def __setitem__(self, name, value):
@@ -183,7 +187,7 @@ class Container(object):
 				raise KeyError
 		else: # get a viewer wrapper
 			if self.__allow_viewers:
-				return self.__viewers[ name ]  # a[ viewer ]
+				return self.__viewers[ name ]  # "a[ viewer ]" the View is also returned by "a(viewer)"
 			else:
 				raise KeyError
 
@@ -194,10 +198,10 @@ class View( Container ):
 	if an attr/prop is not found locally, this view will check if the parent
 	has that attribute - this allows for "parent attributes" and local ones.
 	'''
-	__allow_viewers = False  ## TODO test setting this to True and allowing viewers of a view
-	__allow_upstream_properties = True # allow all
-	__allow_upstream_attributes = True # allow all
-
+	#__allow_viewers = True  ## TODO test allowing viewers of a view
+	#__allow_upstream_properties = True # allow all
+	#__allow_upstream_attributes = True # allow all
+	pass
 
 
 class ObjectView( Container ):
@@ -213,15 +217,28 @@ class ObjectView( Container ):
 	b = a()
 	on_click_callback = b.on_click
 	'''
-	__allow_viewers = False  ## TODO test setting this to True and allowing viewers of a view
-	__allow_upstream_properties = []
-	__allow_upstream_attributes = []
+	#__allow_viewers = True
+	#__allow_upstream_properties = []
+	#__allow_upstream_attributes = []
+	pass
 
 def create_object_view( ob ):
+	on_click = 'select'
+	on_input = None
+	for prop in ob.items():  ## Blender's ID-Props API
+		name, value = prop
+		if name == 'on_click': on_click = value
+		elif name == 'on_input': on_input = value
+	if on_click:
+		on_click = CallbackFunction.callbacks[ on_click ]
+	if on_input:
+		on_input = CallbackFunction.callbacks[ on_input ]
+
 	v = ObjectView(
 		proxy=ob,
-		on_click=CallbackFunction.callbacks[ ob.on_click ],
-		on_input=CallbackFunction.callbacks[ ob.on_input ],
+		on_click=on_click,
+		on_input=on_click,
+		allow_viewers=True,
 	)
 	return v
 
