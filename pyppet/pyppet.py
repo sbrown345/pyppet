@@ -4289,7 +4289,7 @@ class PyppetUI( PyppetAPI ):
 		self.server.open_firefox()
 		time.sleep(4)
 
-		if not PYPPET_LITE:
+		if False:
 			if self.server.httpd:
 				name = 'Mozilla Firefox' #'Chromium'
 				xid = self.do_xembed( self._chrome_xsocket, name)

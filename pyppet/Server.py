@@ -551,12 +551,91 @@ class Player( object ):
 		return '\n'.join( a )
 
 
+	def update_message_stream( self, context ):
+		'''
+		this can be tuned perclient fps - limited to 24fps
+		'''
+		common = {
+			'pos': 'function (o, pos) {o.position.x=pos[0]; o.position.x=pos[0]; o.position.x=pos[0];}',
+			'rot': '',
+			'scl': '',
+
+		}
+		MAP = {
+			'MESH': {
+
+			},
+
+
+		}
+		#for key in a: a[key].update(common)
+
+
+		wobjects = api_gen.get_wrapped_objects()
+		for ob in context.scene.objects:
+			if ob.is_lod_proxy: continue # TODO update skipping logic
+			if ob.type not in ('CURVE','META','MESH','LAMP', 'FONT'): continue
+			if ob.type=='MESH' and not ob.data.uv_textures:
+				#print('WARN: not streaming mesh without uvmapping', ob.name)
+				continue	# UV's required to generate tangents
+
+			if ob not in wobjects: api_gen.wrap_object( ob )
+
+			proxy = wobjects[ ob ]
+			view = proxy[ self ]
+			local_attrs = view.attributes
+
+			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
+			loc = loc.to_tuple()
+			scl = scl.to_tuple()
+			rot = (rot.w, rot.x, rot.y, rot.z)
+			proxy['pos'] = loc # if was typedef'ed then its send as binary, else sent as json
+			proxy['rot'] = rot
+			proxy['scl'] = scl
+
+			if view.on_click or view.on_input:
+				view.update_callbacks()
+
+			on_click, on_input = api_gen.get_callbacks( ob )
+			if on_click:
+				pak[ 'on_click' ] = on_click.code
+			#else:
+			#	print('--testing setup of select callback--')
+			#	ob['on_click'] = 'select'
+
+			if on_input:
+				pak[ 'on_input' ] = on_input.code
+
+			## this should come after - because get_callbacks above can trigger creation of custom attributes
+			a = api_gen.get_custom_attributes( ob, convert_objects=True )
+			if on_click or on_input:
+				assert a
+			if a:
+				print('custom attrs', ob, a)
+				pak[ 'custom_attributes'] = a
+
+
 	################################ convert to stream #######################################
 	def create_stream_message( self, context ):
 		'''
 		packs all header data in message stream into a dictionary,
 		the dict is converted into json and later streamed to the client.
 		create binary message for numeric data
+
+		TODO
+		 use proxy object from api_gen
+		 proxy = api_gen.get_wrapped_objects()[bpy.data.objects['Cube']]
+		 if not proxy(): # returns attribute callback defs
+		 	proxy(
+		 		location = (mathutils.Vector, on_set_javascript_callback),
+		 		userdata = (lambda xxx=c_int16: server_callback(xxx), None),
+		 	)
+		 ## each send has 6 byte overhead, json has "{oid:100,aid:100,}" 12+ byte overhead
+		 ## sends binary data: uid(int32), attr-id(int16), data..
+		 proxy['location'] = (x,y,z) ## sets client side for next send by WebSocketServer
+		 proxy.location = (x,y,z) ## sets server side on blender object
+
+
 		'''
 		#ip,port = sock.getsockname()
 		#assert ip in self.clients
@@ -583,7 +662,9 @@ class Player( object ):
 		far_objects = []		# far objects the player has not loaded yet
 
 		for ob in context.scene.objects:
-			if ob.is_lod_proxy: continue
+
+			if ob.is_lod_proxy: continue # TODO update skipping logic
+
 			if ob.type not in ('CURVE','META','MESH','LAMP', 'FONT'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures:
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
@@ -722,17 +803,19 @@ class Player( object ):
 				on_click, on_input = api_gen.get_callbacks( ob )
 				if on_click:
 					pak[ 'on_click' ] = on_click.code
-				else:
-					print('--testing setup of select callback--')
-					ob['on_click'] = 'select'
+				#else:
+				#	print('--testing setup of select callback--')
+				#	ob['on_click'] = 'select'
 
 				if on_input:
 					pak[ 'on_input' ] = on_input.code
 
 				## this should come after - because get_callbacks above can trigger creation of custom attributes
 				a = api_gen.get_custom_attributes( ob, convert_objects=True )
+				if on_click or on_input:
+					assert a
 				if a:
-					#print('custom attrs', ob, a)
+					print('custom attrs', ob, a)
 					pak[ 'custom_attributes'] = a
 
 		for ob in streaming_meshes:

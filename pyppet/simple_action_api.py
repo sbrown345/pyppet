@@ -10,12 +10,8 @@ import ctypes
 
 import api_gen as api
 
-class BlenderProxy(api.Proxy): pass
-class UserInstance(api.Proxy): pass
-
-
-
-
+class BlenderProxy(object): pass
+class UserInstance(object): pass
 
 def get_blender_object_by_uid(uid):
 	for o in bpy.data.objects:

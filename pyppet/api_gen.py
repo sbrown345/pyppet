@@ -14,7 +14,16 @@ from bpy.props import *
 #    name="function id", description="(internal) on keyboard input function id", 
 #    default=0, min=0, max=256)
 
-def get_callbacks( ob ):
+def get_callback( name ):
+	return CallbackFunction.callbacks[ name ]
+
+def get_callbacks( ob, viewer=None ):
+	a = get_wrapped_objects()[ob]
+	if viewer: b = a[viewer]() # get internal
+	else: b = a() # get internal
+	return b.on_click, b.on_input
+
+def get_callbacks_old( ob ):
 	'''
 	user sets callback by name in Blender using "custom properties" (id-props)
 	'''
@@ -25,7 +34,7 @@ def get_callbacks( ob ):
 		if value not in CallbackFunction.callbacks: continue
 
 		c = CallbackFunction.callbacks[ value ]
-		if ob not in CallbackFunction.CACHE: c(ob) # TODO chance this to class method "cache_object"
+		if ob not in CallbackFunction.CACHE: c(ob) # TODO change this to class method "cache_object"
 
 		if name == 'on_click' and value in CallbackFunction.callbacks: on_click = c
 		elif name == 'on_input' and value in CallbackFunction.callbacks: on_input = c
@@ -33,7 +42,7 @@ def get_callbacks( ob ):
 	return on_click, on_input
 
 
-def get_custom_attributes( ob, convert_objects=False ):
+def get_custom_attributes_old( ob, convert_objects=False ):
 	if ob not in CallbackFunction.CACHE: return None
 
 	if convert_objects:
@@ -76,16 +85,159 @@ def generate_javascript():
 	return '\n'.join( a )
 
 
+def get_wrapped_objects():
+	return Cache.objects
+
+def wrap_object( ob ):
+	return Cache.wrap_object(ob )
+
+
+
+class Cache(object):
+	objects = {} # blender object : object view
+	@classmethod
+	def wrap_object(cls,ob):
+		assert ob not in cls.objects
+		view = create_object_view( ob )
+		cls.objects[ ob ] = view
+		return view
+
+
+class ContainerInternal(object):
+	'''
+	Wrapper that allows scripts to get into the hidden properties of Container.
+	Scripts call the ObjectView instance to get this wrapper.
+	'''
+	def __init__(self, v): self.__object_view = v
+	def __setattr__(self, name, value): setattr(self.__object_view, '_Container__'+name, value)
+	def __getattr__(self, name): return getattr(self.__object_view, '_Container__'+name)
+
+
+class Container(object):
+	__properties = {} # global to all subclasses (if they do not provide their own)
+	__viewers    = {} # global to all subclasses
+	__parent     = None # upstream items
+	__proxy      = None # "a.something = x" can trigger passing the attribute to proxy if defined
+	__allow_viewers = False
+	__allow_upstream_attributes = [] # this can be True (allow all) or a list of names to allow
+	__allow_upstream_properties = [] # this can be True or a list of names to allow
+
+	def __init__(self, **kw):
+		for name in kw:
+			setattr(self, '_Container__'+name, kw[name])
+
+	def __call__(self, viewer=None):
+		'''
+		The Container only contains data attributes to keep scripting these objects simple.
+		To get to the internal API of Container call the instance: "obinternal = obview()"
+		'''
+		if viewer:
+			assert self.__allow_viewers
+			assert viewer not in self.__viewers
+			view = View( 
+				viewer=viewer, 
+				parent=self,        # for upstream properties
+				proxy=self.__proxy, # copy proxy
+			)
+			self.__viewers[ viewer ] = view
+			return view
+		else:
+			return ContainerInternal(self)
+
+	################# Object Attributes ######################
+	def __setattr__(self,name,value):
+		'''
+		a.location = (x,y,z) # set something on the blender object,
+		and cache as normal attribute.
+		'''
+		assert not name.startswith('__')
+		setattr(self, name, value)
+		if self.__proxy:  ## a wrapped blender object
+			setattr(self.__proxy, name, value)
+
+	def __getattr__(self,name):
+		allow = self.__allow_upstream_attributes
+		if (allow is True or name in allow) and self.__parent:
+			return getattr(self.__parent)
+
+	################### Dict-Like Features ####################
+	def __setitem__(self, name, value):
+		'''
+		a["x"] = xxx # set custom property for all viewers
+		'''
+		assert type(name) is str
+		self.__properties[ name ] = value
+
+	def __getitem__(self, name):
+		'''
+		a["x"] # get custom property
+		a[viewer]["x"] # get a property local to a viewer
+		'''
+		if type(name) is str:
+			if name in self.__properties:
+				return self.__properties[ name ]
+			elif (self.__allow_upstream_properties is True or name in self.__allow_upstream_properties) and self.__parent:
+				assert not name.startswith('_')
+				return self.__parent[ name ]
+			else:
+				raise KeyError
+		else: # get a viewer wrapper
+			if self.__allow_viewers:
+				return self.__viewers[ name ]  # a[ viewer ]
+			else:
+				raise KeyError
+
+
+class View( Container ):
+	'''
+	A client/player view on an object can contain its own local attributes and properties,
+	if an attr/prop is not found locally, this view will check if the parent
+	has that attribute - this allows for "parent attributes" and local ones.
+	'''
+	__allow_viewers = False  ## TODO test setting this to True and allowing viewers of a view
+	__allow_upstream_properties = True # allow all
+	__allow_upstream_attributes = True # allow all
+
+
+
+class ObjectView( Container ):
+	'''
+	Caching and Database proxy object.
+	a = ObjectView(blender_object)
+	a.location = (1,2,3)  # caches tuple and assigns location to wrapped blender object
+	a["location"] = (1,2,3) # save custom attribute, not assigned to wrapped, broadcast to all viewers.
+	a[viewer1]['some_local_attribute'] = 'xxx' # sets attribute only for viewer1
+	a[viewer2][...]
+
+	Calling an ObjectView will return a wrapper of the view, required to get the callbacks.
+	b = a()
+	on_click_callback = b.on_click
+	'''
+	__allow_viewers = False  ## TODO test setting this to True and allowing viewers of a view
+	__allow_upstream_properties = []
+	__allow_upstream_attributes = []
+
+def create_object_view( ob ):
+	v = ObjectView(
+		proxy=ob,
+		on_click=CallbackFunction.callbacks[ ob.on_click ],
+		on_input=CallbackFunction.callbacks[ ob.on_input ],
+	)
+	return v
+
+
+
+
 ##########################################################################
 class CallbackFunction(object):
-	CACHE = {}
-	def __call__(self, _ob, **kw):
-		if _ob not in self.CACHE: self.CACHE[ _ob ] = {}
-		d = self.CACHE[ _ob ]
-		for name in kw:
-			assert name in self.arguments
-			d[name] = kw[name]
-		return ord(self.code)
+	#CACHE = {}
+	#def __call__(self, _ob, **kw):
+	#	if _ob not in self.CACHE: self.CACHE[ _ob ] = {}
+	#	d = self.CACHE[ _ob ]
+	#	for name in kw:
+	#		assert name in self.arguments
+	#		d[name] = kw[name]
+	#	return ord(self.code)
 
 	CALLBACKS = {} ## byte-code : function wrapper
 	callbacks = {} ## orig name : function wrapper
@@ -241,18 +393,6 @@ class CallbackFunction(object):
 		return '\n'.join(r)
 
 
-
-class Proxy(object):
-	_instances = []
-
-	def __init__(self, ob):
-		self.instance = ob
-		#if id(ob)...
-		Proxy.instances.append( self )
-
-	def forget(self): Proxy.instances.remove(self)
-
-	def generate_javascript(self): pass
 
 
 
