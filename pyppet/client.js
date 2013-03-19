@@ -166,9 +166,60 @@ function on_binary_message( bytes ) {
 
 }
 
-
-
 function on_json_message( data ) {
+	var msg = JSON.parse( data );
+
+	for (var name in msg['meshes']) {
+
+		if (name in Objects == false) {
+			console.log( '>> loading new collada' );
+			Objects[ name ] = null;
+			var loader = new THREE.ColladaLoader();
+			loader.options.convertUpAxis = true;
+			//loader.options.centerGeometry = true;
+			loader.load(
+				'/objects/'+name+'.dae', 
+				on_collada_ready
+			);
+
+		}
+
+		var pak = msg['meshes'][ name ];
+		var ob = pak.properties;
+
+		if (name in Objects && Objects[name]) {
+			m = Objects[ name ];
+			m.custom_attributes = pak.properties;
+			//if (ob.selected) { SELECTED = m; }
+			//m.has_progressive_textures = ob.ptex;
+			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
+
+			m.position.x = ob.pos[0];
+			m.position.y = ob.pos[1];
+			m.position.z = ob.pos[2];
+
+			m.scale.x = ob.scl[0];
+			m.scale.y = ob.scl[1];
+			m.scale.z = ob.scl[2];
+
+			m.quaternion.w = ob.rot[0];
+			m.quaternion.x = ob.rot[1];
+			m.quaternion.y = ob.rot[2];
+			m.quaternion.z = ob.rot[3];
+
+			if (pak.on_click) {
+				m.on_mouse_up_callback = _callbacks_[ pak.on_click ];
+			}
+
+		}
+
+	}	// end meshes
+
+
+}
+
+
+function on_json_message_old( data ) {
 	var msg = JSON.parse( data );
 	dbugmsg = msg;
 

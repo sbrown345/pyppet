@@ -587,6 +587,9 @@ class Player( object ):
 			view['rot'] = rot ## testing local properties
 			view['scl'] = scl
 
+			## ensure properties required by callbacks - TODO move this logic somewhere else
+			view['ob'] = UID(ob)
+
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
 			pak = { 'properties' : a.properties }
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
