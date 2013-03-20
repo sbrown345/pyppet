@@ -224,7 +224,7 @@ class ObjectView( Container ):
 
 def create_object_view( ob ):
 	on_click = 'select'
-	on_input = None
+	on_input = 'input'
 	for prop in ob.items():  ## Blender's ID-Props API
 		name, value = prop
 		if name == 'on_click': on_click = value

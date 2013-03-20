@@ -69,11 +69,13 @@ function on_keypress( evt ) {
 		case 8:  _input_buffer.pop(); break; 					//backspace
 		case 32: _input_buffer.push(' '); break;				//space
 		case 27: break; //esc
-		case 13: // enter
+		case 13: 		// enter triggers input callback
 			//ws.send_string(_input_buffer.join(""));
 			if (INPUT_OBJECT) {
+				console.log('doing input callback');
 				INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
 			}
+			while (_input_buffer.length) { _input_buffer.pop() }
 			break;
 		default:
 			var string = String.fromCharCode(evt.charCode);
@@ -226,7 +228,8 @@ function on_json_message( data ) {
 			for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
 			//m.custom_attributes = pak.properties;
 
-			//if (ob.selected) { SELECTED = m; }
+			if (ob.selected) { SELECTED = m; INPUT_OBJECT = m; }
+
 			//m.has_progressive_textures = ob.ptex;
 			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 

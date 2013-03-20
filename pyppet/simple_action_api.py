@@ -57,7 +57,7 @@ def input_callback( ob=BlenderProxy, input_string=ctypes.c_char_p ):
 def select_callback( ob=BlenderProxy ):
 	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
 	for o in bpy.context.scene.objects: o.select=False
-	ob.select = True
+	ob.select = True # this also makes it active for keyboard input client-side
 	bpy.context.scene.objects.active = ob
 
 def name_callback( ob=BlenderProxy ):
@@ -75,8 +75,8 @@ def input_multi_form( user=UserInstance, ob=BlenderProxy, data=ctypes.c_char_p )
 
 _api = {
 	'select': select_callback,
-	#'input' : input_callback,
-	'name'  : name_callback,
+	'input' : input_callback,
+	#'name'  : name_callback,
 }
 API = api.generate_api( _api )
 print(API)

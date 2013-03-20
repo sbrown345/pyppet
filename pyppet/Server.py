@@ -555,12 +555,6 @@ class Player( object ):
 		'''
 		this can be tuned perclient fps - limited to 24fps
 		'''
-		common = {
-			'pos': 'function (o, pos) {o.position.x=pos[0]; o.position.x=pos[0]; o.position.x=pos[0];}',
-			'rot': '',
-			'scl': '',
-
-		}
 
 		msg = {'meshes':{}}
 
@@ -586,6 +580,8 @@ class Player( object ):
 			#view['pos'] = loc
 			view['rot'] = rot ## testing local properties
 			view['scl'] = scl
+
+			if ob == context.active_object: view[ 'selected' ] = True
 
 			## ensure properties required by callbacks - TODO move this logic somewhere else
 			view['ob'] = UID(ob)
