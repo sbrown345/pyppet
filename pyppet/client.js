@@ -51,6 +51,32 @@ var MESHES = [];	// list for intersect checking - not a dict because LOD's share
 
 var dbugmsg = null;
 
+//window.addEventListener( 'keydown', on_keydown, false );
+// note: keyup event charCode is invalid in firefox, the keypress event should work in all browsers.
+function on_keypress( evt ) { 
+	console.log( String.fromCharCode(evt.charCode) );
+	console.log( evt.charCode );
+	console.log( evt.keyCode );
+
+	var string = String.fromCharCode(evt.charCode)
+	if (string) {
+		ws.send_string( string );
+	} else {
+
+		switch( evt.keyCode ) {
+			case 38: //up
+			case 37: //left
+			case 40: //down
+			case 39: //right
+			case 9:  //tab
+			case 32: //space
+			case 13: //enter
+			case 27: //esc
+		}
+
+	}
+}
+window.addEventListener( 'keypress', on_keypress, false );
 
 
 function generate_extruded_splines( parent, ob ) {
@@ -189,7 +215,9 @@ function on_json_message( data ) {
 
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
-			m.custom_attributes = pak.properties;
+			for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
+			//m.custom_attributes = pak.properties;
+
 			//if (ob.selected) { SELECTED = m; }
 			//m.has_progressive_textures = ob.ptex;
 			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
@@ -209,6 +237,9 @@ function on_json_message( data ) {
 
 			if (pak.on_click) {
 				m.on_mouse_up_callback = _callbacks_[ pak.on_click ];
+			}
+			if (pak.on_input) {
+				m.on_input_callback = _callbacks_[ pak.on_input ];
 			}
 
 		}
@@ -1846,8 +1877,8 @@ MyController = function ( object, domElement ) {
 	this.domElement.addEventListener( 'mousemove', this.mousemove, false );
 	this.domElement.addEventListener( 'mousedown', this.mousedown, false );
 	this.domElement.addEventListener( 'mouseup', this.mouseup, false );
-	window.addEventListener( 'keydown', this.keydown, false );
-	window.addEventListener( 'keyup', this.keyup, false );
+	//window.addEventListener( 'keydown', this.keydown, false );
+	//window.addEventListener( 'keyup', this.keyup, false );
 
 
 

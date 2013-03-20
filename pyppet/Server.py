@@ -597,7 +597,6 @@ class Player( object ):
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
 
-		print(msg)
 		return msg
 
 	################################ convert to stream #######################################
@@ -1029,7 +1028,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 							player.set_focal_point( (x2,y2,z2) )
 						else:
 							print('[websocket ERROR] client address not in GameManager.clients')
-
+					elif len(frame) == 1:
+						print( frame.decode('utf-8') ) 
 					else:
 						print('doing custom action...', frame)
 						## action api ##

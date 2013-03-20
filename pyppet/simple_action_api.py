@@ -51,13 +51,16 @@ class Action(object):
 
 #################################### callbacks #################################
 ## TODO cancel logic
+def input_callback( char=ctypes.c_byte ):
+	print( char )
+
 def select_callback( ob=BlenderProxy ):
 	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
 	for o in bpy.context.scene.objects: o.select=False
 	ob.select = True
 	bpy.context.scene.objects.active = ob
 
-def name_callback( user=UserInstance, ob=BlenderProxy ):
+def name_callback( ob=BlenderProxy ):
 	for o in bpy.context.scene.objects:
 		if o.type == 'FONT':
 			o.data.body = ob.name
@@ -72,6 +75,7 @@ def input_multi_form( user=UserInstance, ob=BlenderProxy, data=ctypes.c_char_p )
 
 _api = {
 	'select': select_callback,
+	#'input' : input_callback,
 	'name'  : name_callback,
 }
 API = api.generate_api( _api )
