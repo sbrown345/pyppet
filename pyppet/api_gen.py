@@ -310,9 +310,11 @@ class CallbackFunction(object):
 			self.arg_types[arg_name] = arg_hint
 
 		if 's' in self.struct_format:
-			assert self.struct_format.count('s')==1
+			assert self.struct_format.count('s')==1  # only a single variable length string is allowed at the end
 			assert self.struct_format.endswith('s')
-
+			self.sends_string_data = True
+		else:
+			self.sends_string_data = False
 
 
 	def decode_args( self, data ):
@@ -374,18 +376,24 @@ class CallbackFunction(object):
 		The server needs to call this and insert it into the javascript sent
 		to the client.
 		'''
+		if self.sends_string_data:
+			## the javascript client needs to capture window.addEventListener 'keypress'
+			## and pass the newline to the "selected" object's .do_on_input_callback(txt)
+			r = ['//generated string function: %s' %self.name]
+			r.append( '%s["%s"] = function ( args, txt ) {'%(global_container_name, self.code) )
 
-		r = ['//generated function: %s' %self.name]
-		a = self.arguments
-		#r.append( '%s["%s"] = function ( %s ) {'%(global_container_name, self.code, ','.join(a)) )
-		r.append( '%s["%s"] = function ( args ) {'%(global_container_name, self.code) )
-		#r.append( '  var x = [];')
+		else:
+			r = ['//generated binary function: %s' %self.name]
+			r.append( '%s["%s"] = function ( args ) {'%(global_container_name, self.code) )
 
 		## set function code as first byte of array to send ##
 		r.append( '  var arr = [%s]; //function code'%ord(self.code))
 
-		for i,arg_name in enumerate(a): ## TODO optimize packing
+		binary = False
+		for i,arg_name in enumerate( self.arguments): ## TODO optimize packing
 			ctype = self.arg_types[arg_name]
+			if ctype is ctypes.c_char_p: continue
+			binary = True
 			size = self.size_of( ctype )
 			r.append( '  //%s' %arg_name)
 			r.append( '  var buffer = new ArrayBuffer(%s);'%size )
@@ -400,9 +408,10 @@ class CallbackFunction(object):
 				r.append( '  view[ 0 ] = args.%s;'%arg_name )
 			r.append( '  arr = arr.concat( Array.apply([],bytesView) );')
 
+		## always sending the function id in binary (might not be a single byte in the future)
 
-		#for i,arg_name in enumerate(a): r.append( '  arr = arr.concat( x[%s] );'%i )
 		r.append('  ws.send( arr ); // send packed data to server')
+		if self.sends_string_data: r.append('	ws.send_string( txt );')
 		r.append('  ws.flush(); // ensure the servers gets the frame whole')
 		r.append('  return arr;')
 		r.append( '  }')

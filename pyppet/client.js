@@ -53,28 +53,36 @@ var dbugmsg = null;
 
 //window.addEventListener( 'keydown', on_keydown, false );
 // note: keyup event charCode is invalid in firefox, the keypress event should work in all browsers.
+var _input_buffer = [];
+var INPUT_OBJECT = null;
 function on_keypress( evt ) { 
-	console.log( String.fromCharCode(evt.charCode) );
-	console.log( evt.charCode );
-	console.log( evt.keyCode );
+	//console.log( String.fromCharCode(evt.charCode) );
+	//console.log( evt.charCode );
+	//console.log( evt.keyCode );
 
-	var string = String.fromCharCode(evt.charCode)
-	if (string) {
-		ws.send_string( string );
-	} else {
-
-		switch( evt.keyCode ) {
-			case 38: //up
-			case 37: //left
-			case 40: //down
-			case 39: //right
-			case 9:  //tab
-			case 32: //space
-			case 13: //enter
-			case 27: //esc
-		}
-
+	switch( evt.keyCode ) {
+		case 38: break; //up
+		case 37: break; //left
+		case 40: break; //down
+		case 39: break; //right
+		case 9:  break; //tab
+		case 8:  _input_buffer.pop(); break; 					//backspace
+		case 32: _input_buffer.push(' '); break;				//space
+		case 27: break; //esc
+		case 13: // enter
+			//ws.send_string(_input_buffer.join(""));
+			if (INPUT_OBJECT) {
+				INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
+			}
+			break;
+		default:
+			var string = String.fromCharCode(evt.charCode);
+			if (string) {
+				_input_buffer.push( string );
+				ws.send_string( string );
+			}
 	}
+	console.log( _input_buffer.join("") );
 }
 window.addEventListener( 'keypress', on_keypress, false );
 
@@ -692,6 +700,9 @@ function on_collada_ready( collada ) {
 		lod.do_mouse_up_callback = function () {
 			lod.on_mouse_up_callback( lod.custom_attributes );
 		};
+		lod.do_input_callback = function (txt) {
+			lod.on_input_callback( lod.custom_attributes, txt ); //
+		}
 
 		// add to scene //
 		Objects[ lod.name ] = lod;

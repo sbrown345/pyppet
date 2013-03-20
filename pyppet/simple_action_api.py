@@ -50,9 +50,9 @@ class Action(object):
 
 
 #################################### callbacks #################################
-## TODO cancel logic
-def input_callback( char=ctypes.c_byte ):
-	print( char )
+
+def input_callback( ob=BlenderProxy, input_string=ctypes.c_char_p ):
+	print( 'INPUT CALLBACK', input_string )
 
 def select_callback( ob=BlenderProxy ):
 	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
@@ -65,7 +65,7 @@ def name_callback( ob=BlenderProxy ):
 		if o.type == 'FONT':
 			o.data.body = ob.name
 
-def input_form( user=UserInstance, ob=BlenderProxy, data=ctypes.c_char_p ):
+def input_form( ob=BlenderProxy, data=ctypes.c_char_p ):
 	pass
 
 
