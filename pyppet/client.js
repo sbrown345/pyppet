@@ -70,9 +70,11 @@ function on_keypress( evt ) {
 		case 9:  break; //tab
 		case 8:  _input_buffer.pop(); break; 					//backspace
 		case 32: _input_buffer.push(' '); break;				//space
-		case 27: break; //esc
+		case 27: 		//esc
+			while (_input_buffer.length) { _input_buffer.pop() }
+			break;
 		case 13: 		// enter triggers input callback
-			//ws.send_string(_input_buffer.join(""));
+			_input_buffer.push('\n');
 			if (INPUT_OBJECT) {
 				console.log('doing input callback');
 				INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
@@ -82,7 +84,6 @@ function on_keypress( evt ) {
 				//scene.add( _input_mesh );
 
 			}
-			while (_input_buffer.length) { _input_buffer.pop() }
 			break;
 		default:
 			var string = String.fromCharCode(evt.charCode);
@@ -106,7 +107,7 @@ function on_keypress( evt ) {
 		m.scale.y = -0.0025;
 		m.scale.z = -0.0025;
 		//m.rotation.z = Math.PI;
-
+		m.position.x = (m.width/2.0)*0.0025;
 		console.log(_input_buffer);
 		INPUT_OBJECT.add( _input_mesh );
 	}
@@ -1205,7 +1206,7 @@ function setupFX( renderer, scene, camera ) {
 
 
 	//			noise intensity, scanline intensity, scanlines, greyscale
-	FX['film'] = fx = new THREE.FilmPass( 10.0, 0.1, SCREEN_HEIGHT / 3, false );
+	FX['film'] = fx = new THREE.FilmPass( 0.01, 0.1, SCREEN_HEIGHT / 3, false );
 	composer.addPass( fx );
 
 
@@ -2066,11 +2067,14 @@ function createLabel(text, x, y, z, size, color, backGroundColor, backgroundMarg
 	});
 
 	var mesh = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), material);
-	//mesh.overdraw = true;
+	mesh.overdraw = true; // what is this option for?
 	mesh.doubleSided = true;
-	mesh.position.x = x; //- canvas.width;
-	mesh.position.y = y; //- canvas.height;
+	mesh.position.x = x;
+	mesh.position.y = y;
 	mesh.position.z = z;
+
+	mesh.width = canvas.width;
+	mesh.height = canvas.height;
 
 	return mesh;
 }
