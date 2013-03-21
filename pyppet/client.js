@@ -77,9 +77,9 @@ function on_keypress( evt ) {
 				console.log('doing input callback');
 				INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
 
-				if (_input_mesh) { scene.remove(_input_mesh); }
-				_input_mesh = createLabel( _input_buffer.join(""), 0,0, 0,100, "black", "yellow" ); 
-				scene.add( _input_mesh );
+				//if (_input_mesh) { scene.remove(_input_mesh); }
+				//_input_mesh = createLabel( _input_buffer.join(""), 0,0, 0,100, "white" ); 
+				//scene.add( _input_mesh );
 
 			}
 			while (_input_buffer.length) { _input_buffer.pop() }
@@ -94,10 +94,21 @@ function on_keypress( evt ) {
 	console.log( _input_buffer.join("") );
 
 	if (INPUT_OBJECT) {
-		if (_input_mesh) { scene.remove(_input_mesh); }
-		_input_mesh = createLabel( _input_buffer.join(""), 0,0, 0,100, "black", "yellow" );
+		if (_input_mesh) { INPUT_OBJECT.remove(_input_mesh); }
+		_input_mesh = createLabel(
+			_input_buffer.join(""), 
+			0,-1.1,0,  // location
+			100,    // resolution
+			"white" // font color
+		);
+		var m = _input_mesh;
+		m.scale.x = 0.0025;
+		m.scale.y = -0.0025;
+		m.scale.z = -0.0025;
+		//m.rotation.z = Math.PI;
+
 		console.log(_input_buffer);
-		scene.add( _input_mesh );
+		INPUT_OBJECT.add( _input_mesh );
 	}
 
 }
@@ -2046,8 +2057,8 @@ function createLabel(text, x, y, z, size, color, backGroundColor, backgroundMarg
 
 	// context.strokeStyle = "black";
 	// context.strokeRect(0, 0, canvas.width, canvas.height);
-
 	var texture = new THREE.Texture(canvas);
+	texture.flipY = false;
 	texture.needsUpdate = true;
 
 	var material = new THREE.MeshBasicMaterial({
@@ -2055,7 +2066,7 @@ function createLabel(text, x, y, z, size, color, backGroundColor, backgroundMarg
 	});
 
 	var mesh = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), material);
-	mesh.overdraw = true;
+	//mesh.overdraw = true;
 	mesh.doubleSided = true;
 	mesh.position.x = x; //- canvas.width;
 	mesh.position.y = y; //- canvas.height;
