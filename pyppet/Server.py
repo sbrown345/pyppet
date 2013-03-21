@@ -596,7 +596,7 @@ class Player( object ):
 		return msg
 
 	################################ convert to stream #######################################
-	def create_stream_message( self, context ):
+	def create_stream_message( self, context ):  ## DEPRECATED
 		'''
 		packs all header data in message stream into a dictionary,
 		the dict is converted into json and later streamed to the client.

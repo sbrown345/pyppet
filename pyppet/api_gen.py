@@ -223,8 +223,8 @@ class ObjectView( Container ):
 	pass
 
 def create_object_view( ob ):
-	on_click = 'select'
-	on_input = 'input'
+	on_click = 'select' # defaults for testing
+	on_input = 'input'  # defaults for testing
 	for prop in ob.items():  ## Blender's ID-Props API
 		name, value = prop
 		if name == 'on_click': on_click = value
@@ -237,7 +237,7 @@ def create_object_view( ob ):
 	v = ObjectView(
 		proxy=ob,
 		on_click=on_click,
-		on_input=on_click,
+		on_input=on_input,
 		allow_viewers=True,
 	)
 	return v
@@ -326,10 +326,12 @@ class CallbackFunction(object):
 
 		if fmt.endswith('s'): # special case, read one variable length string
 			fmt = fmt[:-1]
-			header = struct.calcsize( fmt )
-			data = data[ : header ]
-			string = data[ header : ]
-			kw[ self.arguments[-1] ] = struct.unpack('%ss'%len(string), string)
+			header = struct.calcsize( fmt ); print('header', header)
+			string = data[ header : ].decode('utf-8'); print('string', string)
+			data = data[ : header ]; print('data', data)
+			#a = struct.unpack('%ss'%len(string), string)[0].decode('utf-8')
+			#print(a)
+			kw[ self.arguments[-1] ] = string
 
 		if data: # packed data can precede variable length string data
 			args = struct.unpack( fmt, data )  ## unpack data
@@ -410,8 +412,12 @@ class CallbackFunction(object):
 
 		## always sending the function id in binary (might not be a single byte in the future)
 
+		if self.sends_string_data:
+			#r.append('	ws.send_string( txt );')
+			r.append('	arr = arr.concat( txt.split("").map(function(c){return c.charCodeAt(0);}) );')
+
 		r.append('  ws.send( arr ); // send packed data to server')
-		if self.sends_string_data: r.append('	ws.send_string( txt );')
+
 		r.append('  ws.flush(); // ensure the servers gets the frame whole')
 		r.append('  return arr;')
 		r.append( '  }')

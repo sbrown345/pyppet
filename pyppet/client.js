@@ -704,6 +704,8 @@ function on_collada_ready( collada ) {
 			lod.on_mouse_up_callback( lod.custom_attributes );
 		};
 		lod.do_input_callback = function (txt) {
+			console.log('sending text');
+			console.log(txt);
 			lod.on_input_callback( lod.custom_attributes, txt ); //
 		}
 

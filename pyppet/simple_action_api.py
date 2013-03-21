@@ -39,9 +39,8 @@ class Action(object):
 		self.arguments = kw
 
 	def do(self):
-		print('doing action')
+		print('doing action', self.callback, self.arguments)
 		self.callback(
-			#self.user,    # pass user to the callback, allows callback to directly write on the websocket
 			**self.arguments
 		)
 
@@ -55,12 +54,13 @@ def input_callback( ob=BlenderProxy, input_string=ctypes.c_char_p ):
 	print( 'INPUT CALLBACK', input_string )
 
 def select_callback( ob=BlenderProxy ):
-	assert ob is not BlenderProxy ## this is just used for the introspection kwargs hack
+	print('select callback')
 	for o in bpy.context.scene.objects: o.select=False
 	ob.select = True # this also makes it active for keyboard input client-side
 	bpy.context.scene.objects.active = ob
 
 def name_callback( ob=BlenderProxy ):
+	print('name callback')
 	for o in bpy.context.scene.objects:
 		if o.type == 'FONT':
 			o.data.body = ob.name
