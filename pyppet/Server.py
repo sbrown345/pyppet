@@ -1152,17 +1152,17 @@ class WebServer( object ):
 			for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
 				h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
 
-
-			h.append( '<script src="/javascripts/fonts/gentilis_bold.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/gentilis_regular.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/optimer_bold.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/optimer_regular.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/helvetiker_bold.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/helvetiker_regular.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/droid/droid_sans_regular.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/droid/droid_sans_bold.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/droid/droid_serif_regular.typeface.js"></script>')
-			h.append( '<script src="/javascripts/fonts/droid/droid_serif_bold.typeface.js"></script>')
+			if False:
+				h.append( '<script src="/javascripts/fonts/gentilis_bold.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/gentilis_regular.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/optimer_bold.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/optimer_regular.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/helvetiker_bold.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/helvetiker_regular.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/droid/droid_sans_regular.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/droid/droid_sans_bold.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/droid/droid_serif_regular.typeface.js"></script>')
+				h.append( '<script src="/javascripts/fonts/droid/droid_serif_bold.typeface.js"></script>')
 
 
 
