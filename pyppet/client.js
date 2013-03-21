@@ -96,11 +96,15 @@ function on_keypress( evt ) {
 
 	if (INPUT_OBJECT) {
 		if (_input_mesh) { INPUT_OBJECT.remove(_input_mesh); }
+		_input_mesh = create_multiline_text( _input_buffer.join(""), INPUT_OBJECT )[0];
+
+/*
 		_input_mesh = createLabel(
 			_input_buffer.join(""), 
 			0,-1.1,0,  // location
 			100,    // resolution
-			"white" // font color
+			"white", // font color
+			true // transparent
 		);
 		var m = _input_mesh;
 		m.scale.x = 0.0025;
@@ -110,11 +114,42 @@ function on_keypress( evt ) {
 		m.position.x = (m.width/2.0)*0.0025;
 		console.log(_input_buffer);
 		INPUT_OBJECT.add( _input_mesh );
+*/
 	}
 
 }
 window.addEventListener( 'keypress', on_keypress, false );
 
+function create_text( line, parent ) {
+	console.log('createlabel');
+	console.log(line);
+	var mesh = createLabel(
+		line, 
+		0,-1.1,0,  // location
+		100,    // resolution
+		"white", // font color
+		true // transparent
+	);
+	mesh.scale.x = 0.0025;
+	mesh.scale.y = -0.0025;
+	mesh.scale.z = -0.0025;
+	//m.rotation.z = Math.PI;
+	mesh.position.x = (mesh.width/2.0)*0.0025;
+	parent.add( mesh );
+	return mesh;
+}
+
+function create_multiline_text( text, parent ) {
+	var lines = [];
+	var _lines = text.split('\n');
+	for (var i=0; i<_lines.length; i ++) {
+		var line = _lines[ i ];
+		mesh = create_text( line, parent );
+		mesh.position.z = -(i * 0.5);
+		lines.push( mesh );
+	}
+	return lines;
+}
 
 function generate_extruded_splines( parent, ob ) {
 
@@ -2030,7 +2065,7 @@ MyController = function ( object, domElement ) {
 };
 
 ///////////////////// createLabel by ekeneijeoma - https://gist.github.com/ekeneijeoma/1186920
-function createLabel(text, x, y, z, size, color, backGroundColor, backgroundMargin) {
+function createLabel(text, x, y, z, size, color, transparent, backGroundColor, backgroundMargin) {
 	if(!backgroundMargin)
 		backgroundMargin = 50;
 
@@ -2063,7 +2098,8 @@ function createLabel(text, x, y, z, size, color, backGroundColor, backgroundMarg
 	texture.needsUpdate = true;
 
 	var material = new THREE.MeshBasicMaterial({
-		map : texture
+		map : texture,
+		transparent : transparent,
 	});
 
 	var mesh = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), material);
