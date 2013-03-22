@@ -8,25 +8,18 @@ import collections
 import inspect
 import ctypes
 
-import api_gen as api
-
-class BlenderProxy(object): pass
-class UserInstance(object): pass
-
-def get_blender_object_by_uid(uid):
-	for o in bpy.data.objects:
-		if o.UID == uid: return o
-
-api.register_type( BlenderProxy, get_blender_object_by_uid )
-api.register_type( UserInstance, get_blender_object_by_uid )
+import api_gen
+from api_gen import BlenderProxy, UserProxy
 
 
-def generate_javascript(): return api.generate_javascript()
+
+
+def generate_javascript(): return api_gen.generate_javascript()
 
 
 def new_action( code, args, user=None ):
 	assert user ## require actions be taken by users
-	wrapper = api.CallbackFunction.CALLBACKS[code]
+	wrapper = api_gen.CallbackFunction.CALLBACKS[code]
 	kwargs = wrapper.decode_args( args )
 	print('new_action', code, args)
 	return Action( user, wrapper.callback, kwargs )
@@ -59,18 +52,6 @@ def select_callback( ob=BlenderProxy ):
 	ob.select = True # this also makes it active for keyboard input client-side
 	bpy.context.scene.objects.active = ob
 
-def name_callback( ob=BlenderProxy ):
-	print('name callback')
-	for o in bpy.context.scene.objects:
-		if o.type == 'FONT':
-			o.data.body = ob.name
-
-def input_form( ob=BlenderProxy, data=ctypes.c_char_p ):
-	pass
-
-
-def input_multi_form( user=UserInstance, ob=BlenderProxy, data=ctypes.c_char_p ):
-	pass
 
 
 _api = {
@@ -78,6 +59,6 @@ _api = {
 	'input' : input_callback,
 	#'name'  : name_callback,
 }
-API = api.generate_api( _api )
-print(API)
+
+def create_callback_api( api=_api ): return api_gen.generate_api( api )
 

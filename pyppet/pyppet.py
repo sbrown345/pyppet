@@ -83,17 +83,6 @@ import icons
 import bpy, mathutils
 from bpy.props import *
 
-
-def load_gtk_css( style, path='malys-revolt2/gtk-3.0/gtk.css' ):
-	#def load_gtk_css( style, path='Greyness-GTK/gtk-3.0/gtk.css' ):
-	style.remove_provider( gtk.css_provider_get_default() )
-	cssp = gtk.css_provider_new()
-	cssp.css_provider_load_from_path( path )
-	style.add_provider( cssp, 600)	#gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-
-#load_gtk_css()
-
-
 sdl.Init( sdl.SDL_INIT_JOYSTICK )
 
 ENGINE = Physics.ENGINE		# physics engine singleton
@@ -4577,24 +4566,6 @@ class App( PyppetUI ):
 
 
 
-######## Pyppet Singleton #########
-Pyppet = App()
-
-import Server
-Server.set_api( 
-	blender_api=bpy,	# pass Blender's bpy Main
-	user_api=Pyppet  	## TODO clean this up in Server.py
-)
-Pyppet.start_webserver()
-
-#bpy.types.Scene.use_gtk = bpy.props.BoolProperty(
-#	name='enable gtk', 
-#	description='toggle GTK3',
-#	default=False,
-#	update=lambda a,b: Pyppet.toggle_gtk(a,b)
-#)
-
-#################################
 
 
 ########## Cache for OutlinerUI and Joint functions ##########
@@ -5363,7 +5334,19 @@ class WiimotesWidget(object):
 
 #####################################
 if __name__ == '__main__':
-	print('__main__')
+	######## Pyppet Singleton #########
+	Pyppet = App()
+
+	import Server
+	Server.set_api( 
+		blender_api=bpy,	# pass Blender's bpy Main
+		user_api=Pyppet  	## TODO clean this up in Server.py
+	)
+	Pyppet.start_webserver()
+
+	#################################
+
+
 	if '--debug' in sys.argv:
 		Pyppet.debug_create_ui()
 		Pyppet.debug_mainloop()

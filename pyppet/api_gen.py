@@ -91,6 +91,8 @@ def get_wrapped_objects():
 def wrap_object( ob ):
 	return Cache.wrap_object(ob )
 
+###################################################
+
 
 
 class Cache(object):
@@ -298,9 +300,11 @@ class CallbackFunction(object):
 			assert spec.defaults[0] is require_first_argument
 
 		for arg_name, arg_hint in zip(spec.args, spec.defaults):
-			if arg_name in self._shared_namespace:
-				assert self._shared_namespace[ arg_name ] is arg_hint
+			if arg_name in self._shared_namespace: assert self._shared_namespace[ arg_name ] is arg_hint
 			self._shared_namespace[ arg_name ] = arg_hint
+
+			if arg_hint is BlenderProxy: assert arg_name == 'ob'
+			elif arg_hint is UserProxy: assert arg_name == 'user'
 
 			self.arguments.append( arg_name )
 			if arg_hint in self._ctypes_to_struct_format:
@@ -427,6 +431,16 @@ class CallbackFunction(object):
 
 
 
+
+class BlenderProxy(object): pass
+
+def get_blender_object_by_uid(uid):
+	for o in bpy.data.objects:
+		if o.UID == uid: return o
+
+register_type( BlenderProxy, get_blender_object_by_uid )
+
+class UserProxy(object): pass  ## this needs to be registered with an unpacker that can deal with your custom user class
 
 
 

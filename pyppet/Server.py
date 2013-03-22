@@ -30,6 +30,9 @@ from random import *
 
 import api_gen
 
+import simple_action_api
+
+
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
 ## hook into external API's ##
@@ -413,11 +416,12 @@ class WebGL(object):
 
 #------------------------------------------------------------------------------
 
-import simple_action_api
+
 
 #####################
 class Player( object ):
 	MAX_VERTS = 2000
+	ID = 0
 
 	def set_action_api(self, api):
 		self._action_api = api
@@ -448,6 +452,9 @@ class Player( object ):
 		self.objects is a list of objects that the client should know about from its message stream,
 		it can also be used as a cache.
 		'''
+		Player.ID += 1
+		self.uid = Player.ID
+
 		self.address = addr
 		self.websocket = websocket
 		self._action_api = action_api
@@ -585,6 +592,7 @@ class Player( object ):
 
 			## ensure properties required by callbacks - TODO move this logic somewhere else
 			view['ob'] = UID(ob)
+			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
 			pak = { 'properties' : a.properties }
@@ -829,14 +837,21 @@ class Player( object ):
 class GameManager( object ):
 	RELOAD_TEXTURES = []
 	clients = {}	# ip : camera/player location
-
+	action_api = simple_action_api
 	@classmethod
 	def add_player( self, addr, websocket=None ):
 		print('add_player', addr)
 		assert type(addr) is tuple
-		player = Player( addr, websocket=websocket )
+		player = Player( addr, websocket=websocket, action_api=self.action_api )
 		self.clients[ addr ] = player
 		return player
+	@classmethod
+	def get_player_by_id(self, uid):
+		for player in self.clients.values():
+			if player.uid == uid: return player
+
+api_gen.register_type( api_gen.UserProxy, GameManager.get_player_by_id )
+
 
 ##################################################
 class WebSocketServer( websocket.WebSocketServer ):
@@ -868,12 +883,17 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 	def start(self):
 		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
-		self.active = False
+		simple_action_api.create_callback_api()
+		self._start_threaded()
 		#try:
 		#	sock = self.socket(self.listen_host, self.listen_port)
 		#except:
 		#	print('ERROR [websocket] failed to listen on port: %s' %self.listen_port)
 		#	return False
+		return True
+
+	def _start_threaded(self):
+		self.active = False
 		self.sockets = []  ## there is probably no speed up having mulitple listen sockets
 		#for i in range(50):
 		sock = self.socket(self.listen_host, self.listen_port)
@@ -884,7 +904,8 @@ class WebSocketServer( websocket.WebSocketServer ):
 
 		print('--starting websocket server thread--')
 		threading._start_new_thread( self.new_client_listener_thread, ())
-		return True
+
+
 
 	def new_client_listener_thread(self):
 		while self.active:

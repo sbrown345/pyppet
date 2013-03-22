@@ -145,7 +145,7 @@ function create_multiline_text( text, parent ) {
 	for (var i=0; i<_lines.length; i ++) {
 		var line = _lines[ i ];
 		mesh = create_text( line, parent );
-		mesh.position.z = -(i * 0.5);
+		mesh.position.z = -(i * 0.45);
 		lines.push( mesh );
 	}
 	return lines;
@@ -2129,6 +2129,7 @@ ws.on('open', on_open);
 
 function on_close(e) {
 	console.log(">> WebSockets.onclose");
+	FX['film'].uniforms['nIntensity'].value = 0.8;
 }
 ws.on('close', on_close);
 
