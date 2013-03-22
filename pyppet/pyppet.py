@@ -5338,10 +5338,7 @@ if __name__ == '__main__':
 	Pyppet = App()
 
 	import Server
-	Server.set_api( 
-		blender_api=bpy,	# pass Blender's bpy Main
-		user_api=Pyppet  	## TODO clean this up in Server.py
-	)
+	Server.set_api( user_api=Pyppet )
 	Pyppet.start_webserver()
 
 	#################################

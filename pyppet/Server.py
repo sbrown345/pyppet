@@ -36,14 +36,17 @@ import simple_action_api
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
 
 ## hook into external API's ##
-#bpy = NotImplemented
-Pyppet = NotImplemented
-def set_api( blender_api=None, user_api=None ):
-	global Pyppet
-	Pyppet = user_api
+ExternalAPI = NotImplemented
+def set_api( user_api=None ):
+	'''
+	the only api required is a function that can return a baked image for a blender object
+	'''
+	global ExternalAPI
+	assert hasattr( user_api, 'bake_image' )
+	ExternalAPI = user_api
 ##############################
 
-if 'pyppet-server' in sys.argv:
+if '--server' in sys.argv:
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	try:
 		s.connect(("gmail.com",80))	# may fail if not connected to internet
@@ -297,18 +300,18 @@ def dump_collada( ob, center=False, hires=False ):
 		print('[ DUMPING HIRES ]')
 		url = '/tmp/%s(hires).dae' %name
 
-		data = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
+		data = ob.to_mesh(bpy.context.scene, True, "PREVIEW")
 		_dump_collada_data_helper( data )
 
 		############## create temp object for export ############
 		tmp = bpy.data.objects.new(name='__%s__'%uid, object_data=data)
 		assert '.' not in tmp.name	# ensure name is unique
-		Pyppet.context.scene.objects.link( tmp )
+		bpy.context.scene.objects.link( tmp )
 		tmp.matrix_world = ob.matrix_world.copy()
 		tmp.select = True
 
 		## ctypes hack avoids polling issue ##
-		Blender.Scene( Pyppet.context.scene ).collada_export( 
+		Blender.Scene( bpy.context.scene ).collada_export( 
 			url, 
 			0, #apply modifiers 
 			0, #mesh-view/render
@@ -326,7 +329,7 @@ def dump_collada( ob, center=False, hires=False ):
 			)
 
 		## clean up ##
-		Pyppet.context.scene.objects.unlink(tmp)
+		bpy.context.scene.objects.unlink(tmp)
 		tmp.user_clear()
 		bpy.data.objects.remove(tmp)
 
@@ -340,7 +343,7 @@ def create_LOD( ob, ratio=0.2 ):
 	# TODO generate mapping, cache #
 	mod = ob.modifiers.new(name='temp', type='DECIMATE' )
 	mod.ratio = ratio
-	mesh = ob.to_mesh(Pyppet.context.scene, True, "PREVIEW")
+	mesh = ob.to_mesh(bpy.context.scene, True, "PREVIEW")
 	ob.modifiers.remove( mod )
 	return mesh
 
@@ -472,22 +475,22 @@ class Player( object ):
 		if ip not in bpy.data.objects:
 			print('creating new player gizmos')
 			a = bpy.data.objects.new(name=ip, object_data=None)
-			Pyppet.context.scene.objects.link( a )
+			bpy.context.scene.objects.link( a )
 			a.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE
 
 			b = bpy.data.objects.new(name=ip+'-half_degraded', object_data=None)
-			Pyppet.context.scene.objects.link( b )
+			bpy.context.scene.objects.link( b )
 			b.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*2
 			b.parent = a
 
 			c = bpy.data.objects.new(name=ip+'-fully_degraded', object_data=None)
-			Pyppet.context.scene.objects.link( c )
+			bpy.context.scene.objects.link( c )
 			c.empty_draw_size = DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE*4
 			c.parent = a
 
 
 			d = bpy.data.objects.new(name=ip+'-focal-point', object_data=None)
-			Pyppet.context.scene.objects.link( d )
+			bpy.context.scene.objects.link( d )
 			d.empty_draw_size = 10.0
 			self.focal_point = d
 
@@ -1271,7 +1274,7 @@ class WebServer( object ):
 			#	f.write('</ul>')
 
 			f.write('<hr/>')
-			a = sort_objects_by_type( Pyppet.context.scene.objects )
+			a = sort_objects_by_type( bpy.context.scene.objects )
 			for type in a:
 				if not a[type]: continue
 				f.write('<h3>%s</h3>'%type)
@@ -1326,7 +1329,7 @@ class WebServer( object ):
 			if path.startswith('/bake/LOD/'):
 				for child in ob.children:
 					if child.is_lod_proxy:
-						data = Pyppet.bake_image(
+						data = ExternalAPI.bake_image(  ## External API ##
 							child, 
 							*arg.split('|'),
 							extra_objects=[ob]
@@ -1334,7 +1337,7 @@ class WebServer( object ):
 						break
 
 			if not data:	# fallback for meshes that are already low resolution without a proxy
-				data = Pyppet.bake_image( ob, *arg.split('|') )
+				data = ExternalAPI.bake_image( ob, *arg.split('|') )  ## External API ##
 
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]

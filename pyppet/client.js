@@ -242,8 +242,8 @@ function on_message(e) {
 		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
 	);
 
-	//ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
-	//ws.flush();
+	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
+	ws.flush();
 
 }
 

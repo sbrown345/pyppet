@@ -165,17 +165,15 @@ class BlenderHack( object ):
 
 	# bpy.context workaround - create a copy of bpy.context for use outside of blenders mainloop #
 	def sync_context(self, region):
+		self.context = BlenderContextCopy( bpy.context )  ## this state might not be fully thread safe?
 		## TODO store region types, and order
 		#if self.websocket_server:  # this is slower
 		#	print('sync websocket_server from blender redraw..............')
 		#	self.websocket_server.update( bpy.context )
 
-		if self._3dsmax:
-			self._3dsmax.update( self._clipboard )
-
-		self.context = BlenderContextCopy( bpy.context )
-		if not self._gtk_updated:
-			self.lock.acquire()
+		if self.__use_3dsmax and self._3dsmax: self._3dsmax.update( self._clipboard )
+		if self.__use_gtk and not self._gtk_updated:
+			self.lock.acquire() ## this allows gtk to work with other threads that might update pixbuffers, like opencv.
 			i = 0
 			while gtk.gtk_events_pending() and i < 100:
 				gtk.gtk_main_iteration()
@@ -184,9 +182,11 @@ class BlenderHack( object ):
 			self.lock.release()
 
 
-	def setup_blender_hack(self, context):
+	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False):
 		import Server
 		self._3dsmax = Server.Remote3dsMax( bpy )
+		self.__use_gtk = use_gtk
+		self.__use_3dsmax = use_3dsmax
 
 
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
@@ -196,7 +196,6 @@ class BlenderHack( object ):
 		self.context = BlenderContextCopy( context )
 
 		self._sync_hack_handles = {}	# region : handle
-
 		for area in context.screen.areas:
 			if area.type == 'IMAGE_EDITOR': continue	# always checks for in update_blender_and_gtk
 			#if area.type == 'VIEW_3D':
@@ -210,12 +209,10 @@ class BlenderHack( object ):
 
 	_image_editor_handle = None
 
-	def update_blender_and_gtk( self, drop_frame=False ):
-		self._gtk_updated = False
-
-		if not drop_frame:
-			## force redraw in VIEW_3D ##
-			screen = bpy.data.screens[ self.default_blender_screen ]
+	def force_blender_redraw(self, view3d=True, imageview=True):
+		## force redraw in VIEW_3D ##
+		screen = bpy.data.screens[ self.default_blender_screen ]
+		if view3d:
 			for area in screen.areas:
 				if area.type == 'VIEW_3D':
 					for reg in area.regions:
@@ -223,9 +220,10 @@ class BlenderHack( object ):
 							reg.tag_redraw()
 							break
 
-			## force redraw in secondary VIEW_3D and UV Editor ##
+		## force redraw in secondary VIEW_3D and UV Editor ##
+		if imageview:
 			for area in self.context.window.screen.areas:
-				if area.type == 'VIEW_3D':
+				if area.type == 'VIEW_3D':  ## TODO clean this up
 					for reg in area.regions:
 						if reg.type == 'WINDOW':
 							reg.tag_redraw()
@@ -242,10 +240,14 @@ class BlenderHack( object ):
 							reg.tag_redraw()
 							break
 
-		#if self._3dsmax:  ## moved to blender redraw
-		#	self._3dsmax.update( self._clipboard )
+	def update_blender( self, draw=True ):
+		self.force_blender_redraw()
+		Blender.iterate( self.evil_C, draw=draw)
 
-		# even updating GTK first wont fix the freeze on DND over blenders window! #
+	def update_blender_and_gtk( self, drop_frame=False ):
+		self._gtk_updated = False
+		if not drop_frame: self.force_blender_redraw()
+		# note even updating GTK first wont fix the freeze on DND over blenders window! #
 		Blender.iterate( self.evil_C, draw=not drop_frame)
 		# its ok not to force gtk to update (this happens when ODE physics is on)
 		#assert self._gtk_updated
@@ -258,7 +260,7 @@ class BlenderHack( object ):
 	_image_editor_handle = None
 	def bake_hack( self, reg ):
 		self.context = BlenderContextCopy( bpy.context )
-		self.server.update( self.context )	# update http server
+		self.server.update( bpy.context )	# update http server
 
 
 
@@ -284,7 +286,7 @@ class BlenderHack( object ):
 				print('_'*80)
 				print('ERROR: you must open a "UV/Image editor" to bake textures')
 				print('_'*80)
-				return bytes()
+				return bytes(1)
 
 			print('---------- baking image ->', ob.name)
 
@@ -292,20 +294,20 @@ class BlenderHack( object ):
 
 			restore_hide_select = ob.hide_select
 			ob.hide_select = False
-			restore_active = self.context.active_object
+			restore_active = bpy.context.active_object
 			restore = []
-			for o in self.context.selected_objects:
+			for o in bpy.context.selected_objects:
 				o.select = False
 				restore.append( o )
 			ob.select = True
-			self.context.scene.objects.active = ob	# required
+			bpy.context.scene.objects.active = ob	# required
 
 			if extra_objects:
-				self.context.scene.render.use_bake_selected_to_active = True
+				bpy.context.scene.render.use_bake_selected_to_active = True
 				for o in extra_objects: o.select = True
 				#self.context.scene.render.bake_distance = 0.01
 			else:
-				self.context.scene.render.use_bake_selected_to_active = False
+				bpy.context.scene.render.use_bake_selected_to_active = False
 
 
 			bpy.ops.object.mode_set( mode='EDIT' )
@@ -317,19 +319,19 @@ class BlenderHack( object ):
 			)
 			bpy.ops.object.mode_set( mode='OBJECT' )	# must be in object mode for multires baking
 
-			self.context.scene.render.bake_type = type
-			self.context.scene.render.bake_margin = 4
-			self.context.scene.render.use_bake_normalize = True
+			bpy.context.scene.render.bake_type = type
+			bpy.context.scene.render.bake_margin = 4
+			bpy.context.scene.render.use_bake_normalize = True
 			#self.context.scene.render.use_bake_selected_to_active = False	# required
-			self.context.scene.render.use_bake_lores_mesh = False		# should be True
-			self.context.scene.render.use_bake_multires = False
+			bpy.context.scene.render.use_bake_lores_mesh = False		# should be True
+			bpy.context.scene.render.use_bake_multires = False
 			if type=='DISPLACEMENT':	# can also apply to NORMALS
 				for mod in ob.modifiers:
 					if mod.type == 'MULTIRES':
-						self.context.scene.render.use_bake_multires = True
+						bpy.context.scene.render.use_bake_multires = True
 
 			time.sleep(0.25)				# SEGFAULT without this sleep
-			self.context.scene.update()		# not required
+			bpy.context.scene.update()		# not required
 			res = bpy.ops.object.bake_image()
 			print('bpy.ops.object.bake_image', res)
 
@@ -343,7 +345,7 @@ class BlenderHack( object ):
 			)
 
 			for ob in restore: ob.select=True
-			self.context.scene.objects.active = restore_active
+			bpy.context.scene.objects.active = restore_active
 			ob.hide_select = restore_hide_select
 
 			## 128 color PNG can beat JPG by half ##
@@ -370,7 +372,20 @@ class BlenderHack( object ):
 			return open( path+'.jpg', 'rb' ).read()
 
 
-	def drop_on_view(self, wid, con, x, y, time):
+
+
+
+class BlenderHackWindows( BlenderHack ): pass	#TODO
+class BlenderHackOSX( BlenderHack ): pass		# TODO
+
+class BlenderHackLinux( BlenderHack ):
+	'''
+	this class allows you to use xembed to put blender inside a gtk widget,
+	there are issues with drag and drop that make this unstable.
+	'''
+
+	def drop_on_view(self, wid, con, x, y, time): ## DEPRECATED - not using xembed for blender's windows anymore.
+		print('DEPRECATED warning: drop_on_view')
 		ob = self.context.active_object
 		if type(DND.source_object) is bpy.types.Material:
 			mat = DND.source_object
@@ -392,12 +407,6 @@ class BlenderHack( object ):
 			slot = ob.data.materials[0].texture_slots[0]
 			slot.texture.image = bpy.data.images['_kinect_']
 
-
-
-class BlenderHackWindows( BlenderHack ): pass	#TODO
-class BlenderHackOSX( BlenderHack ): pass		# TODO
-
-class BlenderHackLinux( BlenderHack ):
 
 	def create_embed_widget(self, on_dnd=None, on_resize=None, on_plug=None):
 		'''
