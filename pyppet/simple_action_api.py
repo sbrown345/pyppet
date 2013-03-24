@@ -12,8 +12,6 @@ import api_gen
 from api_gen import BlenderProxy, UserProxy
 
 
-
-
 def generate_javascript(): return api_gen.generate_javascript()
 
 
@@ -38,26 +36,24 @@ class Action(object):
 		)
 
 
-###################################################
 
+#################################### callbacks example #################################
 
-#################################### callbacks #################################
-
-def input_callback( ob=BlenderProxy, input_string=ctypes.c_char_p ):
-	print( 'INPUT CALLBACK', input_string )
-
-def select_callback( ob=BlenderProxy ):
+def default_click_callback( ob=BlenderProxy ):
 	print('select callback')
 	for o in bpy.context.scene.objects: o.select=False
 	ob.select = True # this also makes it active for keyboard input client-side
 	bpy.context.scene.objects.active = ob
 
+def default_input_callback( ob=BlenderProxy, input_string=ctypes.c_char_p ):
+	print( 'INPUT CALLBACK', input_string )
+	w = api_gen.get_wrapper_objects()[ ob ]
+	print(w)
 
 
 _api = {
-	'select': select_callback,
-	'input' : input_callback,
-	#'name'  : name_callback,
+	'default_click': default_click_callback,
+	'default_input' : default_input_callback,
 }
 
 def create_callback_api( api=_api ): return api_gen.generate_api( api )

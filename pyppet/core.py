@@ -180,14 +180,14 @@ class BlenderHack( object ):
 				i += 1
 			self._gtk_updated = True
 			self.lock.release()
-
+		self.__blender_redraw = True
 
 	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False):
 		import Server
 		self._3dsmax = Server.Remote3dsMax( bpy )
 		self.__use_gtk = use_gtk
 		self.__use_3dsmax = use_3dsmax
-
+		self.__blender_redraw = False
 
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
 
@@ -210,6 +210,12 @@ class BlenderHack( object ):
 	_image_editor_handle = None
 
 	def force_blender_redraw(self, view3d=True, imageview=True):
+		'''
+		if Blenders window is minimized then the callbacks in the redraw (threadsafe zone) will not be called.
+		after Blender.iterate(C) is called return self.__blender_redraw so the app-level can know if those call backs happen.
+		'''
+		self.__blender_redraw = False
+
 		## force redraw in VIEW_3D ##
 		screen = bpy.data.screens[ self.default_blender_screen ]
 		if view3d:
@@ -243,6 +249,7 @@ class BlenderHack( object ):
 	def update_blender( self, draw=True ):
 		self.force_blender_redraw()
 		Blender.iterate( self.evil_C, draw=draw)
+		return self.__blender_redraw
 
 	def update_blender_and_gtk( self, drop_frame=False ):
 		self._gtk_updated = False
@@ -251,11 +258,12 @@ class BlenderHack( object ):
 		Blender.iterate( self.evil_C, draw=not drop_frame)
 		# its ok not to force gtk to update (this happens when ODE physics is on)
 		#assert self._gtk_updated
+		return self.__blender_redraw
 
 
 
 	################ BAKE HACK ################
-	progressive_baking = False
+	progressive_baking = True
 	server = None
 	_image_editor_handle = None
 	def bake_hack( self, reg ):

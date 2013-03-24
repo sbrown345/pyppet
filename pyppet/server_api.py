@@ -15,29 +15,32 @@ import simple_action_api
 import api_gen
 from api_gen import BlenderProxy, UserProxy
 
-def default_select_callback( user=UserProxy, ob=BlenderProxy ):
+def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	print('select callback', user, ob)
 	w = api_gen.get_wrapper_objects()[ ob ]
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):
 	print( 'default INPUT CALLBACK', user, ob, input_string )
+	if ob.name == 'login':
+		if 'login.input' not in bpy.data.objects:
+			a = bpy.data.objects.new(
+				name="[data] %s"%name, 
+				object_data= a.data 
+			)
+			bpy.context.scene.objects.link( a )
+			a.parent = ob
 
-def select_callback( ob=BlenderProxy ):
-	print('select callback')
-	for o in bpy.context.scene.objects: o.select=False
-	ob.select = True # this also makes it active for keyboard input client-side
-	bpy.context.scene.objects.active = ob
 
 API = {
-	'select': default_select_callback,
-	'input'	: default_input_callback,
+	'default_click': default_click_callback,
+	'default_input'	: default_input_callback,
 }
+simple_action_api.create_callback_api( API )
 
 class UserServer( Server.WebSocketServer ):
 	def start(self):
 		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
-		simple_action_api.create_callback_api( API )
 		self._start_threaded()
 		return True
 
@@ -62,9 +65,9 @@ class App( core.BlenderHack ):
 			now = time.time()
 			dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
-			#print('FPS', dt)
+			print('FPS', dt)
 
-			self.update_blender()
+			fully_updated = self.update_blender()
 
 			#if ENGINE and ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
 
@@ -75,12 +78,13 @@ class App( core.BlenderHack ):
 			#	if self.context.screen.is_animation_playing:
 			#		clear_cloth_caches()
 
-			if not self._image_editor_handle:
+			if not fully_updated:
 				# ImageEditor redraw callback will update http-server,
 				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
 
 			self.websocket_server.update( self.context )
+			time.sleep(0.1)
 
 if __name__ == '__main__':
 	app = App()

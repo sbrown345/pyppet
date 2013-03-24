@@ -73,6 +73,7 @@ def generate_api( a, **kw ):
 		func = a[name] # get function
 		byte_code = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'[ i ]
 		api[ name ] = CallbackFunction( func, name, byte_code, **kw )
+	print('generate_api', api)
 	return api
 
 def register_type(T, unpacker): CallbackFunction.register_type(T,unpacker)
@@ -225,12 +226,17 @@ class ObjectView( Container ):
 	pass
 
 def create_object_view( ob ):
-	on_click = 'select' # defaults for testing
-	on_input = 'input'  # defaults for testing
-	for prop in ob.items():  ## Blender's ID-Props API
+	on_click = 'default_click' # defaults for testing
+	on_touch = 'default_touch' # TODO
+	on_input = 'default_input'  # defaults for testing
+
+	############ Blender's ID-Props API #########
+	for prop in ob.items():
 		name, value = prop
 		if name == 'on_click': on_click = value
 		elif name == 'on_input': on_input = value
+	#############################################
+
 	if on_click:
 		on_click = CallbackFunction.callbacks[ on_click ]
 	if on_input:

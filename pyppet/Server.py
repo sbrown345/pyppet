@@ -853,7 +853,91 @@ class GameManager( object ):
 		for player in self.clients.values():
 			if player.uid == uid: return player
 
+###### required by api_gen ########
 api_gen.register_type( api_gen.UserProxy, GameManager.get_player_by_id )
+
+
+class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
+	'''
+	This is a subclass of SimpleHTTPRequestHandler in Python3 standard-lib http.server
+	websockify.WSRequestHandler only overloads do_GET and send_response.
+
+	send_response only saves the last_code (websockify internal),
+	and calls SimpleHTTPRequestHandler.send_response(self,code,msg),
+	this is just sends the headers "Server" and "Date" using,
+	self.send_header("Server", self.version_string())
+	Note: send_header and other methods here write data to self.wfile
+
+	websockify.py has been patched to allow for custom handlers using the
+	class variable CustomRequestHandler
+
+	Note: websockify works by taking in a http request and then doing it with do_GET,
+	or its if its a websocket type connection, continue and leave it open.
+	normal http requests are closed when done by websockify.
+	'''
+
+	def do_GET(self):
+		if (self.headers.get('upgrade') and self.headers.get('upgrade').lower() == 'websocket'):
+			# For Hixie-76 read out the key hash
+			if (self.headers.get('sec-websocket-key1') or self.headers.get('websocket-key1')): self.headers.__setitem__('key3', self.rfile.read(8))
+			# Just indicate that an WebSocket upgrade is needed
+			self.last_code = 101
+			self.last_message = "101 Switching Protocols"
+		elif self.only_upgrade:
+			# Normal web request responses are disabled
+			self.last_code = 405
+			self.last_message = "405 Method Not Allowed"
+			print('ERROR - client tried to connect to request handler that requires websockets')
+		else:
+			#SimpleHTTPRequestHandler.do_GET(self) # this is what websockify.py is using, it only calls self.send_head()
+			self.do_get_custom()
+
+	def send_head(self, content_length=None, last_modified=None, require_path=True, redirect=None):
+		print('sending custom header')
+		if redirect:  ## in case we need to dynamically redirect clients
+			self.send_response(301)
+			self.send_header("Location", redirect)
+			self.end_headers()
+			return None
+
+		path = self.translate_path(self.path)
+		ctype = self.guess_type(path)
+		f = None
+		if require_path:
+			try:
+				f = open(path, 'rb')
+			except IOError:
+				self.send_error(404, "File not found")
+				return None
+
+		###### normal response ######
+		self.send_response(200)
+		self.send_header("Content-type", ctype)
+		if f:
+			fs = os.fstat(f.fileno())
+			self.send_header("Content-Length", str(fs[6]))
+			self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+		else:
+			assert content_length is not None
+			self.send_header("Content-Length", str(content_length))
+			if last_modified: # TODO is it ok for most browsers not to reply with Last-Modified?
+				self.send_header("Last-Modified", self.date_time_string(last_modified))
+
+		self.end_headers()
+		return f
+
+
+	def do_get_custom(self):
+		'''
+		In SimpleHTTPRequestHandler self.send_head returns a file object that gets read and written to self.wfile using self.copyfile using shutils
+		here we reimplement what SimpleHTTPRequestHandler is doing in its do_GET, self.send_head also needs to be customized.
+		'''
+		content_length = None # dynamic requests need to set this length
+		#data = TODO move http server code here
+		self.send_head( content_length=content_length )
+		self.wfile.write(data)
+
+websockify.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
 
 
 ##################################################
@@ -939,7 +1023,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 	_bps_start = None
 	_bps = 0
 
-	def update( self, context ):	# called from main thread
+	def update( self, context, timeout=0.1 ):	# called from main thread
 		import random
 		#if not GameManager.clients: return
 		players = []
@@ -952,7 +1036,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 				players.append( player )
 
 		if len(wlist) > 1: print( wlist )
-		ins, outs, excepts = select.select(rlist, wlist, [], 0.1)
+		ins, outs, excepts = select.select(rlist, wlist, [], timeout)
 		if excepts: raise Exception("[websocket] Socket exception")
 
 
@@ -1229,7 +1313,9 @@ class WebServer( object ):
 		if agent == 'Python-urllib/3.2': return self.httpd_reply_python( env, start_response )
 		else:
 			#try:
-			return self.httpd_reply_browser( env, start_response )
+			data = self.httpd_reply_browser( env, start_response )
+			print('http return (%s) data length=%s' %(env['PATH_INFO'],len(data)))
+			return data
 			#except:
 			#	print('[ERROR webserver]')
 			#	return []

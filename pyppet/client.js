@@ -951,79 +951,6 @@ var camera, scene, renderer;
 var spotLight, ambientLight;
 var CONTROLLER;
 
-function init() {
-	console.log(">> THREE init");
-
-	container = document.createElement( 'div' );
-	document.body.appendChild( container );
-
-	// scene //
-	scene = new THREE.Scene();
-	//scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
-
-	// camera //
-	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
-	camera.position.set( 0, 4, 10 );
-	scene.add( camera );
-
-	CONTROLLER = new MyController( camera );
-
-	// Grid //
-	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
-	geometry = new THREE.Geometry(),
-	floor = -0.04, step = 1, size = 14;
-	for ( var i = 0; i <= size / step * 2; i ++ ) {
-		geometry.vertices.push( new THREE.Vector3( - size, floor, i * step - size ) );
-		geometry.vertices.push( new THREE.Vector3(   size, floor, i * step - size ) );
-		geometry.vertices.push( new THREE.Vector3( i * step - size, floor, -size ) );
-		geometry.vertices.push( new THREE.Vector3( i * step - size,  floor, size ) );
-	}
-	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
-	scene.add( line );
-
-	// LIGHTS //
-	ambientLight = new THREE.AmbientLight( 0x111111 );
-	scene.add( ambientLight );
-
-	var sunIntensity = 1.0;
-	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
-	spotLight.position.set( 0, 500, 10 );
-	spotLight.target.position.set( 0, 0, 0 );
-	spotLight.castShadow = true;
-	spotLight.shadowCameraNear = 480;
-	spotLight.shadowCameraFar = camera.far;
-	spotLight.shadowCameraFov = 30;
-	spotLight.shadowBias = 0.001;
-	spotLight.shadowMapWidth = 2048;
-	spotLight.shadowMapHeight = 2048;
-	spotLight.shadowDarkness = 0.3 * sunIntensity;
-	scene.add( spotLight );
-
-
-	// renderer //
-	renderer = new THREE.WebGLRenderer( { maxLights: 8, antialias: true } );
-	renderer.setSize( window.innerWidth, window.innerHeight-10 );
-	container.appendChild( renderer.domElement );
-
-	renderer.gammaInput = true;
-	renderer.gammaOutput = true;
-	if (USE_SHADOWS) {
-		renderer.shadowMapEnabled = true;
-		renderer.shadowMapSoft = true;
-		//renderer.shadowMapAutoUpdate = false;		// EVIL!
-	}
-	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
-	renderer.physicallyBasedShading = true;		// allows per-pixel shading
-
-	renderer.sortObjects = false;		// LOD
-	//renderer.autoUpdateScene = false;	// LOD
-
-	if (DEBUG==false) {
-		setupFX( renderer, scene, camera );
-		//setupDOF( renderer );
-		setupGodRays();
-	}
-}
 
 
 var DEPTH_MATERIAL;
@@ -1241,7 +1168,7 @@ function setupFX( renderer, scene, camera ) {
 
 
 	//			noise intensity, scanline intensity, scanlines, greyscale
-	FX['film'] = fx = new THREE.FilmPass( 0.01, 0.1, SCREEN_HEIGHT / 3, false );
+	FX['film'] = fx = new THREE.FilmPass( 0.01, 0.9, SCREEN_HEIGHT / 3, false );
 	composer.addPass( fx );
 
 
@@ -1257,102 +1184,6 @@ function setupFX( renderer, scene, camera ) {
 
 
 
-function animate() {
-	// subdiv modifier //
-	for (n in Objects) {
-		var lod = Objects[ n ];
-
-		if (USE_MODIFIERS && lod && lod.base_mesh && lod.LODs[0].object3D.visible) {
-			//if (mesh === SELECTED) { mesh.visible=true; }	// show hull
-			//else { mesh.visible=false; }	// hide hull
-
-			if (lod.dirty_modifiers ) {
-				lod.dirty_modifiers = false;
-
-				var subsurf = 0;
-				if ( lod.subsurf ) { subsurf=lod.subsurf; }
-				else if ( lod.multires ) { subsurf=1; }
-
-				// update hull //
-				//mesh.geometry.vertices = mesh.geometry_base.vertices;
-				//mesh.geometry.NeedUpdateVertices = true;
-
-				var modifier = new THREE.SubdivisionModifier( subsurf );
-				var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
-				geo.mergeVertices();		// BAD?  required? //
-				modifier.modify( geo );
-
-				geo.NeedUpdateTangents = true;
-				geo.computeTangents();		// requires UV's
-				//geo.computeFaceNormals();
-				//geo.computeVertexNormals();
-
-				//if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
-				var hack = new THREE.Mesh(geo, lod.shader)
-				hack.castShadow = true;
-				hack.receiveShadow = true;
-				hack.name = lod.name;							// required for picking
-				MESHES[ MESHES.indexOf(lod.children[1]) ] = hack;	// required for picking
-
-				lod.remove( lod.children[1] );
-				lod.LODs[ 0 ].object3D = hack;
-				lod.add( hack );
-
-			} else if (lod.auto_subdivision){
-
-				if (distance_to_camera(lod) < lod.LODs[0].visibleAtDistance/2) {
-
-					var subsurf = 0;
-					if ( lod.subsurf ) { subsurf=lod.subsurf; }
-					else if ( lod.multires ) { subsurf=1; }
-					subsurf ++;
-
-					var modifier = new THREE.SubdivisionModifier( subsurf );
-					var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
-					geo.mergeVertices();		// BAD?  required? //
-					modifier.modify( geo );
-
-					geo.NeedUpdateTangents = true;
-					geo.computeTangents();		// requires UV's
-
-					var hack = new THREE.Mesh(geo, lod.shader)
-					hack.castShadow = true;
-					hack.receiveShadow = true;
-
-					lod.remove( lod.children[1] );
-					lod.LODs[ 0 ].object3D = hack;
-					lod.add( hack );
-
-				} else {
-
-					var subsurf = 0;
-					if ( lod.subsurf ) { subsurf=lod.subsurf; }
-					else if ( lod.multires ) { subsurf=1; }
-
-					var modifier = new THREE.SubdivisionModifier( subsurf );
-					var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
-					geo.mergeVertices();		// BAD?  required? //
-					modifier.modify( geo );
-
-					geo.NeedUpdateTangents = true;
-					geo.computeTangents();		// requires UV's
-
-					var hack = new THREE.Mesh(geo, lod.shader)
-					hack.castShadow = true;
-					hack.receiveShadow = true;
-
-					lod.remove( lod.children[1] );
-					lod.LODs[ 0 ].object3D = hack;
-					lod.add( hack );
-				}
-			}
-		}
-	}
-
-	requestAnimationFrame( animate );
-	if (DEBUG==true) { render_debug(); }
-	else { render(); }
-}
 
 function distance_to_camera( ob ) {
 		camera.matrixWorldInverse.getInverse( camera.matrixWorld );
@@ -2115,6 +1946,184 @@ function createLabel(text, x, y, z, size, color, transparent, backGroundColor, b
 	return mesh;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+function init() {
+	console.log(">> THREE init");
+
+	container = document.createElement( 'div' );
+	document.body.appendChild( container );
+
+	// scene //
+	scene = new THREE.Scene();
+	//scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
+
+	// camera //
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
+	camera.position.set( 0, 4, 10 );
+	scene.add( camera );
+
+	CONTROLLER = new MyController( camera );
+
+	// Grid //
+	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
+	geometry = new THREE.Geometry(),
+	floor = -0.04, step = 1, size = 14;
+	for ( var i = 0; i <= size / step * 2; i ++ ) {
+		geometry.vertices.push( new THREE.Vector3( - size, floor, i * step - size ) );
+		geometry.vertices.push( new THREE.Vector3(   size, floor, i * step - size ) );
+		geometry.vertices.push( new THREE.Vector3( i * step - size, floor, -size ) );
+		geometry.vertices.push( new THREE.Vector3( i * step - size,  floor, size ) );
+	}
+	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
+	scene.add( line );
+
+	// LIGHTS //
+	ambientLight = new THREE.AmbientLight( 0x111111 );
+	scene.add( ambientLight );
+
+	var sunIntensity = 1.0;
+	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
+	spotLight.position.set( 0, 500, 10 );
+	spotLight.target.position.set( 0, 0, 0 );
+	spotLight.castShadow = true;
+	spotLight.shadowCameraNear = 480;
+	spotLight.shadowCameraFar = camera.far;
+	spotLight.shadowCameraFov = 30;
+	spotLight.shadowBias = 0.001;
+	spotLight.shadowMapWidth = 2048;
+	spotLight.shadowMapHeight = 2048;
+	spotLight.shadowDarkness = 0.3 * sunIntensity;
+	scene.add( spotLight );
+
+
+	// renderer //
+	renderer = new THREE.WebGLRenderer( { maxLights: 8, antialias: true } );
+	renderer.setSize( window.innerWidth, window.innerHeight-10 );
+	container.appendChild( renderer.domElement );
+
+	renderer.gammaInput = true;
+	renderer.gammaOutput = true;
+	if (USE_SHADOWS) {
+		renderer.shadowMapEnabled = true;
+		renderer.shadowMapSoft = true;
+		//renderer.shadowMapAutoUpdate = false;		// EVIL!
+	}
+	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
+	renderer.physicallyBasedShading = true;		// allows per-pixel shading
+
+	renderer.sortObjects = false;		// LOD
+	//renderer.autoUpdateScene = false;	// LOD
+
+	if (DEBUG==false) {
+		setupFX( renderer, scene, camera );
+		//setupDOF( renderer );
+		setupGodRays();
+	}
+
+	console.log(">> THREE init complete <<");
+
+}
+
+
+function animate() {
+	console.log('<<animate>>');
+	// subdiv modifier //
+	for (n in Objects) {
+		var lod = Objects[ n ];
+
+		if (USE_MODIFIERS && lod && lod.base_mesh && lod.LODs[0].object3D.visible) {
+			//if (mesh === SELECTED) { mesh.visible=true; }	// show hull
+			//else { mesh.visible=false; }	// hide hull
+
+			if (lod.dirty_modifiers ) {
+				lod.dirty_modifiers = false;
+
+				var subsurf = 0;
+				if ( lod.subsurf ) { subsurf=lod.subsurf; }
+				else if ( lod.multires ) { subsurf=1; }
+
+				// update hull //
+				//mesh.geometry.vertices = mesh.geometry_base.vertices;
+				//mesh.geometry.NeedUpdateVertices = true;
+
+				var modifier = new THREE.SubdivisionModifier( subsurf );
+				var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
+				geo.mergeVertices();		// BAD?  required? //
+				modifier.modify( geo );
+
+				geo.NeedUpdateTangents = true;
+				geo.computeTangents();		// requires UV's
+				//geo.computeFaceNormals();
+				//geo.computeVertexNormals();
+
+				//if ( mesh.children.length ) { mesh.remove( mesh.children[0] ); }
+				var hack = new THREE.Mesh(geo, lod.shader)
+				hack.castShadow = true;
+				hack.receiveShadow = true;
+				hack.name = lod.name;							// required for picking
+				MESHES[ MESHES.indexOf(lod.children[1]) ] = hack;	// required for picking
+
+				lod.remove( lod.children[1] );
+				lod.LODs[ 0 ].object3D = hack;
+				lod.add( hack );
+
+			} else if (lod.auto_subdivision){
+
+				if (distance_to_camera(lod) < lod.LODs[0].visibleAtDistance/2) {
+
+					var subsurf = 0;
+					if ( lod.subsurf ) { subsurf=lod.subsurf; }
+					else if ( lod.multires ) { subsurf=1; }
+					subsurf ++;
+
+					var modifier = new THREE.SubdivisionModifier( subsurf );
+					var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
+					geo.mergeVertices();		// BAD?  required? //
+					modifier.modify( geo );
+
+					geo.NeedUpdateTangents = true;
+					geo.computeTangents();		// requires UV's
+
+					var hack = new THREE.Mesh(geo, lod.shader)
+					hack.castShadow = true;
+					hack.receiveShadow = true;
+
+					lod.remove( lod.children[1] );
+					lod.LODs[ 0 ].object3D = hack;
+					lod.add( hack );
+
+				} else {
+
+					var subsurf = 0;
+					if ( lod.subsurf ) { subsurf=lod.subsurf; }
+					else if ( lod.multires ) { subsurf=1; }
+
+					var modifier = new THREE.SubdivisionModifier( subsurf );
+					var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
+					geo.mergeVertices();		// BAD?  required? //
+					modifier.modify( geo );
+
+					geo.NeedUpdateTangents = true;
+					geo.computeTangents();		// requires UV's
+
+					var hack = new THREE.Mesh(geo, lod.shader)
+					hack.castShadow = true;
+					hack.receiveShadow = true;
+
+					lod.remove( lod.children[1] );
+					lod.LODs[ 0 ].object3D = hack;
+					lod.add( hack );
+				}
+			}
+		}
+	}
+
+	requestAnimationFrame( animate );
+	if (DEBUG==true) { render_debug(); }
+	else { render(); }
+}
+
 
 ///////////////////// init and run ///////////////////
 
@@ -2123,6 +2132,7 @@ init();
 ws.on('message', on_message);
 
 function on_open(e) {
+	FX['film'].uniforms['nIntensity'].value = 0.01;
 	console.log(">> WebSockets.onopen");
 }
 ws.on('open', on_open);

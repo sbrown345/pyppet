@@ -550,6 +550,9 @@ Sec-WebSocket-Accept: %s\r
 
         # No orderly close for 75
 
+
+    CustomRequestHandler = None  ## the user can set a its own request handler for custom server app-logic
+
     def do_handshake(self, sock, address):
         """
         do_handshake does the following:
@@ -623,7 +626,12 @@ Sec-WebSocket-Accept: %s\r
             scheme = "ws"
             stype = "Plain non-SSL (ws://)"
 
-        wsh = WSRequestHandler(retsock, address, not self.web)
+        ###############################################################################
+        if self.CustomRequestHandler:  ## should also be a subclass of WSRequestHandler
+            wsh = self.CustomRequestHandler(retsock, address)
+        else:
+            wsh = WSRequestHandler(retsock, address, not self.web)
+        ###############################################################################
         if wsh.last_code == 101:
             # Continue on to handle WebSocket upgrade
             pass
