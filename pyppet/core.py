@@ -183,10 +183,14 @@ class BlenderHack( object ):
 		self.__blender_redraw = True
 
 	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False):
-		import Server
-		self._3dsmax = Server.Remote3dsMax( bpy )
 		self.__use_gtk = use_gtk
 		self.__use_3dsmax = use_3dsmax
+		if use_3dsmax:
+			import Server # TODO move Remote3dsMax its own module.
+			self._3dsmax = Server.Remote3dsMax( bpy )
+		else:
+			self._3dsmax = None
+
 		self.__blender_redraw = False
 
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
@@ -268,7 +272,8 @@ class BlenderHack( object ):
 	_image_editor_handle = None
 	def bake_hack( self, reg ):
 		self.context = BlenderContextCopy( bpy.context )
-		self.server.update( bpy.context )	# update http server
+		if self.server: # DEPRECATED
+			self.server.update( bpy.context )	# update http server
 
 
 

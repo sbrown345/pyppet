@@ -51,8 +51,8 @@ class App( core.BlenderHack ):
 		Server.set_api( self )
 
 	def start_server(self):
-		self.server = Server.WebServer()
-		self.websocket_server = UserServer( listen_host=Server.HOST_NAME, listen_port=8081 )
+		#self.server = Server.WebServer()
+		self.websocket_server = UserServer( listen_host=Server.HOST_NAME, listen_port=8080 )
 		self.websocket_server.start()	# polls in a thread
 
 
@@ -81,7 +81,8 @@ class App( core.BlenderHack ):
 			if not fully_updated:
 				# ImageEditor redraw callback will update http-server,
 				# if ImageEditor is now shown, still need to update the server.
-				self.server.update( self.context )
+				#self.server.update( self.context )
+				pass
 
 			self.websocket_server.update( self.context )
 			time.sleep(0.1)

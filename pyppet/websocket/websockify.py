@@ -93,7 +93,10 @@ Sec-WebSocket-Accept: %s\r
     policy_response = """<cross-domain-policy><allow-access-from domain="*" to-ports="*" /></cross-domain-policy>\n"""
 
     class EClose(Exception):
-        pass
+        def __init__(self, msg):
+            print('websocket error:', msg)
+            import os
+            os.abort() # crashing so the thread can halt everything.
 
     def __init__(self, listen_host='', listen_port=None, source_is_ipv6=False,
             verbose=False, cert='', key='', ssl_only=None,
@@ -610,7 +613,7 @@ Sec-WebSocket-Accept: %s\r
             except ssl.SSLError:
                 _, x, _ = sys.exc_info()
                 if x.args[0] == ssl.SSL_ERROR_EOF:
-                    raise self.EClose("")
+                    raise self.EClose("ssl error eof")
                 else:
                     raise
 
@@ -636,13 +639,15 @@ Sec-WebSocket-Accept: %s\r
             # Continue on to handle WebSocket upgrade
             pass
         elif wsh.last_code == 405:
+            print(wsh)
             raise self.EClose("Normal web request received but disallowed")
         elif wsh.last_code < 200 or wsh.last_code >= 300:
+            print('error <200 or >=300')
             raise self.EClose(wsh.last_message)
-        elif self.verbose:
-            raise self.EClose(wsh.last_message)
-        else:
-            raise self.EClose("")
+        #elif self.verbose:
+        #    raise self.EClose(wsh.last_message)
+        #else:
+        #    raise self.EClose(wsh.last_message)
 
         h = self.headers = wsh.headers
         path = self.path = wsh.path
@@ -717,7 +722,7 @@ Sec-WebSocket-Accept: %s\r
 
         # Send server WebSockets handshake response
         #self.msg("sending response [%s]" % response)
-        retsock.send(s2b(response))
+        if wsh.last_code != 200: retsock.send(s2b(response))
 
         # Return the WebSockets socket which may be SSL wrapped
         return retsock
@@ -779,11 +784,11 @@ Sec-WebSocket-Accept: %s\r
                 # Connection was not a WebSockets connection
                 if exc.args[0]:
                     self.msg("%s: %s" % (address[0], exc.args[0]))
-            except Exception:
-                _, exc, _ = sys.exc_info()
-                self.msg("handler exception: %s" % str(exc))
-                if self.verbose:
-                    self.msg(traceback.format_exc())
+            #except Exception:
+            #    _, exc, _ = sys.exc_info()
+            #    self.msg("handler exception: %s" % str(exc))
+            #    if self.verbose:
+            #        self.msg(traceback.format_exc())
         finally:
             if self.rec:
                 self.rec.write("'EOF']\n")

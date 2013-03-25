@@ -18,7 +18,7 @@ import io, socket, select, pickle, urllib
 import urllib.request
 import urllib.parse
 
-from websocket import websockify as websocket
+from websocket import websockify
 import json
 
 import bpy, mathutils
@@ -875,6 +875,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 	or its if its a websocket type connection, continue and leave it open.
 	normal http requests are closed when done by websockify.
 	'''
+	only_upgrade = False
 
 	def do_GET(self):
 		if (self.headers.get('upgrade') and self.headers.get('upgrade').lower() == 'websocket'):
@@ -911,15 +912,15 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 				return None
 
 		###### normal response ######
-		self.send_response(200)
+		self.send_response(200); print(ctype)
 		self.send_header("Content-type", ctype)
 		if f:
 			fs = os.fstat(f.fileno())
 			self.send_header("Content-Length", str(fs[6]))
 			self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
 		else:
-			assert content_length is not None
-			self.send_header("Content-Length", str(content_length))
+			if content_length is not None:
+				self.send_header("Content-Length", str(content_length))
 			if last_modified: # TODO is it ok for most browsers not to reply with Last-Modified?
 				self.send_header("Last-Modified", self.date_time_string(last_modified))
 
@@ -933,21 +934,33 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		here we reimplement what SimpleHTTPRequestHandler is doing in its do_GET, self.send_head also needs to be customized.
 		'''
 		content_length = None # dynamic requests need to set this length
-		#data = TODO move http server code here
-		self.send_head( content_length=content_length )
-		self.wfile.write(data)
+		path = self.translate_path(self.path)
+		print('do_get_custom', path)
+		relpath = os.path.join( SCRIPT_DIR, path[1:] )
 
-websockify.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
+		dynamic = True
+		data = bytes('a','utf-8')
+		content_length = 1
+		#data = TODO move http server code here
+		self.send_head( content_length=content_length, require_path=not dynamic )
+		## it is now safe to write data ##
+		self.wfile.write(data)
+		self.wfile.flush()
+
+###############################################
+websockify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
+###############################################
+
 
 
 ##################################################
-class WebSocketServer( websocket.WebSocketServer ):
+class WebSocketServer( websockify.WebSocketServer ):
 	buffer_size = 8096*2
 	client = None
 	webGL = WebGL()
 	active = False
 
-	def new_client(self):  ## websocket.py API ##
+	def new_client(self):  ## websockify.py API ##
 		server_addr = self.client.getsockname()
 		addr = self.client.getpeername()
 		print('[websocket] server', server_addr)
@@ -1101,8 +1114,7 @@ class WebSocketServer( websocket.WebSocketServer ):
 			try:
 				addr = sock.getpeername()
 			except OSError:
-				print('[websocket ERROR] can not get peer name, closing client.')
-				GameManager.clients.pop( addr )
+				print('[websocket ERROR] can not get peer name.')
 				continue
 
 			self.client = sock
@@ -1283,7 +1295,7 @@ class WebServer( object ):
 
 			#self._port_hack += 1
 			h.append( 'var HOST = "%s";' %HOST_NAME )
-			h.append( 'var HOST_PORT = "%s";' %8081 )
+			h.append( 'var HOST_PORT = "%s";' %8080 )
 
 
 			if self.hires_progressive_textures:
