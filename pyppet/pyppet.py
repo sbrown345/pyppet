@@ -4339,7 +4339,7 @@ class App( PyppetUI ):
 
 
 	def __init__(self):
-		assert self.setup_blender_hack( bpy.context )		# moved to BlenderHack in core.py
+		assert self.setup_blender_hack( bpy.context, use_gtk=True, use_3dsmax=True )		# moved to BlenderHack in core.py
 		self._gtk_updated = False
 
 		if '--debug' not in sys.argv:
@@ -4450,17 +4450,24 @@ class App( PyppetUI ):
 		win.add( root )
 		root.pack_start( gtk.Label('hello world'), expand=False )
 
-		widget = Webcam.Widget( root )
-		self.webcam = widget.webcam
-		self.webcam.start_thread()
-
-		DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender
+		#widget = Webcam.Widget( root )
+		#self.webcam = widget.webcam
+		#if self.webcam: self.webcam.start_thread()
+		#DND.make_source( widget.dnd_container, 'WEBCAM' )	# make drag source to blender
 
 		win.show_all()
+		return win
 
 	def debug_mainloop(self):
-		while True:
+		while self.active:
 			self.update_blender_and_gtk()
+
+			if not self._image_editor_handle:
+				# ImageEditor redraw callback will update http-server,
+				# if ImageEditor is now shown, still need to update the server.
+				self.server.update( self.context )
+
+			self.websocket_server.update( self.context )
 
 	def mainloop(self):
 		print('enter main')
@@ -4525,6 +4532,13 @@ class App( PyppetUI ):
 						buff = M[ block ]
 						buff.append( (now, block.value) )
 
+			if not self._image_editor_handle:
+				# ImageEditor redraw callback will update http-server,
+				# if ImageEditor is now shown, still need to update the server.
+				self.server.update( self.context )
+
+			self.websocket_server.update( self.context )
+
 
 			if drop_frame: continue
 
@@ -4555,12 +4569,6 @@ class App( PyppetUI ):
 			if self.preview: self.update_preview( now )
 
 
-			if not self._image_editor_handle:
-				# ImageEditor redraw callback will update http-server,
-				# if ImageEditor is now shown, still need to update the server.
-				self.server.update( self.context )
-
-			self.websocket_server.update( self.context )
 
 
 
@@ -5344,8 +5352,9 @@ if __name__ == '__main__':
 	#################################
 
 
-	if '--debug' in sys.argv:
-		Pyppet.debug_create_ui()
+	if '--debug' in sys.argv or True:
+		win = Pyppet.debug_create_ui()
+		Pyppet.setup_3dsmax( win.get_clipboard() )
 		Pyppet.debug_mainloop()
 
 	else:

@@ -893,7 +893,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 			#SimpleHTTPRequestHandler.do_GET(self) # this is what websockify.py is using, it only calls self.send_head()
 			self.do_get_custom()
 
-	def send_head(self, content_length=None, last_modified=None, require_path=True, redirect=None):
+	def send_head(self, content_length=None, content_type=None, last_modified=None, require_path=True, redirect=None):
 		print('sending custom header')
 		if redirect:  ## in case we need to dynamically redirect clients
 			self.send_response(301)
@@ -902,7 +902,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 			return None
 
 		path = self.translate_path(self.path)
-		ctype = self.guess_type(path)
+		ctype = content_type or self.guess_type(path)
 		f = None
 		if require_path:
 			try:
@@ -912,7 +912,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 				return None
 
 		###### normal response ######
-		self.send_response(200); print(ctype)
+		self.send_response(200)
 		self.send_header("Content-type", ctype)
 		if f:
 			fs = os.fstat(f.fileno())
@@ -933,19 +933,101 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		In SimpleHTTPRequestHandler self.send_head returns a file object that gets read and written to self.wfile using self.copyfile using shutils
 		here we reimplement what SimpleHTTPRequestHandler is doing in its do_GET, self.send_head also needs to be customized.
 		'''
-		content_length = None # dynamic requests need to set this length
-		path = self.translate_path(self.path)
+		path = urllib.parse.unquote(self.path)
 		print('do_get_custom', path)
-		relpath = os.path.join( SCRIPT_DIR, path[1:] )
+		fpath = os.path.join( SCRIPT_DIR, path[1:] )
+		print(fpath)
 
+		content_length = None # dynamic requests need to set this length
+		content_type = None
 		dynamic = True
-		data = bytes('a','utf-8')
-		content_length = 1
-		#data = TODO move http server code here
-		self.send_head( content_length=content_length, require_path=not dynamic )
+		data = None
+		if path=='/favicon.ico': content_length = 0
+
+		elif path in ('/', 'index', 'index.html'):
+			data = self.generate_html_header()
+			content_type = 'text/html; charset=utf-8'
+
+		elif path.startswith('/javascripts/'):
+			## only serve static javascript files
+			data = open( fpath, 'rb' ).read()
+			content_type = 'text/javascript; charset=utf-8'
+
+		elif path.startswith('/bake/'): pass
+
+		elif path.startswith('/textures/'): # special static textures
+			data = open( fpath, 'rb' ).read()
+
+		elif path.startswith('/objects/'):
+			assert path.endswith('.dae')  ## TODO deprecate collada
+			content_type = 'text/xml; charset=utf-8'
+
+		else: print('warn: unknown request url', path)
+
+
+		if data: content_length = len( data )
+		self.send_head( content_length=content_length, content_type=content_type,require_path=not dynamic )
 		## it is now safe to write data ##
-		self.wfile.write(data)
-		self.wfile.flush() # maybe not required, but its ok to flush twice.
+		if data:
+			self.wfile.write(data)
+			self.wfile.flush() # maybe not required, but its ok to flush twice.
+
+
+	def generate_html_header(self, title='webgl'):
+		h = [
+			'<!DOCTYPE html><html lang="en">',
+			'<head><title>%s</title>' %title,
+			'<meta charset="utf-8">',
+			'<meta name="viewport" content="width=device-width, user-scalable=yes, minimum-scale=1.0, maximum-scale=1.0">',
+		]
+
+		h.append( '<script src="/javascripts/websockify/util.js"></script>' )
+		h.append( '<script src="/javascripts/websockify/webutil.js"></script>' )
+		h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
+		h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
+
+		h.append( '<style>' )
+		h.append( 'body{margin:auto; background-color: #888; padding-top: 2px; font-family:sans; color: #666; font-size: 0.8em}' )
+		h.append( '#container{ margin:auto; padding: 4px; background-color: #fff; }' )
+		h.append( '</style>' )
+
+		h.append( '</head><body>' )
+
+		h.append( '<script type="text/javascript" src="/javascripts/Three.js"></script>' )
+		h.append( '<script type="text/javascript" src="/javascripts/loaders/ColladaLoader.js"></script>' )
+		h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
+		h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
+		h.append( '<script type="text/javascript" src="/javascripts/MarchingCubes.js"></script>' )
+		h.append( '<script type="text/javascript" src="/javascripts/ShaderGodRays.js"></script>' )
+
+		h.append( '<script type="text/javascript" src="/javascripts/Curve.js"></script>' )
+		h.append( '<script type="text/javascript" src="/javascripts/geometries/TubeGeometry.js"></script>' )
+
+		for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
+			h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
+
+
+		h.append( '<script type="text/javascript">' )
+		## TODO get this from place where api is set ##
+		h.append( simple_action_api.generate_javascript() )
+		print(h[-1])
+
+		#self._port_hack += 1
+		h.append( 'var HOST = "%s";' %HOST_NAME )
+		h.append( 'var HOST_PORT = "%s";' %8080 )
+
+
+		h.append( 'var MAX_PROGRESSIVE_TEXTURE = 512;' )
+		h.append( 'var MAX_PROGRESSIVE_NORMALS = 512;' )
+		h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
+		h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
+
+
+		h.append( open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8') )
+		h.append( '</script>' )
+
+		data = '\n'.join( h )
+		return data.encode('utf-8')
 
 ###############################################
 websockify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
@@ -995,24 +1077,27 @@ class WebSocketServer( websockify.WebSocketServer ):
 	def _start_threaded(self):
 		self.active = False
 		self.sockets = []  ## there is probably no speed up having mulitple listen sockets
-		#for i in range(50):
 		sock = self.socket(self.listen_host, self.listen_port)
 		self.sockets.append( sock )
-
 		self.active = True
-		#self.listen_socket = sock
-
-		print('--starting websocket server thread--')
+		self.listen_socket = sock
+		#print('--starting websocket server thread--')
 		threading._start_new_thread( self.new_client_listener_thread, ())
 
 
-
+	__accepting = True
 	def new_client_listener_thread(self):
+		'''
+		Blender requires the main listener runs in a thread.
+		'''
 		while self.active:
-			ready = select.select(self.sockets, [], [], 0.5)[0]
+			ready = select.select([self.listen_socket], [], [], 0.5)[0]
+			self.__accepting = True
 			for sock in ready:
 				startsock, address = sock.accept()
 				self.top_new_client(startsock, address)	# sets.client and calls new_client()
+			self.__accepting = False
+
 		print('[websocket] debug thread exit')
 		#lsock.close()
 		#self.listen_socket = None
@@ -1037,7 +1122,9 @@ class WebSocketServer( websockify.WebSocketServer ):
 	_bps = 0
 
 	def update( self, context, timeout=0.1 ):	# called from main thread
-		import random
+		if self.__accepting is True: return
+
+
 		#if not GameManager.clients: return
 		players = []
 		rlist = []# self.listen_socket ]
@@ -1058,15 +1145,12 @@ class WebSocketServer( websockify.WebSocketServer ):
 			#raise SystemExit  ## need at least a timeout of 0.1
 
 
-		######## bug? can't listen and spawn new clients from main thread?
-		#if self.listen_socket in outs and False:
-		#	print('[websocket] new client...')
-		#	sock, address = self.listen_socket.accept()
-		#	self.top_new_client(sock, address)	# this is part of websocket.py API: it sets self.client=sock, and calls new_client()
-		#	#outs.remove( self.listen_socket )
-
 		for sock in outs:
-			#if sock is self.listen_socket: continue
+			if sock is self.listen_socket:
+				#print('starting new connection')
+				#startsock, address = sock.accept()
+				#self.top_new_client(startsock, address)	# sets.client and calls new_client()
+				continue
 
 			player = players[ rlist.index(sock) ]
 			if True:
@@ -1085,6 +1169,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 				#rawbytes = bytes([0]) + struct.pack('<f', 1.0)
 				rawbytes = bytes([0]) + struct.pack('<h', int(0.3333*32768.0))
 
+			print( rawbytes )
 			cqueue = [ rawbytes ]
 
 			self._bps += len( rawbytes )
@@ -1295,7 +1380,7 @@ class WebServer( object ):
 
 			#self._port_hack += 1
 			h.append( 'var HOST = "%s";' %HOST_NAME )
-			h.append( 'var HOST_PORT = "%s";' %8080 )
+			h.append( 'var HOST_PORT = "%s";' %8081 )
 
 
 			if self.hires_progressive_textures:

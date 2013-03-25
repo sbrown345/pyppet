@@ -359,6 +359,7 @@ class Widget(object):
 		self.root = root = gtk.HBox()
 		root.set_border_width( 2 )
 		parent.add( root )
+		if not self.webcam: return
 
 		self.dnd_container = gtk.EventBox()
 		self.dnd_container.add( self.webcam.preview_image_gtk )

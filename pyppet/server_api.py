@@ -65,7 +65,7 @@ class App( core.BlenderHack ):
 			now = time.time()
 			dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
-			print('FPS', dt)
+			#print('FPS', dt)
 
 			fully_updated = self.update_blender()
 
@@ -85,7 +85,7 @@ class App( core.BlenderHack ):
 				pass
 
 			self.websocket_server.update( self.context )
-			time.sleep(0.1)
+			#time.sleep(0.1)
 
 if __name__ == '__main__':
 	app = App()

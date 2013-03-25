@@ -171,7 +171,7 @@ class BlenderHack( object ):
 		#	print('sync websocket_server from blender redraw..............')
 		#	self.websocket_server.update( bpy.context )
 
-		if self.__use_3dsmax and self._3dsmax: self._3dsmax.update( self._clipboard )
+		if self.__use_3dsmax and self._3dsmax and self._clipboard: self._3dsmax.update( self._clipboard )
 		if self.__use_gtk and not self._gtk_updated:
 			self.lock.acquire() ## this allows gtk to work with other threads that might update pixbuffers, like opencv.
 			i = 0
@@ -185,6 +185,7 @@ class BlenderHack( object ):
 	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False):
 		self.__use_gtk = use_gtk
 		self.__use_3dsmax = use_3dsmax
+		self._clipboard = None
 		if use_3dsmax:
 			import Server # TODO move Remote3dsMax its own module.
 			self._3dsmax = Server.Remote3dsMax( bpy )

@@ -426,6 +426,7 @@ Sec-WebSocket-Accept: %s\r
         ready. """
 
         tdelta = int(time.time()*1000) - self.start_time
+        self.send_parts = [] # force to empty for debugging
 
         if bufs:
             for buf in bufs:
@@ -769,40 +770,19 @@ Sec-WebSocket-Accept: %s\r
         self.start_time = int(time.time()*1000)
 
         # handler process
-        try:
-            try:
-                self.client = self.do_handshake(startsock, address)
+        #try: ## this try can be enabled to except EClose, EClose is failures the websockify api allows.
+        self.client = self.do_handshake(startsock, address)  ## do_handshake will also answer a http request.
+        #except self.EClose: ## TODO enable me on releases.
 
-                if self.record:
-                    # Record raw frame data as JavaScript array
-                    fname = "%s.%s" % (self.record,
-                                        self.handler_id)
-                    self.msg("opening record file: %s" % fname)
-                    self.rec = open(fname, 'w+')
-                    self.rec.write("var VNC_frame_data = [\n")
-                if self._ws_connection:
-                    self.ws_connection = True
-                    self.new_client()
-                else:
-                    self.client.close()
+        if self._ws_connection:
+            print('<<new websocket connection>>', self.client)
+            self.ws_connection = True
+            self.new_client()
+        elif self.client != startsock:
+            self.client.close() # close normal http request
+        else:
+            print('topping listener',self.client)
 
-            except self.EClose:
-                _, exc, _ = sys.exc_info()
-                # Connection was not a WebSockets connection
-                if exc.args[0]:
-                    self.msg("%s: %s" % (address[0], exc.args[0]))
-            #except Exception:
-            #    _, exc, _ = sys.exc_info()
-            #    self.msg("handler exception: %s" % str(exc))
-            #    if self.verbose:
-            #        self.msg(traceback.format_exc())
-        finally:
-            if self.rec:
-                self.rec.write("'EOF']\n")
-                self.rec.close()
-
-            if self.client and self.client != startsock:
-                self.client.close()
 
     def new_client(self):
         """ Do something with a WebSockets client connection. """
