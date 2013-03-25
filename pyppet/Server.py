@@ -945,7 +945,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		self.send_head( content_length=content_length, require_path=not dynamic )
 		## it is now safe to write data ##
 		self.wfile.write(data)
-		self.wfile.flush()
+		self.wfile.flush() # maybe not required, but its ok to flush twice.
 
 ###############################################
 websockify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify

@@ -722,7 +722,11 @@ Sec-WebSocket-Accept: %s\r
 
         # Send server WebSockets handshake response
         #self.msg("sending response [%s]" % response)
-        if wsh.last_code != 200: retsock.send(s2b(response))
+        if wsh.last_code != 200:
+            retsock.send(s2b(response))
+            self._ws_connection = True
+        else:
+            self._ws_connection = False  # need this to stop caller from doing topping the websocket client.
 
         # Return the WebSockets socket which may be SSL wrapped
         return retsock
@@ -776,9 +780,12 @@ Sec-WebSocket-Accept: %s\r
                     self.msg("opening record file: %s" % fname)
                     self.rec = open(fname, 'w+')
                     self.rec.write("var VNC_frame_data = [\n")
+                if self._ws_connection:
+                    self.ws_connection = True
+                    self.new_client()
+                else:
+                    self.client.close()
 
-                self.ws_connection = True
-                self.new_client()
             except self.EClose:
                 _, exc, _ = sys.exc_info()
                 # Connection was not a WebSockets connection
