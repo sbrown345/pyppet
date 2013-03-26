@@ -167,9 +167,10 @@ class BlenderHack( object ):
 	def sync_context(self, region):
 		self.context = BlenderContextCopy( bpy.context )  ## this state might not be fully thread safe?
 		## TODO store region types, and order
-		if self.websocket_server and not self.__websocket_updated:  # this is slower or faster?
-			self.__websocket_updated = True
-			self.websocket_server.update( bpy.context )
+
+		#if self.websocket_server and not self.__websocket_updated:  # this is slower or faster?
+		#	self.__websocket_updated = True
+		#	self.websocket_server.update( bpy.context )
 
 		if self.__use_3dsmax and self._3dsmax and self._clipboard: self._3dsmax.update( self._clipboard )
 		if self.__use_gtk and not self._gtk_updated:

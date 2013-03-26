@@ -946,7 +946,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		if path=='/favicon.ico': content_length = 0
 
 		elif path in ('/', 'index', 'index.html'):
-			data = self.generate_html_header()
+			data = generate_html_header( websocket_port=8080 )
 			content_type = 'text/html; charset=utf-8'
 
 		elif path.startswith('/javascripts/'):
@@ -974,61 +974,83 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 			self.wfile.flush() # maybe not required, but its ok to flush twice.
 
 
-	def generate_html_header(self, title='webgl'):
-		h = [
-			'<!DOCTYPE html><html lang="en">',
-			'<head><title>%s</title>' %title,
-			'<meta charset="utf-8">',
-			'<meta name="viewport" content="width=device-width, user-scalable=yes, minimum-scale=1.0, maximum-scale=1.0">',
-		]
+def generate_html_header(title='webgl', external_three=False, websocket_port=8081 ):
+	h = [
+		'<!DOCTYPE html><html lang="en">',
+		'<head><title>%s</title>' %title,
+		'<meta charset="utf-8">',
+		'<meta name="viewport" content="width=device-width, user-scalable=yes, minimum-scale=1.0, maximum-scale=1.0">',
+	]
 
-		h.append( '<script src="/javascripts/websockify/util.js"></script>' )
-		h.append( '<script src="/javascripts/websockify/webutil.js"></script>' )
-		h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
-		h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
+	h.append( '<script src="/javascripts/websockify/util.js"></script>' )
+	h.append( '<script src="/javascripts/websockify/webutil.js"></script>' )
+	h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
+	h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
 
-		h.append( '<style>' )
-		h.append( 'body{margin:auto; background-color: #888; padding-top: 2px; font-family:sans; color: #666; font-size: 0.8em}' )
-		h.append( '#container{ margin:auto; padding: 4px; background-color: #fff; }' )
-		h.append( '</style>' )
+	h.append( '<style>' )
+	h.append( 'body{margin:auto; background-color: #888; padding-top: 2px; font-family:sans; color: #666; font-size: 0.8em}' )
+	h.append( '#container{ margin:auto; padding: 4px; background-color: #fff; }' )
+	h.append( '</style>' )
 
-		h.append( '</head><body>' )
+	h.append( '</head><body>' )
 
-		h.append( '<script type="text/javascript" src="/javascripts/Three.js"></script>' )
-		h.append( '<script type="text/javascript" src="/javascripts/loaders/ColladaLoader.js"></script>' )
-		h.append( '<script type="text/javascript" src="/javascripts/modifiers/SubdivisionModifier.js"></script>' )
-		h.append( '<script type="text/javascript" src="/javascripts/ShaderExtras.js"></script>' )
-		h.append( '<script type="text/javascript" src="/javascripts/MarchingCubes.js"></script>' )
-		h.append( '<script type="text/javascript" src="/javascripts/ShaderGodRays.js"></script>' )
+	three = (
+		'Three.js',
+		'shaders/CopyShader.js',
+		'shaders/DotScreenShader.js',
+		'shaders/ConvolutionShader.js',
+		'shaders/FilmShader.js',
 
-		h.append( '<script type="text/javascript" src="/javascripts/Curve.js"></script>' )
-		h.append( '<script type="text/javascript" src="/javascripts/geometries/TubeGeometry.js"></script>' )
+		'loaders/ColladaLoader.js',
+		'modifiers/SubdivisionModifier.js',
+		'ShaderExtras.js',
+		'MarchingCubes.js',
+		'ShaderGodRays.js',
+		'Curve.js',
+		'geometries/TubeGeometry.js',
 
-		for tag in 'EffectComposer RenderPass BloomPass ShaderPass MaskPass SavePass FilmPass DotScreenPass'.split():
-			h.append( '<script type="text/javascript" src="/javascripts/postprocessing/%s.js"></script>' %tag )
+		'postprocessing/EffectComposer.js',
+		'postprocessing/RenderPass.js', 
+		'postprocessing/BloomPass.js', 
+		'postprocessing/ShaderPass.js', 
+		'postprocessing/MaskPass.js', 
+		'postprocessing/SavePass.js', 
+		'postprocessing/FilmPass.js', 
+		'postprocessing/DotScreenPass.js',
+
+	)
+	if external_three:
+		for x in three:
+			h.append( '<script type="text/javascript" src="/javascripts/%s"></script>' %x )
 
 
-		h.append( '<script type="text/javascript">' )
-		## TODO get this from place where api is set ##
-		h.append( simple_action_api.generate_javascript() )
-		print(h[-1])
+	h.append( '<script type="text/javascript">' )
+	## TODO get this from place where api is set ##
+	h.append( simple_action_api.generate_javascript() )
+	print(h[-1])
 
-		#self._port_hack += 1
-		h.append( 'var HOST = "%s";' %HOST_NAME )
-		h.append( 'var HOST_PORT = "%s";' %8080 )
+	if not external_three:
+		for x in three:
+			h.append(
+				open(os.path.join(SCRIPT_DIR,'javascripts/'+x), 'rb').read().decode('utf-8')
+			)
+
+	#self._port_hack += 1
+	h.append( 'var HOST = "%s";' %HOST_NAME )
+	h.append( 'var HOST_PORT = "%s";' %websocket_port )
 
 
-		h.append( 'var MAX_PROGRESSIVE_TEXTURE = 512;' )
-		h.append( 'var MAX_PROGRESSIVE_NORMALS = 512;' )
-		h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
-		h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
+	h.append( 'var MAX_PROGRESSIVE_TEXTURE = 512;' )
+	h.append( 'var MAX_PROGRESSIVE_NORMALS = 512;' )
+	h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
+	h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
 
 
-		h.append( open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8') )
-		h.append( '</script>' )
+	h.append( open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8') )
+	h.append( '</script>' )
 
-		data = '\n'.join( h )
-		return data.encode('utf-8')
+	data = '\n'.join( h )
+	return data
 
 ###############################################
 websockify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
@@ -1324,7 +1346,7 @@ class WebServer( object ):
 
 	_port_hack = 8081
 
-	def get_header(self, title='http://%s'%HOST_NAME, webgl=False):
+	def get_header_deprecated(self, title='http://%s'%HOST_NAME, webgl=False):
 		h = [
 			'<!DOCTYPE html><html lang="en">',
 			'<head><title>%s</title>' %title,
@@ -1412,7 +1434,9 @@ class WebServer( object ):
 		else:
 			#try:
 			data = self.httpd_reply_browser( env, start_response )
-			print('http return (%s) data length=%s' %(env['PATH_INFO'],len(data)))
+			if data: size = len(data[0])
+			else: size = 0
+			print('http return (%s) data length=%s' %(env['PATH_INFO'],size))
 			return data
 			#except:
 			#	print('[ERROR webserver]')
@@ -1435,7 +1459,7 @@ class WebServer( object ):
 			if self.THREE:
 				f = io.StringIO()
 				start_response('200 OK', [('Content-Type','text/html; charset=utf-8')])
-				f.write( self.get_header(webgl=True) )
+				f.write( generate_html_header( websocket_port=8081 ) )
 				return [f.getvalue().encode('utf-8')]
 
 			else:

@@ -34,8 +34,6 @@ var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
-ws = new Websock(); // from the websockify API
-ws.open( 'ws://' + HOST + ':' + HOST_PORT );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 
 
 var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
@@ -1229,10 +1227,12 @@ function render() {
 	CONTROLLER.update( delta );
 
 	scene.updateMatrixWorld();
+	/* TODO fix me
 	THREE.SceneUtils.traverseHierarchy(
 		scene, 
 		function ( node ) { if ( node instanceof THREE.LOD ) node.update( camera ) } 
 	);
+	*/
 
 	if ( postprocessing.enabled ) {
 		render_godrays();
@@ -1490,7 +1490,7 @@ MyController = function ( object, domElement ) {
 
 	// methods
 	this.update_TRACK = function() {
-		_eye.copy( _this.object.position ).subSelf( this.target );
+		_eye.copy( _this.object.position ).sub( this.target );
 		if ( !_this.noRotate ) {
 			_this.rotateCamera();
 		}
@@ -1500,7 +1500,7 @@ MyController = function ( object, domElement ) {
 		if ( !_this.noPan ) {
 			_this.panCamera();
 		}
-		_this.object.position.add( _this.target, _eye );
+		_this.object.position.addVectors( _this.target, _eye );
 		_this.checkDistances();
 		_this.object.lookAt( _this.target );
 
@@ -1527,7 +1527,7 @@ MyController = function ( object, domElement ) {
 		} else {
 			mouseOnBall.z = Math.sqrt( 1.0 - length * length );
 		}
-		_eye.copy( _this.object.position ).subSelf( _this.target );
+		_eye.copy( _this.object.position ).sub( _this.target );
 		var projection = _this.object.up.clone().setLength( mouseOnBall.y );
 		projection.addSelf( _this.object.up.clone().crossSelf( _eye ).setLength( mouseOnBall.x ) );
 		projection.addSelf( _eye.setLength( mouseOnBall.z ) );
@@ -1569,7 +1569,7 @@ MyController = function ( object, domElement ) {
 	};
 
 	this.panCamera = function() {
-		var mouseChange = _panEnd.clone().subSelf( _panStart );
+		var mouseChange = _panEnd.clone().sub( _panStart );
 		if ( mouseChange.lengthSq() ) {
 			mouseChange.multiplyScalar( _eye.length() * _this.panSpeed );
 			var pan = _eye.clone().crossSelf( _this.object.up ).setLength( mouseChange.x );
@@ -1590,7 +1590,7 @@ MyController = function ( object, domElement ) {
 				_this.object.position.setLength( _this.maxDistance );
 			}
 			if ( _eye.lengthSq() < _this.minDistance * _this.minDistance ) {
-				_this.object.position.add( _this.target, _eye.setLength( _this.minDistance ) );
+				_this.object.position.addVectors( _this.target, _eye.setLength( _this.minDistance ) );
 			}
 		}
 	};
@@ -1704,7 +1704,7 @@ MyController = function ( object, domElement ) {
 			// PICKING //
 			var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
 			projector.unprojectVector( vector, camera );
-			var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
+			var ray = new THREE.Ray( camera.position, vector.sub( camera.position ).normalize() );
 
 			// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
 			// it will not traverse the children, that is why it fails on THREE.LOD.
@@ -1886,7 +1886,7 @@ MyController = function ( object, domElement ) {
 		// please note that the amount is NOT degrees, but a scale value
 		xTemp.set( this.object.matrix.n11, this.object.matrix.n21, this.object.matrix.n31 );
 		xTemp.multiplyScalar( amount );
-		this.forward.subSelf( xTemp );
+		this.forward.sub( xTemp );
 		this.forward.normalize();
 	};
 
@@ -2132,23 +2132,29 @@ function animate() {
 
 
 ///////////////////// init and run ///////////////////
+var ws;
+function create_websocket() {
+	ws = new Websock(); 	// from the websockify API
 
+	ws.on('message', on_message);
 
-ws.on('message', on_message);
+	function on_open(e) {
+		console.log(">> WebSockets.onopen");
+		FX['film'].uniforms['nIntensity'].value = 0.01;
+	}
+	ws.on('open', on_open);
 
-function on_open(e) {
-	console.log(">> WebSockets.onopen");
-	init();
-	FX['film'].uniforms['nIntensity'].value = 0.01;
-	animate();
+	function on_close(e) {
+		console.log(">> WebSockets.onclose");
+		FX['film'].uniforms['nIntensity'].value = 0.8;
+	}
+	ws.on('close', on_close);
+
+	ws.open( 'ws://' + HOST + ':' + HOST_PORT );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
+	console.log('websocket open');
 }
-ws.on('open', on_open);
-
-function on_close(e) {
-	console.log(">> WebSockets.onclose");
-	FX['film'].uniforms['nIntensity'].value = 0.8;
-}
-ws.on('close', on_close);
 
 
-
+init();
+//animate();
+//create_websocket();

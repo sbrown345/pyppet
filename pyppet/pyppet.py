@@ -4464,7 +4464,7 @@ class App( PyppetUI ):
 			now = time.time()
 			dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
-			print('FPS', dt)
+			#print('FPS', dt)
 
 			self.update_blender_and_gtk()
 
@@ -5358,7 +5358,7 @@ if __name__ == '__main__':
 	#################################
 
 
-	if '--debug' in sys.argv or True:
+	if '--debug' in sys.argv:
 		win = Pyppet.debug_create_ui()
 		Pyppet.setup_3dsmax( win.get_clipboard() )
 		Pyppet.debug_mainloop()

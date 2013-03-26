@@ -3,7 +3,8 @@
 # it is required that chrome is run first from this shell script - allows proper port shutdown #
 #killall chromium-browser
 #chromium-browser &
-killall firefox
+
+#killall firefox
 #firefox -new-instance -new-window http://localhost:8080 &
 
 
