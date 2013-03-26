@@ -242,8 +242,8 @@ function on_message(e) {
 		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
 	);
 
-	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
-	ws.flush();
+	//ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
+	//ws.flush();
 
 }
 
@@ -775,6 +775,7 @@ function on_collada_ready( collada ) {
 		Objects[ lod.name ] = lod;
 		scene.add( lod );
 
+/*
 		setTimeout( function () {
 			var loader = new THREE.ColladaLoader();
 			loader.options.convertUpAxis = true;
@@ -784,6 +785,7 @@ function on_collada_ready( collada ) {
 				on_collada_ready
 			);	
 		}, 10000 );
+*/
 	}
 }
 
@@ -891,6 +893,7 @@ function create_normal_shader( params ) {
 	var shader = THREE.ShaderUtils.lib[ "normal" ];
 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
+/*
 	uniforms[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture(
 		prefix+name+'.jpg?TEXTURE|'+diffuse_size, undefined, callback
 	);
@@ -900,6 +903,9 @@ function create_normal_shader( params ) {
 	if (AO) {
 		uniforms[ "tAO" ].texture = THREE.ImageUtils.loadTexture( prefix+name+'.jpg?AO|'+ao_size, undefined, callback );
 	}
+
+*/
+
 	//uniforms[ "tSpecular" ].texture = THREE.ImageUtils.loadTexture( '/bake/'+name+'.jpg?SPEC_INTENSITY|64', undefined, callback );
 
 	uniforms[ "uNormalScale" ].value = 0.8;
@@ -2127,13 +2133,14 @@ function animate() {
 
 ///////////////////// init and run ///////////////////
 
-init();
 
 ws.on('message', on_message);
 
 function on_open(e) {
-	FX['film'].uniforms['nIntensity'].value = 0.01;
 	console.log(">> WebSockets.onopen");
+	init();
+	FX['film'].uniforms['nIntensity'].value = 0.01;
+	animate();
 }
 ws.on('open', on_open);
 
@@ -2144,5 +2151,4 @@ function on_close(e) {
 ws.on('close', on_close);
 
 
-animate();
 

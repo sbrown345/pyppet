@@ -575,6 +575,7 @@ class Player( object ):
 			if ob.type=='MESH' and not ob.data.uv_textures:
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
+			if ob.hide: continue
 
 			if ob not in wobjects: api_gen.wrap_object( ob )
 
@@ -1121,7 +1122,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 	_bps_start = None
 	_bps = 0
 
-	def update( self, context, timeout=0.1 ):	# called from main thread
+	def update( self, context, timeout=0.01 ):	# called from main thread
 		if self.__accepting is True: return
 
 
@@ -1169,7 +1170,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 				#rawbytes = bytes([0]) + struct.pack('<f', 1.0)
 				rawbytes = bytes([0]) + struct.pack('<h', int(0.3333*32768.0))
 
-			print( rawbytes )
+			#print( rawbytes )
 			cqueue = [ rawbytes ]
 
 			self._bps += len( rawbytes )
@@ -1507,20 +1508,22 @@ class WebServer( object ):
 			print( 'PATH', path, arg)
 			uid = path.split('/')[-1][ :-4 ]	# strip ".jpg"
 			ob = get_object_by_UID( uid )
+			data = bytes(1)
 
-			data = None
-			if path.startswith('/bake/LOD/'):
-				for child in ob.children:
-					if child.is_lod_proxy:
-						data = ExternalAPI.bake_image(  ## External API ##
-							child, 
-							*arg.split('|'),
-							extra_objects=[ob]
-						)
-						break
+			if False:
+				data = None
+				if path.startswith('/bake/LOD/'):
+					for child in ob.children:
+						if child.is_lod_proxy:
+							data = ExternalAPI.bake_image(  ## External API ##
+								child, 
+								*arg.split('|'),
+								extra_objects=[ob]
+							)
+							break
 
-			if not data:	# fallback for meshes that are already low resolution without a proxy
-				data = ExternalAPI.bake_image( ob, *arg.split('|') )  ## External API ##
+				if not data:	# fallback for meshes that are already low resolution without a proxy
+					data = ExternalAPI.bake_image( ob, *arg.split('|') )  ## External API ##
 
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]
@@ -1531,34 +1534,6 @@ class WebServer( object ):
 			start_response('200 OK', [('Content-Length',str(len(data)))])
 			return [ data ]
 
-
-		elif path.startswith('/RPC/'): ## DEPRECATED ##
-			## tiny remote procedure call API
-			if path.startswith('/RPC/player/'):
-				pos = [float(a) for a in path.split('/')[-1].split(',')]
-
-				if client not in GameManager.clients:
-					print('new player', pos)
-					## hook point for backends to connect auth server
-					GameManager.add_player( client )
-
-				player = GameManager.clients[ client ]
-				player.set_location( pos )
-
-				start_response('200 OK', [('Content-Length','0')])
-				return []
-
-			elif path.startswith('/RPC/select/'):
-				if bpy.context.mode == 'OBJECT':
-					uid = path.split('/')[-1]
-					print('RPC', uid)
-					for ob in bpy.context.scene.objects: ob.select=False
-					ob = get_object_by_UID( uid )
-					ob.select = True
-					bpy.context.scene.objects.active = ob
-
-				start_response('200 OK', [('Content-Length','0')])
-				return []
 
 		else:
 			print( 'SERVER ERROR: invalid path', path )

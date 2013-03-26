@@ -77,6 +77,7 @@ import Kinect
 import Wiimote
 import Blender
 import Physics
+import Server
 
 import icons
 
@@ -4460,6 +4461,11 @@ class App( PyppetUI ):
 
 	def debug_mainloop(self):
 		while self.active:
+			now = time.time()
+			dt = 1.0 / ( now - self._mainloop_prev_time )
+			self._mainloop_prev_time = now
+			print('FPS', dt)
+
 			self.update_blender_and_gtk()
 
 			if not self._image_editor_handle:
@@ -4537,7 +4543,7 @@ class App( PyppetUI ):
 				# if ImageEditor is now shown, still need to update the server.
 				self.server.update( self.context )
 
-			self.websocket_server.update( self.context )
+			#self.websocket_server.update( self.context )
 
 
 			if drop_frame: continue

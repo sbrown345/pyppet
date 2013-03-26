@@ -167,9 +167,9 @@ class BlenderHack( object ):
 	def sync_context(self, region):
 		self.context = BlenderContextCopy( bpy.context )  ## this state might not be fully thread safe?
 		## TODO store region types, and order
-		#if self.websocket_server:  # this is slower
-		#	print('sync websocket_server from blender redraw..............')
-		#	self.websocket_server.update( bpy.context )
+		if self.websocket_server and not self.__websocket_updated:  # this is slower or faster?
+			self.__websocket_updated = True
+			self.websocket_server.update( bpy.context )
 
 		if self.__use_3dsmax and self._3dsmax and self._clipboard: self._3dsmax.update( self._clipboard )
 		if self.__use_gtk and not self._gtk_updated:
@@ -185,6 +185,8 @@ class BlenderHack( object ):
 	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False):
 		self.__use_gtk = use_gtk
 		self.__use_3dsmax = use_3dsmax
+		self.__websocket_updated = False
+
 		self._clipboard = None
 		if use_3dsmax:
 			import Server # TODO move Remote3dsMax its own module.
@@ -220,6 +222,7 @@ class BlenderHack( object ):
 		after Blender.iterate(C) is called return self.__blender_redraw so the app-level can know if those call backs happen.
 		'''
 		self.__blender_redraw = False
+		self.__websocket_updated = False
 
 		## force redraw in VIEW_3D ##
 		screen = bpy.data.screens[ self.default_blender_screen ]
@@ -364,11 +367,11 @@ class BlenderHack( object ):
 
 			## 128 color PNG can beat JPG by half ##
 			if type == 'DISPLACEMENT':
-				os.system( 'convert %s.png -quality 75 -gamma 0.36 %s.jpg' %(path,path) )
-				os.system( 'convert %s.png -colors 128 -gamma 0.36 %s.png' %(path,path) )
+				os.system( 'convert "%s.png" -quality 75 -gamma 0.36 "%s.jpg"' %(path,path) )
+				os.system( 'convert "%s.png" -colors 128 -gamma 0.36 "%s.png"' %(path,path) )
 			else:
-				os.system( 'convert %s.png -quality 75 %s.jpg' %(path,path) )
-				os.system( 'convert %s.png -colors 128 %s.png' %(path,path) )
+				os.system( 'convert "%s.png" -quality 75 "%s.jpg"' %(path,path) )
+				os.system( 'convert "%s.png" -colors 128 "%s.png"' %(path,path) )
 
 		## blender saves png's with high compressision level
 		## for simple textures, the PNG may infact be smaller than the jpeg
