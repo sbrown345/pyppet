@@ -645,10 +645,14 @@ Sec-WebSocket-Accept: %s\r
         elif wsh.last_code < 200 or wsh.last_code >= 300:
             print('error <200 or >=300')
             raise self.EClose(wsh.last_message)
+        else:
+            return None
         #elif self.verbose:
         #    raise self.EClose(wsh.last_message)
         #else:
         #    raise self.EClose(wsh.last_message)
+
+        assert wsh.last_code == 101
 
         h = self.headers = wsh.headers
         path = self.path = wsh.path
@@ -770,6 +774,7 @@ Sec-WebSocket-Accept: %s\r
         self.start_time = int(time.time()*1000)
 
         # handler process
+        self._ws_connection = False
         #try: ## this try can be enabled to except EClose, EClose is failures the websockify api allows.
         self.client = self.do_handshake(startsock, address)  ## do_handshake will also answer a http request.
         #except self.EClose: ## TODO enable me on releases.
@@ -778,7 +783,7 @@ Sec-WebSocket-Accept: %s\r
             print('<<new websocket connection>>', self.client)
             self.ws_connection = True
             self.new_client()
-        elif self.client != startsock:
+        elif self.client and self.client != startsock:
             self.client.close() # close normal http request
         else:
             print('topping listener',self.client)

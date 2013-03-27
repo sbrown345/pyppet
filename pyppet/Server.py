@@ -457,6 +457,7 @@ class Player( object ):
 		'''
 		Player.ID += 1
 		self.uid = Player.ID
+		self.last_update = time.time()  # this is used to limit the rate the client websocket is updated
 
 		self.address = addr
 		self.websocket = websocket
@@ -937,7 +938,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		path = urllib.parse.unquote(self.path)
 		print('do_get_custom', path)
 		fpath = os.path.join( SCRIPT_DIR, path[1:] )
-		print(fpath)
+		print(path)
 
 		content_length = None # dynamic requests need to set this length
 		content_type = None
@@ -946,7 +947,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		if path=='/favicon.ico': content_length = 0
 
 		elif path in ('/', 'index', 'index.html'):
-			data = generate_html_header( websocket_port=8080 )
+			data = generate_html_header( websocket_port=8080 ).encode('utf-8')
 			content_type = 'text/html; charset=utf-8'
 
 		elif path.startswith('/javascripts/'):
@@ -967,12 +968,16 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 
 
 		if data: content_length = len( data )
-		self.send_head( content_length=content_length, content_type=content_type,require_path=not dynamic )
+		self.send_head( 
+			content_length=content_length, 
+			content_type=content_type,
+			require_path=not dynamic 
+		)
 		## it is now safe to write data ##
 		if data:
 			self.wfile.write(data)
-			self.wfile.flush() # maybe not required, but its ok to flush twice.
-
+			#self.wfile.flush() # maybe not required, but its ok to flush twice.
+		print('web request complete')
 
 def generate_html_header(title='webgl', external_three=False, websocket_port=8081 ):
 	h = [
@@ -1002,11 +1007,11 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 		'shaders/FilmShader.js',
 
 		'loaders/ColladaLoader.js',
-		'modifiers/SubdivisionModifier.js',
+		'modifiers/SubdivisionModifier.js', # note there are new modifiers in three, explode and triangulate.
 		'ShaderExtras.js',
 		'MarchingCubes.js',
 		'ShaderGodRays.js',
-		'Curve.js',
+		'Curve.js', # is Curve.js deprecated? this was not updated with new Three.js merge.
 		'geometries/TubeGeometry.js',
 
 		'postprocessing/EffectComposer.js',
@@ -1088,7 +1093,11 @@ class WebSocketServer( websockify.WebSocketServer ):
 
 	def start(self):
 		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
+
+		######################### simple action api ####################
 		simple_action_api.create_callback_api()
+		################################################################
+
 		self._start_threaded()
 		#try:
 		#	sock = self.socket(self.listen_host, self.listen_port)
@@ -1117,8 +1126,10 @@ class WebSocketServer( websockify.WebSocketServer ):
 			ready = select.select([self.listen_socket], [], [], 0.5)[0]
 			self.__accepting = True
 			for sock in ready:
+				print('main listener',sock)
 				startsock, address = sock.accept()
 				self.top_new_client(startsock, address)	# sets.client and calls new_client()
+				print('main listener topped')
 			self.__accepting = False
 
 		print('[websocket] debug thread exit')
@@ -1145,6 +1156,12 @@ class WebSocketServer( websockify.WebSocketServer ):
 	_bps = 0
 
 	def update( self, context, timeout=0.01 ):	# called from main thread
+		'''
+		Make sure not to flood client with too much websocket data, data should only be sent
+		at about 20-30 frames per second, higher frame rates can cause the client to stop rendering.
+		Firefox 18.0 will entirely lock up when flooded with websocket data.
+		note: the player.last_update variable is used to limit frame rate.
+		'''
 		if self.__accepting is True: return
 
 
@@ -1162,11 +1179,12 @@ class WebSocketServer( websockify.WebSocketServer ):
 		ins, outs, excepts = select.select(rlist, wlist, [], timeout)
 		if excepts: raise Exception("[websocket] Socket exception")
 
-
 		if not outs and players:
 			print('[websocket] no clients ready to read....')
-			#raise SystemExit  ## need at least a timeout of 0.1
+			raise SystemExit  ## need at least a timeout of 0.1
 
+
+		now = time.time()
 
 		for sock in outs:
 			if sock is self.listen_socket:
@@ -1175,7 +1193,13 @@ class WebSocketServer( websockify.WebSocketServer ):
 				#self.top_new_client(startsock, address)	# sets.client and calls new_client()
 				continue
 
+			####################################################
+			## do not flood client with data on the websocket
 			player = players[ rlist.index(sock) ]
+			if now - player.last_update < 0.1: continue
+			player.last_update = now
+			####################################################
+
 			if True:
 				msg = player.create_message_stream( context )
 				rawbytes = json.dumps( msg ).encode('utf-8')
@@ -1196,9 +1220,9 @@ class WebSocketServer( websockify.WebSocketServer ):
 			cqueue = [ rawbytes ]
 
 			self._bps += len( rawbytes )
-			now = time.time()
 			if self._bps_start is None or now-self._bps_start > 1.0:
-				#print('kilobytes per second', self._bps/1024)
+				if '--kbps' in sys.argv:
+					print('kilobytes per second', self._bps/1024)
 				self._bps_start = now
 				self._bps = 0
 				## monkey uncompressed head about 520KB per second ##

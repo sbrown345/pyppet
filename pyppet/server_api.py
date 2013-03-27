@@ -58,6 +58,7 @@ class App( core.BlenderHack ):
 
 	def mainloop(self):
 		print('enter main')
+		import random
 		drops = 0
 		self._mainloop_prev_time = time.time()
 		self.active = True
@@ -67,6 +68,8 @@ class App( core.BlenderHack ):
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
 
+			#fully_updated = False
+			#if random.random() > 0.5:
 			fully_updated = self.update_blender()
 
 			#if ENGINE and ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
@@ -84,8 +87,7 @@ class App( core.BlenderHack ):
 				#self.server.update( self.context )
 				pass
 
-			self.websocket_server.update( self.context )
-			#time.sleep(0.1)
+			self.websocket_server.update( self.context, timeout=0.03 )
 
 if __name__ == '__main__':
 	app = App()

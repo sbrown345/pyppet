@@ -227,23 +227,7 @@ function int32_to_bytes(x) {
 var PreviousMessage = null;
 
 
-function on_message(e) {
-	// check first byte, if null then read following binary data //
-	var length = ws.rQlen();
-	if (ws.rQpeek8() == 0) { //String.fromCharCode(0)) {
-		on_binary_message( ws.rQshiftBytes().slice(1,length) );
-	} else {
-		on_json_message(   ws.rQshiftStr() );
-	}
-	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
-	arr = arr.concat(
-		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
-	);
 
-	//ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
-	//ws.flush();
-
-}
 
 
 function on_binary_message( bytes ) {
@@ -2125,7 +2109,7 @@ function animate() {
 		}
 	}
 
-	requestAnimationFrame( animate );
+	//requestAnimationFrame( animate );  // buggy?
 	if (DEBUG==true) { render_debug(); }
 	else { render(); }
 }
@@ -2133,6 +2117,25 @@ function animate() {
 
 ///////////////////// init and run ///////////////////
 var ws;
+
+function on_message(e) {
+	// check first byte, if null then read following binary data //
+	var length = ws.rQlen();
+	if (ws.rQpeek8() == 0) { //String.fromCharCode(0)) {
+		on_binary_message( ws.rQshiftBytes().slice(1,length) );
+	} else {
+		on_json_message(   ws.rQshiftStr() );
+	}
+	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
+	arr = arr.concat(
+		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
+	);
+
+	//ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
+	//ws.flush();
+	//animate(); // too slow to redraw here
+}
+
 function create_websocket() {
 	ws = new Websock(); 	// from the websockify API
 
@@ -2150,11 +2153,14 @@ function create_websocket() {
 	}
 	ws.on('close', on_close);
 
-	ws.open( 'ws://' + HOST + ':' + HOST_PORT );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
-	console.log('websocket open');
+	var a = 'ws://' + HOST + ':' + HOST_PORT;
+	console.log('connecting to:'+a);
+	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
+	console.log('websocket open OK');
+	window.setInterval( animate, 100 );
 }
 
 
 init();
 //animate();
-//create_websocket();
+create_websocket();

@@ -4465,15 +4465,9 @@ class App( PyppetUI ):
 			dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
-
 			self.update_blender_and_gtk()
-
-			if not self._image_editor_handle:
-				# ImageEditor redraw callback will update http-server,
-				# if ImageEditor is now shown, still need to update the server.
-				self.server.update( self.context )
-
-			self.websocket_server.update( self.context )
+			self.websocket_server.update( self.context, timeout=0.3 )
+			if not self._image_editor_handle: self.server.update( self.context )
 
 	def mainloop(self):
 		print('enter main')
@@ -4504,8 +4498,18 @@ class App( PyppetUI ):
 			else:
 				self.update_blender_and_gtk()
 
-			now = now - self._rec_start_time
+			############# update servers ##############
+			self.websocket_server.update( self.context )
+			if not self._image_editor_handle: # TODO replace this hack... could return no bytes (if not cached), and then client requests again after timeout.
+				# ImageEditor redraw callback will update http-server,
+				# if ImageEditor is now shown, still need to update the server.
+				self.server.update( self.context )
+			############################################
 
+
+
+			################################
+			now = now - self._rec_start_time
 			if self.wave_playing and self.wave_speaker:
 				self.wave_speaker.update()
 				#print('wave time', self.wave_speaker.seconds)
@@ -4538,13 +4542,8 @@ class App( PyppetUI ):
 						buff = M[ block ]
 						buff.append( (now, block.value) )
 
-			if not self._image_editor_handle:
-				# ImageEditor redraw callback will update http-server,
-				# if ImageEditor is now shown, still need to update the server.
-				self.server.update( self.context )
 
-			#self.websocket_server.update( self.context )
-
+			#######################
 
 			if drop_frame: continue
 
