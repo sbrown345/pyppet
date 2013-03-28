@@ -2109,9 +2109,11 @@ function animate() {
 		}
 	}
 
-	//requestAnimationFrame( animate );  // buggy?
 	if (DEBUG==true) { render_debug(); }
 	else { render(); }
+
+	//requestAnimationFrame( animate );  // buggy?
+
 }
 
 
@@ -2133,7 +2135,10 @@ function on_message(e) {
 
 	//ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
 	//ws.flush();
-	//animate(); // too slow to redraw here
+
+	// make rendering in sync with websocket stream
+	animate();
+
 }
 
 function create_websocket() {
@@ -2157,7 +2162,8 @@ function create_websocket() {
 	console.log('connecting to:'+a);
 	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 	console.log('websocket open OK');
-	window.setInterval( animate, 200 );
+	//window.setInterval( animate, 200 );
+
 }
 
 

@@ -87,6 +87,7 @@ class App( core.BlenderHack ):
 				pass
 
 			self.websocket_server.update( self.context, timeout=0.03 )
+			time.sleep(0.01)
 
 if __name__ == '__main__':
 	app = App()

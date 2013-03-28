@@ -976,7 +976,7 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		## it is now safe to write data ##
 		if data:
 			self.wfile.write(data)
-			#self.wfile.flush() # maybe not required, but its ok to flush twice.
+			self.wfile.flush() # maybe not required, but its ok to flush twice.
 		print('web request complete')
 
 def generate_html_header(title='webgl', external_three=False, websocket_port=8081 ):
@@ -1196,7 +1196,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 			####################################################
 			## do not flood client with data on the websocket
 			player = players[ rlist.index(sock) ]
-			if now - player.last_update < 0.1: continue
+			if now - player.last_update < 0.09: continue
 			player.last_update = now
 			####################################################
 
