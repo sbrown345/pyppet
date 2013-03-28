@@ -841,7 +841,7 @@ class Player( object ):
 ##################################################
 class GameManager( object ):
 	RELOAD_TEXTURES = []
-	clients = {}	# ip : camera/player location
+	clients = {}	# (ip,port) : player object
 	action_api = simple_action_api
 	@classmethod
 	def add_player( self, addr, websocket=None ):
@@ -854,6 +854,12 @@ class GameManager( object ):
 	def get_player_by_id(self, uid):
 		for player in self.clients.values():
 			if player.uid == uid: return player
+
+	@classmethod
+	def get_player_by_socket(self, sock ):
+		for p in self.clients.values():
+			if p.websocket is sock: return p
+
 
 ###### required by api_gen ########
 api_gen.register_type( api_gen.UserProxy, GameManager.get_player_by_id )
@@ -936,9 +942,10 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		here we reimplement what SimpleHTTPRequestHandler is doing in its do_GET, self.send_head also needs to be customized.
 		'''
 		path = urllib.parse.unquote(self.path)
+		arg = None
+		if '?' in path: path, arg = path.split('?')
 		print('do_get_custom', path)
 		fpath = os.path.join( SCRIPT_DIR, path[1:] )
-		print(path)
 
 		content_length = None # dynamic requests need to set this length
 		content_type = None
@@ -963,7 +970,12 @@ class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
 		elif path.startswith('/objects/'):
 			assert path.endswith('.dae')  ## TODO deprecate collada
 			content_type = 'text/xml; charset=utf-8'
-
+			name = path.split('/')[-1]
+			print('[webserver] dump collada request', name)
+			uid = name[ : -4 ]
+			ob = get_object_by_UID( uid )
+			data = dump_collada( ob, center=arg=='hires' )
+			print(data)
 		else: print('warn: unknown request url', path)
 
 
@@ -1114,7 +1126,11 @@ class WebSocketServer( websockify.WebSocketServer ):
 		self.active = True
 		self.listen_socket = sock
 		#print('--starting websocket server thread--')
-		threading._start_new_thread( self.new_client_listener_thread, ())
+		#threading._start_new_thread( self.new_client_listener_thread, ())
+
+	def _update_loop(self):
+		while self.active:
+			self.update()
 
 
 	__accepting = True
@@ -1131,6 +1147,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 				self.top_new_client(startsock, address)	# sets.client and calls new_client()
 				print('main listener topped')
 			self.__accepting = False
+			print('listening...')
 
 		print('[websocket] debug thread exit')
 		#lsock.close()
@@ -1155,19 +1172,21 @@ class WebSocketServer( websockify.WebSocketServer ):
 	_bps_start = None
 	_bps = 0
 
-	def update( self, context, timeout=0.01 ):	# called from main thread
+	def update( self, context=None, timeout=0.01 ):	# called from main thread
 		'''
 		Make sure not to flood client with too much websocket data, data should only be sent
 		at about 20-30 frames per second, higher frame rates can cause the client to stop rendering.
 		Firefox 18.0 will entirely lock up when flooded with websocket data.
 		note: the player.last_update variable is used to limit frame rate.
 		'''
-		if self.__accepting is True: return
+		#if self.__accepting is True:
+		#	print('update is blocked!!!!!!!!!!!!!!!!!!!')
+		#	return
 
 
 		#if not GameManager.clients: return
 		players = []
-		rlist = []# self.listen_socket ]
+		rlist = [ self.listen_socket ]
 		wlist = []
 		for player in GameManager.clients.values():
 			if player.websocket:
@@ -1183,29 +1202,37 @@ class WebSocketServer( websockify.WebSocketServer ):
 			print('[websocket] no clients ready to read....')
 			raise SystemExit  ## need at least a timeout of 0.1
 
+		if self.listen_socket in ins:
+			print('listening')
+		else:
+			print('not listening')
 
 		now = time.time()
 
 		for sock in outs:
 			if sock is self.listen_socket:
-				#print('starting new connection')
-				#startsock, address = sock.accept()
-				#self.top_new_client(startsock, address)	# sets.client and calls new_client()
+				print('not supposed to happen')
 				continue
 
+
+			if sock not in ins: pass #print('sock in ins')
+			else: print('shit')
+
+
 			####################################################
-			## do not flood client with data on the websocket
-			player = players[ rlist.index(sock) ]
+			## do not flood client with data on the websocket			
+			#player = players[ rlist.index(sock) ]
+			player = GameManager.get_player_by_socket( sock )
 			if now - player.last_update < 0.09: continue
 			player.last_update = now
 			####################################################
 
 			if True:
-				msg = player.create_message_stream( context )
+				msg = player.create_message_stream( bpy.context )
 				rawbytes = json.dumps( msg ).encode('utf-8')
 
 			elif False:
-				msg = player.create_stream_message( context )
+				msg = player.create_stream_message( bpy.context )
 				#print(msg)
 				for fx in  self.webGL.effects:  ## TODO move to player class
 					msg['FX'][fx.name]= ( fx.enabled, fx.get_uniforms() )
@@ -1216,7 +1243,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 				#rawbytes = bytes([0]) + struct.pack('<f', 1.0)
 				rawbytes = bytes([0]) + struct.pack('<h', int(0.3333*32768.0))
 
-			#print( rawbytes )
+			print('streaming rawbytes',len(rawbytes))
 			cqueue = [ rawbytes ]
 
 			self._bps += len( rawbytes )
@@ -1240,14 +1267,27 @@ class WebSocketServer( websockify.WebSocketServer ):
 			self.client = None
 
 		for sock in ins:
-			#if sock is self.listen_socket: continue
-			player = players[ rlist.index(sock) ]
-			#ip,port = sock.getsockname()
-			try:
-				addr = sock.getpeername()
-			except OSError:
-				print('[websocket ERROR] can not get peer name.')
+			if sock is self.listen_socket:
+				print('starting new connection')
+				startsock, address = sock.accept()
+				self.top_new_client(startsock, address)	# sets.client and calls new_client()
 				continue
+
+
+
+			#if sock is self.listen_socket: continue
+			#if sock not in outs: continue # testing
+			#player = players[ rlist.index(sock) ]
+			player = GameManager.get_player_by_socket( sock )
+			if not player: continue
+			#ip,port = sock.getsockname()
+			#try:
+			#	addr = sock.getpeername()
+			#except OSError:
+			#	print('[websocket ERROR] can not get peer name.')
+			#	raise SystemExit
+			#	continue
+			addr = player.address
 
 			self.client = sock
 			frames, closed = self.recv_frames()
@@ -1261,6 +1301,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 				self.client = None
 
 			elif frames:
+				print('got frames from client', len(frames))
 				for frame in frames:
 					if not frame: continue
 					if frame[0] == 0:
@@ -1270,6 +1311,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 							continue
 
 						x1,y1,z1, x2,y2,z2 = struct.unpack('<ffffff', frame)
+						print(x1,y1,z1)
 						if addr in GameManager.clients:
 							player = GameManager.clients[ addr ]
 							player.set_location( (x1,y1,z1) )

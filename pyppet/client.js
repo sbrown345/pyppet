@@ -252,15 +252,19 @@ function on_json_message( data ) {
 	for (var name in msg['meshes']) {
 
 		if (name in Objects == false) {
-			console.log( '>> loading new collada' );
+			console.log( '>> found new collada' );
 			Objects[ name ] = null;
-			var loader = new THREE.ColladaLoader();
-			loader.options.convertUpAxis = true;
-			//loader.options.centerGeometry = true;
-			loader.load(
-				'/objects/'+name+'.dae', 
-				on_collada_ready
-			);
+			var collada_path = '/objects/'+name+'.dae';
+			setTimeout( function () {
+				console.log( '>> loading new collada' );
+				var loader = new THREE.ColladaLoader();
+				loader.options.convertUpAxis = true;
+				//loader.options.centerGeometry = true; // hires has this on.
+				loader.load(
+					collada_path, 
+					on_collada_ready
+				);	
+			}, 2000 );
 
 		}
 
@@ -2155,6 +2159,7 @@ function create_websocket() {
 	function on_close(e) {
 		console.log(">> WebSockets.onclose");
 		FX['film'].uniforms['nIntensity'].value = 0.8;
+		window.setInterval( animate, 200 ); // keep redrawing after close
 	}
 	ws.on('close', on_close);
 
@@ -2162,7 +2167,6 @@ function create_websocket() {
 	console.log('connecting to:'+a);
 	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 	console.log('websocket open OK');
-	//window.setInterval( animate, 200 );
 
 }
 
