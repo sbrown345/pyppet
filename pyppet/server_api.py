@@ -47,18 +47,19 @@ class UserServer( Server.WebSocketServer ):
 
 class App( core.BlenderHack ):
 	def __init__(self):
-		assert self.setup_blender_hack( bpy.context, use_gtk=False )
+		print('init server app')
+		self.setup_blender_hack( bpy.context, use_gtk=False, headless=True )
+		print('blender hack setup ok')
 		Server.set_api( self )
+		print('custom api set')
 
 	def start_server(self):
 		#self.server = Server.WebServer()
 		self.websocket_server = UserServer( listen_host=Server.HOST_NAME, listen_port=8080 )
 		self.websocket_server.start()	# polls in a thread
 
-
 	def mainloop(self):
 		print('enter main')
-		import random
 		drops = 0
 		self._mainloop_prev_time = time.time()
 		self.active = True
@@ -68,8 +69,6 @@ class App( core.BlenderHack ):
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
 
-			#fully_updated = False
-			#if random.random() > 0.5:
 			fully_updated = self.update_blender()
 
 			#if ENGINE and ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )

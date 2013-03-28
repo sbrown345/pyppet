@@ -189,10 +189,11 @@ class BlenderHack( object ):
 			self.lock.release()
 		self.__blender_redraw = True
 
-	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False):
+	def setup_blender_hack(self, context, use_gtk=True, use_3dsmax=False, headless=False):
 		self.__use_gtk = use_gtk
 		self.__use_3dsmax = use_3dsmax
 		self.__websocket_updated = False
+		self.headless = headless
 
 		self._clipboard = None
 		if use_3dsmax:
@@ -210,15 +211,16 @@ class BlenderHack( object ):
 		self.context = BlenderContextCopy( context )
 
 		self._sync_hack_handles = {}	# region : handle
-		for area in context.screen.areas:
-			if area.type == 'IMAGE_EDITOR': continue	# always checks for in update_blender_and_gtk
-			#if area.type == 'VIEW_3D':
-			for reg in area.regions:
-				if reg.type == 'WINDOW':
-					## only POST_PIXEL is thread-safe and drag'n'drop safe
-					## (maybe not!?) ##
-					handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
-					self._sync_hack_handles[ reg ] = handle
+		if not headless:
+			for area in context.screen.areas:
+				if area.type == 'IMAGE_EDITOR': continue	# always checks for in update_blender_and_gtk
+				#if area.type == 'VIEW_3D':
+				for reg in area.regions:
+					if reg.type == 'WINDOW':
+						## only POST_PIXEL is thread-safe and drag'n'drop safe
+						## (maybe not!?) ##
+						handle = reg.callback_add( self.sync_context, (reg,), 'POST_PIXEL' )
+						self._sync_hack_handles[ reg ] = handle
 		return self._sync_hack_handles
 
 	_image_editor_handle = None
@@ -262,8 +264,14 @@ class BlenderHack( object ):
 							break
 
 	def update_blender( self, draw=True ):
-		self.force_blender_redraw()
-		Blender.iterate( self.evil_C, draw=draw)
+		'''
+		note: when Blender is in headless mode these things can cause it to segfault crash:
+		  . reg.callback_add
+		  . Blender.iterate
+		'''
+		if not self.headless:
+			self.force_blender_redraw()
+			Blender.iterate( self.evil_C, draw=not self.headless)
 		return self.__blender_redraw
 
 	def update_blender_and_gtk( self, drop_frame=False ):

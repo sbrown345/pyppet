@@ -2157,7 +2157,7 @@ function create_websocket() {
 	console.log('connecting to:'+a);
 	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 	console.log('websocket open OK');
-	window.setInterval( animate, 100 );
+	window.setInterval( animate, 200 );
 }
 
 
