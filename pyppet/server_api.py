@@ -2,7 +2,7 @@
 # Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 
-import os, sys, ctypes, time
+import os, sys, ctypes, time, random
 import bpy
 
 ## make sure we can import and load data from same directory ##
@@ -39,9 +39,9 @@ API = {
 simple_action_api.create_callback_api( API )
 
 class UserServer( Server.WebSocketServer ):
-	def start(self):
+	def start(self, use_threading=True ):
 		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
-		self._start_threaded()
+		self._start_threaded( use_threading=use_threading )
 		return True
 
 
@@ -53,10 +53,11 @@ class App( core.BlenderHack ):
 		Server.set_api( self )
 		print('custom api set')
 
-	def start_server(self):
+	def start_server(self, use_threading=True):
 		#self.server = Server.WebServer()
+		self._threaded = use_threading
 		self.websocket_server = UserServer( listen_host=Server.HOST_NAME, listen_port=8080 )
-		self.websocket_server.start()	# polls in a thread
+		self.websocket_server.start( use_threading=use_threading )	# polls in a thread
 
 	def mainloop(self):
 		print('enter main')
@@ -68,6 +69,9 @@ class App( core.BlenderHack ):
 			dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
+
+			#for ob in bpy.data.objects:
+			#	ob.location.x = random.uniform(-0.2, 0.2)
 
 			fully_updated = self.update_blender()
 
@@ -86,11 +90,13 @@ class App( core.BlenderHack ):
 				#self.server.update( self.context )
 				pass
 
-			self.websocket_server.update( self.context, timeout=0.03 )
+			if not self._threaded:
+				self.websocket_server.update( self.context, timeout=0.1 )
+
 			time.sleep(0.01)
 
 if __name__ == '__main__':
 	app = App()
-	app.start_server()
+	app.start_server( use_threading=False )
 	print('-----main loop------')
 	app.mainloop()

@@ -3,7 +3,7 @@
 # License: "New" BSD
 
 
-import os, sys, time, struct
+import os, sys, time, struct, multiprocessing
 from base64 import b64encode, b64decode
 
 
@@ -62,7 +62,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-#HOST_NAME = '192.168.0.16'
+#HOST_NAME = '192.168.0.7'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 ## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
@@ -458,7 +458,7 @@ class Player( object ):
 		Player.ID += 1
 		self.uid = Player.ID
 		self.last_update = time.time()  # this is used to limit the rate the client websocket is updated
-
+		self.write_ready = True
 		self.address = addr
 		self.websocket = websocket
 		self._action_api = action_api
@@ -1085,7 +1085,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 	def new_client(self):  ## websockify.py API ##
 		server_addr = self.client.getsockname()
 		addr = self.client.getpeername()
-		print('[websocket] server', server_addr)
+		#print('[websocket] server', server_addr)
 		print('[websocket] client', addr)
 
 		if addr in GameManager.clients:
@@ -1118,7 +1118,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 		#	return False
 		return True
 
-	def _start_threaded(self):
+	def _start_threaded(self, use_threading=True ):
 		self.active = False
 		self.sockets = []  ## there is probably no speed up having mulitple listen sockets
 		sock = self.socket(self.listen_host, self.listen_port)
@@ -1126,12 +1126,18 @@ class WebSocketServer( websockify.WebSocketServer ):
 		self.active = True
 		self.listen_socket = sock
 		#print('--starting websocket server thread--')
-		#threading._start_new_thread( self.new_client_listener_thread, ())
+		self.lock = threading._allocate_lock()
+		self._listen_in_update = use_threading
+		if use_threading: # this will not work bpy.context becomes invalid.
+			threading._start_new_thread( self._update_loop, ())
+		else:
+			threading._start_new_thread( self.new_client_listener_thread, ())
 
-	def _update_loop(self):
+
+	def _update_loop(self): # the listener can not be in the update loop
 		while self.active:
+			print('_update_loop')
 			self.update()
-
 
 	__accepting = True
 	def new_client_listener_thread(self):
@@ -1139,13 +1145,19 @@ class WebSocketServer( websockify.WebSocketServer ):
 		Blender requires the main listener runs in a thread.
 		'''
 		while self.active:
-			ready = select.select([self.listen_socket], [], [], 0.5)[0]
+			ready = select.select([self.listen_socket], [], [], 1000)[0]
 			self.__accepting = True
-			for sock in ready:
-				print('main listener',sock)
-				startsock, address = sock.accept()
-				self.top_new_client(startsock, address)	# sets.client and calls new_client()
-				print('main listener topped')
+			if ready:
+				#self.lock.acquire()
+
+				for sock in ready:
+					print('main listener',sock)
+					startsock, address = sock.accept()
+					self.top_new_client(startsock, address)	# sets.client and calls new_client()
+					print('main listener topped')
+
+				#self.lock.release()
+
 			self.__accepting = False
 			print('listening...')
 
@@ -1186,15 +1198,15 @@ class WebSocketServer( websockify.WebSocketServer ):
 
 		#if not GameManager.clients: return
 		players = []
-		rlist = [ self.listen_socket ]
-		wlist = []
+		rlist = [];	wlist = []
+		if self._listen_in_update: rlist.append( self.listen_socket )
 		for player in GameManager.clients.values():
 			if player.websocket:
 				rlist.append( player.websocket )
 				wlist.append( player.websocket )
 				players.append( player )
 
-		if len(wlist) > 1: print( wlist )
+		#if len(wlist) > 1: print( wlist )
 		ins, outs, excepts = select.select(rlist, wlist, [], timeout)
 		if excepts: raise Exception("[websocket] Socket exception")
 
@@ -1202,10 +1214,11 @@ class WebSocketServer( websockify.WebSocketServer ):
 			print('[websocket] no clients ready to read....')
 			raise SystemExit  ## need at least a timeout of 0.1
 
-		if self.listen_socket in ins:
-			print('listening')
-		else:
-			print('not listening')
+		#if self.listen_socket in ins:
+		#	print('listening')
+		#else:
+		#	print('not listening')
+		self.lock.acquire()
 
 		now = time.time()
 
@@ -1215,16 +1228,14 @@ class WebSocketServer( websockify.WebSocketServer ):
 				continue
 
 
-			if sock not in ins: pass #print('sock in ins')
-			else: print('shit')
-
-
 			####################################################
 			## do not flood client with data on the websocket			
 			#player = players[ rlist.index(sock) ]
 			player = GameManager.get_player_by_socket( sock )
-			if now - player.last_update < 0.09: continue
+			#if not player.write_ready: continue # wait for client to reply before sending again
+			if now - player.last_update < 0.2: continue
 			player.last_update = now
+			player.write_ready = False
 			####################################################
 
 			if True:
@@ -1243,7 +1254,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 				#rawbytes = bytes([0]) + struct.pack('<f', 1.0)
 				rawbytes = bytes([0]) + struct.pack('<h', int(0.3333*32768.0))
 
-			print('streaming rawbytes',len(rawbytes))
+			#print('streaming rawbytes',len(rawbytes))
 			cqueue = [ rawbytes ]
 
 			self._bps += len( rawbytes )
@@ -1256,7 +1267,6 @@ class WebSocketServer( websockify.WebSocketServer ):
 				## monkey head with optimize round(4) is 380KB per second ##
 				## monkey head with optimize round(3) is 350KB per second ##
 
-
 			self.client = sock
 			try:
 				pending = self.send_frames(cqueue)
@@ -1268,9 +1278,21 @@ class WebSocketServer( websockify.WebSocketServer ):
 
 		for sock in ins:
 			if sock is self.listen_socket:
-				print('starting new connection')
+				assert self._listen_in_update
+				print('accept on listen socket')
 				startsock, address = sock.accept()
 				self.top_new_client(startsock, address)	# sets.client and calls new_client()
+
+				#p = multiprocessing.Process(
+				#	target=self.top_new_client,
+				#	args=(startsock, address))
+				#p.start()
+
+				#threading._start_new_thread(
+				#	self.top_new_client,
+				#	(startsock, address)
+				#)
+
 				continue
 
 
@@ -1280,6 +1302,8 @@ class WebSocketServer( websockify.WebSocketServer ):
 			#player = players[ rlist.index(sock) ]
 			player = GameManager.get_player_by_socket( sock )
 			if not player: continue
+
+			if player.write_ready: continue
 			#ip,port = sock.getsockname()
 			#try:
 			#	addr = sock.getpeername()
@@ -1291,6 +1315,8 @@ class WebSocketServer( websockify.WebSocketServer ):
 
 			self.client = sock
 			frames, closed = self.recv_frames()
+			player.write_ready = True
+
 			if closed:
 				print('[websocket] CLOSING CLIENT')
 				try:
@@ -1338,6 +1364,7 @@ class WebSocketServer( websockify.WebSocketServer ):
 
 			self.client = None
 
+		self.lock.release()
 
 
 

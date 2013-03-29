@@ -255,16 +255,16 @@ function on_json_message( data ) {
 			console.log( '>> found new collada' );
 			Objects[ name ] = null;
 			var collada_path = '/objects/'+name+'.dae';
-			setTimeout( function () {
-				console.log( '>> loading new collada' );
-				var loader = new THREE.ColladaLoader();
-				loader.options.convertUpAxis = true;
-				//loader.options.centerGeometry = true; // hires has this on.
-				loader.load(
-					collada_path, 
-					on_collada_ready
-				);	
-			}, 2000 );
+			//setTimeout( function () {
+			//	console.log( '>> loading new collada' );
+			//	var loader = new THREE.ColladaLoader();
+			//	loader.options.convertUpAxis = true;
+			//	//loader.options.centerGeometry = true; // hires has this on.
+			//	loader.load(
+			//		collada_path, 
+			//		on_collada_ready
+			//	);	
+			//}, 10000 );
 
 		}
 
@@ -855,8 +855,12 @@ function request_progressive_texture() {
 }
 
 
-//function create_normal_shader( name, displacement, AO, callback, prefix ) {
 function create_normal_shader( params ) {
+	return new THREE.MeshBasicMaterial( { color: 0x000000, shading: THREE.FlatShading } );
+}
+
+
+function create_normal_shader_deprecated( params ) {
 	var name = params.name;
 	var displacement = params.displacement;
 	var AO = params.ao;
@@ -2021,7 +2025,9 @@ function init() {
 
 
 function animate() {
-	console.log('<<animate>>');
+	requestAnimationFrame( animate );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
+	//console.log('<<animate>>');
+
 	// subdiv modifier //
 	for (n in Objects) {
 		var lod = Objects[ n ];
@@ -2116,7 +2122,6 @@ function animate() {
 	if (DEBUG==true) { render_debug(); }
 	else { render(); }
 
-	//requestAnimationFrame( animate );  // buggy?
 
 }
 
@@ -2125,13 +2130,38 @@ function animate() {
 var ws;
 
 function on_message(e) {
+	console.log('on_message');
 	// check first byte, if null then read following binary data //
 	var length = ws.rQlen();
+
+	switch( ws.rQpeek8() ) {
+		case 0:
+			on_binary_message( ws.rQshiftBytes().slice(1,length) );
+			break;
+		case 60: // <xml>
+			var xmlParser = new DOMParser();
+			var responseXML = xmlParser.parseFromString( ws.rQshiftStr(), "application/xml" );
+
+			var loader = new THREE.ColladaLoader();
+			loader.options.convertUpAxis = true;
+			//loader.options.centerGeometry = true; // hires has this on.
+			loader.parse(
+				responseXML, 
+				on_collada_ready,
+				collada_path
+			);	
+			break;
+		default:
+			on_json_message(   ws.rQshiftStr() );
+	}
+
+/*
 	if (ws.rQpeek8() == 0) { //String.fromCharCode(0)) {
 		on_binary_message( ws.rQshiftBytes().slice(1,length) );
 	} else {
 		on_json_message(   ws.rQshiftStr() );
 	}
+*/
 	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
 	arr = arr.concat(
 		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
@@ -2159,7 +2189,7 @@ function create_websocket() {
 	function on_close(e) {
 		console.log(">> WebSockets.onclose");
 		FX['film'].uniforms['nIntensity'].value = 0.8;
-		window.setInterval( animate, 200 ); // keep redrawing after close
+		//window.setInterval( animate, 1000/10.0 );
 	}
 	ws.on('close', on_close);
 
@@ -2167,6 +2197,9 @@ function create_websocket() {
 	console.log('connecting to:'+a);
 	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 	console.log('websocket open OK');
+
+	animate();
+
 
 }
 
