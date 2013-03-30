@@ -63,7 +63,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-#HOST_NAME = '192.168.0.7'
+HOST_NAME = '192.168.0.7'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 ## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
@@ -1220,7 +1220,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 		#	print('listening')
 		#else:
 		#	print('not listening')
-		self.lock.acquire()
+		#self.lock.acquire()
 
 		now = time.time()
 
@@ -1346,7 +1346,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 
 			self.client = None
 
-		self.lock.release()
+		#self.lock.release()
 
 
 

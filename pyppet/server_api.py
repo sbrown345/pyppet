@@ -50,13 +50,58 @@ class App( core.BlenderHack ):
 		Server.set_api( self )
 		print('custom api set')
 
+	def on_websocket_read_update(self, sock, frames):
+		player = Server.GameManager.get_player_by_socket( sock )
+		if not player: return
+		addr = player.address
+
+		for frame in frames:
+			if not frame: continue
+			if frame[0] == 0:
+				frame = frame[1:]
+				if len(frame)!=24:
+					print(frame)
+					continue
+
+				x1,y1,z1, x2,y2,z2 = struct.unpack('<ffffff', frame)
+				print(x1,y1,z1)
+				if addr in Server.GameManager.clients:
+					player = Server.GameManager.clients[ addr ]
+					player.set_location( (x1,y1,z1) )
+					player.set_focal_point( (x2,y2,z2) )
+				else:
+					print('[websocket ERROR] client address not in GameManager.clients')
+			elif len(frame) == 1:
+				print( frame.decode('utf-8') ) 
+			else:
+				print('doing custom action...', frame)
+				## action api ##
+				code = chr( frame[0] )
+				action = player.new_action(code, frame[1:])
+				## logic here can check action before doing it.
+				if action:
+					#assert action.calling_object
+					action.do()
+
+
+
+	def on_websocket_write_update(self, sock):
+		player = Server.GameManager.get_player_by_socket( sock )
+		msg = player.create_message_stream( bpy.context )
+		return json.dumps( msg ).encode('utf-8')
+
+
 	def start_server(self, use_threading=True):
-		#self.server = Server.WebServer()
 		self._threaded = use_threading
-		self.websocket_server = UserServer( listen_host=Server.HOST_NAME, listen_port=8080 )
-		#self.websocket_server.start( use_threading=use_threading )	# polls in a thread
-		lsock = self.websocket_server.create_listener_socket()
-		self.websocket_server.start_listener_thread()
+		self.websocket_server = s = UserServer()
+		s.initialize(
+			listen_host=Server.HOST_NAME, 
+			listen_port=8080,
+			read_callback=self.on_websocket_read_update,
+			write_callback=self.on_websocket_write_update,
+		)
+		lsock = s.create_listener_socket()
+		s.start_listener_thread()
 
 	def mainloop(self):
 		print('enter main')
@@ -89,8 +134,8 @@ class App( core.BlenderHack ):
 				#self.server.update( self.context )
 				pass
 
-			if not self._threaded:
-				self.websocket_server.update( self.context, timeout=0.1 )
+			#if not self._threaded:
+			#	self.websocket_server.update( self.context, timeout=0.1 )
 
 			time.sleep(0.01)
 

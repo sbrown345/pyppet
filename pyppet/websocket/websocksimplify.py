@@ -21,7 +21,7 @@ by Brett Hartshorn 2013
 ------------------------------------------------------------------------
 
 '''
-
+import threading
 import os, sys, time, errno, signal, socket, traceback, select
 import array, struct
 from base64 import b64encode, b64decode
@@ -65,11 +65,19 @@ for mod, sup in [('numpy', 'HyBi protocol'), ('ssl', 'TLS/SSL/wss')]:
             mod, sup))
 
 
-class WebSocketServer(object):
+#class WebSocketServer( object ):
+class WebSocketServer( threading.local ):
     """
     WebSockets server class.
     Must be sub-classed with new_client method definition.
+
+    threading.local note: if you define an __init__ method, it will be
+    called each time the local object is used in a separate thread.  This
+    is necessary to initialize each thread's dictionary. Note that subclasses can define slots, but they are not thread
+    local. They are shared across threads.
+
     """
+    __slots__ = ('listen_socket', 'ssl_only', 'on_client_read_ready', 'on_client_write_ready')
 
     buffer_size = 65536
 
@@ -97,9 +105,12 @@ Sec-WebSocket-Accept: %s\r
             import os
             os.abort() # crashing so the thread can halt everything.
 
-    def __init__(self, listen_host='', listen_port=None, source_is_ipv6=False,
+    def initialize(self, listen_host='', listen_port=None, source_is_ipv6=False,
             verbose=False, cert='', key='', ssl_only=None, web='',
-            run_once=False, timeout=0, idle_timeout=0):
+            run_once=False, timeout=0, idle_timeout=0, read_callback=None, write_callback=None):
+
+        self.on_client_write_ready = write_callback
+        self.on_client_read_ready = read_callback
 
         # settings
         self.verbose        = verbose
@@ -632,7 +643,7 @@ Sec-WebSocket-Accept: %s\r
         self.base64     = False
         self.rec        = None
         self.start_time = int(time.time()*1000)
-
+        print('START-TIME', self.start_time)
         # handler process
         self.ws_connection = False
         self._ws_connection = False
@@ -646,13 +657,34 @@ Sec-WebSocket-Accept: %s\r
             self.new_client()
         elif self.client and self.client != startsock:
             self.client.close() # close normal http request
-        else:
+        elif self.client:
             print('topping listener',self.client)
 
 
     def new_client(self):
         """ Do something with a WebSockets client connection. """
-        raise("WebSocketServer.new_client() must be overloaded")
+        #raise("WebSocketServer.new_client() must be overloaded")
+        assert self.client != self.listen_socket
+        self.websocket_active = True
+        while self.websocket_active:
+            ins, outs, excepts = select.select([self.client], [self.client], [self.client], 10)
+            if excepts: self.websocket_active = False
+
+            if outs:
+                data = self.on_client_write_ready( self.client )
+                self.out_bytes += len(data)
+                #try:
+                pending = self.send_frames( [data] )
+                if pending: print('[websocket error] failed to send data', data)
+
+            if ins:
+                frames, closed = self.recv_frames()
+                if closed:
+                    self.websocket_active = False
+                else:
+                    self.on_client_read_ready( self.client, frames )
+
+            time.sleep(0.01)
 
     def create_listener_socket(self):
         self.listen_socket = self.socket(self.listen_host, self.listen_port)
@@ -660,12 +692,13 @@ Sec-WebSocket-Accept: %s\r
 
     def start_listener_thread(self):
         assert self.listen_socket
-        import threading
-        self.lock = threading._allocate_lock()
+        #self.lock = threading._allocate_lock()
         threading._start_new_thread( self._listener_thread_loop, ())
 
     def _listener_thread_loop(self):
         self.active = True
+        print(dir(self))
+        print(self.client)
         while self.active:
             ready = select.select([self.listen_socket], [], [], 1000)[0]
             if ready:
@@ -673,7 +706,11 @@ Sec-WebSocket-Accept: %s\r
                 for sock in ready:
                     print('main listener',sock)
                     startsock, address = sock.accept()
-                    self.top_new_client(startsock, address) # sets.client and calls new_client()
+                    #self.top_new_client(startsock, address) # sets.client and calls new_client()
+                    threading._start_new_thread(
+                        self.top_new_client, (startsock, address)
+                        )
+
                     print('main listener topped')
                 #self.lock.release()
             print('listening...')
