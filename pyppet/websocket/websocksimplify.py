@@ -56,18 +56,13 @@ except:
         return struct.unpack(fmt, slice)
 
 # Degraded functionality if these imports are missing
-for mod, sup in [('numpy', 'HyBi protocol'), ('ssl', 'TLS/SSL/wss'),
-        ('multiprocessing', 'Multi-Processing'),
-        ('resource', 'daemonizing')]:
+for mod, sup in [('numpy', 'HyBi protocol'), ('ssl', 'TLS/SSL/wss')]:
     try:
         globals()[mod] = __import__(mod)
     except ImportError:
         globals()[mod] = None
         print("WARNING: no '%s' module, %s is slower or disabled" % (
             mod, sup))
-if multiprocessing and sys.platform == 'win32':
-    # make sockets pickle-able/inheritable
-    import multiprocessing.reduction
 
 
 class WebSocketServer(object):
@@ -97,8 +92,7 @@ Sec-WebSocket-Accept: %s\r
         pass
 
     def __init__(self, listen_host='', listen_port=None, source_is_ipv6=False,
-            verbose=False, cert='', key='', ssl_only=None,
-            daemon=False, record='', web='',
+            verbose=False, cert='', key='', ssl_only=None, web='',
             run_once=False, timeout=0, idle_timeout=0):
 
         # settings
@@ -107,7 +101,6 @@ Sec-WebSocket-Accept: %s\r
         self.listen_port    = listen_port
         self.prefer_ipv6    = source_is_ipv6
         self.ssl_only       = ssl_only
-        self.daemon         = daemon
         self.run_once       = run_once
         self.timeout        = timeout
         self.idle_timeout   = idle_timeout
@@ -118,22 +111,16 @@ Sec-WebSocket-Accept: %s\r
 
         # Make paths settings absolute
         self.cert = os.path.abspath(cert)
-        self.key = self.web = self.record = ''
+        self.key = self.web = ''
         if key:
             self.key = os.path.abspath(key)
         if web:
             self.web = os.path.abspath(web)
-        if record:
-            self.record = os.path.abspath(record)
 
-        if self.web:
-            os.chdir(self.web)
 
         # Sanity checks
         if not ssl and self.ssl_only:
             raise Exception("No 'ssl' module and SSL-only specified")
-        if self.daemon and not resource:
-            raise Exception("Module 'resource' required to daemonize")
 
         # Show configuration
         print("WebSocket server settings:")
@@ -151,10 +138,7 @@ Sec-WebSocket-Accept: %s\r
                 print("  - No SSL/TLS support (no cert file)")
         else:
             print("  - No SSL/TLS support (no 'ssl' module)")
-        if self.daemon:
-            print("  - Backgrounding (daemon)")
-        if self.record:
-            print("  - Recording to '%s.*'" % self.record)
+
 
     #
     # WebSocketServer static methods
@@ -201,41 +185,6 @@ Sec-WebSocket-Accept: %s\r
 
         return sock
 
-    @staticmethod
-    def daemonize(keepfd=None, chdir='/'):
-        os.umask(0)
-        if chdir:
-            os.chdir(chdir)
-        else:
-            os.chdir('/')
-        os.setgid(os.getgid())  # relinquish elevations
-        os.setuid(os.getuid())  # relinquish elevations
-
-        # Double fork to daemonize
-        if os.fork() > 0: os._exit(0)  # Parent exits
-        os.setsid()                    # Obtain new process group
-        if os.fork() > 0: os._exit(0)  # Parent exits
-
-        # Signal handling
-        def terminate(a,b): os._exit(0)
-        signal.signal(signal.SIGTERM, terminate)
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        # Close open files
-        maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-        if maxfd == resource.RLIM_INFINITY: maxfd = 256
-        for fd in reversed(range(maxfd)):
-            try:
-                if fd != keepfd:
-                    os.close(fd)
-            except OSError:
-                _, exc, _ = sys.exc_info()
-                if exc.errno != errno.EBADF: raise
-
-        # Redirect I/O to /dev/null
-        os.dup2(os.open(os.devnull, os.O_RDWR), sys.stdin.fileno())
-        os.dup2(os.open(os.devnull, os.O_RDWR), sys.stdout.fileno())
-        os.dup2(os.open(os.devnull, os.O_RDWR), sys.stderr.fileno())
 
     @staticmethod
     def unmask(buf, hlen, plen):
@@ -386,14 +335,11 @@ Sec-WebSocket-Accept: %s\r
 
     def traffic(self, token="."):
         """ Show traffic flow in verbose mode. """
-        if self.verbose and not self.daemon:
-            sys.stdout.write(token)
-            sys.stdout.flush()
+        if self.verbose: print(token)
 
     def msg(self, msg):
         """ Output message with handler_id prefix. """
-        if not self.daemon:
-            print("% 3d: %s" % (self.handler_id, msg))
+        print("% 3d: %s" % (self.handler_id, msg))
 
     def vmsg(self, msg):
         """ Same as msg() but only if verbose. """
@@ -554,6 +500,8 @@ Sec-WebSocket-Accept: %s\r
         return response
 
 
+    CustomRequestHandler = None  ## the user can set a its own request handler for custom server app-logic
+
     def do_handshake(self, sock, address):
         """
         do_handshake does the following:
@@ -572,11 +520,9 @@ Sec-WebSocket-Accept: %s\r
         - Return the socket for this WebSocket client.
         """
         stype = ""
-        ready = select.select([sock], [], [], 3)[0]
-
-        
-        if not ready:
-            raise self.EClose("ignoring socket not ready")
+        #ready = select.select([sock], [], [], 3)[0]
+        #if not ready:
+        #    raise self.EClose("ignoring socket not ready")
         # Peek, but do not read the data so that we have a opportunity
         # to SSL wrap the socket first
         handshake = sock.recv(1024, socket.MSG_PEEK)
@@ -589,7 +535,8 @@ Sec-WebSocket-Accept: %s\r
             # Answer Flash policy request
             handshake = sock.recv(1024)
             sock.send(s2b(self.policy_response))
-            raise self.EClose("Sending flash policy response")
+            #raise self.EClose("Sending flash policy response")
+            return sock
 
         elif handshake[0] in ("\x16", "\x80", 22, 128):
             # SSL wrap the connection
@@ -626,18 +573,28 @@ Sec-WebSocket-Accept: %s\r
             self.scheme = "ws"
             stype = "Plain non-SSL (ws://)"
 
-        wsh = WSRequestHandler(retsock, address, not self.web)
+        ###############################################################################
+        if self.CustomRequestHandler:  ## should also be a subclass of WSRequestHandler
+            wsh = self.CustomRequestHandler(retsock, address)
+        else:
+            wsh = WSRequestHandler(retsock, address, not self.web)
+        ###############################################################################
+
         if wsh.last_code == 101:
             # Continue on to handle WebSocket upgrade
             pass
         elif wsh.last_code == 405:
+            print('error 405')
             raise self.EClose("Normal web request received but disallowed")
         elif wsh.last_code < 200 or wsh.last_code >= 300:
-            raise self.EClose(wsh.last_message)
-        elif self.verbose:
+            print('error <200 or >=300')
             raise self.EClose(wsh.last_message)
         else:
-            raise self.EClose("")
+            return None
+        #elif self.verbose:
+        #    raise self.EClose(wsh.last_message)
+        #else:
+        #    raise self.EClose("")
 
         response = self.do_websocket_handshake(wsh.headers, wsh.path)
 
@@ -655,34 +612,6 @@ Sec-WebSocket-Accept: %s\r
         # Return the WebSockets socket which may be SSL wrapped
         return retsock
 
-
-    #
-    # Events that can/should be overridden in sub-classes
-    #
-    def started(self):
-        """ Called after WebSockets startup """
-        self.vmsg("WebSockets server started")
-
-    def poll(self):
-        """ Run periodically while waiting for connections. """
-        #self.vmsg("Running poll()")
-        pass
-
-    def fallback_SIGCHLD(self, sig, stack):
-        # Reap zombies when using os.fork() (python 2.4)
-        self.vmsg("Got SIGCHLD, reaping zombies")
-        try:
-            result = os.waitpid(-1, os.WNOHANG)
-            while result[0]:
-                self.vmsg("Reaped child process %s" % result[0])
-                result = os.waitpid(-1, os.WNOHANG)
-        except (OSError):
-            pass
-
-    def do_SIGINT(self, sig, stack):
-        self.msg("Got SIGINT, exiting")
-        sys.exit(0)
-
     def top_new_client(self, startsock, address):
         """ Do something with a WebSockets client connection. """
         # Initialize per client settings
@@ -692,176 +621,48 @@ Sec-WebSocket-Accept: %s\r
         self.rec        = None
         self.start_time = int(time.time()*1000)
 
-        # handler process        
-        try:
-            try:
-                self.client = self.do_handshake(startsock, address)
+        # handler process
+        self.ws_connection = False
+        self._ws_connection = False
+        #try: ## this try can be enabled to except EClose, EClose is failures the websockify api allows.
+        self.client = self.do_handshake(startsock, address)  ## do_handshake will also answer a http request.
+        #except self.EClose: ## TODO enable me on releases.
 
-                if self.record:
-                    # Record raw frame data as JavaScript array
-                    fname = "%s.%s" % (self.record,
-                                        self.handler_id)
-                    self.msg("opening record file: %s" % fname)
-                    self.rec = open(fname, 'w+')
-                    encoding = "binary"
-                    if self.base64: encoding = "base64"
-                    self.rec.write("var VNC_frame_encoding = '%s';\n"
-                            % encoding)
-                    self.rec.write("var VNC_frame_data = [\n")
+        if self._ws_connection:
+            print('<<new websocket connection>>', self.client)
+            self.ws_connection = True
+            self.new_client()
+        elif self.client and self.client != startsock:
+            self.client.close() # close normal http request
+        else:
+            print('topping listener',self.client)
 
-                self.ws_connection = True
-                self.new_client()
-            except self.CClose:
-                # Close the client
-                _, exc, _ = sys.exc_info()
-                if self.client:
-                    self.send_close(exc.args[0], exc.args[1])
-            except self.EClose:
-                _, exc, _ = sys.exc_info()
-                # Connection was not a WebSockets connection
-                if exc.args[0]:
-                    self.msg("%s: %s" % (address[0], exc.args[0]))
-            except Exception:
-                _, exc, _ = sys.exc_info()
-                self.msg("handler exception: %s" % str(exc))
-                if self.verbose:
-                    self.msg(traceback.format_exc())
-        finally:
-            if self.rec:
-                self.rec.write("'EOF'];\n")
-                self.rec.close()
-
-            if self.client and self.client != startsock:
-                # Close the SSL wrapped socket
-                # Original socket closed by caller
-                self.client.close()
 
     def new_client(self):
         """ Do something with a WebSockets client connection. """
         raise("WebSocketServer.new_client() must be overloaded")
 
-    def start_server(self):
-        """
-        Daemonize if requested. Listen for for connections. Run
-        do_handshake() method for each connection. If the connection
-        is a WebSockets client then call new_client() method (which must
-        be overridden) for each new client connection.
-        """
-        lsock = self.socket(self.listen_host, self.listen_port, False, self.prefer_ipv6)
+    def create_listener_socket(self):
+        self.listen_socket = self.socket(self.listen_host, self.listen_port)
+        return self.listen_socket
 
-        if self.daemon:
-            self.daemonize(keepfd=lsock.fileno(), chdir=self.web)
+    def start_listener_thread(self):
+        import threading
+        threading._start_new_thread( self._listener_thread_loop, ())
 
-        self.started()  # Some things need to happen after daemonizing
-
-        # Allow override of SIGINT
-        signal.signal(signal.SIGINT, self.do_SIGINT)
-        if not multiprocessing:
-            # os.fork() (python 2.4) child reaper
-            signal.signal(signal.SIGCHLD, self.fallback_SIGCHLD)
-
-        last_active_time = self.launch_time
-        while True:
-            try:
-                try:
-                    self.client = None
-                    startsock = None
-                    pid = err = 0
-                    child_count = 0
-
-                    if multiprocessing and self.idle_timeout:
-                        child_count = len(multiprocessing.active_children())
-
-                    time_elapsed = time.time() - self.launch_time
-                    if self.timeout and time_elapsed > self.timeout:
-                        self.msg('listener exit due to --timeout %s'
-                                % self.timeout)
-                        break
-
-                    if self.idle_timeout:
-                        idle_time = 0
-                        if child_count == 0:
-                            idle_time = time.time() - last_active_time
-                        else:
-                            idle_time = 0
-                            last_active_time = time.time()
-
-                        if idle_time > self.idle_timeout and child_count == 0:
-                            self.msg('listener exit due to --idle-timeout %s'
-                                        % self.idle_timeout)
-                            break
-
-                    try:
-                        self.poll()
-
-                        ready = select.select([lsock], [], [], 1)[0]
-                        if lsock in ready:
-                            startsock, address = lsock.accept()
-                        else:
-                            continue
-                    except Exception:
-                        _, exc, _ = sys.exc_info()
-                        if hasattr(exc, 'errno'):
-                            err = exc.errno
-                        elif hasattr(exc, 'args'):
-                            err = exc.args[0]
-                        else:
-                            err = exc[0]
-                        if err == errno.EINTR:
-                            self.vmsg("Ignoring interrupted syscall")
-                            continue
-                        else:
-                            raise
-                    
-                    if self.run_once:
-                        # Run in same process if run_once
-                        self.top_new_client(startsock, address)
-                        if self.ws_connection :
-                            self.msg('%s: exiting due to --run-once'
-                                    % address[0])
-                            break
-                    elif multiprocessing:
-                        self.vmsg('%s: new handler Process' % address[0])
-                        p = multiprocessing.Process(
-                                target=self.top_new_client,
-                                args=(startsock, address))
-                        p.start()
-                        # child will not return
-                    else:
-                        # python 2.4
-                        self.vmsg('%s: forking handler' % address[0])
-                        pid = os.fork()
-                        if pid == 0:
-                            # child handler process
-                            self.top_new_client(startsock, address)
-                            break  # child process exits
-
-                    # parent process
-                    self.handler_id += 1
-
-                except KeyboardInterrupt:
-                    _, exc, _ = sys.exc_info()
-                    print("In KeyboardInterrupt")
-                    pass
-                except SystemExit:
-                    _, exc, _ = sys.exc_info()
-                    print("In SystemExit")
-                    break
-                except Exception:
-                    _, exc, _ = sys.exc_info()
-                    self.msg("handler exception: %s" % str(exc))
-                    if self.verbose:
-                        self.msg(traceback.format_exc())
-
-            finally:
-                if startsock:
-                    startsock.close()
-
-        # Close listen port
-        self.vmsg("Closing socket listening at %s:%s"
-                % (self.listen_host, self.listen_port))
-        lsock.close()
-
+    def _listener_thread_loop(self):
+        self.active = True
+        while self.active:
+            ready = select.select([self.listen_socket], [], [], 1000)[0]
+            if ready:
+                #self.lock.acquire()
+                for sock in ready:
+                    print('main listener',sock)
+                    startsock, address = sock.accept()
+                    self.top_new_client(startsock, address) # sets.client and calls new_client()
+                    print('main listener topped')
+                #self.lock.release()
+            print('listening...')
 
 # HTTP handler with WebSocket upgrade support
 class WSRequestHandler(SimpleHTTPRequestHandler):
