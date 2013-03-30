@@ -85,11 +85,17 @@ Sec-WebSocket-Accept: %s\r
 
     # An exception before the WebSocket connection was established
     class EClose(Exception):
-        pass
+        def __init__(self, msg):
+            print('websocket error:', msg)
+            import os
+            os.abort() # crashing so the thread can halt everything.
 
     # An exception while the WebSocket client was connected
     class CClose(Exception):
-        pass
+        def __init__(self, msg):
+            print('websocket error:', msg)
+            import os
+            os.abort() # crashing so the thread can halt everything.
 
     def __init__(self, listen_host='', listen_port=None, source_is_ipv6=False,
             verbose=False, cert='', key='', ssl_only=None, web='',
@@ -457,6 +463,7 @@ Sec-WebSocket-Accept: %s\r
 
     def do_websocket_handshake(self, headers, path):
         h = self.headers = headers
+        print('HEADERS websocket', h)
         self.path = path
 
         prot = 'WebSocket-Protocol'
@@ -596,18 +603,23 @@ Sec-WebSocket-Accept: %s\r
         #else:
         #    raise self.EClose("")
 
+        assert wsh.last_code == 101
         response = self.do_websocket_handshake(wsh.headers, wsh.path)
 
-        self.msg("%s: %s WebSocket connection" % (address[0], stype))
-        self.msg("%s: Version %s, base64: '%s'" % (address[0],
+        print("%s: %s WebSocket connection" % (address[0], stype))
+        print("%s: Version %s, base64: '%s'" % (address[0],
             self.version, self.base64))
         if self.path != '/':
             self.msg("%s: Path: '%s'" % (address[0], self.path))
 
-
         # Send server WebSockets handshake response
         #self.msg("sending response [%s]" % response)
-        retsock.send(s2b(response))
+        #retsock.send(s2b(response))
+        if wsh.last_code != 200:
+            retsock.send(s2b(response))
+            self._ws_connection = True
+        else:
+            self._ws_connection = False  # need this to stop caller from doing topping the websocket client.
 
         # Return the WebSockets socket which may be SSL wrapped
         return retsock
@@ -647,7 +659,9 @@ Sec-WebSocket-Accept: %s\r
         return self.listen_socket
 
     def start_listener_thread(self):
+        assert self.listen_socket
         import threading
+        self.lock = threading._allocate_lock()
         threading._start_new_thread( self._listener_thread_loop, ())
 
     def _listener_thread_loop(self):

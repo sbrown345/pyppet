@@ -1120,6 +1120,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 		return True
 
 	def _start_threaded(self, use_threading=True ):
+		print('DEPRECATED!!!')
 		self.active = False
 		self.sockets = []  ## there is probably no speed up having mulitple listen sockets
 		sock = self.socket(self.listen_host, self.listen_port)
@@ -1200,7 +1201,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 		#if not GameManager.clients: return
 		players = []
 		rlist = [];	wlist = []
-		if self._listen_in_update: rlist.append( self.listen_socket )
+
 		for player in GameManager.clients.values():
 			if player.websocket:
 				rlist.append( player.websocket )
@@ -1278,27 +1279,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 			self.client = None
 
 		for sock in ins:
-			if sock is self.listen_socket:
-				assert self._listen_in_update
-				print('accept on listen socket')
-				startsock, address = sock.accept()
-				self.top_new_client(startsock, address)	# sets.client and calls new_client()
-
-				#p = multiprocessing.Process(
-				#	target=self.top_new_client,
-				#	args=(startsock, address))
-				#p.start()
-
-				#threading._start_new_thread(
-				#	self.top_new_client,
-				#	(startsock, address)
-				#)
-
-				continue
-
-
-
-			#if sock is self.listen_socket: continue
+			if sock is self.listen_socket: continue
 			#if sock not in outs: continue # testing
 			#player = players[ rlist.index(sock) ]
 			player = GameManager.get_player_by_socket( sock )

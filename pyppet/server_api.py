@@ -39,10 +39,7 @@ API = {
 simple_action_api.create_callback_api( API )
 
 class UserServer( Server.WebSocketServer ):
-	def start(self, use_threading=True ):
-		print('[START WEBSOCKET SERVER: %s %s]' %(self.listen_host, self.listen_port))
-		self._start_threaded( use_threading=use_threading )
-		return True
+	pass
 
 
 class App( core.BlenderHack ):
@@ -57,7 +54,9 @@ class App( core.BlenderHack ):
 		#self.server = Server.WebServer()
 		self._threaded = use_threading
 		self.websocket_server = UserServer( listen_host=Server.HOST_NAME, listen_port=8080 )
-		self.websocket_server.start( use_threading=use_threading )	# polls in a thread
+		#self.websocket_server.start( use_threading=use_threading )	# polls in a thread
+		lsock = self.websocket_server.create_listener_socket()
+		self.websocket_server.start_listener_thread()
 
 	def mainloop(self):
 		print('enter main')

@@ -2164,7 +2164,7 @@ function on_message(e) {
 */
 
 	// make rendering in sync with websocket stream
-	animate();
+	//animate();
 
 }
 
@@ -2176,13 +2176,14 @@ function create_websocket() {
 	function on_open(e) {
 		console.log(">> WebSockets.onopen");
 		FX['film'].uniforms['nIntensity'].value = 0.01;
+		window.setInterval( update_player_view, 1000/8.0 );
+
 	}
 	ws.on('open', on_open);
 
 	function on_close(e) {
 		console.log(">> WebSockets.onclose");
 		FX['film'].uniforms['nIntensity'].value = 0.8;
-		//window.setInterval( animate, 1000/10.0 );
 	}
 	ws.on('close', on_close);
 
@@ -2191,23 +2192,19 @@ function create_websocket() {
 	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 	console.log('websocket open OK');
 
-	animate();
+	animate(); // start animation loop
 
 }
 
-function update_player_viewer() {
+function update_player_view() {
 	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
 	arr = arr.concat(
 		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
 	);
 	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
-	ws.flush();
+	//ws.flush();
 }
 
 init();
 //animate();
-
-window.setInterval( update_player_view, 1000/8.0 );
-
-
 create_websocket();
