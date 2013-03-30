@@ -2162,13 +2162,6 @@ function on_message(e) {
 		on_json_message(   ws.rQshiftStr() );
 	}
 */
-	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
-	arr = arr.concat(
-		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
-	);
-
-	//ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
-	//ws.flush();
 
 	// make rendering in sync with websocket stream
 	animate();
@@ -2200,10 +2193,21 @@ function create_websocket() {
 
 	animate();
 
-
 }
 
+function update_player_viewer() {
+	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
+	arr = arr.concat(
+		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
+	);
+	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
+	ws.flush();
+}
 
 init();
 //animate();
+
+window.setInterval( update_player_view, 1000/8.0 );
+
+
 create_websocket();

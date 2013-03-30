@@ -105,6 +105,81 @@ class Cache(object):
 		cls.objects[ ob ] = view
 		return view
 
+class SimpleAnimationManager(object):
+	def __init__(self):
+		self.objects = []
+
+	def tick(self):
+		now = time.time()
+		done = []
+		for a in self.objects:
+			if a.tick( now ):
+				done.append( a )
+
+		for a in done:
+			self.objects.remove( a )
+
+AnimationManager = SimpleAnimationManager()
+
+
+class Animation(object):
+	'''
+	only AnimationManager holds references to Animations,
+	many of these will be created and garbage collected.
+	'''
+	def __init__(self, start=None, goal=None, seconds=1.0 ):
+		assert goal is not None
+		self.done = False
+		self.goal = goal
+		self.seconds = seconds
+
+	def bind( self, target, attribute=None, item=None ):
+		self.target = target
+		self.attribute = attribute
+		self.item = item
+		if self.attribute: value = getattr(self.target, self.attribute)
+		elif self.item: value = self.target[ self.item ]
+		self.start_value = value
+		self.delta = value - goal
+
+	def animate( self, loop=False ):
+		self.start_time = time.time()
+		self.last_tick = None
+		self.done = False
+		self.loop = loop
+		AnimationManager.objects.append( self )
+
+	def tick( self, T ):
+		assert self.target
+
+		Dt = T - self.start_time
+		if Dt >= self.seconds:
+			self.done = True
+
+			if self.attribute:
+				setattr(self.target, self.attribute, self.goal)
+			elif self.item:
+				self.target[ self.item ] = self.goal
+
+			self.target = None
+
+		else:
+			d = T - self.last_tick
+			step = self.seconds / d
+			value += self.delta * step
+
+			if self.attribute:
+				value = getattr(self.target, self.attribute)
+				value += self.delta * step
+				setattr(self.target, self.attribute, value)
+			elif self.item:
+				value = self.target[ self.item ]
+				value += self.delta * step
+				self.target[ self.item ] = value
+
+		self.last_tick = T
+
+		return self.done
 
 class ContainerInternal(object):
 	'''
@@ -173,7 +248,13 @@ class Container(object):
 		a["x"] = xxx # set custom property for all viewers
 		'''
 		assert type(name) is str
-		self.__properties[ name ] = value
+		if isinstance(value, Animation):
+			anim = value
+			anim.bind( self, item=name )
+			anim.animate()
+		else:
+			self.__properties[ name ] = value
+
 
 	def __getitem__(self, name):
 		'''

@@ -592,7 +592,8 @@ Sec-WebSocket-Accept: %s\r
             raise self.EClose("ignoring empty handshake")
 
         elif handshake.startswith(s2b("<policy-file-request/>")):
-            # Answer Flash policy request
+            # Answer Flash policy request - TODO make sure this works.
+            print('flash policy request')
             handshake = sock.recv(1024)
             sock.send(s2b(self.policy_response))
             raise self.EClose("Sending flash policy response")
