@@ -18,7 +18,8 @@ import io, socket, select, pickle, urllib
 import urllib.request
 import urllib.parse
 
-from websocket import websockify
+#from websocket import websockify
+from websocket import websocksimplify
 import json
 
 import bpy, mathutils
@@ -865,7 +866,7 @@ class GameManager( object ):
 api_gen.register_type( api_gen.UserProxy, GameManager.get_player_by_id )
 
 
-class WebsocketHTTP_RequestHandler( websockify.WSRequestHandler ):
+class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 	'''
 	This is a subclass of SimpleHTTPRequestHandler in Python3 standard-lib http.server
 	websockify.WSRequestHandler only overloads do_GET and send_response.
@@ -1070,13 +1071,13 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	return data
 
 ###############################################
-websockify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
+websocksimplify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify
 ###############################################
 
 
 
 ##################################################
-class WebSocketServer( websockify.WebSocketServer ):
+class WebSocketServer( websocksimplify.WebSocketServer ):
 	buffer_size = 8096*2
 	client = None
 	webGL = WebGL()
