@@ -248,7 +248,8 @@ function on_binary_message( bytes ) {
 
 function on_json_message( data ) {
 	var msg = JSON.parse( data );
-
+	console.log('on-json-message');
+	
 	for (var name in msg['meshes']) {
 
 		if (name in Objects == false) {
@@ -1696,7 +1697,7 @@ MyController = function ( object, domElement ) {
 			// PICKING //
 			var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
 			projector.unprojectVector( vector, camera );
-			var ray = new THREE.Ray( camera.position, vector.sub( camera.position ).normalize() );
+			var ray = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
 
 			// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
 			// it will not traverse the children, that is why it fails on THREE.LOD.
