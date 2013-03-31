@@ -954,8 +954,10 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 		data = None
 		if path=='/favicon.ico': content_length = 0
 
-		elif path in ('/', 'index', 'index.html'):
-			data = generate_html_header( websocket_port=8080 ).encode('utf-8')
+		elif path in ('/', '/zone'):
+			zone = None
+			if path == '/zone': zone = arg
+			data = generate_html_header( websocket_port=8080, zone=zone ).encode('utf-8')
 			content_type = 'text/html; charset=utf-8'
 
 		elif path.startswith('/javascripts/'):
@@ -975,8 +977,9 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			print('[webserver] dump collada request', name)
 			uid = name[ : -4 ]
 			ob = get_object_by_UID( uid )
-			data = dump_collada( ob, center=arg=='hires' )
-			print(data)
+			if ob:
+				data = dump_collada( ob, center=arg=='hires' )
+				print(data)
 		else: print('warn: unknown request url', path)
 
 
@@ -992,7 +995,7 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			self.wfile.flush() # maybe not required, but its ok to flush twice.
 		print('web request complete')
 
-def generate_html_header(title='webgl', external_three=False, websocket_port=8081 ):
+def generate_html_header(title='webgl', external_three=False, websocket_port=8081, zone=None ):
 	h = [
 		'<!DOCTYPE html><html lang="en">',
 		'<head><title>%s</title>' %title,
@@ -1062,7 +1065,10 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	h.append( 'var MAX_PROGRESSIVE_NORMALS = 512;' )
 	h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
 	h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
-
+	if zone:
+		h.append( 'var WEBSOCKET_PATH = "%s";'%zone )
+	else:
+		h.append( 'var WEBSOCKET_PATH = undefined;' )
 
 	h.append( open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8') )
 	h.append( '</script>' )
