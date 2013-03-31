@@ -249,23 +249,23 @@ function on_binary_message( bytes ) {
 function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	console.log('on-json-message');
-	
+
 	for (var name in msg['meshes']) {
 
 		if (name in Objects == false) {
 			console.log( '>> found new collada' );
 			Objects[ name ] = null;
 			var collada_path = '/objects/'+name+'.dae';
-			//setTimeout( function () {
-			//	console.log( '>> loading new collada' );
-			//	var loader = new THREE.ColladaLoader();
-			//	loader.options.convertUpAxis = true;
-			//	//loader.options.centerGeometry = true; // hires has this on.
-			//	loader.load(
-			//		collada_path, 
-			//		on_collada_ready
-			//	);	
-			//}, 10000 );
+			setTimeout( function () {
+				console.log( '>> loading new collada' );
+				var loader = new THREE.ColladaLoader();
+				loader.options.convertUpAxis = true;
+				//loader.options.centerGeometry = true; // hires has this on.
+				loader.load(
+					collada_path, 
+					on_collada_ready
+				);	
+			}, 1000 );
 
 		}
 
@@ -2131,7 +2131,7 @@ function animate() {
 var ws;
 
 function on_message(e) {
-	console.log('on_message');
+	//console.log('on_message');
 	// check first byte, if null then read following binary data //
 	var length = ws.rQlen();
 
@@ -2140,6 +2140,7 @@ function on_message(e) {
 			on_binary_message( ws.rQshiftBytes().slice(1,length) );
 			break;
 		case 60: // <xml>
+			console.log('loading collada');
 			var xmlParser = new DOMParser();
 			var responseXML = xmlParser.parseFromString( ws.rQshiftStr(), "application/xml" );
 
@@ -2153,7 +2154,8 @@ function on_message(e) {
 			);	
 			break;
 		default:
-			on_json_message(   ws.rQshiftStr() );
+			on_json_message( ws.rQshiftStr() );
+			break;
 	}
 
 /*
