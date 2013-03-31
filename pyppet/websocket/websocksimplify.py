@@ -77,7 +77,7 @@ class WebSocketServer( threading.local ):
     local. They are shared across threads.
 
     """
-    __slots__ = ('listen_socket', 'ssl_only', 'on_client_read_ready', 'on_client_write_ready')
+    __slots__ = ('verbose', 'listen_socket', 'ssl_only', 'on_client_read_ready', 'on_client_write_ready', 'on_new_client')
 
     buffer_size = 65536
 
@@ -107,10 +107,11 @@ Sec-WebSocket-Accept: %s\r
 
     def initialize(self, listen_host='', listen_port=None, source_is_ipv6=False,
             verbose=False, cert='', key='', ssl_only=None, web='',
-            run_once=False, timeout=0, idle_timeout=0, read_callback=None, write_callback=None):
+            run_once=False, timeout=0, idle_timeout=0, read_callback=None, write_callback=None, new_client_callback=None):
 
         self.on_client_write_ready = write_callback
         self.on_client_read_ready = read_callback
+        self.on_new_client = new_client_callback
 
         # settings
         self.verbose        = verbose
@@ -665,26 +666,32 @@ Sec-WebSocket-Accept: %s\r
         """ Do something with a WebSockets client connection. """
         #raise("WebSocketServer.new_client() must be overloaded")
         assert self.client != self.listen_socket
+        self.on_new_client( self.client )
+
         self.websocket_active = True
         while self.websocket_active:
+            print('selecting client websocket...')
             ins, outs, excepts = select.select([self.client], [self.client], [self.client], 10)
             if excepts: self.websocket_active = False
 
             if outs:
+                print('outs ready...')
                 data = self.on_client_write_ready( self.client )
-                self.out_bytes += len(data)
+                #self.out_bytes += len(data)
                 #try:
                 pending = self.send_frames( [data] )
                 if pending: print('[websocket error] failed to send data', data)
 
             if ins:
+                print('ins ready...')
                 frames, closed = self.recv_frames()
                 if closed:
                     self.websocket_active = False
                 else:
                     self.on_client_read_ready( self.client, frames )
 
-            time.sleep(0.01)
+            time.sleep(0.1)
+        print('[websocket client thread exit]')
 
     def create_listener_socket(self):
         self.listen_socket = self.socket(self.listen_host, self.listen_port)
@@ -697,8 +704,6 @@ Sec-WebSocket-Accept: %s\r
 
     def _listener_thread_loop(self):
         self.active = True
-        print(dir(self))
-        print(self.client)
         while self.active:
             ready = select.select([self.listen_socket], [], [], 1000)[0]
             if ready:

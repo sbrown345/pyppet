@@ -2,7 +2,8 @@
 # Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 
-import os, sys, ctypes, time, random
+import os, sys, ctypes, time, json, struct
+import random
 import bpy
 
 ## make sure we can import and load data from same directory ##
@@ -14,6 +15,7 @@ import Server
 import simple_action_api
 import api_gen
 from api_gen import BlenderProxy, UserProxy
+from websocket import websocksimplify
 
 def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	print('select callback', user, ob)
@@ -38,7 +40,7 @@ API = {
 }
 simple_action_api.create_callback_api( API )
 
-class UserServer( Server.WebSocketServer ):
+class UserServer( websocksimplify.WebSocketServer ):
 	pass
 
 
@@ -50,7 +52,36 @@ class App( core.BlenderHack ):
 		Server.set_api( self )
 		print('custom api set')
 
+	def start_server(self, use_threading=True):
+		self._threaded = use_threading
+		self.websocket_server = s = UserServer()
+		s.initialize(
+			listen_host=Server.HOST_NAME, 
+			listen_port=8080,
+			read_callback=self.on_websocket_read_update,
+			write_callback=self.on_websocket_write_update,
+			new_client_callback=self.on_new_client,
+		)
+		lsock = s.create_listener_socket()
+		s.start_listener_thread()
+
+
+	def on_new_client(self, sock):
+		addr = sock.getpeername()
+		print('[on new client]', addr)
+
+		if addr in Server.GameManager.clients:
+			print('[websocket] RELOADING CLIENT:', addr )
+			raise SystemExit
+		else:
+			print('_'*80)
+			print('[websocket] NEW CLIENT:', addr )
+			Server.GameManager.add_player( addr, websocket=sock )
+
+
+
 	def on_websocket_read_update(self, sock, frames):
+		print('on websocket read update')
 		player = Server.GameManager.get_player_by_socket( sock )
 		if not player: return
 		addr = player.address
@@ -88,20 +119,10 @@ class App( core.BlenderHack ):
 	def on_websocket_write_update(self, sock):
 		player = Server.GameManager.get_player_by_socket( sock )
 		msg = player.create_message_stream( bpy.context )
+		print('sending', msg)
 		return json.dumps( msg ).encode('utf-8')
 
 
-	def start_server(self, use_threading=True):
-		self._threaded = use_threading
-		self.websocket_server = s = UserServer()
-		s.initialize(
-			listen_host=Server.HOST_NAME, 
-			listen_port=8080,
-			read_callback=self.on_websocket_read_update,
-			write_callback=self.on_websocket_write_update,
-		)
-		lsock = s.create_listener_socket()
-		s.start_listener_thread()
 
 	def mainloop(self):
 		print('enter main')

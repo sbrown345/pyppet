@@ -72,7 +72,7 @@ print('[HOST_NAME: %s]'%HOST_NAME)
 #Blender.Scene( bpy.context.scene ).collada_import( test )
 #assert 0
 
-##################### PyRNA ###################
+##################### PyRNA - DEPRECATED ###################
 bpy.types.Object.webgl_lens_flare_scale = FloatProperty(
     name="lens flare scale", description="size of lens flare for webGL client", 
     default=1.0)
@@ -594,7 +594,7 @@ class Player( object ):
 			view['rot'] = rot ## testing local properties
 			view['scl'] = scl
 
-			if ob == context.active_object: view[ 'selected' ] = True
+			#if ob == context.active_object: view[ 'selected' ] = True
 
 			## ensure properties required by callbacks - TODO move this logic somewhere else
 			view['ob'] = UID(ob)
@@ -1078,12 +1078,14 @@ websocksimplify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHand
 
 ##################################################
 class WebSocketServer( websocksimplify.WebSocketServer ):
+	## this class is DEPRECATED ##
 	buffer_size = 8096*2
 	client = None
 	webGL = WebGL()
 	active = False
 
 	def new_client(self):  ## websockify.py API ##
+		print('new_client DEPRECATED!!')
 		server_addr = self.client.getsockname()
 		addr = self.client.getpeername()
 		#print('[websocket] server', server_addr)
