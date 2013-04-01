@@ -254,18 +254,18 @@ function on_binary_message( bytes ) {
 
 }
 
+var _msg;
 function on_json_message( data ) {
 	var msg = JSON.parse( data );
-	console.log('on-json-message');
-
+	_msg = msg;
 	for (var name in msg['meshes']) {
 
 		if (name in Objects == false) {
 			console.log( '>> found new collada' );
 			Objects[ name ] = null;
 			var collada_path = '/objects/'+name+'.dae';
-			setTimeout( function () {
-				console.log( '>> loading new collada' );
+			//setTimeout( function () {
+				console.log( '>> loading new collada:'+collada_path );
 				var loader = new THREE.ColladaLoader();
 				loader.options.convertUpAxis = true;
 				//loader.options.centerGeometry = true; // hires has this on.
@@ -273,7 +273,7 @@ function on_json_message( data ) {
 					collada_path, 
 					on_collada_ready
 				);	
-			}, 1000 );
+			//}, 1000 );
 
 		}
 
@@ -1229,12 +1229,9 @@ function render() {
 	CONTROLLER.update( delta );
 
 	scene.updateMatrixWorld();
-	/* TODO fix me
-	THREE.SceneUtils.traverseHierarchy(
-		scene, 
+	scene.traverse(
 		function ( node ) { if ( node instanceof THREE.LOD ) node.update( camera ) } 
 	);
-	*/
 
 	if ( postprocessing.enabled ) {
 		render_godrays();

@@ -217,8 +217,9 @@ def _dump_collada_data_helper( data ):
 	if data.materials: data.materials[0] = BLANK_MATERIAL
 	else: data.materials.append( BLANK_MATERIAL )
 
-
+_collada_lock = threading._allocate_lock()
 def dump_collada( ob, center=False, lowres=False ):
+	_collada_lock.acquire()
 	assert bpy.context.mode !='EDIT'
 	name = ob.name
 	state = save_selection()
@@ -340,6 +341,7 @@ def dump_collada( ob, center=False, lowres=False ):
 	#__________________________________________________________________#
 	for mod in mods: mod.show_viewport = True  # restore modifiers
 	restore_selection( state )
+	_collada_lock.release()
 	return open(url,'rb').read()
 
 
@@ -592,8 +594,8 @@ class Player( object ):
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
 			rot = (rot.w, rot.x, rot.y, rot.z)
-			proxy['pos'] = loc  ## testing upstream properties (parent view)
-			#view['pos'] = loc
+			#proxy['pos'] = loc  ## testing upstream properties (parent view)
+			view['pos'] = loc
 			view['rot'] = rot ## testing local properties
 			view['scl'] = scl
 
