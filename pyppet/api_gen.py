@@ -551,5 +551,10 @@ if __name__ == '__main__':
 
 	print(view1, view1['hi'])
 	print(view2, view2['hi'])
+	v1i = view1()
+	v2i = view2()
+	print(v1i.properties)
+	print(v2i.properties)
+
 	assert view1['hi'] != view2['hi']
 

@@ -586,8 +586,8 @@ class Player( object ):
 
 			if ob not in wobjects: api_gen.wrap_object( ob )
 
-			proxy = wobjects[ ob ]
-			view = proxy( self ) # create new viewer if required, and return it
+			w = wobjects[ ob ]
+			view = w( self ) # create new viewer if required, and return it
 			#view = proxy[ self ]
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
@@ -606,7 +606,8 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			pak = { 'properties' : a.properties }
+			b = {}; b.update( a.properties )
+			pak = { 'properties' : b }
 			print(ob, view['pos'], a.properties)
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 

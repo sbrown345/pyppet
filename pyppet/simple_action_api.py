@@ -47,7 +47,7 @@ def default_click_callback( ob=BlenderProxy ):
 
 def default_input_callback( ob=BlenderProxy, input_string=ctypes.c_char_p ):
 	print( 'INPUT CALLBACK', input_string )
-	w = api_gen.get_wrapper_objects()[ ob ]
+	w = api_gen.get_wrapped_objects()[ ob ]
 	print(w)
 
 
