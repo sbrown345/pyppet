@@ -670,12 +670,12 @@ Sec-WebSocket-Accept: %s\r
 
         self.websocket_active = True
         while self.websocket_active:
-            print('selecting client websocket...')
+            #print('selecting client websocket...')
             ins, outs, excepts = select.select([self.client], [self.client], [self.client], 10)
             if excepts: self.websocket_active = False
 
             if outs:
-                print('outs ready...')
+                #print('outs ready...')
                 data = self.on_client_write_ready( self.client )
                 #self.out_bytes += len(data)
                 #try:
@@ -683,7 +683,7 @@ Sec-WebSocket-Accept: %s\r
                 if pending: print('[websocket error] failed to send data', data)
 
             if ins:
-                print('ins ready...')
+                #print('ins ready...')
                 frames, closed = self.recv_frames()
                 if closed:
                     self.websocket_active = False

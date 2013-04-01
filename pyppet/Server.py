@@ -218,7 +218,7 @@ def _dump_collada_data_helper( data ):
 	else: data.materials.append( BLANK_MATERIAL )
 
 
-def dump_collada( ob, center=False, hires=False ):
+def dump_collada( ob, center=False, lowres=False ):
 	assert bpy.context.mode !='EDIT'
 	name = ob.name
 	state = save_selection()
@@ -233,7 +233,7 @@ def dump_collada( ob, center=False, hires=False ):
 			mod.show_viewport = False
 			mods.append( mod )	
 
-	if not hires and len(ob.data.vertices) >= 12:	# if lowres LOD
+	if lowres and len(ob.data.vertices) >= 12:	# if lowres LOD
 		print('[ DUMPING LOWRES ]')
 
 		url = '/tmp/%s(lowres).dae' %name
@@ -252,7 +252,10 @@ def dump_collada( ob, center=False, hires=False ):
 			proxy.is_lod_proxy = True
 			proxy.draw_type = 'WIRE'
 
-			bpy.ops.object.mode_set( mode='OBJECT' )
+			try:
+				bpy.ops.object.mode_set( mode='OBJECT' )
+			except:
+				pass
 
 			active = bpy.context.scene.objects.active
 			proxy.select = True
@@ -978,7 +981,7 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			uid = name[ : -4 ]
 			ob = get_object_by_UID( uid )
 			if ob:
-				data = dump_collada( ob, center=arg=='hires' )
+				data = dump_collada( ob, ) #center=arg=='hires' )
 				print(data)
 		else: print('warn: unknown request url', path)
 

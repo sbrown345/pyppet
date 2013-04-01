@@ -22,18 +22,9 @@ class UserServer( websocksimplify.WebSocketServer ):
 	pass
 
 
-class App( core.BlenderHack ):
-	def __init__(self, api):
-		print('init server app')
-		simple_action_api.create_callback_api( api )
+class BlenderServer( core.BlenderHack ):
 
-		self.setup_blender_hack( bpy.context, use_gtk=False, headless=True )
-		print('blender hack setup ok')
-		Server.set_api( self )
-		print('custom api set')
-
-	def start_server(self, use_threading=True):
-		self._threaded = use_threading
+	def start_server(self):
 		self.websocket_server = s = UserServer()
 		s.initialize(
 			listen_host=Server.HOST_NAME, 
@@ -61,7 +52,6 @@ class App( core.BlenderHack ):
 
 
 	def on_websocket_read_update(self, sock, frames):
-		print('on websocket read update')
 		player = Server.GameManager.get_player_by_socket( sock )
 		if not player: return
 		addr = player.address
@@ -75,7 +65,7 @@ class App( core.BlenderHack ):
 					continue
 
 				x1,y1,z1, x2,y2,z2 = struct.unpack('<ffffff', frame)
-				print(x1,y1,z1)
+				#print(x1,y1,z1)
 				if addr in Server.GameManager.clients:
 					player = Server.GameManager.clients[ addr ]
 					player.set_location( (x1,y1,z1) )
@@ -99,10 +89,23 @@ class App( core.BlenderHack ):
 	def on_websocket_write_update(self, sock):
 		player = Server.GameManager.get_player_by_socket( sock )
 		msg = player.create_message_stream( bpy.context )
-		print('sending', msg)
 		return json.dumps( msg ).encode('utf-8')
 
 
+	def setup_websocket_callback_api(self, api):
+		simple_action_api.create_callback_api( api )
+
+
+
+
+class App( BlenderServer ):
+	def __init__(self, api):
+		print('init server app')
+		self.setup_websocket_callback_api(api)
+		self.setup_blender_hack( bpy.context, use_gtk=False, headless=True )
+		print('blender hack setup ok')
+		Server.set_api( self )
+		print('custom api set')
 
 	def mainloop(self):
 		print('enter main')
@@ -141,32 +144,31 @@ class App( core.BlenderHack ):
 			time.sleep(0.01)
 
 
+def default_click_callback( user=UserProxy, ob=BlenderProxy ):
+	print('select callback', user, ob)
+	w = api_gen.get_wrapper_objects()[ ob ]
+
+
+def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):
+	print( 'default INPUT CALLBACK', user, ob, input_string )
+	if ob.name == 'login':
+		if 'login.input' not in bpy.data.objects:
+			a = bpy.data.objects.new(
+				name="[data] %s"%name, 
+				object_data= a.data 
+			)
+			bpy.context.scene.objects.link( a )
+			a.parent = ob
+
+
+API = {
+	'default_click': default_click_callback,
+	'default_input'	: default_input_callback,
+}
+
 
 if __name__ == '__main__':
-	def default_click_callback( user=UserProxy, ob=BlenderProxy ):
-		print('select callback', user, ob)
-		w = api_gen.get_wrapper_objects()[ ob ]
-
-
-	def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):
-		print( 'default INPUT CALLBACK', user, ob, input_string )
-		if ob.name == 'login':
-			if 'login.input' not in bpy.data.objects:
-				a = bpy.data.objects.new(
-					name="[data] %s"%name, 
-					object_data= a.data 
-				)
-				bpy.context.scene.objects.link( a )
-				a.parent = ob
-
-
-	API = {
-		'default_click': default_click_callback,
-		'default_input'	: default_input_callback,
-	}
-
-
 	app = App( API )
-	app.start_server( use_threading=False )
+	app.start_server()
 	print('-----main loop------')
 	app.mainloop()

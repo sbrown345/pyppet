@@ -2,7 +2,7 @@
 # Pyppet2 - Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 ################################################################
-VERSION = '1.9.7c'
+VERSION = '1.9.8a'
 ################################################################
 import os, sys, time, subprocess, threading, math, socket, ctypes
 import wave
@@ -78,6 +78,7 @@ import Wiimote
 import Blender
 import Physics
 import Server
+import server_api
 
 import icons
 
@@ -2741,7 +2742,8 @@ class Biped( AbstractArmature ):
 ##########################################################
 bpy.types.Object.pyppet_model = bpy.props.StringProperty( name='pyppet model type', default='' )
 
-class PyppetAPI( BlenderHackLinux ):
+#class PyppetAPI( BlenderHackLinux ):
+class PyppetAPI( server_api.BlenderServer ):
 	'''
 	Public API
 	'''
@@ -3481,10 +3483,10 @@ class PyppetUI( PyppetAPI ):
 		self._left_tools.pack_start( ex.widget, expand=False )
 		note = gtk.Notebook(); ex.add( note )
 
-		widget = self.websocket_server.webGL.get_fx_widget_page1()
-		note.append_page( widget, gtk.Label( icons.FX_LAYERS1 ) )
-		widget = self.websocket_server.webGL.get_fx_widget_page2()
-		note.append_page( widget, gtk.Label( icons.FX_LAYERS2 ) )
+		#widget = self.websocket_server.webGL.get_fx_widget_page1()
+		#note.append_page( widget, gtk.Label( icons.FX_LAYERS1 ) )
+		#widget = self.websocket_server.webGL.get_fx_widget_page2()
+		#note.append_page( widget, gtk.Label( icons.FX_LAYERS2 ) )
 
 
 		if 0:	# TODO get gui from players
@@ -4216,12 +4218,12 @@ class PyppetUI( PyppetAPI ):
 		################# google chrome ######################
 		#self._chrome_xsocket = gtk.Socket()
 		#if not PYPPET_LITE:
-		self._chrome_xsocket, chrome_container = self.create_embed_widget(
-			on_dnd = self.drop_on_view,
-		)
+		#self._chrome_xsocket, chrome_container = self.create_embed_widget(
+		#	on_dnd = self.drop_on_view,
+		#)
 		self._main_view_split = gtk.HBox()
 		self._main_body_split.pack_start( self._main_view_split, expand=True )
-		self._main_view_split.pack_start( chrome_container, expand=True )
+		#self._main_view_split.pack_start( chrome_container, expand=True )
 		self._main_view_split.pack_start( right_tools, expand=False )
 
 		############### Extra Tools #################
@@ -4276,8 +4278,6 @@ class PyppetUI( PyppetAPI ):
 		#####################################
 		#self._bottom_toggle_button.set_active(False)
 
-		self.server.open_firefox()
-		time.sleep(4)
 
 		if False:
 			if self.server.httpd:
@@ -4332,11 +4332,11 @@ class PyppetUI( PyppetAPI ):
 
 ##########################################################
 class App( PyppetUI ):
-	def start_webserver(self):
-		self.server = Server.WebServer()
-		#self.client = Client()
-		self.websocket_server = Server.WebSocketServer( listen_host=Server.HOST_NAME, listen_port=8081 )
-		self.websocket_server.start()	# polls in a thread
+	#def start_webserver(self):
+	#	self.server = Server.WebServer()
+	#	#self.client = Client()
+	#	self.websocket_server = Server.WebSocketServer( listen_host=Server.HOST_NAME, listen_port=8081 )
+	#	self.websocket_server.start()	# polls in a thread
 
 
 	def __init__(self):
@@ -4499,11 +4499,11 @@ class App( PyppetUI ):
 				self.update_blender_and_gtk()
 
 			############# update servers ##############
-			self.websocket_server.update( self.context )
-			if not self._image_editor_handle: # TODO replace this hack... could return no bytes (if not cached), and then client requests again after timeout.
-				# ImageEditor redraw callback will update http-server,
-				# if ImageEditor is now shown, still need to update the server.
-				self.server.update( self.context )
+			#self.websocket_server.update( self.context )
+			#if not self._image_editor_handle: # TODO replace this hack... could return no bytes (if not cached), and then client requests again after timeout.
+			#	# ImageEditor redraw callback will update http-server,
+			#	# if ImageEditor is now shown, still need to update the server.
+			#	self.server.update( self.context )
 			############################################
 
 
@@ -5352,7 +5352,8 @@ if __name__ == '__main__':
 
 	import Server
 	Server.set_api( user_api=Pyppet )
-	Pyppet.start_webserver()
+	Pyppet.setup_websocket_callback_api( server_api.API )
+	Pyppet.start_server()
 
 	#################################
 

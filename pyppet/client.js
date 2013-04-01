@@ -701,7 +701,8 @@ function on_collada_ready( collada ) {
 
 		if (USE_MODIFIERS) {
 			_mesh.geometry.dynamic = true;		// required
-			_mesh.geometry_base = THREE.GeometryUtils.clone(_mesh.geometry);
+			//_mesh.geometry_base = THREE.GeometryUtils.clone(_mesh.geometry);
+			_mesh.geometry_base = _mesh.geometry.clone(); // new three API
 			//_mesh.material = WIRE_MATERIAL;
 		}
 
@@ -2117,7 +2118,7 @@ function animate() {
 				//mesh.geometry.NeedUpdateVertices = true;
 
 				var modifier = new THREE.SubdivisionModifier( subsurf );
-				var geo = THREE.GeometryUtils.clone( lod.base_mesh.geometry_base );
+				var geo = lod.base_mesh.geometry_base.clone();
 				geo.mergeVertices();		// BAD?  required? //
 				modifier.modify( geo );
 
