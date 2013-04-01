@@ -21,6 +21,14 @@ var DISP_SCALE_MAGIC = 1.0;
 
 var projector = new THREE.Projector();	// for picking
 var mouse = { x: 0, y: 0 };				// for picking
+function onDocumentMouseMove( event ) {
+	event.preventDefault();
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+}
+document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+
 var INTERSECTED = null;				// for picking
 var testing;
 
@@ -1735,11 +1743,14 @@ MyController = function ( object, domElement ) {
 			var intersects = ray.intersectObjects( MESHES );
 			testing = intersects;
 
+			INTERSECTED = null;
+
 			if ( intersects.length > 0 ) {
 				for (var i=0; i < intersects.length; i ++) {
 					var intersect = intersects[ i ];
 					if (intersect.object.name && intersect.object.visible) {
 						if ( INTERSECTED != intersect.object ) {
+							console.log('distance'+intersect.distance);
 							INTERSECTED = intersect.object;
 							INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
 							INTERSECTED.material.color.setHex( 0xff0000 );
@@ -1935,7 +1946,6 @@ MyController = function ( object, domElement ) {
 	this.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
 	this.domElement.addEventListener( 'mousedown', mousedown, false );
-
 	this.domElement.addEventListener( 'mousewheel', mousewheel, false );
 	this.domElement.addEventListener( 'DOMMouseScroll', mousewheel, false ); // firefox
 
