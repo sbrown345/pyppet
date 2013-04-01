@@ -607,11 +607,13 @@ class Player( object ):
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
 			pak = { 'properties' : a.properties }
+			print(ob, view['pos'], a.properties)
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
 
+		print(msg)
 		return msg
 
 	################################ convert to stream #######################################

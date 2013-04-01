@@ -3,9 +3,10 @@
 # License: "New" BSD
 
 import inspect, struct, ctypes
-import bpy
-from bpy.props import *
+try: import bpy
+except ImportError: pass
 
+#from bpy.props import *
 #bpy.types.Object.on_click = IntProperty(
 #    name="function id", description="(internal) on click function id", 
 #    default=0, min=0, max=256)
@@ -192,7 +193,7 @@ class ContainerInternal(object):
 
 
 class Container(object):
-	__properties = {} # global to all subclasses (if they do not provide their own)
+	#__properties = {} # global to all subclasses (if they do not provide their own)
 	__viewers    = {} # global to all subclasses
 	__parent     = None # upstream items
 	__proxy      = None # "a.something = x" can trigger passing the attribute to proxy if defined
@@ -201,8 +202,8 @@ class Container(object):
 	__allow_upstream_properties = [] # this can be True or a list of names to allow
 
 	def __init__(self, **kw):
-		for name in kw:
-			setattr(self, '_Container__'+name, kw[name])
+		self.__properties = {}
+		for name in kw: setattr(self, '_Container__'+name, kw[name])
 
 	def __call__(self, viewer=None):
 		'''
@@ -312,16 +313,23 @@ def create_object_view( ob ):
 	on_input = 'default_input'  # defaults for testing
 
 	############ Blender's ID-Props API #########
-	for prop in ob.items():
-		name, value = prop
-		if name == 'on_click': on_click = value
-		elif name == 'on_input': on_input = value
+	if hasattr(ob, 'items'):
+		for prop in ob.items():
+			name, value = prop
+			if name == 'on_click': on_click = value
+			elif name == 'on_input': on_input = value
 	#############################################
 
 	if on_click:
-		on_click = CallbackFunction.callbacks[ on_click ]
+		if on_click in CallbackFunction.callbacks:
+			on_click = CallbackFunction.callbacks[ on_click ]
+		else:
+			print('WARNING: undefined callback:', on_click)
 	if on_input:
-		on_input = CallbackFunction.callbacks[ on_input ]
+		if on_input in CallbackFunction.callbacks:
+			on_input = CallbackFunction.callbacks[ on_input ]
+		else:
+			print('WARNING: undefined callback:', on_input)
 
 	v = ObjectView(
 		proxy=ob,
@@ -530,6 +538,18 @@ register_type( BlenderProxy, get_blender_object_by_uid )
 class UserProxy(object): pass  ## this needs to be registered with an unpacker that can deal with your custom user class
 
 
+if __name__ == '__main__':
+	o = 'some object'
+	w = wrap_object( o )
+	print(w)
+	v1 = 'some viewer1'
+	v2 = 'some viewer2'
+	view1 = w( v1 )
+	view2 = w( v2 )
+	view1['hi'] = 1
+	view2['hi'] = 2
 
-
+	print(view1, view1['hi'])
+	print(view2, view2['hi'])
+	assert view1['hi'] != view2['hi']
 
