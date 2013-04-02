@@ -250,6 +250,7 @@ class Container(object):
 
 	def __init__(self, **kw):
 		self.__properties = {}
+		self.__subproperties = {}
 		for name in kw: setattr(self, '_Container__'+name, kw[name])
 
 	def __call__(self, viewer=None, reset=False ):
@@ -323,8 +324,15 @@ class Container(object):
 			anim.animate()
 		elif isinstance(value, Animations):
 			value.bind( self, name )
-			#for anim in value.animations:
-			#	pass
+
+		elif name.startswith('.'): # substructures
+			assert self.__proxy
+			self.__subproperties[name] = value
+			a = name.replace('[', ' ').replace(']', ' ').replace('"', ' ').split()
+			attr, key, subattr = a
+			item = getattr(self.__proxy, attr)[ key ]
+			setattr(item, subattr, value)
+
 		else:
 			self.__properties[ name ] = value
 			if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
