@@ -210,12 +210,13 @@ if '_blank_material_' not in bpy.data.materials:
 	BLANK_MATERIAL.diffuse_color = [1,1,1]
 BLANK_MATERIAL = bpy.data.materials[ '_blank_material_' ]
 
-def _dump_collada_data_helper( data ):
+def _dump_collada_data_helper( data, blank_material=False ):
 	data.transform( SWAP_MESH )	# flip YZ for Three.js
 	data.calc_normals()
-	for i,mat in enumerate(data.materials): data.materials[ i ] = None
-	if data.materials: data.materials[0] = BLANK_MATERIAL
-	else: data.materials.append( BLANK_MATERIAL )
+	if blank_material:
+		for i,mat in enumerate(data.materials): data.materials[ i ] = None
+		if data.materials: data.materials[0] = BLANK_MATERIAL
+		else: data.materials.append( BLANK_MATERIAL )
 
 _collada_lock = threading._allocate_lock()
 def dump_collada( ob, center=False, lowres=False ):
@@ -573,16 +574,31 @@ class Player( object ):
 		this can be tuned perclient fps - limited to 24fps
 		'''
 
-		msg = {'meshes':{}}
+		msg = {'meshes':{}, 'lights':{}}
 
 		wobjects = api_gen.get_wrapped_objects()
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue # TODO update skipping logic
-			if ob.type not in ('MESH',): continue
+			if ob.type not in ('MESH','LAMP'): continue
 			if ob.type=='MESH' and not ob.data.uv_textures:
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
 			if ob.hide: continue
+
+			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
+			loc = loc.to_tuple()
+			scl = scl.to_tuple()
+			rot = (rot.w, rot.x, rot.y, rot.z)
+
+
+			if ob.type == 'LAMP':
+				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
+				pak['energy'] = ob.data.energy
+				pak['color'] = [ round(a,3) for a in ob.data.color ]
+				pak['dist'] = ob.data.distance
+				pak['scale'] = 1.0
+				pak['pos'] = loc
+				continue
 
 			if ob not in wobjects: api_gen.wrap_object( ob )
 
@@ -590,10 +606,6 @@ class Player( object ):
 			view = w( self ) # create new viewer if required, and return it
 			#view = proxy[ self ]
 
-			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
-			loc = loc.to_tuple()
-			scl = scl.to_tuple()
-			rot = (rot.w, rot.x, rot.y, rot.z)
 			#proxy['pos'] = loc  ## testing upstream properties (parent view)
 			view['pos'] = loc
 			view['rot'] = rot ## testing local properties
@@ -606,15 +618,13 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			b = {}; b.update( a.properties )
+			b = {}; b.update( a.properties )  ## TODO check why this works.
 			pak = { 'properties' : b }
-			print(ob, view['pos'], a.properties)
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
 
-		print(msg)
 		return msg
 
 	################################ convert to stream #######################################

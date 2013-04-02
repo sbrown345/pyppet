@@ -258,6 +258,68 @@ var _msg;
 function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	_msg = msg;
+
+
+	for (var name in msg['lights']) {
+		var light;
+		var ob = msg['lights'][ name ];
+
+		if ( name in LIGHTS == false ) {
+			console.log('>> new light');
+			// note when adding new lights, old materials need to be reloaded
+
+			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
+			scene.add( light );
+
+			//var flareColor = new THREE.Color( 0xffffff );
+			//flareColor.copy( light.color );
+			//THREE.ColorUtils.adjustHSV( flareColor, 0, -0.5, 0.5 );
+
+			var lensFlare = new THREE.LensFlare( 
+				textureFlare0, 
+				700, 		// size in pixels (-1 use texture width)
+				0.0, 		// distance (0-1) from light source (0=at light source)
+				THREE.AdditiveBlending, 
+				light.color
+			);
+
+			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+
+			lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare3, 120, 0.9, THREE.AdditiveBlending );
+			lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
+
+			//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
+			lensFlare.position = light.position;
+			light.flare = lensFlare;
+			scene.add( lensFlare );
+
+
+		}
+
+		light = LIGHTS[ name ];
+		light.color.r = ob.color[0];
+		light.color.g = ob.color[1];
+		light.color.b = ob.color[2];
+		light.distance = ob.dist;
+		light.intensity = ob.energy;
+
+		light.position.x = ob.pos[0];
+		light.position.y = ob.pos[1];
+		light.position.z = ob.pos[2];
+
+		for (var i=0; i < light.flare.lensFlares.length; i ++) {
+			var flare = light.flare.lensFlares[ i ];
+			flare.scale = ob.scale;
+		}
+
+	}
+
+
+
 	for (var name in msg['meshes']) {
 
 		if (name in Objects == false) {
@@ -722,12 +784,16 @@ function on_collada_ready( collada ) {
 		// FIRST LOAD: loading LOD far level //
 		//_mesh.material.vertexColors = THREE.VertexColors;	// not a good idea
 
-		_mesh.material = create_normal_shader(
-			{
-				name :	_mesh.name,
-				prefix :	'/bake/LOD/'
-			}
-		);
+		//_mesh.material = create_normal_shader(
+		//	{
+		//		name :	_mesh.name,
+		//		prefix :	'/bake/LOD/'
+		//	}
+		//);
+		_mesh.material = new THREE.MeshLambertMaterial({
+			transparent: true,
+			color: 0xffffff
+		});
 
 		var lod = new THREE.LOD();
 		lod.name = _mesh.name;
@@ -1759,15 +1825,13 @@ MyController = function ( object, domElement ) {
 			} else { INTERSECTED = null; }
 		}
 
-		_state = STATE.ZOOM;
+		//_state = STATE.ZOOM;
 
-		/*
 		if ( _state === STATE.NONE ) {
 
 			_state = event.button;
 
 		}
-		*/
 
 		if ( _state === STATE.ROTATE && !_this.noRotate ) {
 

@@ -146,7 +146,7 @@ class App( BlenderServer ):
 
 def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	print('select callback', user, ob)
-	w = api_gen.get_wrapper_objects()[ ob ]
+	w = api_gen.get_wrapped_objects()[ ob ]
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):
