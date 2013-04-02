@@ -119,9 +119,7 @@ class App( BlenderServer ):
 			#print('FPS', dt)
 
 			api_gen.AnimationManager.tick()
-
-			#for ob in bpy.data.objects:
-			#	ob.location.x = random.uniform(-0.2, 0.2)
+			bpy.context.scene.update()  ## required for headless mode
 
 			fully_updated = self.update_blender()
 

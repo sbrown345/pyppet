@@ -164,7 +164,6 @@ class Animation(object):
 
 	def tick( self, T ):
 		assert self.target
-
 		Dt = T - self.start_time
 		if Dt >= self.seconds:
 			self.done = True
