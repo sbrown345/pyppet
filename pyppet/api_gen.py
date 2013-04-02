@@ -142,8 +142,11 @@ class Animation(object):
 	def bind( self, target, attribute=None ):
 		self.target = target
 		self.attribute = attribute
+		if attribute in target:
+			attr = self.target[self.attribute]
+		else:
+			attr = None
 
-		attr = self.target[self.attribute]
 		if self.indices:
 			self.deltas = {}
 			for index in self.indices:
@@ -178,7 +181,7 @@ class Animation(object):
 			d = T - self.last_tick
 			if not d: return self.done  ## prevent divide by zero
 
-			step = self.seconds / d
+			step = d / self.seconds
 			attr = self.target[self.attribute]
 			if self.value is not None:
 				value = attr
@@ -191,6 +194,7 @@ class Animation(object):
 					delta = self.deltas[ index ]
 					value += delta * step
 					attr[ index ] = value
+				self.target[self.attribute] = attr
 
 		self.last_tick = T
 
@@ -269,6 +273,12 @@ class Container(object):
 			return getattr(self.__parent, name)
 
 	################### Dict-Like Features ####################
+	def __contains__(self, name):
+		if name in self.__properties:
+			return True
+		else:
+			return False
+
 	def __setitem__(self, name, value):
 		'''
 		a["x"] = xxx # set custom property for all viewers,
@@ -579,6 +589,7 @@ if __name__ == '__main__':
 	view2 = w( v2 )
 	view1['hi'] = 1
 	view2['hi'] = 2
+	assert 'hi' in view1
 
 	print(view1, view1['hi'])
 	print(view2, view2['hi'])

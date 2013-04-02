@@ -150,8 +150,8 @@ def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	print('select callback', user, ob)
 	w = api_gen.get_wrapped_objects()[ ob ]
 	view = w( user )
-	view['location'] = [0,0,0]
-	view['location'] = Animation( seconds=10.0, y=8.0)
+	view['location'] = list( ob.location.to_tuple() )
+	view['location'] = Animation( seconds=3.0, y=-5.0) # TODO relative and absolute
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):

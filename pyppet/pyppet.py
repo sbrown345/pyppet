@@ -79,7 +79,7 @@ import Blender
 import Physics
 import Server
 import server_api
-
+import api_gen
 import icons
 
 import bpy, mathutils
@@ -4505,7 +4505,7 @@ class App( PyppetUI ):
 			#	# if ImageEditor is now shown, still need to update the server.
 			#	self.server.update( self.context )
 			############################################
-
+			api_gen.AnimationManager.tick()
 
 
 			################################
