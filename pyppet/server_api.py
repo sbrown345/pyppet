@@ -14,7 +14,7 @@ import core
 import Server
 import simple_action_api
 import api_gen
-from api_gen import BlenderProxy, UserProxy, Animation
+from api_gen import BlenderProxy, UserProxy, Animation, Animations
 from websocket import websocksimplify
 
 
@@ -149,7 +149,14 @@ def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	w = api_gen.get_wrapped_objects()[ ob ]
 	view = w( user )
 	view['location'] = list( ob.location.to_tuple() )
-	view['location'] = Animation( seconds=3.0, y=-5.0) # TODO relative and absolute
+	#view['location'] = Animation( seconds=3.0, y=-5.0) # TODO relative and absolute
+	view['location'] = Animations(
+		Animation( seconds=3.0, y=-5.0),
+		Animation( seconds=3.0, y=5.0),
+		Animation( seconds=3.0, z=1.0),
+		Animation( seconds=3.0, z=-1.0),
+	)
+
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):

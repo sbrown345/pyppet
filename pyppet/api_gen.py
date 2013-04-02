@@ -122,12 +122,40 @@ class SimpleAnimationManager(object):
 
 AnimationManager = SimpleAnimationManager()
 
+class AnimAPI(object):
+	def animate( self, loop=False ):
+		self.start_time = time.time()
+		self.last_tick = self.start_time
+		self.done = False
+		self.loop = loop
+		self.update_deltas()
+		AnimationManager.objects.append( self )
 
-class Animation(object):
+	def update_deltas(self): pass
+
+class Animations( AnimAPI ):
+	def __init__(self, *anims):
+		self.animations = anims
+		for a in anims: a.link_animations( anims )
+
+	def bind( self, target, name ):
+		for anim in self.animations:
+			anim.bind( target, name )
+		self.animations[0].animate()
+
+	def tick( self, T ):
+		for anim in self.animations:
+			if not anim.done:
+				anim.tick( T )
+				break
+
+
+class Animation( AnimAPI ):
 	'''
 	only AnimationManager holds references to Animations,
 	many of these will be created and garbage collected.
 	'''
+
 	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None ):
 		self.done = False
 		self.value = value
@@ -138,15 +166,18 @@ class Animation(object):
 		if y is not None: self.indices[ 1 ] = y
 		if z is not None: self.indices[ 2 ] = z
 		self.seconds = seconds
+		self.animations = []
+
+	def link_animations(self, anims):
+		self.animations = anims
 
 	def bind( self, target, attribute=None ):
 		self.target = target
 		self.attribute = attribute
-		if attribute in target:
-			attr = self.target[self.attribute]
-		else:
-			attr = None
+		assert attribute in target
 
+	def update_deltas(self):
+		attr = self.target[ self.attribute ]
 		if self.indices:
 			self.deltas = {}
 			for index in self.indices:
@@ -154,12 +185,6 @@ class Animation(object):
 		else:
 			self.delta = self.value - attr
 
-	def animate( self, loop=False ):
-		self.start_time = time.time()
-		self.last_tick = self.start_time
-		self.done = False
-		self.loop = loop
-		AnimationManager.objects.append( self )
 
 
 	def tick( self, T ):
@@ -175,6 +200,11 @@ class Animation(object):
 				assert self.indices
 				for index in self.indices:
 					attr[ index ] = self.indices[ index ]
+
+			if self.animations:
+				idx = self.animations.index(self)
+				if idx+1 < len(self.animations):
+					self.animations[ idx+1 ].animate()
 
 		else:
 			d = T - self.last_tick
@@ -291,6 +321,10 @@ class Container(object):
 			anim = value
 			anim.bind( self, name )
 			anim.animate()
+		elif isinstance(value, Animations):
+			value.bind( self, name )
+			#for anim in value.animations:
+			#	pass
 		else:
 			self.__properties[ name ] = value
 			if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
