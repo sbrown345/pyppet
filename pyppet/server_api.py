@@ -157,6 +157,34 @@ def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 		Animation( seconds=3.0, z=-1.0),
 	)
 
+	view().on_click = api_gen.get_callback( 'next1')
+
+def next1( user=UserProxy, ob=BlenderProxy ):
+	print('next click callback1')
+	w = api_gen.get_wrapped_objects()[ ob ]
+	view = w( user )
+	view['color'] = [1,1,0, 1]
+	view().on_click = api_gen.get_callback( 'next2')
+
+
+def next2( user=UserProxy, ob=BlenderProxy ):
+	print('next click callback2')
+	w = api_gen.get_wrapped_objects()[ ob ]
+	view = w( user )
+	view['color'] = [0,1,1, 1]
+	view().on_click = api_gen.get_callback( 'next3')
+
+
+def next3( user=UserProxy, ob=BlenderProxy ):
+	print('next click callback3')
+	w = api_gen.get_wrapped_objects()[ ob ]
+	view = w( user )
+	view['color'] = Animations(
+		Animation( seconds=2.0, x=0.5, y=0.5, z=0.1),
+		Animation( seconds=2.0, x=1.0, y=0.1, z=0.5),
+		Animation( seconds=2.0, z=1.0),
+		Animation( seconds=2.0, z=-1.0),
+	)
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):
@@ -174,6 +202,9 @@ def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes
 API = {
 	'default_click': default_click_callback,
 	'default_input'	: default_input_callback,
+	'next1' : next1,
+	'next2' : next2,
+	'next3' : next3,
 }
 
 

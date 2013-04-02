@@ -617,9 +617,12 @@ class Player( object ):
 			pak = { 'properties' : b }
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
-			color = [ round(x,3) for x in ob.color ]
-			if ob.data.materials and ob.data.materials[0]:
-				color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+			if 'color' in view:
+				color = view['color']
+			else:
+				color = [ round(x,3) for x in ob.color ]
+				if ob.data.materials and ob.data.materials[0]:
+					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
 			pak['color'] = color
 
 
