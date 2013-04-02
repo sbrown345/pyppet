@@ -14,7 +14,7 @@ import core
 import Server
 import simple_action_api
 import api_gen
-from api_gen import BlenderProxy, UserProxy
+from api_gen import BlenderProxy, UserProxy, Animation
 from websocket import websocksimplify
 
 
@@ -118,6 +118,8 @@ class App( BlenderServer ):
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
 
+			api_gen.AnimationManager.tick()
+
 			#for ob in bpy.data.objects:
 			#	ob.location.x = random.uniform(-0.2, 0.2)
 
@@ -147,6 +149,9 @@ class App( BlenderServer ):
 def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	print('select callback', user, ob)
 	w = api_gen.get_wrapped_objects()[ ob ]
+	view = w( user )
+	view['location'] = [0,0,0]
+	view['location'] = Animation( seconds=10.0, y=8.0)
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):

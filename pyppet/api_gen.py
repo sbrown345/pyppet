@@ -2,7 +2,7 @@
 # Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 
-import inspect, struct, ctypes
+import time, inspect, struct, ctypes
 try: import bpy
 except ImportError: pass
 
@@ -128,27 +128,36 @@ class Animation(object):
 	only AnimationManager holds references to Animations,
 	many of these will be created and garbage collected.
 	'''
-	def __init__(self, start=None, goal=None, seconds=1.0 ):
-		assert goal is not None
+	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None ):
 		self.done = False
-		self.goal = goal
+		self.value = value
+		self.x = x; self.y = y; self.z = z
+		self.indices = {}
+		self.deltas = {}
+		if x is not None: self.indices[ 0 ] = x
+		if y is not None: self.indices[ 1 ] = y
+		if z is not None: self.indices[ 2 ] = z
 		self.seconds = seconds
 
-	def bind( self, target, attribute=None, item=None ):
+	def bind( self, target, attribute=None ):
 		self.target = target
 		self.attribute = attribute
-		self.item = item
-		if self.attribute: value = getattr(self.target, self.attribute)
-		elif self.item: value = self.target[ self.item ]
-		self.start_value = value
-		self.delta = value - goal
+
+		attr = self.target[self.attribute]
+		if self.indices:
+			self.deltas = {}
+			for index in self.indices:
+				self.deltas[ index ] = self.indices[index] - attr[index]
+		else:
+			self.delta = self.value - attr
 
 	def animate( self, loop=False ):
 		self.start_time = time.time()
-		self.last_tick = None
+		self.last_tick = self.start_time
 		self.done = False
 		self.loop = loop
 		AnimationManager.objects.append( self )
+
 
 	def tick( self, T ):
 		assert self.target
@@ -157,26 +166,31 @@ class Animation(object):
 		if Dt >= self.seconds:
 			self.done = True
 
-			if self.attribute:
-				setattr(self.target, self.attribute, self.goal)
-			elif self.item:
-				self.target[ self.item ] = self.goal
-
-			self.target = None
+			attr = self.target[self.attribute]
+			if self.value is not None:
+				self.target[ self.attribute ] = self.value
+			else:
+				assert self.indices
+				for index in self.indices:
+					attr[ index ] = self.indices[ index ]
 
 		else:
 			d = T - self.last_tick
-			step = self.seconds / d
-			value += self.delta * step
+			if not d: return self.done  ## prevent divide by zero
 
-			if self.attribute:
-				value = getattr(self.target, self.attribute)
+			step = self.seconds / d
+			attr = self.target[self.attribute]
+			if self.value is not None:
+				value = attr
 				value += self.delta * step
-				setattr(self.target, self.attribute, value)
-			elif self.item:
-				value = self.target[ self.item ]
-				value += self.delta * step
-				self.target[ self.item ] = value
+				self.target[ self.attribute ] = value
+			else:
+				assert self.indices
+				for index in self.indices:
+					value = attr[ index ]
+					delta = self.deltas[ index ]
+					value += delta * step
+					attr[ index ] = value
 
 		self.last_tick = T
 
@@ -205,7 +219,7 @@ class Container(object):
 		self.__properties = {}
 		for name in kw: setattr(self, '_Container__'+name, kw[name])
 
-	def __call__(self, viewer=None):
+	def __call__(self, viewer=None, reset=False ):
 		'''
 		The Container only contains data attributes to keep scripting these objects simple.
 		To get to the internal API of Container call the instance: "obinternal = obview()"
@@ -223,11 +237,24 @@ class Container(object):
 					#allow_viewers=True,
 				)
 				self.__viewers[ viewer ] = view
-			return self.__viewers[ viewer ]
+			view = self.__viewers[ viewer ]
+			#view( reset=True )
+			return view
+
+		elif reset:  ## restore proxy attributes to view
+			assert self.__proxy
+			pnames = dir(self.__proxy)
+			for n in dir(self):
+				if n.startswith('_'): continue
+				if n in pnames:
+					attr = self.__dict__[n]
+					setattr(self.__proxy, n, attr)
+
 		else:
 			return ContainerInternal(self)
 
 	################# Object Attributes ######################
+	#def __setattribute__(self,name,value):
 	def __setattr__(self,name,value):
 		'''
 		a.location = (x,y,z) # set something on the blender object,
@@ -235,8 +262,6 @@ class Container(object):
 		'''
 		assert not name.startswith('__')
 		self.__dict__[name] = value
-		if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
-			setattr(self.__proxy, name, value)
 
 	def __getattr__(self,name):
 		allow = self.__allow_upstream_attributes
@@ -246,15 +271,21 @@ class Container(object):
 	################### Dict-Like Features ####################
 	def __setitem__(self, name, value):
 		'''
-		a["x"] = xxx # set custom property for all viewers
+		a["x"] = xxx # set custom property for all viewers,
+		also sets the value on the proxy, if there is a proxy,
+		and the proxy has an attribute of the same name.
+		note: watch out for the names in your proxy and the names
+		used purely as custom attributes do not conflict
 		'''
 		assert type(name) is str
 		if isinstance(value, Animation):
 			anim = value
-			anim.bind( self, item=name )
+			anim.bind( self, name )
 			anim.animate()
 		else:
 			self.__properties[ name ] = value
+			if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
+				setattr(self.__proxy, name, value)
 
 
 	def __getitem__(self, name):
