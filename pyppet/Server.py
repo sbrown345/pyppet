@@ -73,23 +73,18 @@ print('[HOST_NAME: %s]'%HOST_NAME)
 #assert 0
 
 ##################### PyRNA - DEPRECATED ###################
-bpy.types.Object.webgl_lens_flare_scale = FloatProperty(
-    name="lens flare scale", description="size of lens flare for webGL client", 
-    default=1.0)
-
-
-bpy.types.Object.webgl_progressive_textures = BoolProperty( 
-	name='use progressive texture loading in webGL client', 
-	default=False 
-)
-
-bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
-
-bpy.types.Object.webgl_auto_subdivison = BoolProperty( name='auto subdivide', default=False )
-
-bpy.types.Object.webgl_normal_map = FloatProperty(
-    name="normal map scale", description="normal map scale for webGL client", 
-    default=0.75)
+#bpy.types.Object.webgl_lens_flare_scale = FloatProperty(
+#    name="lens flare scale", description="size of lens flare for webGL client", 
+#    default=1.0)
+#bpy.types.Object.webgl_progressive_textures = BoolProperty( 
+#	name='use progressive texture loading in webGL client', 
+#	default=False 
+#)
+#bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
+#bpy.types.Object.webgl_auto_subdivison = BoolProperty( name='auto subdivide', default=False )
+#bpy.types.Object.webgl_normal_map = FloatProperty(
+#    name="normal map scale", description="normal map scale for webGL client", 
+#    default=0.75)
 
 
 
@@ -583,7 +578,7 @@ class Player( object ):
 			if ob.type=='MESH' and not ob.data.uv_textures:
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
-			if ob.hide: continue
+			#if ob.hide: continue
 
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
@@ -621,6 +616,12 @@ class Player( object ):
 			b = {}; b.update( a.properties )  ## TODO check why this works.
 			pak = { 'properties' : b }
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
+
+			color = [ round(x,3) for x in ob.color ]
+			if ob.data.materials and ob.data.materials[0]:
+				color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+			pak['color'] = color
+
 
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code

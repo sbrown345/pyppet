@@ -365,9 +365,16 @@ function on_json_message( data ) {
 			m.quaternion.y = ob.rot[2];
 			m.quaternion.z = ob.rot[3];
 
+			if (pak.color && m.LODs.length) {
+				m.LODs[0].object3D.material.color.r = pak.color[0];
+				m.LODs[0].object3D.material.color.g = pak.color[1];
+				m.LODs[0].object3D.material.color.b = pak.color[2];
+			}
+
 			if (pak.on_click) {
 				m.on_mouse_up_callback = _callbacks_[ pak.on_click ];
 			}
+
 			if (pak.on_input) {
 				m.on_input_callback = _callbacks_[ pak.on_input ];
 			}
