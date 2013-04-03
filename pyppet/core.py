@@ -11,20 +11,27 @@ if sys.version_info[0] >= 3:
 	import urllib.request
 	import urllib.parse
 
-import cv
-import highgui as gui
-if hasattr(gui,'CreateCameraCapture'):
-	USE_OPENCV = True
-	DEFAULT_WEBCAM_CAPTURE = gui.CreateCameraCapture(0)
-else:
-	USE_OPENCV = False
-	DEFAULT_WEBCAM_CAPTURE = None
 
-#import libclutter_gtk as clutter
-import gtk3 as gtk
+USE_OPENCV = False
+if '--opencv' in sys.argv:
+	import cv
+	import highgui as gui
+	if hasattr(gui,'CreateCameraCapture'):
+		USE_OPENCV = True
+		DEFAULT_WEBCAM_CAPTURE = gui.CreateCameraCapture(0)
+	else:
+		DEFAULT_WEBCAM_CAPTURE = None
 
-if hasattr(gtk, 'target_entry_new'): GTK3 = True
-else: GTK3 = False
+USE_GTK = False
+if '--gtk' in sys.argv:
+	#import libclutter_gtk as clutter
+	import gtk3 as gtk
+	USE_GTK = True
+	if hasattr(gtk, 'target_entry_new'): GTK3 = True
+	else: GTK3 = False
+
+	#assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
+	gtk.init()	# comes after clutter init
 
 
 import icons
@@ -39,8 +46,6 @@ if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
 
 PYPPET_LITE = 'pyppet-lite' in sys.argv
 
-#assert clutter.gtk_clutter_init( ctypes.pointer(ctypes.c_int(0)) )
-gtk.init()	# comes after clutter init
 
 
 def start_new_thread( func, *args ):
@@ -829,7 +834,7 @@ class ToolWindow(object):
 
 ################## simple drag'n'drop API ################
 class SimpleDND(object):
-	if GTK3:
+	if USE_GTK and GTK3:
 		target = gtk.target_entry_new( 'test',1,gtk.TARGET_SAME_APP )# GTK's confusing API
 	else:
 		target = None
@@ -922,7 +927,7 @@ DND = SimpleDND()	# singleton
 class ExternalDND( SimpleDND ):	# NOT WORKING YET!! #
 	#target = gtk.target_entry_new( 'text/plain',2,gtk.TARGET_OTHER_APP )
 
-	if GTK3:
+	if USE_GTK and GTK3:
 		target = gtk.target_entry_new( 'file://',2,gtk.TARGET_OTHER_APP )
 	else:
 		target = None
@@ -1682,7 +1687,7 @@ def _on_detach( widget, gcontext ):
 	w.window.show_all()
 
 class Detachable( object ):
-	if GTK3:
+	if USE_GTK and GTK3:
 		_detachable_target_ = gtk.target_entry_new( 'detachable',2,0)	#gtk.TARGET_OTHER_APP )	
 
 	def make_detachable(self,widget, on_detach):
