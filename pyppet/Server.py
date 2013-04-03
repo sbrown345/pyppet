@@ -66,6 +66,15 @@ else:
 #HOST_NAME = '192.168.0.7'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
+_host = HOST_NAME
+_port = 8080
+
+def get_host_and_port(): return _host, _port
+
+def set_host_and_port(h, p):
+	global _host, _port
+	_host = h; _port = p
+
 ## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
 #test = os.path.expanduser('~/.wine/drive_c/Sphere01.dae')
 #assert os.path.isfile(test)
@@ -982,7 +991,7 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 		elif path in ('/', '/zone'):
 			zone = None
 			if path == '/zone': zone = arg
-			data = generate_html_header( websocket_port=8080, zone=zone ).encode('utf-8')
+			data = generate_html_header( websocket_port=get_host_and_port()[-1], zone=zone ).encode('utf-8')
 			content_type = 'text/html; charset=utf-8'
 
 		elif path.startswith('/javascripts/'):
@@ -1082,7 +1091,8 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 			)
 
 	#self._port_hack += 1
-	h.append( 'var HOST = "%s";' %HOST_NAME )
+	_h,_p = get_host_and_port()
+	h.append( 'var HOST = "%s";' %_h )
 	h.append( 'var HOST_PORT = "%s";' %websocket_port )
 
 

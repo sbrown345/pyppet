@@ -26,9 +26,21 @@ class BlenderServer( core.BlenderHack ):
 
 	def start_server(self):
 		self.websocket_server = s = UserServer()
+		host = Server.HOST_NAME
+		port = 8080
+		for arg in sys.argv:
+			if arg.startswith('--port='):
+				port = int( arg.split('=')[-1] )
+			if arg.startswith('--ip='):
+				a = arg.split('=')
+				if len(a) == 2 and a[-1]:
+					host = a[-1]
+
+		Server.set_host_and_port( host, port )
+
 		s.initialize(
-			listen_host=Server.HOST_NAME, 
-			listen_port=8080,
+			listen_host=host, 
+			listen_port=port,
 			read_callback=self.on_websocket_read_update,
 			write_callback=self.on_websocket_write_update,
 			new_client_callback=self.on_new_client,
