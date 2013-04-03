@@ -618,7 +618,7 @@ class Player( object ):
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			if 'color' in view:
-				color = view['color']
+				color = list( view['color'] )
 			else:
 				color = [ round(x,3) for x in ob.color ]
 				if ob.data.materials and ob.data.materials[0]:
@@ -629,6 +629,9 @@ class Player( object ):
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
 
+			print(ob, pak['color'])
+		print('-------------------')
+		#print(msg)
 		return msg
 
 	################################ convert to stream #######################################

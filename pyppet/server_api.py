@@ -185,7 +185,7 @@ def next3( user=UserProxy, ob=BlenderProxy ):
 		Animation( seconds=2.0, z=1.0),
 		Animation( seconds=2.0, z=-1.0),
 	)
-	#view[ '.modifiers["Bevel"].width' ] = 0.5  # this style is simple
+	#view[ '.modifiers["Bevel"].width' ] = 0.5  # this style is simple ## TODO mesh streaming so this can be tested, support bevel in dump_collada
 
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):

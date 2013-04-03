@@ -241,7 +241,7 @@ class ContainerInternal(object):
 
 class Container(object):
 	#__properties = {} # global to all subclasses (if they do not provide their own)
-	__viewers    = {} # global to all subclasses
+	#__viewers    = {} # global to all subclasses - thanks Miran.
 	__parent     = None # upstream items
 	__proxy      = None # "a.something = x" can trigger passing the attribute to proxy if defined
 	__allow_viewers = False
@@ -251,6 +251,7 @@ class Container(object):
 	def __init__(self, **kw):
 		self.__properties = {}
 		self.__subproperties = {}
+		self.__viewers = {}
 		for name in kw: setattr(self, '_Container__'+name, kw[name])
 
 	def __call__(self, viewer=None, reset=False ):
