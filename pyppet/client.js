@@ -354,7 +354,7 @@ function on_json_message( data ) {
 			} else {
 				lod.material.wireframe = false;
 			}
-
+			//lod.material = new THREE.LineDashedMaterial( { color: 0xffffff, dashSize: 1, gapSize: 0.5 } )
 			//m.has_progressive_textures = ob.ptex;
 			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
@@ -760,7 +760,7 @@ function on_collada_ready( collada ) {
 	}
 
 	_mesh.geometry.computeTangents();	// requires UV's, this must come before material is assigned
-
+	//_mesh.geometry.computeLineDistances();
 
 	if ( Objects[_mesh.name] ) {
 		// SECOND LOAD: loading LOD base level //
@@ -803,12 +803,23 @@ function on_collada_ready( collada ) {
 		//		prefix :	'/bake/LOD/'
 		//	}
 		//);
+		var linegeom = _mesh.geometry.clone(); 
+		linegeom.computeLineDistances();
+
+		var line = new THREE.Line( 
+			linegeom, 
+			new THREE.LineDashedMaterial( { color: 0xffaa00, dashSize: 1, gapSize: 0.4, linewidth: 2 } ), 
+			THREE.LineStrip //THREE.LinePieces
+		);
+
 		_mesh.material = new THREE.MeshLambertMaterial({
-			transparent: true,
+			transparent: false,
 			color: 0xffffff
 		});
 
 		var lod = new THREE.LOD();
+		lod.add( line );
+
 		lod.name = _mesh.name;
 		lod.base_mesh = null;
 		lod.useQuaternion = true;			// ensure Quaternion
