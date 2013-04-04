@@ -168,7 +168,11 @@ def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 		Animation( seconds=3.0, z=1.0),
 		Animation( seconds=3.0, z=-1.0),
 	)
-
+	view['rotation_euler'] = list( ob.rotation_euler )
+	view['rotation_euler'] = Animations(
+		Animation( seconds=3.0, x=-5.0),
+		Animation( seconds=3.0, x=5.0),
+	)
 	view().on_click = api_gen.get_callback( 'next1')
 
 def next1( user=UserProxy, ob=BlenderProxy ):
