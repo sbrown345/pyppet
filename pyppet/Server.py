@@ -588,7 +588,7 @@ class Player( object ):
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
 			#if ob.hide: continue
-
+			pak = {} # pack into dict for json transfer.
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
@@ -622,24 +622,26 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			b = {}; b.update( a.properties )  ## TODO check why this works.
-			pak = { 'properties' : b }
+			#b = {}; b.update( a.properties )  ## TODO check why this works.
+			#pak = { 'properties' : b } ## OOPPS pak should be defined at top of loop
+			pak['properties'] = a.properties
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
+			color = None
 			if 'color' in view:
-				color = list( view['color'] )
-			else:
-				color = [ round(x,3) for x in ob.color ]
-				if ob.data.materials and ob.data.materials[0]:
-					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
-			pak['color'] = color
+				color = view['color']
+			#else:
+			#	color = [ round(x,3) for x in ob.color ]
+			#	if ob.data.materials and ob.data.materials[0]:
+			#		color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+			if color: pak['color'] = color
 
 
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
 
-			print(ob, pak['color'])
-		print('-------------------')
+
+		#print('-------------------')
 		#print(msg)
 		return msg
 
