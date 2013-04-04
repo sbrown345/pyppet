@@ -61,7 +61,7 @@ var dbugmsg = null;
 // note: keyup event charCode is invalid in firefox, the keypress event should work in all browsers.
 var _input_buffer = [];
 var INPUT_OBJECT = null;
-var _input_mesh = null;
+var _input_mesh = null; // deprecated
 
 function on_keypress( evt ) { 
 	//console.log( String.fromCharCode(evt.charCode) );
@@ -101,8 +101,17 @@ function on_keypress( evt ) {
 	console.log( _input_buffer.join("") );
 
 	if (INPUT_OBJECT) {
-		if (_input_mesh) { INPUT_OBJECT.remove(_input_mesh); }
-		_input_mesh = create_multiline_text( _input_buffer.join(""), INPUT_OBJECT )[0];
+
+		label_object(
+			INPUT_OBJECT,
+			_input_buffer.join(""), // text
+			undefined // title
+		); // TODO optimize this only update on change
+
+
+		//if (_input_mesh) { INPUT_OBJECT.remove(_input_mesh); }
+		//_input_mesh = create_multiline_text( _input_buffer.join(""), INPUT_OBJECT )[0];
+
 
 /*
 		_input_mesh = createLabel(
@@ -126,37 +135,85 @@ function on_keypress( evt ) {
 }
 window.addEventListener( 'keypress', on_keypress, false );
 
-function create_text( line, parent ) {
+function create_text( line, parent, offset, resolution, scale ) {
 	console.log('createlabel');
 	console.log(line);
+	if (offset == undefined) { offset=-1.1; }
+	if (scale == undefined) { scale=1.0; }
+	if (resolution == undefined) { resolution=100; }
+
 	var mesh = createLabel(
 		line, 
-		0,-1.1,0,  // location
-		100,    // resolution
+		0, offset, 0,  // location, x,y,z
+		resolution,
 		"white", // font color
 		true // transparent
 	);
-	mesh.scale.x = 0.0025;
-	mesh.scale.y = -0.0025;
-	mesh.scale.z = -0.0025;
+	mesh.scale.x = scale;
+	mesh.scale.y = -scale;
+	mesh.scale.z = -scale;
 	//m.rotation.z = Math.PI;
-	mesh.position.x = (mesh.width/2.0)*0.0025;
+	mesh.position.x = (mesh.width/2.0) * scale; //align
 	parent.add( mesh );
 	return mesh;
 }
 
-function create_multiline_text( text, parent ) {
+function create_multiline_text( text, title, parent, offset, spacing ) {
+	if (spacing==undefined) { spacing=0.0; }
+
 	var lines = [];
+
+	if (title) {
+		var mesh = create_text( 
+			title, 
+			parent, 
+			offset,
+			100 // res
+		);
+		lines.push( mesh );
+	}
+
 	var _lines = text.split('\n');
 	for (var i=0; i<_lines.length; i ++) {
 		var line = _lines[ i ];
-		mesh = create_text( line, parent );
-		mesh.position.z = -(i * 0.45);
+		var mesh = create_text( 
+			line, 
+			parent, 
+			offset,
+			75 // res
+		);
+		if (lines.length) {
+			mesh.position.z -= spacing;
+			mesh.position.z -= lines[lines.length-1].height;
+		}
 		lines.push( mesh );
 	}
 	return lines;
 }
 
+
+/////////////// label any object ///////////////
+function label_object( mesh, txt, title ) {
+	if (mesh._label_objects != undefined) {
+		for (var i=0; i<mesh._label_objects.length; i++) {
+			mesh.remove( mesh._label_objects[i] );
+		}
+	}
+	var bb = mesh.geometry.boundingBox;
+	var lines = create_multiline_text(
+		txt, 
+		title,
+		mesh,
+		bb.max.y - bb.min.y //offset
+	);
+	mesh._label_objects = lines;
+}
+
+
+
+
+
+////////////////////// old stuff ///////////////////////////
 function generate_extruded_splines( parent, ob ) {
 
 	for (var i=0; i < ob.splines.length; i ++) {
@@ -759,7 +816,7 @@ function on_collada_ready( collada ) {
 		_mesh.receiveShadow = true;
 	}
 
-	_mesh.geometry.computeTangents();	// requires UV's, this must come before material is assigned
+	//_mesh.geometry.computeTangents();	// requires UV's, this must come before material is assigned
 	//_mesh.geometry.computeLineDistances();
 
 	if ( Objects[_mesh.name] ) {
@@ -808,8 +865,8 @@ function on_collada_ready( collada ) {
 
 		var line = new THREE.Line( 
 			linegeom, 
-			new THREE.LineDashedMaterial( { color: 0xffaa00, dashSize: 1, gapSize: 0.4, linewidth: 2 } ), 
-			THREE.LineStrip //THREE.LinePieces
+			new THREE.LineDashedMaterial( { color: 0xaaaaff, dashSize: 0.5, gapSize: 0.1, linewidth: 2 } ), 
+			THREE.LinePieces //THREE.LineStrip //THREE.LinePieces
 		);
 
 		_mesh.material = new THREE.MeshLambertMaterial({
@@ -2045,6 +2102,7 @@ MyController = function ( object, domElement ) {
 	this.handleResize();
 
 };
+
 
 
 

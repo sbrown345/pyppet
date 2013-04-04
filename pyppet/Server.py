@@ -584,9 +584,12 @@ class Player( object ):
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue # TODO update skipping logic
 			if ob.type not in ('MESH','LAMP'): continue
-			if ob.type=='MESH' and not ob.data.uv_textures:
-				#print('WARN: not streaming mesh without uvmapping', ob.name)
-				continue	# UV's required to generate tangents
+			if ob.name.startswith('template.'): continue
+
+			## allow mesh without UV's ##
+			#if ob.type=='MESH' and not ob.data.uv_textures:
+			#	#print('WARN: not streaming mesh without uvmapping', ob.name)
+			#	continue	# UV's required to generate tangents
 			#if ob.hide: continue
 
 			pak = {} # pack into dict for json transfer.
