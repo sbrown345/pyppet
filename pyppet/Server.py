@@ -588,7 +588,10 @@ class Player( object ):
 				#print('WARN: not streaming mesh without uvmapping', ob.name)
 				continue	# UV's required to generate tangents
 			#if ob.hide: continue
+
 			pak = {} # pack into dict for json transfer.
+
+			## this is a special case that makes forces object animation to be shared by all users
 			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
@@ -605,14 +608,15 @@ class Player( object ):
 				continue
 
 			if ob not in wobjects: api_gen.wrap_object( ob )
-
 			w = wobjects[ ob ]
 			view = w( self ) # create new viewer if required, and return it
-			#view = proxy[ self ]
 
-			#proxy['pos'] = loc  ## testing upstream properties (parent view)
+			if ob.hide: pak['shade'] = 'WIRE'
+			elif ob.data.materials and ob.data.materials[0]:
+				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
+
 			view['pos'] = loc
-			view['rot'] = rot ## testing local properties
+			view['rot'] = rot
 			view['scl'] = scl
 
 			#if ob == context.active_object: view[ 'selected' ] = True
@@ -622,8 +626,6 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			#b = {}; b.update( a.properties )  ## TODO check why this works.
-			#pak = { 'properties' : b } ## OOPPS pak should be defined at top of loop
 			pak['properties'] = a.properties
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 

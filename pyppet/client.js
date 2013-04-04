@@ -345,9 +345,15 @@ function on_json_message( data ) {
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
 			for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
-			//m.custom_attributes = pak.properties;
+			var lod = m.LODs[0].object3D;
 
 			if (ob.selected) { SELECTED = m; INPUT_OBJECT = m; }
+
+			if (pak.shade == 'WIRE') {
+				lod.material.wireframe = true;
+			} else {
+				lod.material.wireframe = false;
+			}
 
 			//m.has_progressive_textures = ob.ptex;
 			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
