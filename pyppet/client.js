@@ -168,7 +168,7 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 	var scale = 0.005;
 	var lines = [];
 
-	if (title) {
+	if (title != undefined) {
 		var mesh = create_text( 
 			title, 
 			parent, 
@@ -178,22 +178,23 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 		);
 		lines.push( mesh );
 	}
-
-	var _lines = text.split('\n');
-	for (var i=0; i<_lines.length; i ++) {
-		var line = _lines[ i ];
-		var mesh = create_text( 
-			line, 
-			parent, 
-			offset,
-			75,  // res
-			scale
-		);
-		if (lines.length) {
-			mesh.position.z = -spacing*i;
-			//mesh.position.z -= lines[lines.length-1].height*scale;
+	if (text != undefined) {
+		var _lines = text.split('\n');
+		for (var i=0; i<_lines.length; i ++) {
+			var line = _lines[ i ];
+			var mesh = create_text( 
+				line, 
+				parent, 
+				offset,
+				75,  // res
+				scale
+			);
+			if (lines.length) {
+				mesh.position.z = -spacing*i;
+				//mesh.position.z -= lines[lines.length-1].height*scale;
+			}
+			lines.push( mesh );
 		}
-		lines.push( mesh );
 	}
 	return lines;
 }
@@ -201,33 +202,47 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 
 /////////////// label any object ///////////////
 function label_object(geometry, parent, txt, title ) {
-	console.log('label_object'+txt);
-	if (txt == parent._label_object_text && parent._label_object_title == title) {
-		return false;
-	}
-	if (title==undefined && parent._label_object_title) { 
-		// the old title is prefered to keep logic simple,
-		// keyboard input skips label and lets the server have control of title.
-		// to clear the title pass an empty string as title.
-		title = parent._label_object_title;
+	var bb = geometry.boundingBox;
+	var offset = ((bb.max.y - bb.min.y)/2)+0.05;
+
+	if (title != undefined && title != parent._label_title) {
+		parent._label_title = title;
+
+		if (parent._title_objects != undefined) {
+			for (var i=0; i<parent._title_objects.length; i++) {
+				parent.remove( parent._title_objects[i] );
+			}
+		}
+		var lines = create_multiline_text(
+			undefined, 
+			title,
+			parent,
+			offset
+		);
+		parent._title_objects = lines;
+		lines[0].position.z = bb.max.z;
+		lines[0].position.x -= bb.min.x;
 	}
 
-	if (parent._label_objects != undefined) {
-		for (var i=0; i<parent._label_objects.length; i++) {
-			parent.remove( parent._label_objects[i] );
+	if (txt != undefined && txt != parent._label_text) {
+		parent._label_text = txt;
+
+		if (parent._label_objects != undefined) {
+			for (var i=0; i<parent._label_objects.length; i++) {
+				parent.remove( parent._label_objects[i] );
+			}
+		}
+		var lines = create_multiline_text(
+			txt+'|', 
+			undefined,
+			parent,
+			offset
+		);
+		parent._label_objects = lines;
+		for (var i=0; i<lines.length; i++) {
+			lines[i].position.x -= bb.min.x + 0.1;
 		}
 	}
-	var bb = geometry.boundingBox;
-	var lines = create_multiline_text(
-		txt+'|', 
-		title,
-		parent,
-		((bb.max.y - bb.min.y)/2)+0.05 //offset
-	);
-	parent._label_objects = lines;
-	parent._label_object_text = txt;
-	parent._label_object_title = title;
-	return true;
 }
 
 
@@ -524,16 +539,17 @@ function on_json_message( data ) {
 			// pak.label and ob.title are speical cases, 
 			// ob.title can be set and animated from the server-side
 			if (pak.label || ob.title) {
-				var text = pak.label;
 				// the client can force input into label body when object is selected.
 				// the toplevel title is controlled by the server side
-				if (INPUT_OBJECT) { text = _input_buffer.join("")+'.'; }
+
+				var text = pak.label; // can also be undefined
+				if (INPUT_OBJECT == m) { text=undefined; }
 
 				label_object(		// note label_object is smart enough to not rebuild the texture etc.
 					m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
 					m,			// parent
 					text, 		// multiline text body
-					pak.title  // title (can be undefined)
+					ob.title  // title (can be undefined)
 				); // TODO optimize this only update on change
 			}
 

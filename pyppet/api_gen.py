@@ -220,13 +220,15 @@ class Animation( AnimAPI ):
 				attr = self.target[self.attribute]
 			else:
 				attr = ''
+			print(self, self.target, self.attribute, attr)
 			if self.delta:
 				self.delta -= 1
 				self.target[self.attribute] = attr[:-1]
 			elif attr != self.value:
 				n = len(attr)
 				self.target[self.attribute] = attr[:n+1]
-
+			elif attr == self.value:
+				self.done = True
 		else:
 			d = T - self.last_tick
 			if not d: return self.done  ## prevent divide by zero
