@@ -159,6 +159,7 @@ class Animation( AnimAPI ):
 	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None ):
 		self.done = False
 		self.value = value
+		self.mode = type(value)
 		self.x = x; self.y = y; self.z = z
 		self.indices = {}
 		self.deltas = {}
@@ -174,15 +175,23 @@ class Animation( AnimAPI ):
 	def bind( self, target, attribute=None ):
 		self.target = target
 		self.attribute = attribute
-		assert attribute in target
+		if self.mode is not str:
+			assert attribute in target
 
 	def update_deltas(self):
-		attr = self.target[ self.attribute ]
-		if self.indices:
+		if self.mode is str:
+			if self.attribute in self.target:
+				self.delta = len(self.target[self.attribute])
+			else:
+				self.delta = 0
+
+		elif self.indices:
+			attr = self.target[ self.attribute ]
 			self.deltas = {}
 			for index in self.indices:
 				self.deltas[ index ] = self.indices[index] - attr[index]
 		else:
+			attr = self.target[ self.attribute ]
 			self.delta = self.value - attr
 
 
@@ -205,6 +214,18 @@ class Animation( AnimAPI ):
 				idx = self.animations.index(self)
 				if idx+1 < len(self.animations):
 					self.animations[ idx+1 ].animate()
+
+		elif self.mode is str:
+			if self.attribute in self.target:
+				attr = self.target[self.attribute]
+			else:
+				attr = ''
+			if self.delta:
+				self.delta -= 1
+				self.target[self.attribute] = attr[:-1]
+			elif attr != self.value:
+				n = len(attr)
+				self.target[self.attribute] = attr[:n+1]
 
 		else:
 			d = T - self.last_tick

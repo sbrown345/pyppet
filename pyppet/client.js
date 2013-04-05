@@ -202,6 +202,16 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 /////////////// label any object ///////////////
 function label_object(geometry, parent, txt, title ) {
 	console.log('label_object'+txt);
+	if (txt == parent._label_object_text && parent._label_object_title == title) {
+		return false;
+	}
+	if (title==undefined && parent._label_object_title) { 
+		// the old title is prefered to keep logic simple,
+		// keyboard input skips label and lets the server have control of title.
+		// to clear the title pass an empty string as title.
+		title = parent._label_object_title;
+	}
+
 	if (parent._label_objects != undefined) {
 		for (var i=0; i<parent._label_objects.length; i++) {
 			parent.remove( parent._label_objects[i] );
@@ -215,7 +225,9 @@ function label_object(geometry, parent, txt, title ) {
 		((bb.max.y - bb.min.y)/2)+0.05 //offset
 	);
 	parent._label_objects = lines;
-
+	parent._label_object_text = txt;
+	parent._label_object_title = title;
+	return true;
 }
 
 
@@ -509,15 +521,20 @@ function on_json_message( data ) {
 				m.on_input_callback = _callbacks_[ pak.on_input ];
 			}
 
-			if (pak.label) {
+			// pak.label and ob.title are speical cases, 
+			// ob.title can be set and animated from the server-side
+			if (pak.label || ob.title) {
+				var text = pak.label;
+				// the client can force input into label body when object is selected.
+				// the toplevel title is controlled by the server side
+				if (INPUT_OBJECT) { text = _input_buffer.join("")+'.'; }
 
-				label_object(
-					m.LODs[0].object3D.geometry,
-					m,
-					pak.label, // text
-					undefined // title
+				label_object(		// note label_object is smart enough to not rebuild the texture etc.
+					m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
+					m,			// parent
+					text, 		// multiline text body
+					pak.title  // title (can be undefined)
 				); // TODO optimize this only update on change
-
 			}
 
 		}
