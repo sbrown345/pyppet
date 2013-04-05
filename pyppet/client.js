@@ -148,7 +148,7 @@ function create_text( line, parent, offset, resolution, scale ) {
 
 	var mesh = createLabel(
 		line, 
-		0, 0, 0,  // location, x,y,z
+		0, offset, 0,  // location, x,y,z
 		resolution,
 		"white", // font color
 		true // transparent
@@ -212,7 +212,7 @@ function label_object(geometry, parent, txt, title ) {
 		txt+'|', 
 		title,
 		parent,
-		bb.max.y - bb.min.y //offset
+		((bb.max.y - bb.min.y)/2)+0.05 //offset
 	);
 	parent._label_objects = lines;
 
