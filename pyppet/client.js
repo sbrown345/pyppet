@@ -134,28 +134,6 @@ function on_keypress( evt ) {
 			undefined // title
 		); // TODO optimize this only update on change
 
-
-		//if (_input_mesh) { INPUT_OBJECT.remove(_input_mesh); }
-		//_input_mesh = create_multiline_text( _input_buffer.join(""), INPUT_OBJECT )[0];
-
-
-/*
-		_input_mesh = createLabel(
-			_input_buffer.join(""), 
-			0,-1.1,0,  // location
-			100,    // resolution
-			"white", // font color
-			true // transparent
-		);
-		var m = _input_mesh;
-		m.scale.x = 0.0025;
-		m.scale.y = -0.0025;
-		m.scale.z = -0.0025;
-		//m.rotation.z = Math.PI;
-		m.position.x = (m.width/2.0)*0.0025;
-		console.log(_input_buffer);
-		INPUT_OBJECT.add( _input_mesh );
-*/
 	}
 
 }
@@ -489,7 +467,11 @@ function on_json_message( data ) {
 			for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
 			var lod = m.LODs[0].object3D;
 
-			if (ob.selected) { SELECTED = m; INPUT_OBJECT = m; }
+			if (ob.selected) { 
+				SELECTED = m; 
+				INPUT_OBJECT = m; 
+				//console.log(m);
+			}
 
 			if (pak.shade == 'WIRE') {
 				lod.material.wireframe = true;
@@ -989,7 +971,7 @@ function on_collada_ready( collada ) {
 
 		// custom attributes (for callbacks)
 		lod.custom_attributes = {};
-		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') )
+		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') );
 		lod.do_mouse_up_callback = function () {
 			lod.on_mouse_up_callback( lod.custom_attributes );
 		};
@@ -2051,7 +2033,13 @@ MyController = function ( object, domElement ) {
 
 		if ( INTERSECTED ) {
 			var a = Objects[ INTERSECTED.name ];
-			if (a.on_mouse_up_callback) { a.do_mouse_up_callback(); }
+			while (_input_buffer.length) { _input_buffer.pop() }
+			//INPUT_OBJECT = a;
+			if (a.on_mouse_up_callback) {
+				//a.do_mouse_up_callback(); 
+				a.on_mouse_up_callback( a.custom_attributes );
+			}
+
 			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 			INTERSECTED = null;
 		}

@@ -657,7 +657,7 @@ class Player( object ):
 		## special case to force only a single selected for the client ##
 		if len(selection) > 1:
 			times = list(selection.keys())
-			times.sort()
+			times.sort(); times.reverse()
 			for T in times[ 1: ]:
 				p = selection[T]
 				p.pop('selected')
