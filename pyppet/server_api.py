@@ -160,20 +160,22 @@ def default_click_callback( user=UserProxy, ob=BlenderProxy ):
 	print('select callback', user, ob)
 	w = api_gen.get_wrapped_objects()[ ob ]
 	view = w( user )
-	view['location'] = list( ob.location.to_tuple() )
-	#view['location'] = Animation( seconds=3.0, y=-5.0) # TODO relative and absolute
-	view['location'] = Animations(
-		Animation( seconds=3.0, y=-5.0),
-		Animation( seconds=3.0, y=5.0),
-		Animation( seconds=3.0, z=1.0),
-		Animation( seconds=3.0, z=-1.0),
-	)
-	view['rotation_euler'] = list( ob.rotation_euler )
-	view['rotation_euler'] = Animations(
-		Animation( seconds=3.0, x=-5.0),
-		Animation( seconds=3.0, x=5.0),
-	)
-	view().on_click = api_gen.get_callback( 'next1')
+	view['selected'] = time.time()  ## allow multiple selections, the server can filter to most recent to.
+	if 0:
+		view['location'] = list( ob.location.to_tuple() )
+		#view['location'] = Animation( seconds=3.0, y=-5.0) # TODO relative and absolute
+		view['location'] = Animations(
+			Animation( seconds=3.0, y=-5.0),
+			Animation( seconds=3.0, y=5.0),
+			Animation( seconds=3.0, z=1.0),
+			Animation( seconds=3.0, z=-1.0),
+		)
+		view['rotation_euler'] = list( ob.rotation_euler )
+		view['rotation_euler'] = Animations(
+			Animation( seconds=3.0, x=-5.0),
+			Animation( seconds=3.0, x=5.0),
+		)
+		view().on_click = api_gen.get_callback( 'next1')
 
 def next1( user=UserProxy, ob=BlenderProxy ):
 	print('next click callback1')
@@ -206,15 +208,16 @@ def next3( user=UserProxy, ob=BlenderProxy ):
 
 def default_input_callback( user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p ):
 	print( 'default INPUT CALLBACK', user, ob, input_string )
-	if ob.name == 'login':
-		if 'login.input' not in bpy.data.objects:
-			a = bpy.data.objects.new(
-				name="[data] %s"%name, 
-				object_data= a.data 
-			)
-			bpy.context.scene.objects.link( a )
-			a.parent = ob
-
+	#if ob.name == 'login':
+	#	if 'login.input' not in bpy.data.objects:
+	#		a = bpy.data.objects.new(
+	#			name="[data] %s"%name, 
+	#			object_data= a.data 
+	#		)
+	#		bpy.context.scene.objects.link( a )
+	#		a.parent = ob
+	w = api_gen.get_wrapped_objects()[ ob ]
+	view = w( user )
 
 API = {
 	'default_click': default_click_callback,

@@ -57,11 +57,45 @@ var MESHES = [];	// list for intersect checking - not a dict because LOD's share
 
 var dbugmsg = null;
 
-//window.addEventListener( 'keydown', on_keydown, false );
 // note: keyup event charCode is invalid in firefox, the keypress event should work in all browsers.
 var _input_buffer = [];
 var INPUT_OBJECT = null;
 var _input_mesh = null; // deprecated
+
+
+function on_keydown ( evt ) {
+	var update = false;
+	switch( evt.keyCode ) {
+		case 38: break; //up
+		case 37: break; //left
+		case 40: break; //down
+		case 39: break; //right
+		case 9: //tab
+			_input_buffer.push(' ');
+			update=true;
+			break;
+		case 8: //backspace
+			_input_buffer.pop(); 
+			update=true; break;
+		case 27: 		//esc
+			while (_input_buffer.length) { _input_buffer.pop() }
+			update=true;
+			break;
+	}
+	if (update && INPUT_OBJECT) {
+		console.log('INPUT_OBJECT'+INPUT_OBJECT);
+		label_object(
+			INPUT_OBJECT.LODs[0].object3D.geometry,
+			INPUT_OBJECT,
+			_input_buffer.join(""), // text
+			undefined // title
+		); // TODO optimize this only update on change
+
+	}
+
+}
+window.addEventListener( 'keydown', on_keydown, false );
+
 
 function on_keypress( evt ) { 
 	//console.log( String.fromCharCode(evt.charCode) );
@@ -69,16 +103,7 @@ function on_keypress( evt ) {
 	//console.log( evt.keyCode );
 
 	switch( evt.keyCode ) {
-		case 38: break; //up
-		case 37: break; //left
-		case 40: break; //down
-		case 39: break; //right
-		case 9:  break; //tab
-		case 8:  _input_buffer.pop(); break; 					//backspace
 		case 32: _input_buffer.push(' '); break;				//space
-		case 27: 		//esc
-			while (_input_buffer.length) { _input_buffer.pop() }
-			break;
 		case 13: 		// enter triggers input callback
 			_input_buffer.push('\n');
 			if (INPUT_OBJECT) {
@@ -101,8 +126,9 @@ function on_keypress( evt ) {
 	console.log( _input_buffer.join("") );
 
 	if (INPUT_OBJECT) {
-
+		console.log('INPUT_OBJECT'+INPUT_OBJECT);
 		label_object(
+			INPUT_OBJECT.LODs[0].object3D.geometry,
 			INPUT_OBJECT,
 			_input_buffer.join(""), // text
 			undefined // title
@@ -139,28 +165,29 @@ function create_text( line, parent, offset, resolution, scale ) {
 	console.log('createlabel');
 	console.log(line);
 	if (offset == undefined) { offset=-1.1; }
-	if (scale == undefined) { scale=1.0; }
+	if (scale == undefined) { scale=0.01; }
 	if (resolution == undefined) { resolution=100; }
 
 	var mesh = createLabel(
 		line, 
-		0, offset, 0,  // location, x,y,z
+		0, 0, 0,  // location, x,y,z
 		resolution,
 		"white", // font color
 		true // transparent
 	);
 	mesh.scale.x = scale;
-	mesh.scale.y = -scale;
-	mesh.scale.z = -scale;
-	//m.rotation.z = Math.PI;
-	mesh.position.x = (mesh.width/2.0) * scale; //align
+	mesh.scale.y = scale;
+	mesh.scale.z = scale;
+	mesh.rotation.x = Math.PI/2.0;
+	mesh.rotation.y = Math.PI;
+	mesh.position.x = -((mesh.width/2) * scale); //align
 	parent.add( mesh );
 	return mesh;
 }
 
 function create_multiline_text( text, title, parent, offset, spacing ) {
-	if (spacing==undefined) { spacing=0.0; }
-
+	if (spacing==undefined) { spacing=0.6; }
+	var scale = 0.005;
 	var lines = [];
 
 	if (title) {
@@ -168,7 +195,8 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 			title, 
 			parent, 
 			offset,
-			100 // res
+			100, // res
+			scale
 		);
 		lines.push( mesh );
 	}
@@ -180,11 +208,12 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 			line, 
 			parent, 
 			offset,
-			75 // res
+			75,  // res
+			scale
 		);
 		if (lines.length) {
-			mesh.position.z -= spacing;
-			mesh.position.z -= lines[lines.length-1].height;
+			mesh.position.z = -spacing*i;
+			//mesh.position.z -= lines[lines.length-1].height*scale;
 		}
 		lines.push( mesh );
 	}
@@ -193,24 +222,80 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 
 
 /////////////// label any object ///////////////
-function label_object( mesh, txt, title ) {
-	if (mesh._label_objects != undefined) {
-		for (var i=0; i<mesh._label_objects.length; i++) {
-			mesh.remove( mesh._label_objects[i] );
+function label_object(geometry, parent, txt, title ) {
+	console.log('label_object'+txt);
+	if (parent._label_objects != undefined) {
+		for (var i=0; i<parent._label_objects.length; i++) {
+			parent.remove( parent._label_objects[i] );
 		}
 	}
-	var bb = mesh.geometry.boundingBox;
+	var bb = geometry.boundingBox;
 	var lines = create_multiline_text(
-		txt, 
+		txt+'|', 
 		title,
-		mesh,
+		parent,
 		bb.max.y - bb.min.y //offset
 	);
-	mesh._label_objects = lines;
+	parent._label_objects = lines;
+
 }
 
 
 
+///////////////////// createLabel by ekeneijeoma - https://gist.github.com/ekeneijeoma/1186920
+function createLabel(text, x, y, z, size, color, transparent, backGroundColor, backgroundMargin) {
+	if(!backgroundMargin)
+		backgroundMargin = 50;
+
+	var canvas = document.createElement("canvas");
+
+	var context = canvas.getContext("2d");
+	context.font = size + "pt Arial";
+
+	var textWidth = context.measureText(text).width;
+
+	canvas.width = textWidth + backgroundMargin;
+	canvas.height = size + backgroundMargin;
+	context = canvas.getContext("2d");
+	context.font = size + "pt Arial";
+
+	if(backGroundColor) {
+		context.fillStyle = backGroundColor;
+		context.fillRect(
+			canvas.width / 2 - textWidth / 2 - backgroundMargin / 2, 
+			canvas.height / 2 - size / 2 - +backgroundMargin / 2, 
+			textWidth + backgroundMargin, size + backgroundMargin);
+	}
+
+	context.textAlign = "left"; //"center";
+	context.textBaseline = "middle";
+	context.fillStyle = color;
+	context.fillText(text, backgroundMargin/2, canvas.height/2);
+
+	// context.strokeStyle = "black";
+	// context.strokeRect(0, 0, canvas.width, canvas.height);
+	var texture = new THREE.Texture(canvas);
+	//texture.flipY = false;
+	//texture.flipX = true;
+	texture.needsUpdate = true;
+
+	var material = new THREE.MeshBasicMaterial({
+		map : texture,
+		transparent : transparent,
+	});
+
+	var mesh = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), material);
+	mesh.overdraw = true; // what is this option for?
+	mesh.doubleSided = true;
+	mesh.position.x = x;
+	mesh.position.y = y;
+	mesh.position.z = z;
+
+	mesh.width = canvas.width;
+	mesh.height = canvas.height;
+
+	return mesh;
+}
 
 
 ////////////////////// old stuff ///////////////////////////
@@ -2106,56 +2191,6 @@ MyController = function ( object, domElement ) {
 
 
 
-///////////////////// createLabel by ekeneijeoma - https://gist.github.com/ekeneijeoma/1186920
-function createLabel(text, x, y, z, size, color, transparent, backGroundColor, backgroundMargin) {
-	if(!backgroundMargin)
-		backgroundMargin = 50;
-
-	var canvas = document.createElement("canvas");
-
-	var context = canvas.getContext("2d");
-	context.font = size + "pt Arial";
-
-	var textWidth = context.measureText(text).width;
-
-	canvas.width = textWidth + backgroundMargin;
-	canvas.height = size + backgroundMargin;
-	context = canvas.getContext("2d");
-	context.font = size + "pt Arial";
-
-	if(backGroundColor) {
-		context.fillStyle = backGroundColor;
-		context.fillRect(canvas.width / 2 - textWidth / 2 - backgroundMargin / 2, canvas.height / 2 - size / 2 - +backgroundMargin / 2, textWidth + backgroundMargin, size + backgroundMargin);
-	}
-
-	context.textAlign = "center";
-	context.textBaseline = "middle";
-	context.fillStyle = color;
-	context.fillText(text, canvas.width / 2, canvas.height / 2);
-
-	// context.strokeStyle = "black";
-	// context.strokeRect(0, 0, canvas.width, canvas.height);
-	var texture = new THREE.Texture(canvas);
-	texture.flipY = false;
-	texture.needsUpdate = true;
-
-	var material = new THREE.MeshBasicMaterial({
-		map : texture,
-		transparent : transparent,
-	});
-
-	var mesh = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), material);
-	mesh.overdraw = true; // what is this option for?
-	mesh.doubleSided = true;
-	mesh.position.x = x;
-	mesh.position.y = y;
-	mesh.position.z = z;
-
-	mesh.width = canvas.width;
-	mesh.height = canvas.height;
-
-	return mesh;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2171,7 +2206,7 @@ function init() {
 
 	// camera //
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
-	camera.position.set( 0, 4, 10 );
+	camera.position.set( 0, 1, -10 );
 	scene.add( camera );
 
 	CONTROLLER = new MyController( camera );

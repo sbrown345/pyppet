@@ -484,7 +484,7 @@ class Player( object ):
 		self.godrays = False
 
 		ip = 'client(%s:%s)'%self.address
-		if ip not in bpy.data.objects:
+		if ip not in bpy.data.objects:  ## TODO clean these up on player close
 			print('creating new player gizmos')
 			a = bpy.data.objects.new(name=ip, object_data=None)
 			bpy.context.scene.objects.link( a )
@@ -579,8 +579,9 @@ class Player( object ):
 		'''
 
 		msg = {'meshes':{}, 'lights':{}}
-
+		selection = {} # time : view
 		wobjects = api_gen.get_wrapped_objects()
+
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue # TODO update skipping logic
 			if ob.type not in ('MESH','LAMP'): continue
@@ -611,8 +612,10 @@ class Player( object ):
 				continue
 
 			if ob not in wobjects: api_gen.wrap_object( ob )
+
 			w = wobjects[ ob ]
 			view = w( self ) # create new viewer if required, and return it
+
 
 			if ob.hide: pak['shade'] = 'WIRE'
 			elif ob.data.materials and ob.data.materials[0]:
@@ -629,8 +632,14 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			pak['properties'] = a.properties
+			pak['properties'] = a.properties.copy()
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
+
+			## special case for selected ##
+			if 'selected' in view and view['selected']:
+				T = view['selected']
+				selection[ T ] = pak['properties']
+
 
 			color = None
 			if 'color' in view:
@@ -645,6 +654,13 @@ class Player( object ):
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
 
+		## special case to force only a single selected for the client ##
+		if len(selection) > 1:
+			times = list(selection.keys())
+			times.sort()
+			for T in times[ 1: ]:
+				p = selection[T]
+				p.pop('selected')
 
 		#print('-------------------')
 		#print(msg)
