@@ -510,7 +510,14 @@ function on_json_message( data ) {
 			}
 
 			if (pak.label) {
-				
+
+				label_object(
+					m.LODs[0].object3D.geometry,
+					m,
+					pak.label, // text
+					undefined // title
+				); // TODO optimize this only update on change
+
 			}
 
 		}

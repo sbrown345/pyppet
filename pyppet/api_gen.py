@@ -418,6 +418,7 @@ def create_object_view( ob ):
 		proxy=ob,
 		on_click=on_click,
 		on_input=on_input,
+		label=None,
 		allow_viewers=True,
 	)
 	return v
