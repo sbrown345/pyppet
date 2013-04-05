@@ -509,6 +509,10 @@ function on_json_message( data ) {
 				m.on_input_callback = _callbacks_[ pak.on_input ];
 			}
 
+			if (pak.label) {
+				
+			}
+
 		}
 
 	}	// end meshes

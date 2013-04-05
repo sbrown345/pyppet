@@ -113,6 +113,9 @@ class BlenderServer( core.BlenderHack ):
 class App( BlenderServer ):
 	def __init__(self, api):
 		print('init server app')
+		self.setup_server(api)
+
+	def setup_server(self, api):
 		self.setup_websocket_callback_api(api)
 		self.setup_blender_hack( bpy.context, use_gtk=False, headless=True )
 		print('blender hack setup ok')

@@ -462,7 +462,11 @@ class CallbackFunction(object):
 
 	def __init__( self, func, name, code, require_first_argument=None ):
 		spec = inspect.getargspec( func )
-		assert len(spec.args) == len(spec.defaults) ## require all keyword args and typed
+		if spec.args and spec.args[0]=='self': args = spec.args[ 1: ]
+		else: args = spec.args
+
+		assert len(args) == len(spec.defaults) ## require all keyword args and typed
+
 		self.CALLBACKS[ code ] = self
 		self.callbacks[ name ] = self
 
@@ -477,7 +481,7 @@ class CallbackFunction(object):
 		if require_first_argument:
 			assert spec.defaults[0] is require_first_argument
 
-		for arg_name, arg_hint in zip(spec.args, spec.defaults):
+		for arg_name, arg_hint in zip(args, spec.defaults):
 			if arg_name in self._shared_namespace: assert self._shared_namespace[ arg_name ] is arg_hint
 			self._shared_namespace[ arg_name ] = arg_hint
 

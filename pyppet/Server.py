@@ -473,7 +473,8 @@ class Player( object ):
 		self.address = addr
 		self.websocket = websocket
 		self._action_api = action_api
-
+		self.token = None
+		self.name = None
 		self.objects = []	## list of objects client in client message stream
 
 		## TODO expose these options with GTK
