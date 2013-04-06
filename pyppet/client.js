@@ -10,6 +10,8 @@ Notes:
 */
 
 
+var PeerLights = [];
+var Peers = {};
 
 var DEBUG = false;
 var USE_MODIFIERS = true;
@@ -467,6 +469,17 @@ function on_json_message( data ) {
 
 	}
 */
+
+
+	for (var name in msg['peers']) {
+		if (name in Peers == false) {
+			Peers[ name ] = PeerLights.pop();
+		}
+		Peers[ name ].position.x = msg['peers'][name][0];
+		Peers[ name ].position.y = msg['peers'][name][2];
+		Peers[ name ].position.z = -msg['peers'][name][1];
+
+	}
 
 
 	for (var name in msg['meshes']) {
@@ -2279,6 +2292,7 @@ function init() {
 	for ( var i=0; i<10; i ++ ) {
 
 		light = new THREE.PointLight( 0xffffff );
+		PeerLights.push( light );
 		light.color.r = Math.random();
 		light.color.g = Math.random();
 		light.intensity = 0.15;

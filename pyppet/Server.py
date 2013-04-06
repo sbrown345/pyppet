@@ -579,7 +579,17 @@ class Player( object ):
 		this can be tuned perclient fps - limited to 24fps
 		'''
 
-		msg = {'meshes':{}, 'lights':{}}
+		peers = {} # ID : location
+		## TODO GameManager.get_peers_nearby(self)
+		for p in GameManager.clients.values():
+			if p is self: continue
+			peers[ p.ID ] = p.location.to_tuple()
+
+		msg = {
+			'meshes':{}, 
+			'lights':{},
+			'peers' :peers
+		}
 		selection = {} # time : view
 		wobjects = api_gen.get_wrapped_objects()
 
