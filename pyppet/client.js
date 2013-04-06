@@ -1058,7 +1058,44 @@ function on_collada_ready( collada ) {
 	}
 }
 
+var _magic_vertex = [
+	'varying vec2 vUv;',
+	'void main() {',
+	'	vUv = uv;',
+	'	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
+	'	gl_Position = projectionMatrix * mvPosition;',
+	'}'
+].join('\n');
 
+var _magic_fragment = [
+	'uniform float time;',
+	'uniform vec2 resolution;',
+	'varying vec2 vUv;',
+	'void main( void ) {',
+	'	vec2 position = vUv;',
+	'	float color = 0.0;',
+	'	color += sin( position.x * cos( time / 15.0 ) * 80.0 ) + cos( position.y * cos( time / 15.0 ) * 10.0 );',
+	'	color += sin( position.y * sin( time / 10.0 ) * 40.0 ) + cos( position.x * sin( time / 25.0 ) * 40.0 );',
+	'	color += sin( position.x * sin( time / 5.0 ) * 10.0 ) + sin( position.y * sin( time / 35.0 ) * 80.0 );',
+	'	color *= sin( time / 10.0 ) * 0.5;',
+	'	gl_FragColor = vec4( vec3( color, color * 0.5, sin( color + time / 3.0 ) * 0.75 ), 1.0 );',
+	'}'
+].join('\n');
+
+var _magic_uniforms = {
+	time: { type: "f", value: 1.0 },
+	resolution: { type: "v2", value: new THREE.Vector2() }
+};
+
+function create_magic_shader() {
+	var material = new THREE.ShaderMaterial( {
+		uniforms: _magic_uniforms,
+		vertexShader: _magic_vertex,
+		fragmentShader: _magic_fragment
+
+	} );
+	return material;
+}
 
 function reload_progressive_textures( ob ) {
 	var name = ob.name;
@@ -1480,6 +1517,8 @@ function resize_view() {
 		renderer.setSize( window.innerWidth, window.innerHeight-10 );
 		camera.aspect = window.innerWidth / (window.innerHeight-10);
 		camera.updateProjectionMatrix();
+		_magic_uniforms.resolution.value.x = window.innerWidth;
+		_magic_uniforms.resolution.value.y = window.innerHeight;
 		console.log(">> resize view");
 	}
 }
@@ -1500,6 +1539,7 @@ function render() {
 	resize_view();
 	var delta = clock.getDelta();
 	CONTROLLER.update( delta );
+	_magic_uniforms.time.value += delta * 0.2;
 
 	scene.updateMatrixWorld();
 	scene.traverse(
@@ -2353,6 +2393,7 @@ function init() {
 		//setupDOF( renderer );
 		setupGodRays();
 	}
+
 
 	console.log(">> THREE init complete <<");
 
