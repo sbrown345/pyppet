@@ -241,6 +241,7 @@ function label_object(geometry, parent, txt, title ) {
 		parent._label_objects = lines;
 		for (var i=0; i<lines.length; i++) {
 			lines[i].position.x -= bb.min.x + 0.1;
+			lines[i].position.z += bb.max.z - 0.6;
 		}
 	}
 }
@@ -406,6 +407,7 @@ function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	_msg = msg;
 
+/*
 
 	for (var name in msg['lights']) {
 		var light;
@@ -464,7 +466,7 @@ function on_json_message( data ) {
 		}
 
 	}
-
+*/
 
 
 	for (var name in msg['meshes']) {
@@ -2257,10 +2259,10 @@ function init() {
 	scene.add( line );
 
 	// LIGHTS //
-	ambientLight = new THREE.AmbientLight( 0x111111 );
+	ambientLight = new THREE.AmbientLight( 0x000011 );
 	scene.add( ambientLight );
 
-	var sunIntensity = 1.0;
+	var sunIntensity = 0.25;
 	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
 	spotLight.position.set( 0, 500, 10 );
 	spotLight.target.position.set( 0, 0, 0 );
@@ -2269,14 +2271,53 @@ function init() {
 	spotLight.shadowCameraFar = camera.far;
 	spotLight.shadowCameraFov = 30;
 	spotLight.shadowBias = 0.001;
-	spotLight.shadowMapWidth = 2048;
-	spotLight.shadowMapHeight = 2048;
+	spotLight.shadowMapWidth = 1024;
+	spotLight.shadowMapHeight = 1024;
 	spotLight.shadowDarkness = 0.3 * sunIntensity;
 	scene.add( spotLight );
 
+	for ( var i=0; i<10; i ++ ) {
+
+		light = new THREE.PointLight( 0xffffff );
+		light.color.r = Math.random();
+		light.color.g = Math.random();
+		light.intensity = 0.15;
+		light.position.x = Math.random()*50;
+		light.position.y = (Math.random()*50)+10;
+		light.position.z = (Math.random()*100);
+		scene.add( light );
+
+		//var flareColor = new THREE.Color( 0xffffff );
+		//flareColor.copy( light.color );
+		//THREE.ColorUtils.adjustHSV( flareColor, 0, -Math.random(), Math.random() );
+
+		var lensFlare = new THREE.LensFlare( 
+			textureFlare0, 
+			64, 		// size in pixels (-1 use texture width)
+			0.0, 		// distance (0-1) from light source (0=at light source)
+			THREE.AdditiveBlending, 
+			light.color
+		);
+
+		lensFlare.add( textureFlare2, 32, 0.0, THREE.AdditiveBlending );
+		lensFlare.add( textureFlare2, 24, 0.0, THREE.AdditiveBlending );
+		lensFlare.add( textureFlare2, 16, 0.0, THREE.AdditiveBlending );
+
+		lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
+		lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
+		lensFlare.add( textureFlare3, 20, 0.9, THREE.AdditiveBlending );
+		lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
+
+		//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
+		lensFlare.position = light.position;
+		light.flare = lensFlare;
+		scene.add( lensFlare );
+
+
+	}
 
 	// renderer //
-	renderer = new THREE.WebGLRenderer( { maxLights: 8, antialias: true } );
+	renderer = new THREE.WebGLRenderer( { maxLights: 16, antialias: true } );
 	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
 
@@ -2287,7 +2328,7 @@ function init() {
 		renderer.shadowMapSoft = true;
 		//renderer.shadowMapAutoUpdate = false;		// EVIL!
 	}
-	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
+	renderer.setClearColor( {r:0.14,g:0.14,b:0.15}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
 	renderer.sortObjects = false;		// LOD

@@ -2,7 +2,7 @@
 # Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
 
-import time, inspect, struct, ctypes
+import time, inspect, struct, ctypes, random
 try: import bpy
 except ImportError: pass
 
@@ -118,6 +118,7 @@ class SimpleAnimationManager(object):
 				done.append( a )
 
 		for a in done:
+			print('anim clean up',a)
 			self.objects.remove( a )
 
 AnimationManager = SimpleAnimationManager()
@@ -201,12 +202,11 @@ class Animation( AnimAPI ):
 		Dt = T - self.start_time
 		if Dt >= self.seconds:
 			self.done = True
-
-			attr = self.target[self.attribute]
 			if self.value is not None:
 				self.target[ self.attribute ] = self.value
 			else:
 				assert self.indices
+				attr = self.target[self.attribute]
 				for index in self.indices:
 					attr[ index ] = self.indices[ index ]
 
@@ -216,19 +216,21 @@ class Animation( AnimAPI ):
 					self.animations[ idx+1 ].animate()
 
 		elif self.mode is str:
+
 			if self.attribute in self.target:
 				attr = self.target[self.attribute]
 			else:
 				attr = ''
-			print(self, self.target, self.attribute, attr)
+	
 			if self.delta:
-				self.delta -= 1
-				self.target[self.attribute] = attr[:-1]
-			elif attr != self.value:
-				n = len(attr)
-				self.target[self.attribute] = attr[:n+1]
-			elif attr == self.value:
-				self.done = True
+				if random.random()>0.5:
+					self.delta -= 1
+					self.target[self.attribute] = attr[:-1]
+			if attr != self.value:
+				if random.random()>0.3:
+					n = len(attr)
+					self.target[self.attribute] = self.value[:n+1]
+
 		else:
 			d = T - self.last_tick
 			if not d: return self.done  ## prevent divide by zero
