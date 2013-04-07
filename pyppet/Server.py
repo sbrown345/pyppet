@@ -1026,7 +1026,7 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 		elif path in ('/', '/zone'):
 			zone = None
 			if path == '/zone': zone = arg
-			data = generate_html_header( websocket_port=get_host_and_port()[-1], zone=zone ).encode('utf-8')
+			data = generate_html_header( websocket_port=get_host_and_port()[-1], websocket_path=zone ).encode('utf-8')
 			content_type = 'text/html; charset=utf-8'
 
 		elif path.startswith('/javascripts/'):
@@ -1064,7 +1064,7 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			self.wfile.flush() # maybe not required, but its ok to flush twice.
 		print('web request complete')
 
-def generate_html_header(title='webgl', external_three=False, websocket_port=8081, zone=None ):
+def generate_html_header(title='webgl', external_three=False, websocket_port=8081, websocket_path=None ):
 	h = [
 		'<!DOCTYPE html><html lang="en">',
 		'<head><title>%s</title>' %title,
@@ -1109,42 +1109,54 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 		'postprocessing/DotScreenPass.js',
 
 	)
-	if external_three:
-		for x in three:
-			h.append( '<script type="text/javascript" src="/javascripts/%s"></script>' %x )
+	#if external_three:
+	for x in three:
+		h.append( '<script type="text/javascript" src="/javascripts/%s"></script>' %x )
 
+	h.append( generate_javascript( websocket_path ) )
 
+	data = '\n'.join( h )
+	return data
+
+def insert_custom_javascript(): return ''  ## hook for custom servers monkey patch Server.insert_custom_javascript
+
+def generate_javascript( websocket_path ):
+	h = []
 	h.append( '<script type="text/javascript">' )
 	## TODO get this from place where api is set ##
 	h.append( simple_action_api.generate_javascript() )
 	print(h[-1])
 
-	if not external_three:
-		for x in three:
-			h.append(
-				open(os.path.join(SCRIPT_DIR,'javascripts/'+x), 'rb').read().decode('utf-8')
-			)
+	#if not external_three:
+	#	for x in three:
+	#		h.append(
+	#			open(os.path.join(SCRIPT_DIR,'javascripts/'+x), 'rb').read().decode('utf-8')
+	#		)
 
 	#self._port_hack += 1
 	_h,_p = get_host_and_port()
 	h.append( 'var HOST = "%s";' %_h )
-	h.append( 'var HOST_PORT = "%s";' %websocket_port )
-
+	h.append( 'var HOST_PORT = "%s";' %_p )
 
 	h.append( 'var MAX_PROGRESSIVE_TEXTURE = 512;' )
 	h.append( 'var MAX_PROGRESSIVE_NORMALS = 512;' )
 	h.append( 'var MAX_PROGRESSIVE_DISPLACEMENT = 512;' )
 	h.append( 'var MAX_PROGRESSIVE_DEFAULT = 256;' )
-	if zone:
-		h.append( 'var WEBSOCKET_PATH = "%s";'%zone )
+
+	if websocket_path:
+		h.append( 'var WEBSOCKET_PATH = "%s";'%websocket_path )
 	else:
 		h.append( 'var WEBSOCKET_PATH = undefined;' )
 
+
 	h.append( open( os.path.join(SCRIPT_DIR,'client.js'), 'rb' ).read().decode('utf-8') )
+
+	h.append( insert_custom_javascript() )
+
 	h.append( '</script>' )
 
-	data = '\n'.join( h )
-	return data
+	return '\n'.join( h )
+
 
 ###############################################
 websocksimplify.WebSocketServer.CustomRequestHandler = WebsocketHTTP_RequestHandler ## assign custom handler to hacked websockify

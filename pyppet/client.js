@@ -1078,7 +1078,7 @@ var _magic_fragment = [
 	'	color += sin( position.y * sin( time / 10.0 ) * 40.0 ) + cos( position.x * sin( time / 25.0 ) * 40.0 );',
 	'	color += sin( position.x * sin( time / 5.0 ) * 10.0 ) + sin( position.y * sin( time / 35.0 ) * 80.0 );',
 	'	color *= sin( time / 10.0 ) * 0.5;',
-	'	gl_FragColor = vec4( vec3( color, color * 0.5, sin( color + time / 3.0 ) * 0.75 ), 1.0 );',
+	'	gl_FragColor = vec4( vec3( color * 0.5, color * 0.25, sin( color + time / 3.0 ) * 0.75 ), 1.0 );',
 	'}'
 ].join('\n');
 
@@ -1091,7 +1091,10 @@ function create_magic_shader() {
 	var material = new THREE.ShaderMaterial( {
 		uniforms: _magic_uniforms,
 		vertexShader: _magic_vertex,
-		fragmentShader: _magic_fragment
+		fragmentShader: _magic_fragment,
+		blending : THREE.AdditiveBlending,
+		opacity : 0.5,
+		transparent : true
 
 	} );
 	return material;
