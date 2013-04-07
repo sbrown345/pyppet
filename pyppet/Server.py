@@ -1048,7 +1048,11 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			ob = get_object_by_UID( uid )
 			if ob:
 				data = dump_collada( ob, ) #center=arg=='hires' )
-				print(data)
+
+		elif path.startswith('/sounds/'):
+			print('requesting sound')
+			data = open( fpath, 'rb' ).read()
+
 		else: print('warn: unknown request url', path)
 
 
