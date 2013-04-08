@@ -9,6 +9,7 @@ Notes:
 
 */
 
+var UserAPI = {};
 
 var PeerLights = [];
 var Peers = {};
@@ -64,6 +65,9 @@ var _input_buffer = [];
 var INPUT_OBJECT = null;
 var _input_mesh = null; // deprecated
 
+var SpinningObjects = [];
+
+var SoundClips = {};
 var Sounds = [];	// sounds need to be pushed here so they can be updated.
 
 var Sound = function ( sources, radius, volume ) {
@@ -91,8 +95,12 @@ var Sound = function ( sources, radius, volume ) {
 		}
 	}
 }
+/////////////////////////////////////////////////////////////////
 
 
+
+
+///////////////////////////////////////////////////////////
 function on_keydown ( evt ) {
 	var update = false;
 	switch( evt.keyCode ) {
@@ -1014,22 +1022,12 @@ function on_collada_ready( collada ) {
 		//		prefix :	'/bake/LOD/'
 		//	}
 		//);
-		var linegeom = _mesh.geometry.clone(); 
-		linegeom.computeLineDistances();
-
-		var line = new THREE.Line( 
-			linegeom, 
-			new THREE.LineDashedMaterial( { color: 0xaaaaff, dashSize: 0.5, gapSize: 0.1, linewidth: 2 } ), 
-			THREE.LinePieces //THREE.LineStrip //THREE.LinePieces
-		);
+		var lod = new THREE.LOD();
 
 		_mesh.material = new THREE.MeshLambertMaterial({
 			transparent: false,
 			color: 0xffffff
 		});
-
-		var lod = new THREE.LOD();
-		lod.add( line );
 
 		lod.name = _mesh.name;
 		lod.base_mesh = null;
@@ -1066,6 +1064,10 @@ function on_collada_ready( collada ) {
 			console.log('sending text');
 			console.log(txt);
 			lod.on_input_callback( lod.custom_attributes, txt ); //
+		}
+
+		if (UserAPI.on_model_loaded) {
+			UserAPI.on_model_loaded( lod, _mesh );
 		}
 
 		// add to scene //
@@ -1581,6 +1583,12 @@ function render() {
 		Sounds[i].update(camera);
 	}
 
+	var time = Date.now() * 0.001;
+	for (var i=0; i<SpinningObjects.length; i++) {
+		var object = SpinningObjects[i];
+		object.rotation.x = 0.25 * time;
+		object.rotation.y = 0.25 * time;
+	}
 
 	if ( postprocessing.enabled ) {
 		render_godrays();
@@ -2337,7 +2345,7 @@ function init() {
 	// Grid //
 	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
 	geometry = new THREE.Geometry(),
-	floor = -0.04, step = 1, size = 14;
+	floor = -0.04, step = 1, size = 4;
 	for ( var i = 0; i <= size / step * 2; i ++ ) {
 		geometry.vertices.push( new THREE.Vector3( - size, floor, i * step - size ) );
 		geometry.vertices.push( new THREE.Vector3(   size, floor, i * step - size ) );
