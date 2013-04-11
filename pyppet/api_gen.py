@@ -156,7 +156,7 @@ class Animation( AnimAPI ):
 	Simple animation class that can animate python attributes: numbers, and strings.
 	'''
 
-	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None, mode='RELATIVE' ):
+	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None, mode='ABSOLUTE' ):
 		assert mode in ('RELATIVE', 'ABSOLUTE')
 		self.mode = mode
 		self.done = False
@@ -341,8 +341,23 @@ class Container(object):
 			return getattr(self.__parent, name)
 
 	################### Dict-Like Features ####################
+	def __dir__(self):
+		keys = list( self.__properties.keys() )
+		allow = self.__allow_upstream_attributes
+		if allow:
+			if allow is True:
+				if self.__parent:
+					keys.extend( dir(self.__parent) )
+			else:
+				assert type(allow) is list
+				keys.extend( allow )
+		return keys
+
 	def __contains__(self, name):
+		allow = self.__allow_upstream_attributes
 		if name in self.__properties:
+			return True
+		elif (allow is True or name in allow) and self.__parent and name in self.__parent:
 			return True
 		else:
 			return False
@@ -690,3 +705,8 @@ if __name__ == '__main__':
 
 	assert view1['hi'] != view2['hi']
 
+	## upstream properties
+	w['up'] = 'xxx'
+	assert view1['up'] == 'xxx'
+	assert 'up' in view1
+	print( view1['up'] )

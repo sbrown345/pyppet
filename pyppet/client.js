@@ -1088,6 +1088,41 @@ function on_collada_ready( collada ) {
 	}
 }
 
+var _cattributes_vertex = [
+	'uniform float amplitude;',
+	'attribute vec3 displacement;',
+	'attribute vec3 customColor;',
+	'varying vec3 vColor;',
+	'void main() {',
+		'vec3 newPosition = position + amplitude * displacement;',
+		'vColor = customColor;',
+		'gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );',
+	'}'
+].join('\n');
+
+var _cattributes_fragment = [
+	'uniform vec3 color;',
+	'uniform float opacity;',
+	'varying vec3 vColor;',
+	'void main() {',
+		'gl_FragColor = vec4( vColor * color, opacity );',
+	'}'
+].join('\n');
+
+function create_custom_attribute_shader() {
+	var material = new THREE.ShaderMaterial( {
+		uniforms: _magic_uniforms,
+		vertexShader: _magic_vertex,
+		fragmentShader: _magic_fragment,
+		blending : THREE.AdditiveBlending,
+		opacity : 0.5,
+		transparent : true
+
+	} );
+	return material;
+}
+
+
 var _magic_vertex = [
 	'varying vec2 vUv;',
 	'void main() {',

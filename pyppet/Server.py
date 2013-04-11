@@ -643,7 +643,11 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			pak['properties'] = a.properties.copy()
+			pak['properties'] = {} #a.properties.copy()
+			for key in dir(view):
+				pak['properties'][ key ] = view[key]
+
+			print('pak props', pak['properties'])
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			## special case for selected ##
@@ -674,8 +678,8 @@ class Player( object ):
 				p = selection[T]
 				p.pop('selected')
 
-		#print('-------------------')
-		#print(msg)
+		print('-------------------')
+		print(msg)
 		return msg
 
 	################################ convert to stream #######################################
