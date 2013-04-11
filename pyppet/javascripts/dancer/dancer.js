@@ -4,7 +4,7 @@
     this.audioAdapter = Dancer._getAdapter( this );
     this.events = {};
     this.sections = [];
-    this.bind( 'update', update );
+    //this.bind( 'update', update );
   };
 
   Dancer.version = '0.3.2';
@@ -183,7 +183,7 @@
 
   function update () {
     for ( var i in this.sections ) {
-      if ( this.sections[ i ].condition() )
+      if ( this.sections[ i ].condition() )  // this is broken?
         this.sections[ i ].callback.call( this );
     }
   }

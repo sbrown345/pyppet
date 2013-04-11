@@ -45,7 +45,7 @@ var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
-
+dancer = new Dancer();
 
 var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
 var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
@@ -1744,7 +1744,7 @@ MyController = function ( object, domElement ) {
 	THREE.EventDispatcher.call( this );
 
 	var _this = this;
-	var STATE = { NONE: -1, ROTATE: 0, ZOOM: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_ZOOM: 4, TOUCH_PAN: 5 };
+	var STATE = { NONE: -1, ROTATE: 2, ZOOM: 1, PAN: 0, TOUCH_ROTATE: 3, TOUCH_ZOOM: 4, TOUCH_PAN: 5 };
 
 	this.object = object;
 	this.domElement = ( domElement !== undefined ) ? domElement : document;
@@ -1778,8 +1778,8 @@ MyController = function ( object, domElement ) {
 
 	var lastPosition = new THREE.Vector3();
 
-	var _state = STATE.ZOOM,
-	_prevState = STATE.ZOOM,
+	var _state = STATE.NONE,
+	_prevState = STATE.NONE,
 
 	_eye = new THREE.Vector3(),
 
@@ -2206,7 +2206,7 @@ MyController = function ( object, domElement ) {
 
 		if ( event.wheelDelta ) { // WebKit / Opera / Explorer 9
 
-			delta = event.wheelDelta / 40;
+			delta = event.wheelDelta / 10;
 
 		} else if ( event.detail ) { // Firefox
 

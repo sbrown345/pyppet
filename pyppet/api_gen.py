@@ -18,7 +18,7 @@ except ImportError: pass
 def get_callback( name ):
 	return CallbackFunction.callbacks[ name ]
 
-def get_callbacks( ob, viewer=None ):
+def get_callbacks( ob, viewer=None ): ## deprecated
 	a = get_wrapped_objects()[ob]
 	if viewer: b = a[viewer]() # get internal
 	else: b = a() # get internal
@@ -153,17 +153,19 @@ class Animations( AnimAPI ):
 
 class Animation( AnimAPI ):
 	'''
-	only AnimationManager holds references to Animations,
-	many of these will be created and garbage collected.
+	Simple animation class that can animate python attributes: numbers, and strings.
 	'''
 
-	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None ):
+	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None, mode='RELATIVE' ):
+		assert mode in ('RELATIVE', 'ABSOLUTE')
+		self.mode = mode
 		self.done = False
 		self.value = value
-		self.mode = type(value)
+		self.type = type(value)
 		self.x = x; self.y = y; self.z = z
 		self.indices = {}
 		self.deltas = {}
+		self.offsets = {} ## abs/rel mode ##
 		if x is not None: self.indices[ 0 ] = x
 		if y is not None: self.indices[ 1 ] = y
 		if z is not None: self.indices[ 2 ] = z
@@ -176,11 +178,21 @@ class Animation( AnimAPI ):
 	def bind( self, target, attribute=None ):
 		self.target = target
 		self.attribute = attribute
-		if self.mode is not str:
+		if self.type is not str:
 			assert attribute in target
+			if self.mode == 'RELATIVE':
+				## offset value ##
+				if self.indices:
+					attr = self.target[ self.attribute ]
+					for index in self.indices:
+						self.indices[ index ] += attr[index]
+				else:
+					attr = self.target[ self.attribute ]
+					self.value += attr
+
 
 	def update_deltas(self):
-		if self.mode is str:
+		if self.type is str:
 			if self.attribute in self.target:
 				self.delta = len(self.target[self.attribute])
 			else:
@@ -215,7 +227,7 @@ class Animation( AnimAPI ):
 				if idx+1 < len(self.animations):
 					self.animations[ idx+1 ].animate()
 
-		elif self.mode is str:
+		elif self.type is str:
 
 			if self.attribute in self.target:
 				attr = self.target[self.attribute]
@@ -416,28 +428,34 @@ class ObjectView( Container ):
 	pass
 
 def create_object_view( ob ):
-	on_click = 'default_click' # defaults for testing
-	on_touch = 'default_touch' # TODO
-	on_input = 'default_input'  # defaults for testing
+	print('------------create object view-----------')
+	on_click = None #'default_click' # defaults for testing
+	on_touch = None #'default_touch' # TODO
+	on_input = None #'default_input'  # defaults for testing
 
 	############ Blender's ID-Props API #########
 	if hasattr(ob, 'items'):
+		print('////////checking blender id props////////')
 		for prop in ob.items():
+			print(prop)
 			name, value = prop
 			if name == 'on_click': on_click = value
 			elif name == 'on_input': on_input = value
+			else: print('WARN unknown id-prop:', name, value)
 	#############################################
-
+	print(ob, on_click, on_input)
 	if on_click:
 		if on_click in CallbackFunction.callbacks:
 			on_click = CallbackFunction.callbacks[ on_click ]
 		else:
 			print('WARNING: undefined callback:', on_click)
+			raise RuntimeError
 	if on_input:
 		if on_input in CallbackFunction.callbacks:
 			on_input = CallbackFunction.callbacks[ on_input ]
 		else:
 			print('WARNING: undefined callback:', on_input)
+			raise RuntimeError
 
 	v = ObjectView(
 		proxy=ob,

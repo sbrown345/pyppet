@@ -36,9 +36,9 @@
       } else {
         connectContext.call( _this );
       }
-
+      // merged fix from Aaron Ghent - https://github.com/jsantell/dancer.js/pull/38/files
       this.audio.addEventListener( 'progress', function ( e ) {
-        if ( e.currentTarget.duration ) {
+        if ( e.currentTarget.duration && (e.currentTarget.seekable.length > 0 )) {
           _this.progress = e.currentTarget.seekable.end( 0 ) / e.currentTarget.duration;
         }
       });

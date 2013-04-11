@@ -63,7 +63,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-#HOST_NAME = '192.168.0.7'
+#HOST_NAME = '192.168.0.4'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 _host = HOST_NAME
@@ -1081,6 +1081,7 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
 
+
 	h.append( '<style>' )
 	h.append( 'body{margin:auto; background-color: #888; padding-top: 2px; font-family:sans; color: #666; font-size: 0.8em}' )
 	h.append( '#container{ margin:auto; padding: 4px; background-color: #fff; }' )
@@ -1116,6 +1117,15 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	#if external_three:
 	for x in three:
 		h.append( '<script type="text/javascript" src="/javascripts/%s"></script>' %x )
+
+	h.append( '<script src="/javascripts/dancer/dancer.js"></script> ' )
+	h.append( '<script src="/javascripts/dancer/support.js"></script> ' )
+	h.append( '<script src="/javascripts/dancer/kick.js"></script> ' )
+	h.append( '<script src="/javascripts/dancer/adapterWebkit.js"></script> ' )
+	h.append( '<script src="/javascripts/dancer/adapterMoz.js"></script> ' )
+	h.append( '<script src="/javascripts/fft.js"></script> ' )
+	#h.append( '<script src="/javascripts/dancer/player.js"></script> ' )
+	h.append( '<script src="/javascripts/dancer.fft.js"></script> ' )
 
 	h.append( generate_javascript( websocket_path ) )
 
