@@ -557,7 +557,7 @@ Sec-WebSocket-Accept: %s\r
             #raise self.EClose("Sending flash policy response")
             return sock
 
-        elif handshake[0] in ("\x16", "\x80", 22, 128):
+        elif handshake and handshake[0] in ("\x16", "\x80", 22, 128):
             # SSL wrap the connection
             if not ssl:
                 raise self.EClose("SSL connection but no 'ssl' module")
@@ -598,8 +598,9 @@ Sec-WebSocket-Accept: %s\r
         else:
             wsh = WSRequestHandler(retsock, address, not self.web)
         ###############################################################################
-
-        if wsh.last_code == 101:
+        if not hasattr(wsh,'last_code'):
+            return None
+        elif wsh.last_code == 101:
             # Continue on to handle WebSocket upgrade
             pass
         elif wsh.last_code == 405:

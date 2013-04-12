@@ -1244,7 +1244,12 @@ function request_progressive_texture() {
 
 
 function create_normal_shader( params ) {
-	return new THREE.MeshBasicMaterial( { color: 0x000000, shading: THREE.FlatShading } );
+	return new THREE.MeshBasicMaterial( {
+		color: 0x000000, 
+		shading: THREE.FlatShading,
+		opacity: 0.1,
+		transparent: true
+	});
 }
 
 
