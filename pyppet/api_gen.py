@@ -389,7 +389,11 @@ class Container(object):
 		else:
 			self.__properties[ name ] = value
 			if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
-				setattr(self.__proxy, name, value)
+				do = True
+				if type(value) is list:
+					if len(value) != len(getattr(self.__proxy,name)): do = False
+				if do:
+					setattr(self.__proxy, name, value)
 
 
 	def __getitem__(self, name):

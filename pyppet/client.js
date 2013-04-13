@@ -37,9 +37,13 @@ var testing;
 
 var SELECTED = null;
 
-var WIRE_MATERIAL = new THREE.MeshLambertMaterial(
-	{ color: 0x000000, wireframe: true, wireframeLinewidth:1, polygonOffset:true, polygonOffsetFactor:1 }
-);
+var WIRE_MATERIAL = new THREE.MeshLambertMaterial({ 
+	color: 0x000000, 
+	wireframe: true, 
+	wireframeLinewidth:1, 
+	polygonOffset:true, 
+	polygonOffsetFactor:1 
+});
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
@@ -376,7 +380,8 @@ function generate_extruded_splines( parent, ob ) {
 		var wire_material = new THREE.MeshBasicMaterial({
 		    color: 0x000000,
 		    opacity: 0.5,
-		    wireframe: true
+		    wireframe: true,
+		    transparent: true
 		});
 
 		// 3d shape
@@ -574,9 +579,18 @@ function on_json_message( data ) {
 			m.quaternion.z = ob.rot[3];
 
 			if (pak.color && m.LODs.length) {
-				m.LODs[0].object3D.material.color.r = pak.color[0];
-				m.LODs[0].object3D.material.color.g = pak.color[1];
-				m.LODs[0].object3D.material.color.b = pak.color[2];
+				console.log('matcolor'+pak.color);
+				if (pak.color.length==4) {
+					m.LODs[0].object3D.material.opacity = pak.color[3];
+				}
+				if (pak.color.length >=3) {
+					m.LODs[0].object3D.material.color.r = pak.color[0];
+					m.LODs[0].object3D.material.color.g = pak.color[1];
+					m.LODs[0].object3D.material.color.b = pak.color[2];
+				}
+				if (pak.color.length == 1) { // special case to assign just alpha changes
+					m.LODs[0].object3D.material.opacity = pak.color[0];					
+				}
 			}
 
 			if (pak.on_click) {
@@ -1050,9 +1064,6 @@ function on_collada_ready( collada ) {
 		_mesh.quaternion.set(0,0,0,1);
 		_mesh.updateMatrix();
 
-		lod.addLevel( _mesh, 12 );
-		lod.updateMatrix();
-		//mesh.matrixAutoUpdate = false;
 
 		// custom attributes (for callbacks)
 		lod.custom_attributes = {};
@@ -1069,6 +1080,11 @@ function on_collada_ready( collada ) {
 		if (UserAPI.on_model_loaded) {
 			UserAPI.on_model_loaded( lod, _mesh );
 		}
+
+		lod.addLevel( _mesh, 12 );
+		lod.updateMatrix();
+		//mesh.matrixAutoUpdate = false;
+
 
 		// add to scene //
 		Objects[ lod.name ] = lod;
@@ -1088,82 +1104,6 @@ function on_collada_ready( collada ) {
 	}
 }
 
-var _cattributes_vertex = [
-	'uniform float amplitude;',
-	'attribute vec3 displacement;',
-	'attribute vec3 customColor;',
-	'varying vec3 vColor;',
-	'void main() {',
-		'vec3 newPosition = position + amplitude * displacement;',
-		'vColor = customColor;',
-		'gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );',
-	'}'
-].join('\n');
-
-var _cattributes_fragment = [
-	'uniform vec3 color;',
-	'uniform float opacity;',
-	'varying vec3 vColor;',
-	'void main() {',
-		'gl_FragColor = vec4( vColor * color, opacity );',
-	'}'
-].join('\n');
-
-function create_custom_attribute_shader() {
-	var material = new THREE.ShaderMaterial( {
-		uniforms: _magic_uniforms,
-		vertexShader: _magic_vertex,
-		fragmentShader: _magic_fragment,
-		blending : THREE.AdditiveBlending,
-		opacity : 0.5,
-		transparent : true
-
-	} );
-	return material;
-}
-
-
-var _magic_vertex = [
-	'varying vec2 vUv;',
-	'void main() {',
-	'	vUv = uv;',
-	'	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
-	'	gl_Position = projectionMatrix * mvPosition;',
-	'}'
-].join('\n');
-
-var _magic_fragment = [
-	'uniform float time;',
-	'uniform vec2 resolution;',
-	'varying vec2 vUv;',
-	'void main( void ) {',
-	'	vec2 position = vUv;',
-	'	float color = 0.0;',
-	'	color += sin( position.x * cos( time / 15.0 ) * 80.0 ) + cos( position.y * cos( time / 15.0 ) * 10.0 );',
-	'	color += sin( position.y * sin( time / 10.0 ) * 40.0 ) + cos( position.x * sin( time / 25.0 ) * 40.0 );',
-	'	color += sin( position.x * sin( time / 5.0 ) * 10.0 ) + sin( position.y * sin( time / 35.0 ) * 80.0 );',
-	'	color *= sin( time / 10.0 ) * 0.5;',
-	'	gl_FragColor = vec4( vec3( color * 0.5, color * 0.25, sin( color + time / 3.0 ) * 0.75 ), 1.0 );',
-	'}'
-].join('\n');
-
-var _magic_uniforms = {
-	time: { type: "f", value: 1.0 },
-	resolution: { type: "v2", value: new THREE.Vector2() }
-};
-
-function create_magic_shader() {
-	var material = new THREE.ShaderMaterial( {
-		uniforms: _magic_uniforms,
-		vertexShader: _magic_vertex,
-		fragmentShader: _magic_fragment,
-		blending : THREE.AdditiveBlending,
-		opacity : 0.5,
-		transparent : true
-
-	} );
-	return material;
-}
 
 function reload_progressive_textures( ob ) {
 	var name = ob.name;
@@ -1244,11 +1184,13 @@ function request_progressive_texture() {
 
 
 function create_normal_shader( params ) {
+	console.log('create_normal_shader');
 	return new THREE.MeshBasicMaterial( {
 		color: 0x000000, 
 		shading: THREE.FlatShading,
 		opacity: 0.1,
-		transparent: true
+		transparent: true,
+		blending: THREE.AdditiveBlending
 	});
 }
 
@@ -1590,8 +1532,10 @@ function resize_view() {
 		renderer.setSize( window.innerWidth, window.innerHeight-10 );
 		camera.aspect = window.innerWidth / (window.innerHeight-10);
 		camera.updateProjectionMatrix();
-		_magic_uniforms.resolution.value.x = window.innerWidth;
-		_magic_uniforms.resolution.value.y = window.innerHeight;
+		if (UserAPI.on_view_resized) {
+			UserAPI.on_view_resized();
+		}
+
 		console.log(">> resize view");
 	}
 }
@@ -1612,7 +1556,10 @@ function render() {
 	resize_view();
 	var delta = clock.getDelta();
 	CONTROLLER.update( delta );
-	_magic_uniforms.time.value += delta * 0.2;
+
+	if (UserAPI.on_redraw) {
+		UserAPI.on_redraw( delta );
+	}
 
 	scene.updateMatrixWorld();
 	scene.traverse(
@@ -2126,7 +2073,7 @@ MyController = function ( object, domElement ) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (event.button==0) {	// right click selects like in blender
+		if (event.button==0) {	
 			// PICKING //
 			var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
 			projector.unprojectVector( vector, camera );
@@ -2145,10 +2092,17 @@ MyController = function ( object, domElement ) {
 					var intersect = intersects[ i ];
 					if (intersect.object.name && intersect.object.visible) {
 						if ( INTERSECTED != intersect.object ) {
+							if (UserAPI.on_model_click_pressed) {
+								UserAPI.on_model_click_pressed( 
+									Objects[ intersect.object.name ],
+									intersect.object, 
+									intersect.distance
+								);
+							}
 							console.log('distance'+intersect.distance);
 							INTERSECTED = intersect.object;
-							INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-							INTERSECTED.material.color.setHex( 0xff0000 );
+							//INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+							//INTERSECTED.material.color.setHex( 0xff0000 );
 							break;
 						}
 					}
@@ -2222,8 +2176,13 @@ MyController = function ( object, domElement ) {
 				//a.do_mouse_up_callback(); 
 				a.on_mouse_up_callback( a.custom_attributes );
 			}
-
-			INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+			if (UserAPI.on_model_click_released) {
+				UserAPI.on_model_click_released(
+					a, //lod
+					INTERSECTED
+				)
+			}
+			//INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 			INTERSECTED = null;
 		}
 
@@ -2466,7 +2425,7 @@ function init() {
 		renderer.shadowMapSoft = true;
 		//renderer.shadowMapAutoUpdate = false;		// EVIL!
 	}
-	renderer.setClearColor( {r:0.14,g:0.14,b:0.15}, 1.0 )
+	renderer.setClearColor( {r:0.24,g:0.24,b:0.35}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
 	renderer.sortObjects = false;		// LOD
