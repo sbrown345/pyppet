@@ -181,7 +181,7 @@ function on_keypress( evt ) {
 }
 window.addEventListener( 'keypress', on_keypress, false );
 
-function create_text( line, parent, offset, resolution, scale ) {
+function create_text( line, parent, offset, resolution, scale, alignment ) {
 	console.log('createlabel');
 	console.log(line);
 	if (offset == undefined) { offset=-1.1; }
@@ -193,21 +193,24 @@ function create_text( line, parent, offset, resolution, scale ) {
 		0, offset, 0,  // location, x,y,z
 		resolution,
 		"white", // font color
-		true // transparent
+		true, // transparent
+		alignment
 	);
 	mesh.scale.x = scale;
 	mesh.scale.y = scale;
 	mesh.scale.z = scale;
 	mesh.rotation.x = Math.PI/2.0;
 	mesh.rotation.y = Math.PI;
-	mesh.position.x = -((mesh.width/2) * scale); //align
+	if (alignment=='left') {
+		mesh.position.x = -((mesh.width/2) * scale); //align
+	}
 	parent.add( mesh );
 	return mesh;
 }
 
-function create_multiline_text( text, title, parent, offset, spacing ) {
-	if (spacing==undefined) { spacing=0.6; }
-	var scale = 0.005;
+function create_multiline_text( text, title, parent, offset, alignment, spacing ) {
+	if (spacing==undefined) { spacing=0.3; }
+	var scale = 0.0035;
 	var lines = [];
 
 	if (title != undefined) {
@@ -216,7 +219,8 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 			parent, 
 			offset,
 			100, // res
-			scale
+			scale,
+			alignment
 		);
 		lines.push( mesh );
 	}
@@ -229,7 +233,8 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 				parent, 
 				offset,
 				75,  // res
-				scale
+				scale,
+				alignment
 			);
 			if (lines.length) {
 				mesh.position.z = -spacing*i;
@@ -243,9 +248,44 @@ function create_multiline_text( text, title, parent, offset, spacing ) {
 
 
 /////////////// label any object ///////////////
-function label_object(geometry, parent, txt, title ) {
+function title_object(geometry, parent, title ) {
 	var bb = geometry.boundingBox;
-	var offset = ((bb.max.y - bb.min.y)/2)+0.05;
+	//var offset = ((bb.max.y - bb.min.y)/2)+0.15;
+	var offset = bb.max.y + 0.1;
+	if (title != undefined && title != parent._label_title) {
+		parent._label_title = title;
+
+		// clear heading and label //
+		if (parent._title_objects != undefined) {
+			for (var i=0; i<parent._title_objects.length; i++) {
+				parent.remove( parent._title_objects[i] );
+			}
+		}
+		if (parent._label_objects != undefined) {
+			for (var i=0; i<parent._label_objects.length; i++) {
+				parent.remove( parent._label_objects[i] );
+			}
+		}
+
+
+		var lines = create_multiline_text(
+			undefined, 
+			title,
+			parent,
+			offset,
+			"center" //alignment
+		);
+		parent._title_objects = lines;
+		//lines[0].position.z = -(bb.max.z - bb.min.z) / 2.0;
+		//lines[0].position.x -= bb.min.x; // for left alignment
+	}
+
+}
+
+function label_object(geometry, parent, txt, title, alignment ) {
+	var bb = geometry.boundingBox;
+	//var offset = ((bb.max.y - bb.min.y)/2)+0.05;
+	var offset = bb.max.y + 0.1;
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -259,13 +299,16 @@ function label_object(geometry, parent, txt, title ) {
 			undefined, 
 			title,
 			parent,
-			offset
+			offset,
+			"center" //alignment
 		);
 		parent._title_objects = lines;
-		lines[0].position.z = bb.max.z;
-		lines[0].position.x -= bb.min.x;
+		lines[0].position.z = bb.max.z - 0.2;
+		//lines[0].position.x -= bb.min.x;
 	}
-
+	if (alignment==undefined) {
+		alignment = 'left';
+	}
 	if (txt != undefined && txt != parent._label_text) {
 		parent._label_text = txt;
 
@@ -278,11 +321,12 @@ function label_object(geometry, parent, txt, title ) {
 			txt+'|', 
 			undefined,
 			parent,
-			offset
+			offset,
+			alignment
 		);
 		parent._label_objects = lines;
 		for (var i=0; i<lines.length; i++) {
-			lines[i].position.x -= bb.min.x + 0.1;
+			lines[i].position.x -= bb.min.x + 0.2;
 			lines[i].position.z += bb.max.z - 0.6;
 		}
 	}
@@ -291,9 +335,10 @@ function label_object(geometry, parent, txt, title ) {
 
 
 ///////////////////// createLabel by ekeneijeoma - https://gist.github.com/ekeneijeoma/1186920
-function createLabel(text, x, y, z, size, color, transparent, backGroundColor, backgroundMargin) {
+function createLabel(text, x, y, z, size, color, transparent, alignment, backGroundColor, backgroundMargin) {
 	if(!backgroundMargin)
 		backgroundMargin = 50;
+	if (alignment==undefined) { alignment="left"; }
 
 	var canvas = document.createElement("canvas");
 
@@ -315,10 +360,14 @@ function createLabel(text, x, y, z, size, color, transparent, backGroundColor, b
 			textWidth + backgroundMargin, size + backgroundMargin);
 	}
 
-	context.textAlign = "left"; //"center";
+	context.textAlign = alignment; //"center";
 	context.textBaseline = "middle";
 	context.fillStyle = color;
-	context.fillText(text, backgroundMargin/2, canvas.height/2);
+	if (alignment=="left") {
+		context.fillText(text, backgroundMargin/2, canvas.height/2);
+	} else {
+		context.fillText(text, canvas.width/2, canvas.height/2);
+	}
 
 	// context.strokeStyle = "black";
 	// context.strokeRect(0, 0, canvas.width, canvas.height);
@@ -579,7 +628,6 @@ function on_json_message( data ) {
 			m.quaternion.z = ob.rot[3];
 
 			if (pak.color && m.LODs.length) {
-				console.log('matcolor'+pak.color);
 				if (pak.color.length==4) {
 					m.LODs[0].object3D.material.opacity = pak.color[3];
 				}
@@ -601,20 +649,28 @@ function on_json_message( data ) {
 				m.on_input_callback = _callbacks_[ pak.on_input ];
 			}
 
-			// pak.label and ob.title are speical cases, 
-			// ob.title can be set and animated from the server-side
-			if (pak.label || ob.title) {
+
+			if (ob.title) {
+				title_object(		// note label_object is smart enough to not rebuild the texture etc.
+					m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
+					m,			// parent
+					ob.title  // title (can be undefined)
+				); // TODO optimize this only update on change
+			}
+
+
+			if (ob.label || ob.heading) {
 				// the client can force input into label body when object is selected.
 				// the toplevel title is controlled by the server side
 
-				var text = pak.label; // can also be undefined
+				var text = ob.label; // can also be undefined
 				if (INPUT_OBJECT == m) { text=undefined; }
 
 				label_object(		// note label_object is smart enough to not rebuild the texture etc.
 					m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
 					m,			// parent
 					text, 		// multiline text body
-					ob.title  // title (can be undefined)
+					ob.heading  // title (can be undefined)
 				); // TODO optimize this only update on change
 			}
 
