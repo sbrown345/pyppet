@@ -117,6 +117,7 @@ function on_keydown ( evt ) {
 			update=true;
 			break;
 		case 8: //backspace
+			event.preventDefault(); // this fixes backspace on windows/osx?
 			_input_buffer.pop(); 
 			update=true; break;
 		case 27: 		//esc
@@ -143,6 +144,7 @@ function on_keypress( evt ) {
 	//console.log( String.fromCharCode(evt.charCode) );
 	//console.log( evt.charCode );
 	//console.log( evt.keyCode );
+	event.preventDefault(); // this fixes backspace on windows/osx?
 
 	switch( evt.keyCode ) {
 		case 32: _input_buffer.push(' '); break;				//space
@@ -181,20 +183,24 @@ function on_keypress( evt ) {
 }
 window.addEventListener( 'keypress', on_keypress, false );
 
-function create_text( line, parent, offset, resolution, scale, alignment ) {
+function create_text( line, parent, offset, resolution, scale, alignment, bgcolor ) {
 	console.log('createlabel');
 	console.log(line);
 	if (offset == undefined) { offset=-1.1; }
 	if (scale == undefined) { scale=0.01; }
 	if (resolution == undefined) { resolution=100; }
 
+	var color = 'white';
+	//if (alignment=='center') { color='black'; }
+
 	var mesh = createLabel(
 		line, 
 		0, offset, 0,  // location, x,y,z
 		resolution,
-		"white", // font color
+		color, // font color
 		true, // transparent
-		alignment
+		alignment,
+		bgcolor
 	);
 	mesh.scale.x = scale;
 	mesh.scale.y = scale;
@@ -208,21 +214,44 @@ function create_text( line, parent, offset, resolution, scale, alignment ) {
 	return mesh;
 }
 
-function create_multiline_text( text, title, parent, offset, alignment, spacing ) {
+function create_multiline_text( text, title, parent, offset, alignment, color, spacing ) {
 	if (spacing==undefined) { spacing=0.3; }
 	var scale = 0.0035;
 	var lines = [];
 
 	if (title != undefined) {
+		var _lines = title.split('\n');
+		for (var i=0; i<_lines.length; i ++) {
+			var line = _lines[ i ];
+			var mesh = create_text( 
+				line, 
+				parent, 
+				offset,
+				100,  // res
+				scale,
+				alignment,
+				color
+			);
+			if (lines.length) {
+				mesh.position.z = -(spacing+0.15)*i;
+				//mesh.position.z -= lines[lines.length-1].height*scale;
+			}
+			lines.push( mesh );
+		}
+
+
+		/*
 		var mesh = create_text( 
 			title, 
 			parent, 
 			offset,
 			100, // res
 			scale,
-			alignment
+			alignment,
+			color
 		);
 		lines.push( mesh );
+		*/
 	}
 	if (text != undefined) {
 		var _lines = text.split('\n');
@@ -234,7 +263,8 @@ function create_multiline_text( text, title, parent, offset, alignment, spacing 
 				offset,
 				75,  // res
 				scale,
-				alignment
+				alignment,
+				color
 			);
 			if (lines.length) {
 				mesh.position.z = -spacing*i;
@@ -273,7 +303,8 @@ function title_object(geometry, parent, title ) {
 			title,
 			parent,
 			offset,
-			"center" //alignment
+			"center", //alignment
+			"brown"
 		);
 		parent._title_objects = lines;
 		//lines[0].position.z = -(bb.max.z - bb.min.z) / 2.0;
@@ -351,6 +382,7 @@ function createLabel(text, x, y, z, size, color, transparent, alignment, backGro
 	canvas.height = size + backgroundMargin;
 	context = canvas.getContext("2d");
 	context.font = size + "pt Arial";
+
 
 	if(backGroundColor) {
 		context.fillStyle = backGroundColor;
@@ -1354,7 +1386,7 @@ function enable_godrays() {
 function disable_godrays() {
 	//renderer.sortObjects = false;
 	//renderer.autoClear = true;	# bloom wants autoclear off
-	renderer.setClearColor( {r:0.24,g:0.24,b:0.24}, 1.0 )
+	renderer.setClearColor( {r:0.14,g:0.14,b:0.14}, 1.0 )
 	postprocessing.enabled = false;
 	scene.overrideMaterial = null;
 
@@ -2481,7 +2513,7 @@ function init() {
 		renderer.shadowMapSoft = true;
 		//renderer.shadowMapAutoUpdate = false;		// EVIL!
 	}
-	renderer.setClearColor( {r:0.24,g:0.24,b:0.35}, 1.0 )
+	renderer.setClearColor( {r:0.14,g:0.14,b:0.25}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
 	renderer.sortObjects = false;		// LOD

@@ -30,7 +30,6 @@ from core import *
 from random import *
 
 import api_gen
-
 import simple_action_api
 
 
@@ -63,7 +62,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-#HOST_NAME = '192.168.0.4'
+HOST_NAME = '192.168.0.4'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 _host = HOST_NAME
@@ -437,8 +436,8 @@ class Player( object ):
 	MAX_VERTS = 2000
 	ID = 0
 
-	def set_action_api(self, api):
-		self._action_api = api
+	#def set_action_api(self, api):
+	#	self._action_api = api
 
 	def new_action(self, code, packed_args):
 		'''
@@ -451,8 +450,8 @@ class Player( object ):
 		may want to delay some actions, or inspect the decoded args first.
 		The custom action api may need a reference to the player instance.
 		'''
-		if not self._action_api: return None
-		act = self._action_api.new_action( 
+
+		act = simple_action_api.new_action( 
 			code,        # function code
 			packed_args, # byte packed args
 			user=self 
@@ -461,7 +460,7 @@ class Player( object ):
 		return act
 
 
-	def __init__(self, addr, websocket=None, action_api=simple_action_api):
+	def __init__(self, addr, websocket=None):
 		'''
 		self.objects is a list of objects that the client should know about from its message stream,
 		it can also be used as a cache.
@@ -472,7 +471,6 @@ class Player( object ):
 		self.write_ready = True
 		self.address = addr
 		self.websocket = websocket
-		self._action_api = action_api
 		self.token = None
 		self.name = None
 		self.objects = []	## list of objects client in client message stream
@@ -911,27 +909,27 @@ class Player( object ):
 
 
 ##################################################
-class GameManager( object ):
-	RELOAD_TEXTURES = []
-	clients = {}	# (ip,port) : player object
-	action_api = simple_action_api
-	@classmethod
+class GameManagerSingleton( object ):
+	def __init__(self):
+		self.RELOAD_TEXTURES = []
+		self.clients = {}	# (ip,port) : player object
+
 	def add_player( self, addr, websocket=None ):
 		print('add_player', addr)
 		assert type(addr) is tuple
-		player = Player( addr, websocket=websocket, action_api=self.action_api )
+		player = Player( addr, websocket=websocket )
 		self.clients[ addr ] = player
 		return player
-	@classmethod
+
 	def get_player_by_id(self, uid):
 		for player in self.clients.values():
 			if player.uid == uid: return player
 
-	@classmethod
 	def get_player_by_socket(self, sock ):
 		for p in self.clients.values():
 			if p.websocket is sock: return p
 
+GameManager = GameManagerSingleton()
 
 ###### required by api_gen ########
 api_gen.register_type( api_gen.UserProxy, GameManager.get_player_by_id )

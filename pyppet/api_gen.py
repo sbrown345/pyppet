@@ -101,10 +101,11 @@ class Cache(object):
 	objects = {} # blender object : object view
 	@classmethod
 	def wrap_object(cls,ob):
-		assert ob not in cls.objects
-		view = create_object_view( ob )
-		cls.objects[ ob ] = view
-		return view
+		#assert ob not in cls.objects  ## threading?
+		if ob not in cls.objects:
+			view = create_object_view( ob )
+			cls.objects[ ob ] = view
+			return view
 
 class SimpleAnimationManager(object):
 	def __init__(self):
@@ -118,7 +119,6 @@ class SimpleAnimationManager(object):
 				done.append( a )
 
 		for a in done:
-			print('anim clean up',a)
 			self.objects.remove( a )
 
 AnimationManager = SimpleAnimationManager()
