@@ -3,7 +3,7 @@
 # License: "New" BSD
 
 import time, inspect, struct, ctypes, random
-try: import bpy
+try: import bpy, mathutils
 except ImportError: pass
 
 #from bpy.props import *
@@ -77,7 +77,6 @@ def generate_api( a, **kw ):
 	print('generate_api', api)
 	return api
 
-def register_type(T, unpacker): CallbackFunction.register_type(T,unpacker)
 
 def generate_javascript():
 	g = '_callbacks_'
@@ -97,15 +96,19 @@ def wrap_object( ob ):
 
 
 
-class Cache(object):
-	objects = {} # blender object : object view
-	@classmethod
+class CacheSingleton(object):
+	def __init__(self):
+		self.objects = {} # blender object : object view
+	#@classmethod
 	def wrap_object(cls,ob):
 		#assert ob not in cls.objects  ## threading?
 		if ob not in cls.objects:
 			view = create_object_view( ob )
 			cls.objects[ ob ] = view
 			return view
+
+Cache = CacheSingleton()
+
 
 class SimpleAnimationManager(object):
 	def __init__(self):
@@ -249,6 +252,9 @@ class Animation( AnimAPI ):
 
 			step = d / self.seconds
 			attr = self.target[self.attribute]
+			if type(attr) is mathutils.Vector:
+				attr = list( attr.to_tuple() )
+
 			if self.value is not None:
 				value = attr
 				value += self.delta * step
@@ -489,6 +495,17 @@ def create_object_view( ob ):
 
 
 ##########################################################################
+def register_type(T, unpacker):
+	'''
+	unpacker is a function that can take the uid and return the proxy object
+	'''
+	cls = CallbackFunction
+	#CallbackFunction.register_type(T,unpacker)
+	id_byte_size=4
+	assert id_byte_size in (1,2,4,8)
+	cls.TYPES[ T ] = {'unpacker':unpacker,'bytes':id_byte_size}
+
+
 class CallbackFunction(object):
 	#CACHE = {}
 	#def __call__(self, _ob, **kw):
@@ -502,13 +519,13 @@ class CallbackFunction(object):
 	CALLBACKS = {} ## byte-code : function wrapper
 	callbacks = {} ## orig name : function wrapper
 	TYPES = {}  ## each type will need its own custom unpacking functions that take some ID.
-	@classmethod
-	def register_type(cls, T, unpacker, id_byte_size=4):
-		'''
-		unpacker is a function that can take the uid and return the proxy object
-		'''
-		assert id_byte_size in (1,2,4,8)
-		cls.TYPES[ T ] = {'unpacker':unpacker,'bytes':id_byte_size}
+	#@classmethod
+	#def register_type(cls, T, unpacker, id_byte_size=4):
+	#	'''
+	#	unpacker is a function that can take the uid and return the proxy object
+	#	'''
+	#	assert id_byte_size in (1,2,4,8)
+	#	cls.TYPES[ T ] = {'unpacker':unpacker,'bytes':id_byte_size}
 
 
 	_ctypes_to_struct_format = {

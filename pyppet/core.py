@@ -35,7 +35,8 @@ if '--gtk' in sys.argv:
 
 
 import icons
-import Blender
+if sys.platform.startswith('linux'):
+	import Blender
 
 import subprocess
 import math
@@ -212,7 +213,10 @@ class BlenderHack( object ):
 		if not hasattr(self,'lock') or not self.lock: self.lock = threading._allocate_lock()
 
 		self.default_blender_screen = context.screen.name
-		self.evil_C = Blender.Context( context )
+
+		if sys.platform.startswith('linux'):  ## not working on osx and windows - this breaks dump_collada (can bpy be use in headless mode?)
+			self.evil_C = Blender.Context( context )
+
 		self.context = BlenderContextCopy( context )
 
 		self._sync_hack_handles = {}	# region : handle

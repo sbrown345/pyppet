@@ -183,7 +183,8 @@ class OdeSingleton(object):
 	def __init__(self, lock=None, space_type='HASH'):
 		self.active = False
 		self.paused = False
-		ode.InitODE()
+		ode.InitODE() ## initialize ODE ##
+
 		self.world = ode.WorldCreate()
 		self.world.SetERP( DEFAULT_ERP )
 		self.world.SetCFM( DEFAULT_CFM )
@@ -490,6 +491,8 @@ if hasattr(ode, 'InitODE'):
 	ENGINE = OdeSingleton( lock=LOCK )
 else:
 	ENGINE = None
+	print(ode, dir(ode))
+	raise RuntimeError
 
 ############################################################
 class Joint( object ):

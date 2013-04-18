@@ -62,7 +62,7 @@ else:
 	HOST_NAME = socket.gethostbyname(socket.gethostname())
 
 ########### hard code address #######
-HOST_NAME = '192.168.0.4'
+#HOST_NAME = '192.168.0.4'
 print('[HOST_NAME: %s]'%HOST_NAME)
 
 _host = HOST_NAME
@@ -536,7 +536,7 @@ class Player( object ):
 			return self.streaming_boundry.empty_draw_size
 
 	#####################################################################
-
+	'''
 	MESH_FORMAT = (
 		{'name':'UID', 'type':'int16', 'array':1},
 		{'name':'location', 'type':'float32', 'array':3},
@@ -544,7 +544,6 @@ class Player( object ):
 
 
 	)
-
 	@classmethod
 	def generate_javascript(self):
 		#a = ['var %s = "%s";'%(x['name'].upper(), ord(i) ) for x,i in enumerate(MESH_FORMAT) ]
@@ -570,7 +569,7 @@ class Player( object ):
 		a.append('return r;')
 		a.append('}')
 		return '\n'.join( a )
-
+	'''
 
 	def create_message_stream( self, context ):
 		'''
@@ -972,8 +971,9 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			self.do_get_custom()
 
 	def send_head(self, content_length=None, content_type=None, last_modified=None, require_path=True, redirect=None):
-		print('sending custom header')
+
 		if redirect:  ## in case we need to dynamically redirect clients
+			print('redirecting client to:', redirect)
 			self.send_response(301)
 			self.send_header("Location", redirect)
 			self.end_headers()
@@ -1068,7 +1068,38 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 			self.wfile.flush() # maybe not required, but its ok to flush twice.
 		print('web request complete')
 
-def generate_html_header(title='webgl', external_three=False, websocket_port=8081, websocket_path=None ):
+#################################################################
+
+def insert_custom_javascript():
+	'''
+	custom servers monkey patch Server.insert_custom_javascript = my_javascript_generator
+	hook into UserAPI client side javascript API
+	(this is called at the end of generate_javascript)
+	'''
+	return ''
+
+def insert_custom_css():
+	css = '''
+body{
+	margin:auto; 
+	background-color: #888; 
+	padding-top: 2px; 
+	font-family:sans; 
+	color: #666; 
+	font-size: 0.8em;
+}
+#container{ 
+	margin:auto; 
+	padding: 4px; 
+	background-color: #fff; 
+}
+	'''
+	return css
+
+def insert_custom_html():
+	return ''
+
+def generate_html_header(title='webgl', external_three=False, websocket_port=8081, websocket_path=None, dancer=False ):
 	h = [
 		'<!DOCTYPE html><html lang="en">',
 		'<head><title>%s</title>' %title,
@@ -1081,13 +1112,13 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
 
-
 	h.append( '<style>' )
-	h.append( 'body{margin:auto; background-color: #888; padding-top: 2px; font-family:sans; color: #666; font-size: 0.8em}' )
-	h.append( '#container{ margin:auto; padding: 4px; background-color: #fff; }' )
+	h.append( insert_custom_css() )
 	h.append( '</style>' )
 
 	h.append( '</head><body>' )
+
+	h.append( insert_custom_html() )
 
 	three = (
 		'Three.js',
@@ -1118,27 +1149,27 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	for x in three:
 		h.append( '<script type="text/javascript" src="/javascripts/%s"></script>' %x )
 
-	h.append( '<script src="/javascripts/dancer/dancer.js"></script> ' )
-	h.append( '<script src="/javascripts/dancer/support.js"></script> ' )
-	h.append( '<script src="/javascripts/dancer/kick.js"></script> ' )
-	h.append( '<script src="/javascripts/dancer/adapterWebkit.js"></script> ' )
-	h.append( '<script src="/javascripts/dancer/adapterMoz.js"></script> ' )
-	h.append( '<script src="/javascripts/fft.js"></script> ' )
-	#h.append( '<script src="/javascripts/dancer/player.js"></script> ' )
-	h.append( '<script src="/javascripts/dancer.fft.js"></script> ' )
+	if dancer:
+		h.append( '<script src="/javascripts/dancer/dancer.js"></script> ' )
+		h.append( '<script src="/javascripts/dancer/support.js"></script> ' )
+		h.append( '<script src="/javascripts/dancer/kick.js"></script> ' )
+		h.append( '<script src="/javascripts/dancer/adapterWebkit.js"></script> ' )
+		h.append( '<script src="/javascripts/dancer/adapterMoz.js"></script> ' )
+		h.append( '<script src="/javascripts/fft.js"></script> ' )
+		#h.append( '<script src="/javascripts/dancer/player.js"></script> ' )
+		h.append( '<script src="/javascripts/dancer.fft.js"></script> ' )
 
 	h.append( generate_javascript( websocket_path ) )
 
 	data = '\n'.join( h )
 	return data
 
-def insert_custom_javascript(): return ''  ## hook for custom servers monkey patch Server.insert_custom_javascript
 
 def generate_javascript( websocket_path ):
 	h = []
 	h.append( '<script type="text/javascript">' )
 	## TODO get this from place where api is set ##
-	h.append( simple_action_api.generate_javascript() )
+	h.append( api_gen.generate_javascript() )
 	print(h[-1])
 
 	#if not external_three:
@@ -1255,17 +1286,13 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 			self.__accepting = True
 			if ready:
 				#self.lock.acquire()
-
 				for sock in ready:
-					print('main listener',sock)
+					#print('main listener thread',sock)
 					startsock, address = sock.accept()
 					self.top_new_client(startsock, address)	# sets.client and calls new_client()
-					print('main listener topped')
-
 				#self.lock.release()
 
 			self.__accepting = False
-			print('listening...')
 
 		print('[websocket] debug thread exit')
 		#lsock.close()

@@ -12,7 +12,9 @@ import api_gen
 from api_gen import BlenderProxy, UserProxy
 
 
-def generate_javascript(): return api_gen.generate_javascript()
+def generate_javascript():
+	print('DEPRECATED - replace simple_action_api.generate_javascript with api_gen.generate_javascript')
+	return api_gen.generate_javascript()
 
 
 def new_action( code, args, user=None ):

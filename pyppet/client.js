@@ -49,7 +49,7 @@ var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight - 10;
 
 
-dancer = new Dancer();
+//dancer = new Dancer();  // TODO FIX Dancer.js
 
 var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
 var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
