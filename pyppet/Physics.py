@@ -247,25 +247,26 @@ class OdeSingleton(object):
 	def sync( self, context, now, recording=False, drop_frame=False ):
 		if not self.active: return
 
-		if context.active_object and context.active_object.name in self.objects and False:
-			#if self.threaded: self.lock.acquire()
-
-			obj = self.objects[ context.active_object.name ]
-			body = obj.body
-			if body:
-				x1,y1,z1 = body.GetPosition()
-				#x2,y2,z2 = context.active_object.location
-				x2,y2,z2 = context.active_object.matrix_world.to_translation()
-				dx = x1-x2
-				dy = y1-y2
-				dz = z1-z2
-
-				fudge = 0.5
-				if context.blender_has_cursor or abs( x1-x2 ) > fudge or abs( y1-y2 ) > fudge or abs( z1-z2 ) > fudge:
-					body.SetPosition( x2, y2, z2 )
-					if not self.paused: body.AddForce( dx, dy, dz )
-
-			#if self.threaded: self.lock.release()
+		### this was for fudging the location of an object while it was being moved in blender's viewport
+		#if context.active_object and context.active_object.name in self.objects and False:
+		#	#if self.threaded: self.lock.acquire()
+		#
+		#	obj = self.objects[ context.active_object.name ]
+		#	body = obj.body
+		#	if body:
+		#		x1,y1,z1 = body.GetPosition()
+		#		#x2,y2,z2 = context.active_object.location
+		#		x2,y2,z2 = context.active_object.matrix_world.to_translation()
+		#		dx = x1-x2
+		#		dy = y1-y2
+		#		dz = z1-z2
+		#
+		#		fudge = 0.5
+		#		if context.blender_has_cursor or abs( x1-x2 ) > fudge or abs( y1-y2 ) > fudge or abs( z1-z2 ) > fudge:
+		#			body.SetPosition( x2, y2, z2 )
+		#			if not self.paused: body.AddForce( dx, dy, dz )
+		#
+		#	#if self.threaded: self.lock.release()
 
 		if self.paused: return
 
@@ -292,6 +293,7 @@ class OdeSingleton(object):
 		self.rate = context.scene.world.ode_speed
 
 		if not self.threaded:
+			print('doing space collision and quickstep...')
 			ode.SpaceCollide( self.space, None, self.near_callback )
 			self.world.QuickStep( self.rate )
 			ode.JointGroupEmpty( self.joint_group )
@@ -299,6 +301,7 @@ class OdeSingleton(object):
 
 
 		if fast:
+			print('doing fast update on', fast)
 			for obj, bo in fast:
 				obj.update( bo, now, recording, update_blender=not drop_frame )
 

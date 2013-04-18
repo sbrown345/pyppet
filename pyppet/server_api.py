@@ -122,6 +122,9 @@ class App( BlenderServer ):
 		Server.set_api( self )
 		print('custom api set')
 
+	def mainloop_poll(self, now, dt):  ## for subclasses to overload ##
+		time.sleep(0.01)
+
 	def mainloop(self):
 		print('enter main')
 		drops = 0
@@ -156,7 +159,7 @@ class App( BlenderServer ):
 			#if not self._threaded:
 			#	self.websocket_server.update( self.context, timeout=0.1 )
 
-			time.sleep(0.01)
+			self.mainloop_poll(now, dt)
 
 
 def default_click_callback( user=UserProxy, ob=BlenderProxy ):
