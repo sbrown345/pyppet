@@ -31,6 +31,7 @@ from random import *
 
 import api_gen
 import simple_action_api
+import Physics # for threading LOCK
 
 
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
@@ -221,7 +222,9 @@ def _dump_collada_data_helper( data, blank_material=False ):
 		if data.materials: data.materials[0] = BLANK_MATERIAL
 		else: data.materials.append( BLANK_MATERIAL )
 
-_collada_lock = threading._allocate_lock()
+#_collada_lock = threading._allocate_lock()
+_collada_lock = Physics.LOCK
+
 def dump_collada( ob, center=False, lowres=False ):
 	_collada_lock.acquire()
 	assert bpy.context.mode !='EDIT'

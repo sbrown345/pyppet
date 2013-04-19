@@ -271,19 +271,20 @@ class OdeSingleton(object):
 		if self.paused: return
 
 		create = []
+		if self.threaded: self.lock.acquire()
 		for ob in bpy.data.objects:
 			if ob.name not in self.objects: create.append( ob.name )
 		if create:
 			print('creating new physics objects')
-			if self.threaded: self.lock.acquire()
 			for name in create:
 				ob = bpy.data.objects[ name ]
 				self.objects[ ob.name ] = HybridObject( ob, self.world, self.space )
-			if self.threaded: self.lock.release()
+		if self.threaded: self.lock.release()
 
 
 		fast = []	# avoids dict lookups below
 		for ob in bpy.data.objects:
+			if ob.name not in self.objects: continue
 			obj = self.objects[ ob.name ]
 			obj.sync( ob )		# gets new settings, calls AddForce etc...
 			fast.append( (obj,ob) )
@@ -293,7 +294,7 @@ class OdeSingleton(object):
 		self.rate = context.scene.world.ode_speed
 
 		if not self.threaded:
-			print('doing space collision and quickstep...')
+			#print('doing space collision and quickstep...')
 			ode.SpaceCollide( self.space, None, self.near_callback )
 			self.world.QuickStep( self.rate )
 			ode.JointGroupEmpty( self.joint_group )
@@ -301,7 +302,7 @@ class OdeSingleton(object):
 
 
 		if fast:
-			print('doing fast update on', fast)
+			#print('doing fast update on', fast)
 			for obj, bo in fast:
 				obj.update( bo, now, recording, update_blender=not drop_frame )
 
@@ -702,7 +703,7 @@ class HybridObject( object ):
 		self._soft = True	# internal use only
 		self._soft_erp = 0.0	# internal use only
 		self._soft_cfm = 0.0	# internal use only
-
+		self.blender_object = bo
 		self.world = world
 		self.space = space
 		self.name = bo.name
