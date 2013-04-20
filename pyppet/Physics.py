@@ -890,6 +890,7 @@ class HybridObject( object ):
 				child.toggle_collision( True )
 
 	def reset_collision_type(self):
+		print('reset_collision_type>',self.name)
 		if self.lock: self.lock.acquire()
 
 		if self.geom:
@@ -919,7 +920,9 @@ class HybridObject( object ):
 			if self.body: space = self.space
 			else: space = ENGINE.bodyless_space
 
-			if T == 'BOX': self.geom = ode.CreateBox( space, sx, sy, sz )
+			if T == 'BOX':
+				print('>>box:', sx, sy, sz )
+				self.geom = ode.CreateBox( space, sx, sy, sz )
 			elif T == 'SPHERE': self.geom = ode.CreateSphere( space, sradius )
 			elif T == 'CAPSULE': self.geom = ode.CreateCapsule( space, cradius, length )
 			elif T == 'CYLINDER': self.geom = ode.CreateCylinder( space, cradius, length )
@@ -935,8 +938,9 @@ class HybridObject( object ):
 
 
 			else:
-				print('<<<bodyless geom>>>')
+				print('<<<bodyless geom>>>', px, py, pz)
 				#ENGINE.bodyless_geoms[ self.name ] = self.geom
+				print(ob.location)
 				geom.SetPosition( px, py, pz )
 				geom.SetQuaternion( (rw,rx,ry,rz) )
 

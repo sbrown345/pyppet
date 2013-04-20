@@ -144,7 +144,7 @@ function on_keypress( evt ) {
 	//console.log( String.fromCharCode(evt.charCode) );
 	//console.log( evt.charCode );
 	//console.log( evt.keyCode );
-	event.preventDefault(); // this fixes backspace on windows/osx?
+	//event.preventDefault(); // this fixes backspace on windows/osx?
 
 	switch( evt.keyCode ) {
 		case 32: _input_buffer.push(' '); break;				//space

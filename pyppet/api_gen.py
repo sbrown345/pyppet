@@ -182,7 +182,16 @@ class Animation( AnimAPI ):
 		self.target = target
 		self.attribute = attribute
 		if self.type is not str:
-			assert attribute in target
+			#assert attribute in target
+			if attribute not in target: ## copy from blender proxy if not already cached in view/container
+				assert isinstance(target, Container)
+				internal = target()
+				if hasattr(internal.proxy, attribute):
+					a = getattr(internal.proxy, attribute)
+					if isinstance(a, mathutils.Vector): a = list( a.to_tuple() )
+					elif isinstance(a, mathutils.Euler): a = [a.x, a.y, a.z]
+					target[ attribute ] = a
+
 			if self.mode == 'RELATIVE':
 				## offset value ##
 				if self.indices:
