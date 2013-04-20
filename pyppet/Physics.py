@@ -79,7 +79,7 @@ bpy.types.Object.ode_local_torque = FloatVectorProperty( name='local torque' )
 #################################################################
 bpy.types.Object.ode_force_driver_rate = FloatProperty( name='force driver rate', default=0.420, min=.0, max=1.0 )
 
-bpy.types.World.ode_speed = FloatProperty( 'physics speed', min=0.01, max=1.0, default=0.05 )
+bpy.types.World.ode_speed = FloatProperty( 'physics speed', min=0.01, max=1.0, default=0.0420 )
 
 
 def _set_gravity(world,context):

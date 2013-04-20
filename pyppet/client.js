@@ -105,6 +105,67 @@ var Sound = function ( sources, radius, volume ) {
 
 
 ///////////////////////////////////////////////////////////
+function on_mouse_down(event) {
+	if (event.button==0) {	
+		// PICKING //
+		var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+		projector.unprojectVector( vector, camera );
+		var ray = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
+
+		// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
+		// it will not traverse the children, that is why it fails on THREE.LOD.
+		//var intersects = ray.intersectObjects( scene.children );
+		var intersects = ray.intersectObjects( MESHES );
+		testing = intersects;
+
+		INTERSECTED = null;
+
+		if ( intersects.length > 0 ) {
+			for (var i=0; i < intersects.length; i ++) {
+				var intersect = intersects[ i ];
+				if (intersect.object.name && intersect.object.visible) {
+					if ( INTERSECTED != intersect.object ) {
+						if (UserAPI.on_model_click_pressed) {
+							UserAPI.on_model_click_pressed( 
+								Objects[ intersect.object.name ],
+								intersect.object, 
+								intersect.distance
+							);
+						}
+						console.log('distance'+intersect.distance);
+						INTERSECTED = intersect.object;
+						//INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+						//INTERSECTED.material.color.setHex( 0xff0000 );
+						break;
+					}
+				}
+			}
+		} else { INTERSECTED = null; }
+	}
+
+}
+
+function on_mouse_up( event ) {
+	if ( INTERSECTED ) {
+		var a = Objects[ INTERSECTED.name ];
+		while (_input_buffer.length) { _input_buffer.pop() }
+		//INPUT_OBJECT = a;
+		if (a.on_mouse_up_callback) {
+			//a.do_mouse_up_callback(); 
+			a.on_mouse_up_callback( a.custom_attributes );
+		}
+		if (UserAPI.on_model_click_released) {
+			UserAPI.on_model_click_released(
+				a, //lod
+				INTERSECTED
+			)
+		}
+		//INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+		INTERSECTED = null;
+	}
+}
+
+
 function on_keydown ( evt ) {
 	var update = false;
 	switch( evt.keyCode ) {
@@ -592,7 +653,7 @@ function on_json_message( data ) {
 	}
 */
 
-
+/*
 	for (var name in msg['peers']) {
 		if (name in Peers == false) {
 			Peers[ name ] = PeerLights.pop();
@@ -602,7 +663,7 @@ function on_json_message( data ) {
 		Peers[ name ].position.z = -msg['peers'][name][1];
 
 	}
-
+*/
 
 	for (var name in msg['meshes']) {
 
@@ -1643,7 +1704,9 @@ function render() {
 	var timer = Date.now() * 0.0005;
 	resize_view();
 	var delta = clock.getDelta();
-	CONTROLLER.update( delta );
+	if (CONTROLLER.enabled) {
+		CONTROLLER.update( delta );
+	}
 
 	if (UserAPI.on_redraw) {
 		UserAPI.on_redraw( delta );
@@ -2116,87 +2179,18 @@ MyController = function ( object, domElement ) {
 
 	// listeners
 
-	function keydown( event ) {
 
-		if ( _this.enabled === false ) return;
-
-		window.removeEventListener( 'keydown', keydown );
-
-		_prevState = _state;
-
-		if ( _state !== STATE.NONE ) {
-
-			return;
-
-		} else if ( event.keyCode === _this.keys[ STATE.ROTATE ] && !_this.noRotate ) {
-
-			_state = STATE.ROTATE;
-
-		} else if ( event.keyCode === _this.keys[ STATE.ZOOM ] && !_this.noZoom ) {
-
-			_state = STATE.ZOOM;
-
-		} else if ( event.keyCode === _this.keys[ STATE.PAN ] && !_this.noPan ) {
-
-			_state = STATE.PAN;
-
-		}
-
-	}
-
-	function keyup( event ) {
-
-		if ( _this.enabled === false ) return;
-
-		_state = _prevState;
-
-		window.addEventListener( 'keydown', keydown, false );
-
-	}
 
 	function mousedown( event ) {
+		on_mouse_down( event );
+		document.addEventListener( 'mousemove', mousemove, false );
+		document.addEventListener( 'mouseup', mouseup, false );
 
 		if ( _this.enabled === false ) return;
 
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (event.button==0) {	
-			// PICKING //
-			var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
-			projector.unprojectVector( vector, camera );
-			var ray = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
-
-			// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
-			// it will not traverse the children, that is why it fails on THREE.LOD.
-			//var intersects = ray.intersectObjects( scene.children );
-			var intersects = ray.intersectObjects( MESHES );
-			testing = intersects;
-
-			INTERSECTED = null;
-
-			if ( intersects.length > 0 ) {
-				for (var i=0; i < intersects.length; i ++) {
-					var intersect = intersects[ i ];
-					if (intersect.object.name && intersect.object.visible) {
-						if ( INTERSECTED != intersect.object ) {
-							if (UserAPI.on_model_click_pressed) {
-								UserAPI.on_model_click_pressed( 
-									Objects[ intersect.object.name ],
-									intersect.object, 
-									intersect.distance
-								);
-							}
-							console.log('distance'+intersect.distance);
-							INTERSECTED = intersect.object;
-							//INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-							//INTERSECTED.material.color.setHex( 0xff0000 );
-							break;
-						}
-					}
-				}
-			} else { INTERSECTED = null; }
-		}
 
 		//_state = STATE.ZOOM;
 
@@ -2220,8 +2214,6 @@ MyController = function ( object, domElement ) {
 
 		}
 
-		document.addEventListener( 'mousemove', mousemove, false );
-		document.addEventListener( 'mouseup', mouseup, false );
 
 	}
 
@@ -2249,31 +2241,11 @@ MyController = function ( object, domElement ) {
 	}
 
 	function mouseup( event ) {
-
+		on_mouse_up( event );
 		if ( _this.enabled === false ) return;
 
 		event.preventDefault();
 		event.stopPropagation();
-
-
-		if ( INTERSECTED ) {
-			var a = Objects[ INTERSECTED.name ];
-			while (_input_buffer.length) { _input_buffer.pop() }
-			//INPUT_OBJECT = a;
-			if (a.on_mouse_up_callback) {
-				//a.do_mouse_up_callback(); 
-				a.on_mouse_up_callback( a.custom_attributes );
-			}
-			if (UserAPI.on_model_click_released) {
-				UserAPI.on_model_click_released(
-					a, //lod
-					INTERSECTED
-				)
-			}
-			//INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-			INTERSECTED = null;
-		}
-
 
 		_state = STATE.NONE;
 
@@ -2412,55 +2384,8 @@ MyController = function ( object, domElement ) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-function init() {
-	console.log(">> THREE init");
-
-	container = document.createElement( 'div' );
-	document.body.appendChild( container );
-
-	// scene //
-	scene = new THREE.Scene();
-	//scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
-
-	// camera //
-	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 2000 );
-	camera.position.set( 0, 1, -10 );
-	scene.add( camera );
-
-	CONTROLLER = new MyController( camera );
-
-	// Grid //
-	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
-	geometry = new THREE.Geometry(),
-	floor = -0.04, step = 1, size = 4;
-	for ( var i = 0; i <= size / step * 2; i ++ ) {
-		geometry.vertices.push( new THREE.Vector3( - size, floor, i * step - size ) );
-		geometry.vertices.push( new THREE.Vector3(   size, floor, i * step - size ) );
-		geometry.vertices.push( new THREE.Vector3( i * step - size, floor, -size ) );
-		geometry.vertices.push( new THREE.Vector3( i * step - size,  floor, size ) );
-	}
-	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
-	scene.add( line );
-
-	// LIGHTS //
-	ambientLight = new THREE.AmbientLight( 0x000011 );
-	scene.add( ambientLight );
-
-	var sunIntensity = 0.25;
-	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
-	spotLight.position.set( 0, 500, 10 );
-	spotLight.target.position.set( 0, 0, 0 );
-	spotLight.castShadow = true;
-	spotLight.shadowCameraNear = 480;
-	spotLight.shadowCameraFar = camera.far;
-	spotLight.shadowCameraFov = 30;
-	spotLight.shadowBias = 0.001;
-	spotLight.shadowMapWidth = 1024;
-	spotLight.shadowMapHeight = 1024;
-	spotLight.shadowDarkness = 0.3 * sunIntensity;
-	scene.add( spotLight );
-
-	for ( var i=0; i<10; i ++ ) {
+function create_point_light_with_flares( num ) {
+	for ( var i=0; i<num; i ++ ) {
 
 		light = new THREE.PointLight( 0xffffff );
 		PeerLights.push( light );
@@ -2498,8 +2423,60 @@ function init() {
 		light.flare = lensFlare;
 		scene.add( lensFlare );
 
-
 	}
+
+
+}
+
+
+function init() {
+	console.log(">> THREE init");
+
+	container = document.createElement( 'div' );
+	document.body.appendChild( container );
+
+	// scene //
+	scene = new THREE.Scene();
+	//scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
+
+	// camera //
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 1e7 );
+	camera.position.set( 0, 1, -10 );
+	scene.add( camera );
+
+	CONTROLLER = new MyController( camera );
+
+	// Grid //
+	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
+	geometry = new THREE.Geometry(),
+	floor = -0.04, step = 1, size = 4;
+	for ( var i = 0; i <= size / step * 2; i ++ ) {
+		geometry.vertices.push( new THREE.Vector3( - size, floor, i * step - size ) );
+		geometry.vertices.push( new THREE.Vector3(   size, floor, i * step - size ) );
+		geometry.vertices.push( new THREE.Vector3( i * step - size, floor, -size ) );
+		geometry.vertices.push( new THREE.Vector3( i * step - size,  floor, size ) );
+	}
+	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
+	scene.add( line );
+
+	// LIGHTS //
+	ambientLight = new THREE.AmbientLight( 0x000011 );
+	scene.add( ambientLight );
+
+	var sunIntensity = 0.75;
+	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
+	spotLight.position.set( 0, 500, 10 );
+	spotLight.target.position.set( 0, 0, 0 );
+	spotLight.castShadow = true;
+	spotLight.shadowCameraNear = 480;
+	spotLight.shadowCameraFar = camera.far;
+	spotLight.shadowCameraFov = 30;
+	spotLight.shadowBias = 0.001;
+	spotLight.shadowMapWidth = 1024;
+	spotLight.shadowMapHeight = 1024;
+	spotLight.shadowDarkness = 0.3 * sunIntensity;
+	scene.add( spotLight );
+
 
 	// renderer //
 	renderer = new THREE.WebGLRenderer( { maxLights: 16, antialias: true } );
