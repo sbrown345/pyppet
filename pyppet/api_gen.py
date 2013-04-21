@@ -304,7 +304,11 @@ class Container(object):
 		self.__properties = {}
 		self.__subproperties = {}
 		self.__viewers = {}
+		self.__eval_queue = []
 		for name in kw: setattr(self, '_Container__'+name, kw[name])
+
+	def __eval(self, *args):
+		if args: self.__eval_queue.extend( args )
 
 	def __call__(self, viewer=None, reset=False ):
 		'''

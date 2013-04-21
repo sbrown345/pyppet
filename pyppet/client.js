@@ -767,10 +767,21 @@ function on_json_message( data ) {
 				); // TODO optimize this only update on change
 			}
 
+			if (pak.eval) {
+				for (var i=0; i<pak.eval.length; i++) {
+					console.log(pak.eval[i]);
+					eval( pak.eval[i] );
+				}
+			}
+
+
 		}
 
 	}	// end meshes
 
+	if (UserAPI.on_json_message) {
+		UserAPI.on_json_message( msg );
+	}
 
 }
 

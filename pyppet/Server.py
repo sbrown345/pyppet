@@ -666,7 +666,14 @@ class Player( object ):
 
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
-			if a.label: pak['label'] = a.label
+			if a.label: pak['label'] = a.label ## TODO deprecated
+
+			if a.eval_queue:
+				pak['eval'] = []
+				while a.eval_queue:
+					pak['eval'].append( a.eval_queue.pop() )
+				pak['eval'].reverse()
+				print('sending eval', pak['eval'])
 
 		## special case to force only a single selected for the client ##
 		if len(selection) > 1:
