@@ -768,10 +768,8 @@ function on_json_message( data ) {
 			}
 
 			if (pak.eval) {
-				for (var i=0; i<pak.eval.length; i++) {
-					console.log(pak.eval[i]);
-					eval( pak.eval[i] );
-				}
+				console.log( pak.eval );
+				eval( pak.eval );
 			}
 
 
@@ -2394,49 +2392,59 @@ MyController = function ( object, domElement ) {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+function create_point_light_with_flare( args ) {
+	var light = new THREE.PointLight( 0xffffff );
+	light.color.r = args.r;
+	light.color.g = args.g;
+	light.color.b = args.b;
+
+	if (args.intensity===undefined) { args.intensity=0.15; }
+	light.intensity = args.intensity;
+	light.position.x = args.x;
+	light.position.y = args.y;
+	light.position.z = args.z;
+	scene.add( light );
+
+	//var flareColor = new THREE.Color( 0xffffff );
+	//flareColor.copy( light.color );
+	//THREE.ColorUtils.adjustHSV( flareColor, 0, -Math.random(), Math.random() );
+
+	var lensFlare = new THREE.LensFlare( 
+		textureFlare0, 
+		224, 		// size in pixels (-1 use texture width)
+		0.0, 		// distance (0-1) from light source (0=at light source)
+		THREE.AdditiveBlending, 
+		light.color
+	);
+
+	lensFlare.add( textureFlare2, 32, 0.0, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare2, 24, 0.0, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare2, 16, 0.0, THREE.AdditiveBlending );
+
+	lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare3, 20, 0.9, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare3, 170, 1.0, THREE.AdditiveBlending );
+
+	//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
+	lensFlare.position = light.position;
+	light.flare = lensFlare;
+	scene.add( lensFlare );
+
+	return light
+}
 
 function create_point_light_with_flares( num ) {
 	for ( var i=0; i<num; i ++ ) {
-
-		light = new THREE.PointLight( 0xffffff );
-		PeerLights.push( light );
-		light.color.r = Math.random();
-		light.color.g = Math.random();
-		light.intensity = 0.15;
-		light.position.x = Math.random()*50;
-		light.position.y = (Math.random()*50)+10;
-		light.position.z = (Math.random()*100);
-		scene.add( light );
-
-		//var flareColor = new THREE.Color( 0xffffff );
-		//flareColor.copy( light.color );
-		//THREE.ColorUtils.adjustHSV( flareColor, 0, -Math.random(), Math.random() );
-
-		var lensFlare = new THREE.LensFlare( 
-			textureFlare0, 
-			64, 		// size in pixels (-1 use texture width)
-			0.0, 		// distance (0-1) from light source (0=at light source)
-			THREE.AdditiveBlending, 
-			light.color
-		);
-
-		lensFlare.add( textureFlare2, 32, 0.0, THREE.AdditiveBlending );
-		lensFlare.add( textureFlare2, 24, 0.0, THREE.AdditiveBlending );
-		lensFlare.add( textureFlare2, 16, 0.0, THREE.AdditiveBlending );
-
-		lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
-		lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
-		lensFlare.add( textureFlare3, 20, 0.9, THREE.AdditiveBlending );
-		lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
-
-		//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
-		lensFlare.position = light.position;
-		light.flare = lensFlare;
-		scene.add( lensFlare );
-
+		create_point_light_with_flare({
+			x: Math.random()*50,
+			y: (Math.random()*50)+10,
+			z: (Math.random()*100),
+			r: 1.0,
+			g: 1.0,
+			b: 1.0
+		});
 	}
-
-
 }
 
 
@@ -2490,7 +2498,10 @@ function init() {
 
 
 	// renderer //
-	renderer = new THREE.WebGLRenderer( { maxLights: 16, antialias: true } );
+	renderer = new THREE.WebGLRenderer({
+		maxLights: 16, 
+		antialias: false
+	});
 	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
 
@@ -2501,7 +2512,7 @@ function init() {
 		renderer.shadowMapSoft = true;
 		//renderer.shadowMapAutoUpdate = false;		// EVIL!
 	}
-	renderer.setClearColor( {r:0.14,g:0.14,b:0.25}, 1.0 )
+	renderer.setClearColor( {r:0.4,g:0.4,b:0.4}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
 	renderer.sortObjects = false;		// LOD

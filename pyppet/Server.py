@@ -225,7 +225,7 @@ def _dump_collada_data_helper( data, blank_material=False ):
 #_collada_lock = threading._allocate_lock()
 _collada_lock = Physics.LOCK
 
-def dump_collada( ob, center=False, lowres=False ):
+def dump_collada( ob, center=False, lowres=False, use_ctypes=False ):
 	_collada_lock.acquire()
 	assert bpy.context.mode !='EDIT'
 	name = ob.name
@@ -281,24 +281,26 @@ def dump_collada( ob, center=False, lowres=False ):
 		proxy.name = '__%s__'%uid
 		assert '.' not in proxy.name	# ensure name is unique
 		## ctypes hack avoids polling issue ##
-		Blender.Scene( bpy.context.scene ).collada_export(  
-			url, 
-			0, #apply modifiers 
-			0, #mesh-view/render
-			1, #selected only
-			0, #include children
-			0, #include armatures,
-			1, #deform bones only
-			0, #active uv only
-			1, #include uv textures
-			1, #include material textures
-			1, #use tex copies
-			0, #use object instances
-			0, #sort by name
-			0, #second lift compatible
-			)
-
-
+		if use_ctypes:
+			Blender.Scene( bpy.context.scene ).collada_export(  
+				url, 
+				0, #apply modifiers 
+				0, #mesh-view/render
+				1, #selected only
+				0, #include children
+				0, #include armatures,
+				1, #deform bones only
+				0, #active uv only
+				1, #include uv textures
+				1, #include material textures
+				1, #use tex copies
+				0, #use object instances
+				0, #sort by name
+				0, #second lift compatible
+				)
+		else:
+			print('using bpy.ops.wm.collada_export')
+			bpy.ops.wm.collada_export( filepath=url, check_existing=False, selected=True )
 
 		proxy.name = 'LOD'	# need to rename
 
@@ -323,22 +325,27 @@ def dump_collada( ob, center=False, lowres=False ):
 		tmp.select = True
 
 		## ctypes hack avoids polling issue ##
-		Blender.Scene( bpy.context.scene ).collada_export( 
-			url, 
-			0, #apply modifiers 
-			0, #mesh-view/render
-			1, #selected only
-			0, #include children
-			0, #include armatures,
-			1, #deform bones only
-			0, #active uv only
-			1, #include uv textures
-			1, #include material textures
-			1, #use tex copies
-			0, #use object instances
-			0, #sort by name
-			0, #second lift compatible
-			)
+		if use_ctypes:
+			Blender.Scene( bpy.context.scene ).collada_export( 
+				url, 
+				0, #apply modifiers 
+				0, #mesh-view/render
+				1, #selected only
+				0, #include children
+				0, #include armatures,
+				1, #deform bones only
+				0, #active uv only
+				1, #include uv textures
+				1, #include material textures
+				1, #use tex copies
+				0, #use object instances
+				0, #sort by name
+				0, #second lift compatible
+				)
+
+		else:
+			print('using bpy.ops.wm.collada_export')
+			bpy.ops.wm.collada_export( filepath=url, check_existing=False, selected=True )
 
 		## clean up ##
 		bpy.context.scene.objects.unlink(tmp)
@@ -669,10 +676,8 @@ class Player( object ):
 			if a.label: pak['label'] = a.label ## TODO deprecated
 
 			if a.eval_queue:
-				pak['eval'] = []
-				while a.eval_queue:
-					pak['eval'].append( a.eval_queue.pop() )
-				pak['eval'].reverse()
+				pak['eval'] = ';'.join(a.eval_queue)
+				while a.eval_queue: a.eval_queue.pop()
 				print('sending eval', pak['eval'])
 
 		## special case to force only a single selected for the client ##
