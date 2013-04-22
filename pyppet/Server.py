@@ -664,11 +664,12 @@ class Player( object ):
 			color = None
 			if 'color' in view:
 				color = view['color']
-			#else:
-			#	color = [ round(x,3) for x in ob.color ]
-			#	if ob.data.materials and ob.data.materials[0]:
-			#		color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
-			if color: pak['color'] = color
+			else:
+				#color = [ round(x,3) for x in ob.color ]  ## use "blender object color" ?
+				if ob.data.materials and ob.data.materials[0]:
+					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+			if color:
+				pak['color'] = color
 
 
 			if a.on_click: pak['on_click'] = a.on_click.code

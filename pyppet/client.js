@@ -670,18 +670,13 @@ function on_json_message( data ) {
 		if (name in Objects == false) {
 			console.log( '>> found new collada' );
 			Objects[ name ] = null;
-			var collada_path = '/objects/'+name+'.dae';
-			//setTimeout( function () {
-				console.log( '>> loading new collada:'+collada_path );
-				var loader = new THREE.ColladaLoader();
-				loader.options.convertUpAxis = true;
-				//loader.options.centerGeometry = true; // hires has this on.
-				loader.load(
-					collada_path, 
-					on_collada_ready
-				);	
-			//}, 1000 );
-
+			var loader = new THREE.ColladaLoader();
+			loader.options.convertUpAxis = true;
+			//loader.options.centerGeometry = true; // hires has this on.
+			loader.load(
+				'/objects/'+name+'.dae', 
+				on_collada_ready
+			);
 		}
 
 		var pak = msg['meshes'][ name ];
