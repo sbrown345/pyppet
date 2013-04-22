@@ -15,7 +15,11 @@ from random import *
 ## make sure we can import from same directory ##
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path: sys.path.append( SCRIPT_DIR )
-import ode
+
+if sys.platform.startswith('linux'):
+	import ode
+else:
+	ode = None
 
 def _None(arg): return None		# stupid rule, why should the func have to return None - TODO talk to ideasman again.
 
@@ -495,8 +499,7 @@ if hasattr(ode, 'InitODE'):
 	ENGINE = OdeSingleton( lock=LOCK )
 else:
 	ENGINE = None
-	print(ode, dir(ode))
-	raise RuntimeError
+	print('warning can not load ODE library')
 
 ############################################################
 class Joint( object ):
