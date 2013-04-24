@@ -9,7 +9,20 @@ Notes:
 
 */
 
-var UserAPI = {};
+var Objects = {};	// name : LOD
+var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
+
+
+var UserAPI = {
+	camera_controllers : {},
+	camera : null,
+	objects : Objects,
+	meshes : MESHES,
+	get_object_by_id : function(id) {
+		return Objects['__'+id+'__'];
+	}
+};
+
 
 var PeerLights = [];
 var Peers = {};
@@ -56,11 +69,9 @@ var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare
 var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
 
 
-var Objects = {};
 var LIGHTS = {};
 var METABALLS = {};
 var CURVES = {};
-var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
 var dbugmsg = null;
 
@@ -1662,6 +1673,8 @@ function setupFX( renderer, scene, camera ) {
 	fx.renderToScreen = true;	// this means that this is final pass and render it to the screen.
 	composer.addPass( fx );
 
+	UserAPI.compositor = FX;
+	UserAPI.composer = composer;
 
 	return composer;
 }
@@ -1692,7 +1705,7 @@ function resize_view() {
 		console.log(">> resize view");
 	}
 }
-
+UserAPI.resize_view = resize_view;
 
 
 var clock = new THREE.Clock();
@@ -1876,12 +1889,11 @@ function render_godrays() {	// TODO how to combine godrays and composer
 
 
 //////////////////////////////////////////////////// Camera Controls ////////////////////////////////////////////////
-// merge TrackballControls.js and RollControls.js into single Controller //
 /**
  * @author Eberhard Graether / http://egraether.com/
  */
 
-MyController = function ( object, domElement ) {
+CameraController = function ( object, domElement ) {
 
 	THREE.EventDispatcher.call( this );
 
@@ -2457,8 +2469,10 @@ function init() {
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 1e7 );
 	camera.position.set( 0, 1, -10 );
 	scene.add( camera );
+	UserAPI.camera = camera;
 
-	CONTROLLER = new MyController( camera );
+	CONTROLLER = new CameraController( camera );
+	UserAPI.camera_controllers.default = CONTROLLER;
 
 	// Grid //
 	var line_material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } ),
@@ -2472,10 +2486,12 @@ function init() {
 	}
 	var line = new THREE.Line( geometry, line_material, THREE.LinePieces );
 	scene.add( line );
+	UserAPI.grid = line;
 
 	// LIGHTS //
 	ambientLight = new THREE.AmbientLight( 0x000011 );
 	scene.add( ambientLight );
+	UserAPI.ambient_light = ambientLight;
 
 	var sunIntensity = 0.75;
 	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
@@ -2490,7 +2506,7 @@ function init() {
 	spotLight.shadowMapHeight = 1024;
 	spotLight.shadowDarkness = 0.3 * sunIntensity;
 	scene.add( spotLight );
-
+	UserAPI.sun = spotLight;
 
 	// renderer //
 	renderer = new THREE.WebGLRenderer({
@@ -2499,6 +2515,8 @@ function init() {
 	});
 	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
+
+	UserAPI.renderer = renderer;
 
 	renderer.gammaInput = true;
 	renderer.gammaOutput = true;
@@ -2678,7 +2696,7 @@ function create_websocket() {
 
 	function on_open(e) {
 		console.log(">> WebSockets.onopen");
-		FX['film'].uniforms['nIntensity'].value = 0.01;
+		UserAPI.compositor.film.uniforms['nIntensity'].value = 0.01;
 		window.setInterval( update_player_view, 1000/8.0 );
 
 	}
@@ -2686,7 +2704,7 @@ function create_websocket() {
 
 	function on_close(e) {
 		console.log(">> WebSockets.onclose");
-		FX['film'].uniforms['nIntensity'].value = 0.8;
+		UserAPI.compositor.film.uniforms['nIntensity'].value = 0.8;
 	}
 	ws.on('close', on_close);
 

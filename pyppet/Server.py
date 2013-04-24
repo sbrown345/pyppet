@@ -634,9 +634,9 @@ class Player( object ):
 			w = wobjects[ ob ]
 			view = w( self ) # create new viewer if required, and return it
 
-
+			if not ob.data: print('WARN - threading bug? (see Server.py')
 			if ob.hide: pak['shade'] = 'WIRE'
-			elif ob.data.materials and ob.data.materials[0]:
+			elif ob.data and ob.data.materials and ob.data.materials[0]:
 				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
 
 			view['pos'] = loc

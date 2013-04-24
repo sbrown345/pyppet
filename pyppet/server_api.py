@@ -132,7 +132,9 @@ class App( BlenderServer ):
 		self.active = True
 		while self.active:
 			now = time.time()
-			dt = 1.0 / ( now - self._mainloop_prev_time )
+			dt = 1.0 / 30.0
+			if now - self._mainloop_prev_time:
+				dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
 
