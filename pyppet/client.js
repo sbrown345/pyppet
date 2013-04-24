@@ -126,8 +126,17 @@ function on_mouse_down(event) {
 		// ray.intersectObjects only works on THREE.Particle and THREE.Mesh,
 		// it will not traverse the children, that is why it fails on THREE.LOD.
 		//var intersects = ray.intersectObjects( scene.children );
-		var intersects = ray.intersectObjects( MESHES );
-		testing = intersects;
+		var test = [];
+		for (var i=0; i < UserAPI.meshes.length; i ++) {
+			var mesh = UserAPI.meshes[ i ];
+			var lod = UserAPI.objects[ mesh.name ];
+			if (!lod.LODs[0].object3D.material.wireframe) {
+				test.push( mesh );
+			}
+		}
+		var intersects = ray.intersectObjects( test );
+		//var intersects = ray.intersectObjects( MESHES );
+		//testing = intersects;
 
 		INTERSECTED = null;
 
@@ -147,7 +156,8 @@ function on_mouse_down(event) {
 						INTERSECTED = intersect.object;
 						//INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
 						//INTERSECTED.material.color.setHex( 0xff0000 );
-						break;
+
+						break; //break out of for loop
 					}
 				}
 			}
