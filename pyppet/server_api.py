@@ -84,8 +84,19 @@ class BlenderServer( core.BlenderHack ):
 					player.set_focal_point( (x2,y2,z2) )
 				else:
 					print('[websocket ERROR] client address not in GameManager.clients')
+
 			elif len(frame) == 1:
+				print(frame)
 				print( frame.decode('utf-8') ) 
+
+			elif len(frame) > 2 and chr(frame[0]) == '{' and chr(frame[-1]) == '}':
+				print('client sent json data')
+				jmsg = json.loads( frame.decode('utf-8') )
+				player.on_websocket_json_message( jmsg )
+
+				#if jmsg['request']=='mesh':
+				#	print('got mesh request')
+				#	print(jmsg)
 			else:
 				print('doing custom action...', frame)
 				## action api ##

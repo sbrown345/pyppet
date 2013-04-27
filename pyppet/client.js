@@ -20,8 +20,94 @@ var UserAPI = {
 	meshes : MESHES,
 	get_object_by_id : function(id) {
 		return Objects['__'+id+'__'];
+	},
+	request_mesh : function(id, callback) {
+		UserAPI.objects[ id ] = null;
+		ws.send_string(
+			JSON.stringify({
+				request:"mesh",
+				id:id
+			})
+		);
+		ws.flush();
+	},
+	create_buffer_geometry : function( pak ) {
+		console.log('creating new buffer geometry');
+		var triangles = pak.triangles.length / 3;
+
+		var geometry = new THREE.BufferGeometry();
+		geometry.attributes = {
+			index: {
+				itemSize: 1,
+				array: new Uint16Array( triangles * 3 ),
+				numItems: triangles * 3
+			},
+			position: {
+				itemSize: 3,
+				array: new Float32Array( triangles * 3 * 3 ),
+				numItems: triangles * 3 * 3
+			},
+			normal: {
+				itemSize: 3,
+				array: new Float32Array( triangles * 3 * 3 ),
+				numItems: triangles * 3 * 3
+			}//,
+			//color: {
+			//	itemSize: 3,
+			//	array: new Float32Array( triangles * 3 * 3 ),
+			//	numItems: triangles * 3 * 3
+			//}
+		}
+
+		for ( var i = 0; i < pak.triangles.length; i ++ ) {
+			geometry.attributes.index.array[i] = pak.triangles[i];
+		}
+		for ( var i = 0; i < pak.vertices.length; i ++ ) {
+			console.log(pak.vertices[i]);
+			geometry.attributes.position.array[i] = pak.vertices[i];
+		}
+		for ( var i = 0; i < pak.normals.length; i ++ ) {
+			geometry.attributes.normal.array[i] = pak.normals[i];
+		}
+		//for ( var i = 0; i < pak.color.length; i ++ ) {
+		//	geometry.attributes.color.array[i] = pak.color[i];
+		//}
+
+		geometry.computeBoundingSphere();
+
+		var material = new THREE.MeshBasicMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		scene.add( mesh );
+
 	}
 };
+
+var _colladas_pending = [];
+var _current_collada_download = null;
+
+function download_collada( name ) {
+	Objects[ name ] = null;
+	if (_current_collada_download) {
+		_colladas_pending.push( name );
+	} else {
+		_download_collada( name );
+	}
+
+}
+
+function _download_collada( name ) {
+	_current_collada_download = name;
+
+	var loader = new THREE.ColladaLoader();
+	loader.options.convertUpAxis = true;
+	//loader.options.centerGeometry = true; // hires has this on.
+	loader.load(
+		'/objects/'+name+'.dae', 
+		on_collada_ready
+	);
+
+}
+
 
 
 var PeerLights = [];
@@ -686,22 +772,22 @@ function on_json_message( data ) {
 	}
 */
 
+
 	for (var name in msg['meshes']) {
 
-		if (name in Objects == false) {
-			console.log( '>> found new collada' );
-			Objects[ name ] = null;
-			var loader = new THREE.ColladaLoader();
-			loader.options.convertUpAxis = true;
-			//loader.options.centerGeometry = true; // hires has this on.
-			loader.load(
-				'/objects/'+name+'.dae', 
-				on_collada_ready
-			);
+		//if (name in Objects == false) {
+		if (name in UserAPI.objects === false) {
+			//console.log( '>> found new collada' );
+			//download_collada( name );
+			UserAPI.request_mesh( name );
 		}
 
 		var pak = msg['meshes'][ name ];
 		var ob = pak.properties;
+
+		if (pak.geometry) { // request_mesh response
+			UserAPI.create_buffer_geometry( pak.geometry );
+		}
 
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
@@ -1151,10 +1237,13 @@ function debug_geo( geo ) {
 	return used;
 } 
 
-var dbugdae = null;
 function on_collada_ready( collada ) {
 	console.log( '>> collada loaded' );
-	dbugdae = collada;
+	_current_collada_download = null;
+	if (_colladas_pending.length) {
+		_download_collada( _colladas_pending.pop() );
+	}
+
 	var _mesh = collada.scene.children[0];
 	_mesh.useQuaternion = true;
 	_mesh.updateMatrix();

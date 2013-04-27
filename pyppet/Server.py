@@ -225,7 +225,7 @@ def _dump_collada_data_helper( data, blank_material=False ):
 #_collada_lock = threading._allocate_lock()
 _collada_lock = Physics.LOCK
 
-def dump_collada( ob, center=False, lowres=False, use_ctypes=False ):
+def dump_collada( ob, center=False, lowres=False, use_ctypes=True ):
 	_collada_lock.acquire()
 	assert bpy.context.mode !='EDIT'
 	name = ob.name
@@ -449,6 +449,17 @@ class Player( object ):
 	#def set_action_api(self, api):
 	#	self._action_api = api
 
+	def on_websocket_json_message(self, msg):
+		'''
+		called from server_api.py class BlenderServer, in on_websocket_read_update
+		msg is an object (dictionary)
+		'''
+		assert msg['request'] in ('mesh',)
+		ob = get_object_by_UID( msg['id'] )
+		#w = api_gen.get_wrapped_objects()[ob]
+		assert ob not in self._mesh_requests
+		self._mesh_requests.append( ob )
+
 	def new_action(self, code, packed_args):
 		'''
 		This is a hook for custom server logic.
@@ -491,6 +502,9 @@ class Player( object ):
 		self.camera_aperture = 0.15
 		self.camera_maxblur = 1.0
 		self.godrays = False
+
+
+		self._mesh_requests = []		# do not pickle
 
 		ip = 'client(%s:%s)'%self.address
 		if ip not in bpy.data.objects:  ## TODO clean these up on player close
@@ -603,7 +617,6 @@ class Player( object ):
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue # TODO update skipping logic
 			if ob.type not in ('MESH','LAMP'): continue
-			if ob.name.startswith('template.'): continue
 
 			## allow mesh without UV's ##
 			#if ob.type=='MESH' and not ob.data.uv_textures:
@@ -632,7 +645,7 @@ class Player( object ):
 			if ob not in wobjects: api_gen.wrap_object( ob )
 
 			w = wobjects[ ob ]
-			view = w( self ) # create new viewer if required, and return it
+			view = w( self ) # this is self and not self.address
 
 			if not ob.data: print('WARN - threading bug? (see Server.py')
 			if ob.hide: pak['shade'] = 'WIRE'
@@ -680,6 +693,30 @@ class Player( object ):
 				pak['eval'] = ';'.join(a.eval_queue)
 				while a.eval_queue: a.eval_queue.pop()
 				print('sending eval', pak['eval'])
+
+			## respond to a mesh data request ##
+			if ob in self._mesh_requests:
+				self._mesh_requests.remove(ob)
+				pak['geometry'] = geo = {
+					'triangles'  : [],
+					'vertices': [],
+					'normals'  : []
+				}
+				#ob.data.calc_normals() # required?
+				ob.data.calc_tessface()
+
+				for vert in ob.data.vertices:
+					geo['vertices'].extend( vert.co.to_tuple() )
+
+				for tri in ob.data.tessfaces:
+					geo['normals'].extend( tri.normal.to_tuple() )
+					for vidx in tri.vertices:
+						geo['triangles'].append( vidx*3 )
+						assert geo['vertices'][ vidx*3 ]
+
+				print('*'*80)
+				print(geo)
+				print('*'*80)
 
 		## special case to force only a single selected for the client ##
 		if len(selection) > 1:
@@ -950,6 +987,34 @@ GameManager = GameManagerSingleton()
 api_gen.register_type( api_gen.UserProxy, GameManager.get_player_by_id )
 
 
+## TODO why is this broken? ##
+TESTING = '''
+<html><head>
+<script src="/javascripts/jquery-1.9.1.min.js"></script>
+<script src="/javascripts/jquery-ui.js"></script>
+<script type="javascript">
+$(function(){
+	$("#test").dialog({
+			autoOpen: false,
+	        title: "Note",
+	        modal: true,
+	        width:'auto',
+	        height:'auto',
+	        resizable:false
+	});
+
+  $('#handle1').click(function(){
+	$('#test').dialog('open');
+	});
+});
+</script>
+</head>
+<body>
+		<h1 onclick="javascript:do_it()" id="handle1">hixx</h1>
+		<div id="test"/>
+</body></html>'''.encode('utf-8')
+
+
 class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 	'''
 	This is a subclass of SimpleHTTPRequestHandler in Python3 standard-lib http.server
@@ -1068,6 +1133,10 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 		elif path.startswith('/sounds/'):
 			print('requesting sound')
 			data = open( fpath, 'rb' ).read()
+
+		elif path == '/test':
+			content_type = 'text/html; charset=utf-8'
+			data = TESTING 
 
 		else: print('warn: unknown request url', path)
 
@@ -1333,6 +1402,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 	_bps_start = None
 	_bps = 0
 
+
 	def update( self, context=None, timeout=0.01 ):	# called from main thread
 		'''
 		Make sure not to flood client with too much websocket data, data should only be sent
@@ -1344,6 +1414,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 		#	print('update is blocked!!!!!!!!!!!!!!!!!!!')
 		#	return
 
+		print('DEPRECATED - update moved to server_api.py on_websocket_read_update')
 
 		#if not GameManager.clients: return
 		players = []
@@ -1462,7 +1533,7 @@ class WebSocketServer( websocksimplify.WebSocketServer ):
 					if frame[0] == 0:
 						frame = frame[1:]
 						if len(frame)!=24:
-							print(frame)
+							print('ERROR bad frame size', frame)
 							continue
 
 						x1,y1,z1, x2,y2,z2 = struct.unpack('<ffffff', frame)
