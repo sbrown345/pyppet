@@ -696,6 +696,7 @@ class Player( object ):
 
 			## respond to a mesh data request ##
 			if ob in self._mesh_requests:
+				print('-------->sending',ob)
 				self._mesh_requests.remove(ob)
 				pak['geometry'] = geo = {
 					'triangles': [],
@@ -703,14 +704,16 @@ class Player( object ):
 					'vertices' : [],
 					'normals'  : [] # not used
 				}
-				#ob.data.calc_normals() # required?
-				ob.data.calc_tessface()
 
-				for vert in ob.data.vertices:
+				data = ob.to_mesh(bpy.context.scene, True, "PREVIEW")
+				#ob.data.calc_normals() # required?
+				data.calc_tessface()
+
+				for vert in data.vertices:
 					x,y,z = vert.co.to_tuple()
 					geo['vertices'].append( (x,z,-y) )
 
-				for tri in ob.data.tessfaces:
+				for tri in data.tessfaces:
 					#geo['normals'].extend( tri.normal.to_tuple() )
 					#for vidx in tri.vertices:
 					#	geo['triangles'].append( vidx )
@@ -720,11 +723,7 @@ class Player( object ):
 					if n == 4: geo['quads'].append(f)
 					elif n == 3: geo['triangles'].append(f)
 					else: RuntimeError
-
-
-				print('*'*80)
-				print(geo)
-				print('*'*80)
+				print('--------->ok')
 
 		## special case to force only a single selected for the client ##
 		if len(selection) > 1:
@@ -734,7 +733,7 @@ class Player( object ):
 				p = selection[T]
 				p.pop('selected')
 
-		#print('-------------------')
+		print('-------msg ok---------')
 		#print(msg)
 		return msg
 
