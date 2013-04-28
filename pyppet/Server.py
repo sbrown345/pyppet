@@ -614,6 +614,8 @@ class Player( object ):
 		selection = {} # time : view
 		wobjects = api_gen.get_wrapped_objects()
 
+		sent_mesh = False # only send one mesh at a time - fixes: recv_message, caught exception: RangeError: Maximum call stack size exceeded
+
 		for ob in context.scene.objects:
 			if ob.is_lod_proxy: continue # TODO update skipping logic
 			if ob.type not in ('MESH','LAMP'): continue
@@ -695,8 +697,9 @@ class Player( object ):
 				print('sending eval', pak['eval'])
 
 			## respond to a mesh data request ##
-			if ob in self._mesh_requests:
+			if ob in self._mesh_requests and not sent_mesh:
 				print('-------->sending',ob)
+				sent_mesh = True
 				self._mesh_requests.remove(ob)
 				pak['geometry'] = geo = {
 					'triangles': [],
@@ -705,13 +708,17 @@ class Player( object ):
 					'normals'  : [] # not used
 				}
 
-				data = ob.to_mesh(bpy.context.scene, True, "PREVIEW")
-				#ob.data.calc_normals() # required?
+				data = ob.to_mesh(bpy.context.scene, True, "PREVIEW") # why is this causing a segfault?
+				data.transform( SWAP_MESH )	# flip YZ for Three.js
+				#data = ob.data
+				data.calc_normals() # required?
 				data.calc_tessface()
 
 				for vert in data.vertices:
 					x,y,z = vert.co.to_tuple()
-					geo['vertices'].append( (x,z,-y) )
+					geo['vertices'].append( 
+						[round(x,4) for x in vert.co.to_tuple()]
+					)
 
 				for tri in data.tessfaces:
 					#geo['normals'].extend( tri.normal.to_tuple() )
