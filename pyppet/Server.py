@@ -706,7 +706,8 @@ class Player( object ):
 				ob.data.calc_tessface()
 
 				for vert in ob.data.vertices:
-					geo['vertices'].append( vert.co.to_tuple() )
+					x,y,z = vert.co.to_tuple()
+					geo['vertices'].append( (x,z,-y) )
 
 				for tri in ob.data.tessfaces:
 					#geo['normals'].extend( tri.normal.to_tuple() )

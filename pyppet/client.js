@@ -86,26 +86,53 @@ var UserAPI = {
 		var geometry = new THREE.Geometry();
 
 		for ( var i = 0; i < pak.vertices.length; i ++ ) {
-			var vec = pak.vertices[i];
+			var x = pak.vertices[i][0];
+			var y = pak.vertices[i][1];
+			var z = pak.vertices[i][2];
+			var vec = new THREE.Vector3( x,y,z );
+			console.log(x +','+y+','+z);
+			console.log(vec);
 			geometry.vertices.push(
-				new THREE.Vector3( vec[0], vec[1], vec[3] )
+				//new THREE.Vector3( pak.vertices[i][0], pak.vertices[i][1], pak.vertices[i][3] )
+				vec
 			);
 		}
 		for ( var i = 0; i < pak.triangles.length; i ++ ) {
 			var tri = pak.triangles[i];
-			console.log(tri);
 			geometry.faces.push(
 				new THREE.Face4( tri[0], tri[1], tri[2], tri[3] )
 			);
 		}
+
 		console.log(geometry.faces);
-		//geometry.mergeVertices();
+		console.log(geometry.vertices);
+
+		//geometry.mergeVertices(); //BAD
 		geometry.computeCentroids();
 		geometry.computeFaceNormals();
 		geometry.computeBoundingSphere();
-
-		var material = new THREE.MeshBasicMaterial();
+/*
+		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 		var mesh = new THREE.Mesh( geometry, material );
+*/
+
+
+		geometry.computeLineDistances();
+		var linemat = new THREE.LineDashedMaterial({
+			color: 0xaaaaff, 
+			dashSize: 0.3, 
+			gapSize: 0.2, 
+			linewidth: 7 
+		});
+		var mesh = new THREE.Line( 
+			geometry, 
+			linemat, 
+			THREE.LineStrip //THREE.LinePieces
+		);
+		mesh.doubleSided = true;
+
+
+
 		scene.add( mesh );
 		return mesh;
 	}
