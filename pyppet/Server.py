@@ -699,20 +699,24 @@ class Player( object ):
 				self._mesh_requests.remove(ob)
 				pak['geometry'] = geo = {
 					'triangles'  : [],
-					'vertices': [],
-					'normals'  : []
+					'vertices'   : [],
+					'normals'    : []
 				}
 				#ob.data.calc_normals() # required?
 				ob.data.calc_tessface()
 
 				for vert in ob.data.vertices:
-					geo['vertices'].extend( vert.co.to_tuple() )
+					geo['vertices'].append( vert.co.to_tuple() )
 
 				for tri in ob.data.tessfaces:
-					geo['normals'].extend( tri.normal.to_tuple() )
-					for vidx in tri.vertices:
-						geo['triangles'].append( vidx*3 )
-						assert geo['vertices'][ vidx*3 ]
+					#geo['normals'].extend( tri.normal.to_tuple() )
+					#for vidx in tri.vertices:
+					#	geo['triangles'].append( vidx )
+					#	#assert geo['vertices'][ vidx*3 ]
+					geo['triangles'].append(
+						[ fidx for fidx in tri.vertices ]
+					)
+
 
 				print('*'*80)
 				print(geo)

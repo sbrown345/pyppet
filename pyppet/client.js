@@ -79,6 +79,35 @@ var UserAPI = {
 		var mesh = new THREE.Mesh( geometry, material );
 		scene.add( mesh );
 
+	},
+	create_geometry : function(pak) {
+		console.log('creating new geometry');
+
+		var geometry = new THREE.Geometry();
+
+		for ( var i = 0; i < pak.vertices.length; i ++ ) {
+			var vec = pak.vertices[i];
+			geometry.vertices.push(
+				new THREE.Vector3( vec[0], vec[1], vec[3] )
+			);
+		}
+		for ( var i = 0; i < pak.triangles.length; i ++ ) {
+			var tri = pak.triangles[i];
+			console.log(tri);
+			geometry.faces.push(
+				new THREE.Face4( tri[0], tri[1], tri[2], tri[3] )
+			);
+		}
+		console.log(geometry.faces);
+		//geometry.mergeVertices();
+		geometry.computeCentroids();
+		geometry.computeFaceNormals();
+		geometry.computeBoundingSphere();
+
+		var material = new THREE.MeshBasicMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		scene.add( mesh );
+		return mesh;
 	}
 };
 
@@ -786,7 +815,7 @@ function on_json_message( data ) {
 		var ob = pak.properties;
 
 		if (pak.geometry) { // request_mesh response
-			UserAPI.create_buffer_geometry( pak.geometry );
+			UserAPI.create_geometry( pak.geometry );
 		}
 
 		if (name in Objects && Objects[name]) {
