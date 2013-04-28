@@ -80,7 +80,7 @@ var UserAPI = {
 		scene.add( mesh );
 
 	},
-	create_geometry : function(pak) {
+	create_geometry : function(pak, name) {
 		console.log('creating new geometry');
 
 		var geometry = new THREE.Geometry();
@@ -90,32 +90,32 @@ var UserAPI = {
 			var y = pak.vertices[i][1];
 			var z = pak.vertices[i][2];
 			var vec = new THREE.Vector3( x,y,z );
-			console.log(x +','+y+','+z);
-			console.log(vec);
-			geometry.vertices.push(
-				//new THREE.Vector3( pak.vertices[i][0], pak.vertices[i][1], pak.vertices[i][3] )
-				vec
-			);
+			geometry.vertices.push(vec);
 		}
 		for ( var i = 0; i < pak.triangles.length; i ++ ) {
 			var tri = pak.triangles[i];
 			geometry.faces.push(
-				new THREE.Face4( tri[0], tri[1], tri[2], tri[3] )
+				new THREE.Face3( tri[0], tri[1], tri[2] )
+			);
+		}
+		for ( var i = 0; i < pak.quads.length; i ++ ) {
+			var face = pak.quads[i];
+			geometry.faces.push(
+				new THREE.Face4( face[0], face[1], face[2], face[3] )
 			);
 		}
 
-		console.log(geometry.faces);
-		console.log(geometry.vertices);
-
 		//geometry.mergeVertices(); //BAD
-		geometry.computeCentroids();
+		geometry.computeCentroids(); //BAD?
 		geometry.computeFaceNormals();
 		geometry.computeBoundingSphere();
-/*
+		geometry.computeBoundingBox();
 		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 		var mesh = new THREE.Mesh( geometry, material );
-*/
+		mesh.name = name;
+		UserAPI.meshes.push( mesh );
 
+/*
 
 		geometry.computeLineDistances();
 		var linemat = new THREE.LineDashedMaterial({
@@ -129,12 +129,70 @@ var UserAPI = {
 			linemat, 
 			THREE.LineStrip //THREE.LinePieces
 		);
+*/
+
 		mesh.doubleSided = true;
-
-
-
-		scene.add( mesh );
+		//scene.add( mesh );
 		return mesh;
+	},
+	create_lod : function (_mesh) {
+
+		var lod = new THREE.LOD();
+
+		_mesh.material = new THREE.MeshLambertMaterial({
+			transparent: false,
+			color: 0xffffff
+		});
+
+		lod.name = _mesh.name;
+		lod.base_mesh = null;
+		lod.useQuaternion = true;			// ensure Quaternion
+		lod.has_progressive_textures = false;	// enabled from websocket stream
+		lod.shader = null;
+		lod.dirty_modifiers = true;
+		lod.auto_subdivision = false;
+
+		lod.multires = false;
+		lod.has_displacement = false;
+		lod.has_AO = false;	// TODO fix baking to hide LOD proxy
+
+		lod.position.copy( _mesh.position );
+		lod.scale.copy( _mesh.scale );
+		lod.quaternion.copy( _mesh.quaternion );
+
+		_mesh.position.set(0,0,0);
+		_mesh.scale.set(1,1,1);
+		_mesh.quaternion.set(0,0,0,1);
+		_mesh.updateMatrix();
+
+		// custom attributes (for callbacks)
+		lod.custom_attributes = {};
+		console.log(lod);
+		console.log(lod.name);
+		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') );
+		lod.do_mouse_up_callback = function () {
+			lod.on_mouse_up_callback( lod.custom_attributes );
+		};
+		lod.do_input_callback = function (txt) {
+			console.log('sending text');
+			console.log(txt);
+			lod.on_input_callback( lod.custom_attributes, txt ); //
+		}
+
+		if (UserAPI.on_model_loaded) {
+			UserAPI.on_model_loaded( lod, _mesh );
+		}
+
+		lod.addLevel( _mesh, 12 );
+		lod.updateMatrix();
+		//mesh.matrixAutoUpdate = false;
+
+		// add to scene //
+		//Objects[ lod.name ] = lod;
+		UserAPI.objects[ lod.name ] = lod;
+		scene.add( lod );
+		return lod;
+
 	}
 };
 
@@ -842,7 +900,8 @@ function on_json_message( data ) {
 		var ob = pak.properties;
 
 		if (pak.geometry) { // request_mesh response
-			UserAPI.create_geometry( pak.geometry );
+			var mesh = UserAPI.create_geometry( pak.geometry, name );
+			var lod = UserAPI.create_lod( mesh );
 		}
 
 		if (name in Objects && Objects[name]) {

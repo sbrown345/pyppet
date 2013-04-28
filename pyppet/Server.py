@@ -698,9 +698,10 @@ class Player( object ):
 			if ob in self._mesh_requests:
 				self._mesh_requests.remove(ob)
 				pak['geometry'] = geo = {
-					'triangles'  : [],
-					'vertices'   : [],
-					'normals'    : []
+					'triangles': [],
+					'quads'    : [],
+					'vertices' : [],
+					'normals'  : [] # not used
 				}
 				#ob.data.calc_normals() # required?
 				ob.data.calc_tessface()
@@ -714,9 +715,11 @@ class Player( object ):
 					#for vidx in tri.vertices:
 					#	geo['triangles'].append( vidx )
 					#	#assert geo['vertices'][ vidx*3 ]
-					geo['triangles'].append(
-						[ fidx for fidx in tri.vertices ]
-					)
+					n = len(tri.vertices)
+					f = [ fidx for fidx in tri.vertices ]
+					if n == 4: geo['quads'].append(f)
+					elif n == 3: geo['triangles'].append(f)
+					else: RuntimeError
 
 
 				print('*'*80)
