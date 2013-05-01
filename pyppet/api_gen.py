@@ -295,7 +295,7 @@ class Container(object):
 	#__properties = {} # global to all subclasses (if they do not provide their own)
 	#__viewers    = {} # global to all subclasses - thanks Miran.
 	__parent     = None # upstream items
-	__proxy      = None # "a.something = x" can trigger passing the attribute to proxy if defined
+	__proxy      = None # "a['something'] = x" can trigger passing the attribute to proxy if defined
 	__allow_viewers = False
 	__allow_upstream_attributes = [] # this can be True (allow all) or a list of names to allow
 	__allow_upstream_properties = [] # this can be True or a list of names to allow
@@ -305,7 +305,21 @@ class Container(object):
 		self.__subproperties = {}
 		self.__viewers = {}
 		self.__eval_queue = []
+		self.__proxy = None
+		self.__sproxy = None
+		self.__sproxy_attrs = []
 		for name in kw: setattr(self, '_Container__'+name, kw[name])
+
+	def __subproxy(self, sproxy, *names ):
+		'''
+		This can be used to have a second proxy where some named items
+		will get set on the subproxy instead of the main proxy.
+		'''
+		assert len(names)
+		self.__sproxy = sproxy
+		self.__sproxy_attrs = names
+		for name in names: assert hasattr(sproxy, name)
+
 
 	def __eval(self, *args):
 		if args: self.__eval_queue.extend( args )
@@ -323,6 +337,8 @@ class Container(object):
 					viewer=viewer, 
 					parent=self,        # for upstream properties
 					proxy=self.__proxy, # use same proxy
+					sproxy=self.__sproxy,
+					sproxy_attrs=self.__sproxy_attrs,
 					allow_upstream_attributes=True,
 					allow_upstream_properties=True,
 					#allow_viewers=True,
@@ -407,12 +423,15 @@ class Container(object):
 
 		else:
 			self.__properties[ name ] = value
-			if self.__proxy and name in dir(self.__proxy):  ## a wrapped blender object
+			p = self.__proxy
+			if self.__sproxy and name in self.__sproxy_attrs: p = self.__sproxy
+
+			if p and name in dir(p):  ## a wrapped blender object
 				do = True
 				if type(value) is list:
-					if len(value) != len(getattr(self.__proxy,name)): do = False
+					if len(value) != len(getattr(p,name)): do = False
 				if do:
-					setattr(self.__proxy, name, value)
+					setattr(p, name, value)
 
 
 	def __getitem__(self, name):

@@ -198,7 +198,9 @@ def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 
 
 ############ seems a bit funny that this works ############
-SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
+#SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
+#SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
+SWAP_MESH = mathutils.Matrix.Rotation(0.0, 4, 'X')
 SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
 #######################################################
 
@@ -440,6 +442,8 @@ class WebGL(object):
 #------------------------------------------------------------------------------
 
 
+def on_custom_websocket_json_message(player, msg): # for monkey-patching
+	print('unknown json message', player, msg)
 
 #####################
 class Player( object ):
@@ -449,16 +453,21 @@ class Player( object ):
 	#def set_action_api(self, api):
 	#	self._action_api = api
 
+	def eval( self, *js ):
+		if js: self.eval_queue.extend( js )
+
 	def on_websocket_json_message(self, msg):
 		'''
 		called from server_api.py class BlenderServer, in on_websocket_read_update
 		msg is an object (dictionary)
 		'''
-		assert msg['request'] in ('mesh',)
-		ob = get_object_by_UID( msg['id'] )
-		#w = api_gen.get_wrapped_objects()[ob]
-		assert ob not in self._mesh_requests
-		self._mesh_requests.append( ob )
+		if msg['request'] == 'mesh':
+			ob = get_object_by_UID( msg['id'] )
+			#w = api_gen.get_wrapped_objects()[ob]
+			assert ob not in self._mesh_requests
+			self._mesh_requests.append( ob )
+		else:
+			on_custom_websocket_json_message(self, msg)
 
 	def new_action(self, code, packed_args):
 		'''
@@ -504,7 +513,8 @@ class Player( object ):
 		self.godrays = False
 
 
-		self._mesh_requests = []		# do not pickle
+		self._mesh_requests = []	## do not pickle?
+		self.eval_queue = [] 		## eval javascript on the client side
 
 		ip = 'client(%s:%s)'%self.address
 		if ip not in bpy.data.objects:  ## TODO clean these up on player close
@@ -611,25 +621,38 @@ class Player( object ):
 			'lights':{},
 			'peers' :peers
 		}
+		if self.eval_queue:
+			print('eval_queue', self.eval_queue)
+			msg['eval'] = ';'.join(self.eval_queue)
+			while self.eval_queue: self.eval_queue.pop()
+
 		selection = {} # time : view
 		wobjects = api_gen.get_wrapped_objects()
 
 		sent_mesh = False # only send one mesh at a time - fixes: recv_message, caught exception: RangeError: Maximum call stack size exceeded
 
 		for ob in context.scene.objects:
-			if ob.is_lod_proxy: continue # TODO update skipping logic
+			#if ob.is_lod_proxy: continue # TODO update skipping logic
+			#if ob.type == 'EMPTY' and ob.dupli_type=='GROUP' and ob.dupli_group: ## instances can not have local offsets.
 			if ob.type not in ('MESH','LAMP'): continue
+			if ob.hide: continue
 
 			## allow mesh without UV's ##
 			#if ob.type=='MESH' and not ob.data.uv_textures:
 			#	#print('WARN: not streaming mesh without uvmapping', ob.name)
 			#	continue	# UV's required to generate tangents
-			#if ob.hide: continue
+
+			if ob not in wobjects: api_gen.wrap_object( ob )
+			w = wobjects[ ob ]
+			view = w( self ) # this is self and not self.address
+			transob = ob
+			if view().translation_proxy:
+				transob = view().translation_proxy
 
 			pak = {} # pack into dict for json transfer.
 
 			## this is a special case that makes forces object animation to be shared by all users
-			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
+			loc, rot, scl = (SWAP_OBJECT * transob.matrix_world).decompose()
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
 			rot = (rot.w, rot.x, rot.y, rot.z)
@@ -644,10 +667,6 @@ class Player( object ):
 				pak['pos'] = loc
 				continue
 
-			if ob not in wobjects: api_gen.wrap_object( ob )
-
-			w = wobjects[ ob ]
-			view = w( self ) # this is self and not self.address
 
 			if not ob.data: print('WARN - threading bug? (see Server.py')
 			if ob.hide: pak['shade'] = 'WIRE'
@@ -717,7 +736,7 @@ class Player( object ):
 				for vert in data.vertices:
 					x,y,z = vert.co.to_tuple()
 					geo['vertices'].append( 
-						[round(x,4) for x in vert.co.to_tuple()]
+						[round(x,3) for x in vert.co.to_tuple()]
 					)
 
 				for tri in data.tessfaces:
@@ -730,7 +749,7 @@ class Player( object ):
 					if n == 4: geo['quads'].append(f)
 					elif n == 3: geo['triangles'].append(f)
 					else: RuntimeError
-				print('--------->ok')
+				print('--------->ok---sent-verts:%s'%len(data.vertices))
 
 		## special case to force only a single selected for the client ##
 		if len(selection) > 1:
@@ -740,8 +759,6 @@ class Player( object ):
 				p = selection[T]
 				p.pop('selected')
 
-		print('-------msg ok---------')
-		#print(msg)
 		return msg
 
 	################################ convert to stream #######################################
@@ -978,7 +995,7 @@ class Player( object ):
 class GameManagerSingleton( object ):
 	def __init__(self):
 		self.RELOAD_TEXTURES = []
-		self.clients = {}	# (ip,port) : player object
+		self.clients = {}	# (ip,port) : player object ## TODO clean up
 
 	def add_player( self, addr, websocket=None ):
 		print('add_player', addr)

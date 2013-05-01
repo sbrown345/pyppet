@@ -174,9 +174,9 @@ var UserAPI = {
 			lod.on_mouse_up_callback( lod.custom_attributes );
 		};
 		lod.do_input_callback = function (txt) {
-			console.log('sending text');
-			console.log(txt);
-			lod.on_input_callback( lod.custom_attributes, txt ); //
+			if (lod.on_input_callback) {
+				lod.on_input_callback( lod.custom_attributes, txt );
+			}
 		}
 
 		if (UserAPI.on_model_loaded) {
@@ -386,7 +386,7 @@ function on_mouse_up( event ) {
 	}
 }
 
-
+// note: using both on_keydown and on_keypress to catch all events
 function on_keydown ( evt ) {
 	var update = false;
 	switch( evt.keyCode ) {
@@ -429,9 +429,14 @@ function on_keypress( evt ) {
 	//event.preventDefault(); // this fixes backspace on windows/osx?
 
 	switch( evt.keyCode ) {
-		case 32: _input_buffer.push(' '); break;				//space
-		case 13: 		// enter triggers input callback
+		case 32: // space
+			_input_buffer.push(' ');
+			break;
+		case 13: // enter - can trigger input and callbacks
 			_input_buffer.push('\n');
+			if (UserAPI.on_enter_key) {
+				UserAPI.on_enter_key(_input_buffer.join(""));
+			}
 			if (INPUT_OBJECT) {
 				console.log('doing input callback');
 				INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
@@ -812,6 +817,10 @@ var _msg;
 function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	_msg = msg;
+	if (msg.eval) {
+		console.log( msg.eval );
+		eval( msg.eval );
+	}
 
 /*
 
