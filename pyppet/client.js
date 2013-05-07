@@ -106,36 +106,52 @@ var UserAPI = {
 		}
 
 		//geometry.mergeVertices(); //BAD
-		geometry.computeCentroids(); //BAD?
+		geometry.computeCentroids();
 		geometry.computeFaceNormals();
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
 		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
-		UserAPI.meshes.push( mesh );
-
-/*
-
-		geometry.computeLineDistances();
-		var linemat = new THREE.LineDashedMaterial({
-			color: 0xaaaaff, 
-			dashSize: 0.3, 
-			gapSize: 0.2, 
-			linewidth: 7 
-		});
-		var mesh = new THREE.Line( 
-			geometry, 
-			linemat, 
-			THREE.LineStrip //THREE.LinePieces
-		);
-*/
-
 		mesh.doubleSided = true;
+		UserAPI.meshes.push( mesh );
 		//scene.add( mesh );
+
+		if (pak.lines.length) {
+			var linegeom = new THREE.Geometry();
+			var linemat = new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 0.5 } )
+			for ( var i = 0; i < pak.lines.length; i ++ ) {
+				var aidx = pak.lines[i][0];
+				var bidx = pak.lines[i][1];
+
+				var x = pak.vertices[aidx][0];
+				var y = pak.vertices[aidx][1];
+				var z = pak.vertices[aidx][2];
+				var vec = new THREE.Vector3( x,y,z );
+				linegeom.vertices.push(vec);
+
+				var x = pak.vertices[bidx][0];
+				var y = pak.vertices[bidx][1];
+				var z = pak.vertices[bidx][2];
+				var vec = new THREE.Vector3( x,y,z );
+				linegeom.vertices.push(vec);
+
+			}
+
+			var line = new THREE.Line( 
+				linegeom, 
+				linemat, 
+				THREE.LinePieces
+			);
+			mesh.add( line );
+
+		}
+
+
+
 		return mesh;
 	},
-	create_lod : function (_mesh) {
+	create_lod : function (_mesh, model_config) {
 
 		var lod = new THREE.LOD();
 
@@ -180,7 +196,11 @@ var UserAPI = {
 		}
 
 		if (UserAPI.on_model_loaded) {
-			UserAPI.on_model_loaded( lod, _mesh );
+			UserAPI.on_model_loaded(
+				lod, 
+				_mesh, 
+				model_config 
+			);
 		}
 
 		lod.addLevel( _mesh, 12 );
@@ -329,9 +349,11 @@ function on_mouse_down(event) {
 		var test = [];
 		for (var i=0; i < UserAPI.meshes.length; i ++) {
 			var mesh = UserAPI.meshes[ i ];
-			var lod = UserAPI.objects[ mesh.name ];
-			if (!lod.LODs[0].object3D.material.wireframe) {
-				test.push( mesh );
+			if (mesh.name in UserAPI.objects) {
+				var lod = UserAPI.objects[ mesh.name ];
+				if (!lod.LODs[0].object3D.material.wireframe) {
+					test.push( mesh );
+				}
 			}
 		}
 		var intersects = ray.intersectObjects( test );
@@ -477,7 +499,7 @@ function create_text( line, parent, offset, resolution, scale, alignment, bgcolo
 	if (scale == undefined) { scale=0.01; }
 	if (resolution == undefined) { resolution=100; }
 
-	var color = 'white';
+	var color = "white";
 	//if (alignment=='center') { color='black'; }
 
 	var mesh = createLabel(
@@ -590,8 +612,8 @@ function title_object(geometry, parent, title ) {
 			title,
 			parent,
 			offset,
-			"center", //alignment
-			"brown"
+			"center" //alignment
+			//"brown"
 		);
 		parent._title_objects = lines;
 		//lines[0].position.z = -(bb.max.z - bb.min.z) / 2.0;
@@ -821,6 +843,7 @@ function on_json_message( data ) {
 		console.log( msg.eval );
 		eval( msg.eval );
 	}
+	if (!UserAPI.initialized) {return}
 
 /*
 
@@ -910,7 +933,7 @@ function on_json_message( data ) {
 
 		if (pak.geometry) { // request_mesh response
 			var mesh = UserAPI.create_geometry( pak.geometry, name );
-			var lod = UserAPI.create_lod( mesh );
+			var lod = UserAPI.create_lod( mesh, pak.model_config );
 		}
 
 		if (name in Objects && Objects[name]) {
@@ -2678,8 +2701,9 @@ function create_point_light_with_flares( num ) {
 }
 
 
-function init() {
+UserAPI['init'] = function() {
 	console.log(">> THREE init");
+	UserAPI.initialized = true;
 
 	container = document.createElement( 'div' );
 	document.body.appendChild( container );
@@ -2766,8 +2790,8 @@ function init() {
 }
 
 
-function animate() {
-	requestAnimationFrame( animate );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
+UserAPI['animate'] = function() {
+	requestAnimationFrame( UserAPI['animate'] );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
 	//console.log('<<animate>>');
 
 	// subdiv modifier //
@@ -2875,51 +2899,41 @@ function on_message(e) {
 	//console.log('on_message');
 	// check first byte, if null then read following binary data //
 	var length = ws.rQlen();
+	if (UserAPI.initialized) {
 
-	switch( ws.rQpeek8() ) {
-		case 0:
-			on_binary_message( ws.rQshiftBytes().slice(1,length) );
-			break;
-		case 60: // <xml>
-			console.log('loading collada');
-			var xmlParser = new DOMParser();
-			var responseXML = xmlParser.parseFromString( ws.rQshiftStr(), "application/xml" );
+		switch( ws.rQpeek8() ) {
+			case 0:
+				on_binary_message( ws.rQshiftBytes().slice(1,length) );
+				break;
+			case 60: // <xml>
+				console.log('loading collada');
+				var xmlParser = new DOMParser();
+				var responseXML = xmlParser.parseFromString( ws.rQshiftStr(), "application/xml" );
 
-			var loader = new THREE.ColladaLoader();
-			loader.options.convertUpAxis = true;
-			//loader.options.centerGeometry = true; // hires has this on.
-			loader.parse(
-				responseXML, 
-				on_collada_ready,
-				collada_path
-			);	
-			break;
-		default:
-			on_json_message( ws.rQshiftStr() );
-			break;
-	}
-
-/*
-	if (ws.rQpeek8() == 0) { //String.fromCharCode(0)) {
-		on_binary_message( ws.rQshiftBytes().slice(1,length) );
+				var loader = new THREE.ColladaLoader();
+				loader.options.convertUpAxis = true;
+				//loader.options.centerGeometry = true; // hires has this on.
+				loader.parse(
+					responseXML, 
+					on_collada_ready,
+					collada_path
+				);	
+				break;
+			default:
+				on_json_message( ws.rQshiftStr() );
+				break;
+		}
 	} else {
-		on_json_message(   ws.rQshiftStr() );
+		on_json_message( ws.rQshiftStr() );
 	}
-*/
-
-	// make rendering in sync with websocket stream
-	//animate();
-
 }
 
-function create_websocket() {
+UserAPI['create_websocket'] = function() {
 	ws = new Websock(); 	// from the websockify API
-
 	ws.on('message', on_message);
 
 	function on_open(e) {
 		console.log(">> WebSockets.onopen");
-		UserAPI.compositor.film.uniforms['nIntensity'].value = 0.01;
 		window.setInterval( update_player_view, 1000/8.0 );
 
 	}
@@ -2937,19 +2951,22 @@ function create_websocket() {
 	ws.open( a );	// global var "HOST" and "HOST_PORT" is injected by the server, (the server must know its IP over the internet and use that for non-localhost clients
 	console.log('websocket open OK');
 
-	animate(); // start animation loop
+	//UserAPI.animate(); // start animation loop
 
 }
 
 function update_player_view() {
-	var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
-	arr = arr.concat(
-		vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
-	);
-	ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
-	//ws.flush();
+	if (UserAPI.initialized) {
+		var arr = vec3_to_bytes( camera.position.x, (-camera.position.z), camera.position.y );
+		arr = arr.concat(
+			vec3_to_bytes( CONTROLLER.target.x, (-CONTROLLER.target.z), CONTROLLER.target.y )
+		);
+		ws.send( [0].concat(arr) ); // not part of simple action api - prefixed with null byte
+		ws.flush();		
+	}
 }
 
-init();
+
+//init();
 //animate();
-create_websocket();
+UserAPI.create_websocket();

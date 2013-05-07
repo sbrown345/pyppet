@@ -108,11 +108,23 @@ class BlenderServer( core.BlenderHack ):
 					action.do()
 
 
-
+	_bps = 0
+	_bps_start = None
+	_debug_kbps = False
 	def on_websocket_write_update(self, sock):
 		player = Server.GameManager.get_player_by_socket( sock )
 		msg = player.create_message_stream( bpy.context )
-		return json.dumps( msg ).encode('utf-8')
+		rawbytes = json.dumps( msg ).encode('utf-8')
+		if self._debug_kbps:
+			now = time.time()
+			self._bps += len( rawbytes )
+			print('frame Kbytes', len(rawbytes)/1024 )
+			if self._bps_start is None or now-self._bps_start > 1.0:
+				print('kilobytes per second', self._bps/1024)
+				self._bps_start = now
+				self._bps = 0
+
+		return rawbytes
 
 
 	def setup_websocket_callback_api(self, api):
@@ -148,6 +160,11 @@ class App( BlenderServer ):
 				dt = 1.0 / ( now - self._mainloop_prev_time )
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
+
+			for ob in bpy.data.objects:
+				#ob.update_tag( {'OBJECT', 'DATA', 'TIME'} )
+				ob.update_tag( {'OBJECT'} )
+
 
 			api_gen.AnimationManager.tick()
 			bpy.context.scene.update()  ## required for headless mode

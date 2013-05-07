@@ -718,14 +718,18 @@ class Player( object ):
 			## respond to a mesh data request ##
 			if ob in self._mesh_requests and not sent_mesh:
 				print('-------->sending',ob)
+
 				sent_mesh = True
 				self._mesh_requests.remove(ob)
 				pak['geometry'] = geo = {
 					'triangles': [],
 					'quads'    : [],
 					'vertices' : [],
+					'lines'    : [],
 					'normals'  : [] # not used
 				}
+				if on_mesh_request_model_config: ## hook for users to overload
+					pak['model_config'] = on_mesh_request_model_config( ob )
 
 				data = ob.to_mesh(bpy.context.scene, True, "PREVIEW") # why is this causing a segfault?
 				data.transform( SWAP_MESH )	# flip YZ for Three.js
@@ -749,6 +753,14 @@ class Player( object ):
 					if n == 4: geo['quads'].append(f)
 					elif n == 3: geo['triangles'].append(f)
 					else: RuntimeError
+
+				for edge in data.edges:
+					if not edge.is_loose: continue
+					assert len(edge.vertices)==2
+					#v1 = data.vertices[ aidx ].co
+					#v2 = data.vertices[ bidx ].co
+					geo['lines'].append( tuple(edge.vertices) )
+
 				print('--------->ok---sent-verts:%s'%len(data.vertices))
 
 		## special case to force only a single selected for the client ##
