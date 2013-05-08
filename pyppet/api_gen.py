@@ -112,17 +112,28 @@ Cache = CacheSingleton()
 
 class SimpleAnimationManager(object):
 	def __init__(self):
-		self.objects = []
+		self.anims = []
+		self.keys = {}
 
 	def tick(self):
 		now = time.time()
 		done = []
-		for a in self.objects:
+		for a in self.anims:
 			if a.tick( now ):
 				done.append( a )
 
 		for a in done:
-			self.objects.remove( a )
+			self.anims.remove( a )
+
+	def add(self, anim):
+		ob = anim.target
+		attr = anim.attribute
+		key = (ob,attr)
+		if key in self.keys:
+			a = self.keys.pop(key)
+			if not a.done: a.finish()
+		self.keys[ key ] = anim
+		self.anims.append( anim )
 
 AnimationManager = SimpleAnimationManager()
 
@@ -133,7 +144,10 @@ class AnimAPI(object):
 		self.done = False
 		self.loop = loop
 		self.update_deltas()
-		AnimationManager.objects.append( self )
+
+		#AnimationManager.objects.append( self )
+		AnimationManager.add( self )
+
 
 	def update_deltas(self): pass
 
@@ -142,9 +156,11 @@ class Animations( AnimAPI ):
 		self.animations = anims
 		for a in anims: a.link_animations( anims )
 
-	def bind( self, target, name ):
+	def bind( self, target, attribute ):
+		self.target = target
+		self.attribute = attribute
 		for anim in self.animations:
-			anim.bind( target, name )
+			anim.bind( target, attribute )
 		self.animations[0].animate()
 
 	def tick( self, T ):
@@ -152,6 +168,11 @@ class Animations( AnimAPI ):
 			if not anim.done:
 				anim.tick( T )
 				break
+
+	def finish(self):
+		for anim in self.animations:
+			if not anim.done:
+				anim.finish()
 
 
 class Animation( AnimAPI ):
@@ -220,24 +241,27 @@ class Animation( AnimAPI ):
 			self.delta = self.value - attr
 
 
+	def finish(self):
+		self.done = True
+		if self.value is not None:
+			self.target[ self.attribute ] = self.value
+		else:
+			assert self.indices
+			attr = self.target[self.attribute]
+			for index in self.indices:
+				attr[ index ] = self.indices[ index ]
+
+		if self.animations:
+			idx = self.animations.index(self)
+			if idx+1 < len(self.animations):
+				self.animations[ idx+1 ].animate()
+
 
 	def tick( self, T ):
 		assert self.target
 		Dt = T - self.start_time
 		if Dt >= self.seconds:
-			self.done = True
-			if self.value is not None:
-				self.target[ self.attribute ] = self.value
-			else:
-				assert self.indices
-				attr = self.target[self.attribute]
-				for index in self.indices:
-					attr[ index ] = self.indices[ index ]
-
-			if self.animations:
-				idx = self.animations.index(self)
-				if idx+1 < len(self.animations):
-					self.animations[ idx+1 ].animate()
+			self.finish()
 
 		elif self.type is str:
 
