@@ -505,6 +505,9 @@ class Player( object ):
 		self.name = None
 		self.objects = []	## list of objects client in client message stream
 
+		self.camera_stream_target = [None]*3   # pointers to this stay valid
+		self.camera_stream_position = [None]*3 # pointers to this stay valid
+
 		## TODO expose these options with GTK
 		self.camera_randomize = False
 		self.camera_focus = 1.5
@@ -551,15 +554,45 @@ class Player( object ):
 		self.location = self.streaming_boundry.location
 		print('[player] new player created:', self.address)
 
-	def set_focal_point(self, pos):
-		self.focal_point.location.x = pos[0]
-		self.focal_point.location.y = pos[1]
-		self.focal_point.location.z = pos[2]
+		self._camera_stream_callbacks = []
 
-	def set_location(self, loc):
-		self.location.x = loc[0]
-		self.location.y = loc[1]
-		self.location.z = loc[2]
+	#######################################################
+
+	def register_camera_stream_callback(self, callback):
+		assert callback not in self._camera_stream_callbacks
+		self._camera_stream_callbacks.append( callback )
+	def unregister_camera_stream_callback(self, callback):
+		assert callback in self._camera_stream_callbacks
+		self._camera_stream_callbacks.remove( callback )
+
+	def get_camera_stream(self):
+		return self.camera_stream_target, self.camera_stream_position
+
+	def set_focal_point(self, pos):
+		x,y,z = pos
+		self.camera_stream_target[0] = x
+		self.camera_stream_target[1] = y
+		self.camera_stream_target[2] = z
+
+		self.focal_point.location.x = x
+		self.focal_point.location.y = y
+		self.focal_point.location.z = z
+
+	def set_location(self, pos):
+		x,y,z = pos
+		self.camera_stream_position[0] = x
+		self.camera_stream_position[1] = y
+		self.camera_stream_position[2] = z
+
+		self.location.x = x
+		self.location.y = y
+		self.location.z = z
+
+		for cb in self._camera_stream_callbacks:
+			cb(
+				self.camera_stream_position,
+				self.camera_stream_target
+			)
 
 	def get_streaming_max_distance(self, degraded=False ):
 		if degraded == 'half':

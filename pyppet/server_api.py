@@ -80,8 +80,8 @@ class BlenderServer( core.BlenderHack ):
 				#print(x1,y1,z1)
 				if addr in Server.GameManager.clients:
 					player = Server.GameManager.clients[ addr ]
-					player.set_location( (x1,y1,z1) )
 					player.set_focal_point( (x2,y2,z2) )
+					player.set_location( (x1,y1,z1) )    # callbacks get triggered
 				else:
 					print('[websocket ERROR] client address not in GameManager.clients')
 
