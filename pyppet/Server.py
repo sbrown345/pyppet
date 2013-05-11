@@ -34,7 +34,7 @@ import simple_action_api
 import Physics # for threading LOCK
 
 
-DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 20.0
+DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 400.0
 
 ## hook into external API's ##
 ExternalAPI = NotImplemented
@@ -655,7 +655,6 @@ class Player( object ):
 			'peers' :peers
 		}
 		if self.eval_queue:
-			print('eval_queue', self.eval_queue)
 			msg['eval'] = ';'.join(self.eval_queue)
 			while self.eval_queue: self.eval_queue.pop()
 
@@ -733,8 +732,11 @@ class Player( object ):
 				color = view['color']
 			else:
 				#color = [ round(x,3) for x in ob.color ]  ## use "blender object color" ?
-				if ob.data.materials and ob.data.materials[0]:
+				if not ob.data:
+					print('no ob.data threading bug?')
+				elif ob.data.materials and ob.data.materials[0]:
 					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+
 			if color:
 				pak['color'] = color
 

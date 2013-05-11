@@ -21,6 +21,11 @@ var UserAPI = {
 	get_object_by_id : function(id) {
 		return Objects['__'+id+'__'];
 	},
+	send_message : function( object ) {
+		ws.send_string( JSON.stringify(object));
+		ws.flush();
+	},
+
 	request_mesh : function(id, callback) {
 		UserAPI.objects[ id ] = null;
 		ws.send_string(
@@ -203,7 +208,7 @@ var UserAPI = {
 			);
 		}
 
-		lod.addLevel( _mesh, 12 );
+		lod.addLevel( _mesh, 0 );
 		lod.updateMatrix();
 		//mesh.matrixAutoUpdate = false;
 
