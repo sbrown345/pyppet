@@ -951,6 +951,9 @@ function on_json_message( data ) {
 				INPUT_OBJECT = m; 
 				//console.log(m);
 			}
+			if (ob.disable_input && m === INPUT_OBJECT) {
+				INPUT_OBJECT = null;
+			}
 
 			if (pak.shade == 'WIRE') {
 				lod.material.wireframe = true;
@@ -2178,6 +2181,7 @@ CameraController = function ( object, domElement ) {
 	this.keys = [ 65 /*A*/, 83 /*S*/, 68 /*D*/ ];
 
 	// internals
+	this.allow_tilt = false;
 
 	this.target = new THREE.Vector3();
 
@@ -2288,7 +2292,10 @@ CameraController = function ( object, domElement ) {
 			quaternion.setFromAxisAngle( axis, -angle );
 
 			_eye.applyQuaternion( quaternion );
-			_this.object.up.applyQuaternion( quaternion );
+
+			if (_this.allow_tilt) {  // do not allow tilt camera by default
+				_this.object.up.applyQuaternion( quaternion );
+			}
 
 			_rotateEnd.applyQuaternion( quaternion );
 

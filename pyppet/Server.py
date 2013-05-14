@@ -638,6 +638,20 @@ class Player( object ):
 		return '\n'.join( a )
 	'''
 
+	def get_streaming_objects(self, limit=500):
+		r = {}
+		for ob in bpy.context.scene.objects:
+			distance = (self.location - ob.matrix_world.to_translation()).length
+			if distance not in r: r[distance] = []
+			r[distance].append( ob )
+		k = list(r.keys())
+		k.sort()
+		a = []
+		for d in k:
+			if d > limit: continue
+			a.extend( r[d] )
+		return a
+
 	def create_message_stream( self, context ):
 		'''
 		this can be tuned perclient fps - limited to 24fps
@@ -663,7 +677,9 @@ class Player( object ):
 
 		sent_mesh = False # only send one mesh at a time - fixes: recv_message, caught exception: RangeError: Maximum call stack size exceeded
 
-		for ob in context.scene.objects:
+		_objects = self.get_streaming_objects()
+		#for ob in context.scene.objects:
+		for ob in _objects:
 			#if ob.is_lod_proxy: continue # TODO update skipping logic
 			#if ob.type == 'EMPTY' and ob.dupli_type=='GROUP' and ob.dupli_group: ## instances can not have local offsets.
 			if ob.type not in ('MESH','LAMP'): continue
@@ -809,7 +825,7 @@ class Player( object ):
 		return msg
 
 	################################ convert to stream #######################################
-	def create_stream_message( self, context ):  ## DEPRECATED
+	def DEPRECATED_create_stream_message( self, context ):  ## DEPRECATED
 		'''
 		packs all header data in message stream into a dictionary,
 		the dict is converted into json and later streamed to the client.
