@@ -147,7 +147,7 @@ class AnimAPI(object):
 
 		#AnimationManager.objects.append( self )
 		AnimationManager.add( self )
-
+		return self
 
 	def update_deltas(self): pass
 
@@ -178,6 +178,18 @@ class Animations( AnimAPI ):
 class Animation( AnimAPI ):
 	'''
 	Simple animation class that can animate python attributes: numbers, and strings.
+
+	To animate a blender modifier:
+		mod = ob.modifiers[0]
+		Animation( value=xxx ).bind( mod ).animate()
+
+	For pickling an Animation, modifiers and constaints can be later resolved using "cns = eval(bpy-path)"
+		This works because on pickling we can save the path with: "bpy-path = repr(cns)"
+
+		This true.
+			assert cns == eval(repr(cns))
+
+
 	'''
 
 	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None, mode='ABSOLUTE' ):
@@ -202,7 +214,10 @@ class Animation( AnimAPI ):
 	def bind( self, target, attribute=None ):
 		self.target = target
 		self.attribute = attribute
-		if self.type is not str:
+
+		if isinstance(attribute, (bpy.types.Modifier, bpy.types.Constraint) ):
+
+		elif self.type is not str:
 			#assert attribute in target
 			if attribute not in target: ## copy from blender proxy if not already cached in view/container
 				assert isinstance(target, Container)
@@ -223,6 +238,7 @@ class Animation( AnimAPI ):
 					attr = self.target[ self.attribute ]
 					self.value += attr
 
+		return self
 
 	def update_deltas(self):
 		if self.type is str:
@@ -428,24 +444,32 @@ class Container(object):
 		and the proxy has an attribute of the same name.
 		note: watch out for the names in your proxy and the names
 		used purely as custom attributes do not conflict
+
+		## note python3 switched to using a slice object (no slicing is used here anyways)
 		'''
-		assert type(name) is str
+
 		if isinstance(value, Animation):
 			anim = value
 			anim.bind( self, name )
 			anim.animate()
+
 		elif isinstance(value, Animations):
 			value.bind( self, name )
 
-		elif name.startswith('.'): # substructures
-			assert self.__proxy
-			self.__subproperties[name] = value
-			a = name.replace('[', ' ').replace(']', ' ').replace('"', ' ').split()
-			attr, key, subattr = a
-			item = getattr(self.__proxy, attr)[ key ]
-			setattr(item, subattr, value)
-
 		else:
+			assert type(name) is str
+
+			## DEPRECATED ##
+			#if name.startswith('.'): # special syntax for substructures: a['.attr[0].subattr']
+			#	assert self.__proxy
+			#	self.__subproperties[name] = value
+			#	a = name.replace('[', ' ').replace(']', ' ').replace('"', ' ').split()
+			#	attr, key, subattr = a
+			#	item = getattr(self.__proxy, attr)[ int(key) ]
+			#	setattr(item, subattr, value)
+			#
+			#else:
+
 			self.__properties[ name ] = value
 			p = self.__proxy
 			if self.__sproxy and name in self.__sproxy_attrs: p = self.__sproxy
@@ -471,12 +495,13 @@ class Container(object):
 				return self.__parent[ name ]
 			else:
 				raise KeyError
-		else: # get a viewer wrapper
-			if self.__allow_viewers:
-				return self.__viewers[ name ]  # "a[ viewer ]" the View is also returned by "a(viewer)"
-			else:
-				raise KeyError
 
+		else:
+			## DEPRECATED get a viewer wrapper has moved to "a(viewer)"
+			#if self.__allow_viewers:
+			#	return self.__viewers[ name ]  # "a[ viewer ]" the View is also returned by "a(viewer)"
+			#else:
+			raise KeyError
 
 class View( Container ):
 	'''
