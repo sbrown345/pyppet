@@ -1286,6 +1286,8 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 		'<meta name="viewport" content="width=device-width, user-scalable=yes, minimum-scale=1.0, maximum-scale=1.0">',
 	]
 
+	h.append( '<script src="/javascripts/tween.min.js"></script>' )
+
 	h.append( '<script src="/javascripts/websockify/util.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/webutil.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
