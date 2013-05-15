@@ -845,7 +845,7 @@ function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	_msg = msg;
 	if (msg.eval) {
-		console.log( msg.eval );
+		//console.log( msg.eval );
 		eval( msg.eval );
 	}
 	if (!UserAPI.initialized) {return}
@@ -1025,7 +1025,7 @@ function on_json_message( data ) {
 			}
 
 			if (pak.eval) {
-				console.log( pak.eval );
+				//console.log( pak.eval );
 				eval( pak.eval );
 			}
 
@@ -2394,7 +2394,8 @@ CameraController = function ( object, domElement ) {
 
 	};
 
-	this.update = function () {
+	this.update = function (delta) {
+		//console.log(delta);
 
 		_eye.subVectors( _this.object.position, _this.target );
 
@@ -2428,6 +2429,15 @@ CameraController = function ( object, domElement ) {
 
 			lastPosition.copy( _this.object.position );
 
+		}
+
+		// smooth target //
+		if (_this.object.position_target) {
+			var p = _this.object.position;
+			var u = p.clone();
+			u.sub( _this.object.position_target );
+			u.multiplyScalar( 0.1 );
+			p.sub( u );
 		}
 
 	};
@@ -2727,6 +2737,7 @@ UserAPI['init'] = function() {
 	// camera //
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 1e7 );
 	camera.position.set( 0, 1, -10 );
+	camera.position_target = camera.position.clone();
 	scene.add( camera );
 	UserAPI.camera = camera;
 
