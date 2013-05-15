@@ -215,9 +215,7 @@ class Animation( AnimAPI ):
 		self.target = target
 		self.attribute = attribute
 
-		if isinstance(attribute, (bpy.types.Modifier, bpy.types.Constraint) ):
-
-		elif self.type is not str:
+		if self.type is not str:
 			#assert attribute in target
 			if attribute not in target: ## copy from blender proxy if not already cached in view/container
 				assert isinstance(target, Container)
