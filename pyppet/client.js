@@ -1045,6 +1045,37 @@ function on_json_message( data ) {
 				m.quaternion.y = ob.rot[2];
 				m.quaternion.z = ob.rot[3];
 
+				/*  this looks funny
+				if ( name in UserAPI.rotation_tweens == false ) {
+					var tween = new TWEEN.Tween(m.quaternion);
+					var quat = {
+						w: ob.rot[0],
+						x: ob.rot[1],
+						y: ob.rot[2],
+						z: ob.rot[3],
+
+					}
+					UserAPI.rotation_tweens[ name ] = {'quat':quat, 'tween':tween};
+					tween.to( quat );
+					tween.start();
+
+				} else {
+					var quat = UserAPI.rotation_tweens[ name ].quat;
+					quat.w = ob.rot[0];
+					quat.x = ob.rot[1];
+					quat.y = ob.rot[2];
+					quat.z = ob.rot[3];
+
+					UserAPI.rotation_tweens[ name ].tween.to(
+						quat,
+						1000 // magic number
+					);
+					UserAPI.scale_tweens[ name ].tween.start();  // required
+
+				}
+				*/
+
+
 			}
 
 			if (pak.color && m.LODs.length) {

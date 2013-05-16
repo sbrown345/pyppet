@@ -722,11 +722,10 @@ class Player( object ):
 				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
 
 			#if random() > 0.9:
-			if not self._ticker % 2:
+			if not self._ticker % 3:
 				view['pos'] = loc
 				view['scl'] = scl
-
-			view['rot'] = rot
+			view['rot'] = rot # rotation looks funny with interp
 
 			#if ob == context.active_object: view[ 'selected' ] = True
 
