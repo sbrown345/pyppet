@@ -724,8 +724,9 @@ class Player( object ):
 			#if random() > 0.9:
 			if not self._ticker % 2:
 				view['pos'] = loc
+				view['scl'] = scl
+
 			view['rot'] = rot
-			view['scl'] = scl
 
 			#if ob == context.active_object: view[ 'selected' ] = True
 

@@ -16,6 +16,8 @@ var MESHES = [];	// list for intersect checking - not a dict because LOD's share
 
 var UserAPI = {
 	position_tweens : {},  // object : tween
+	scale_tweens : {},
+	rotation_tweens : {},
 	camera_controllers : {},
 	camera : null,
 	objects : Objects,
@@ -983,22 +985,58 @@ function on_json_message( data ) {
 
 				} else {
 
+					UserAPI.position_tweens[ name ].vector.set(
+						ob.pos[0], ob.pos[1], ob.pos[2]
+					);
+
 					UserAPI.position_tweens[ name ].tween.to(
 						{x:ob.pos[0], y:ob.pos[1], z:ob.pos[2]},
 						1000 // magic number
 					);
-					UserAPI.position_tweens[ name ].tween.start();
+
+					/*  using chain is WAY slower than just using to()
+					var prevec = UserAPI.position_tweens[ name ].vector.clone();
 					UserAPI.position_tweens[ name ].vector.set(
 						ob.pos[0], ob.pos[1], ob.pos[2]
 					);
+					var tween = new TWEEN.Tween( prevec ).to(
+						UserAPI.position_tweens[ name ].vector,
+						1000
+					);
+					UserAPI.position_tweens[ name ].tween.chain( tween );
+					*/
+
+					UserAPI.position_tweens[ name ].tween.start();  // required
 
 				}
 			}
 
 			if (ob.scl) {
-				m.scale.x = ob.scl[0];
-				m.scale.y = ob.scl[1];
-				m.scale.z = ob.scl[2];				
+				//m.scale.x = ob.scl[0];
+				//m.scale.y = ob.scl[1];
+				//m.scale.z = ob.scl[2];				
+
+				if ( name in UserAPI.scale_tweens == false ) {
+					var tween = new TWEEN.Tween(m.scale);
+					var vec = new THREE.Vector3(ob.scl[0], ob.scl[1], ob.scl[2]);
+					UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
+					tween.to( vec );
+					tween.start();
+
+				} else {
+
+					UserAPI.scale_tweens[ name ].vector.set(
+						ob.scl[0], ob.scl[1], ob.scl[2]
+					);
+					UserAPI.scale_tweens[ name ].tween.to(
+						{x:ob.scl[0], y:ob.scl[1], z:ob.scl[2]},
+						1000 // magic number
+					);
+					UserAPI.scale_tweens[ name ].tween.start();  // required
+
+				}
+
+
 			}
 
 			if (ob.rot) {
