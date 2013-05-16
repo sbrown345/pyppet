@@ -1281,6 +1281,9 @@ body{
 def insert_custom_html():
 	return ''
 
+def insert_custom_javascript_module():
+	return ''
+
 def generate_html_header(title='webgl', external_three=False, websocket_port=8081, websocket_path=None, dancer=False ):
 	h = [
 		'<!DOCTYPE html><html lang="en">',
@@ -1290,11 +1293,11 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	]
 
 	h.append( '<script src="/javascripts/tween.min.js"></script>' )
-
 	h.append( '<script src="/javascripts/websockify/util.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/webutil.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/base64.js"></script>' )
 	h.append( '<script src="/javascripts/websockify/websock.js"></script> ' )
+	h.append( insert_custom_javascript_module() )
 
 	h.append( '<style>' )
 	h.append( insert_custom_css() )
