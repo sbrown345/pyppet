@@ -8,12 +8,14 @@ Notes:
 	 [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
 
 */
+var T = null;
 
 var Objects = {};	// name : LOD
 var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
 
 var UserAPI = {
+	position_tweens : {},  // object : tween
 	camera_controllers : {},
 	camera : null,
 	objects : Objects,
@@ -964,18 +966,48 @@ function on_json_message( data ) {
 			//m.has_progressive_textures = ob.ptex;
 			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
-			m.position.x = ob.pos[0];
-			m.position.y = ob.pos[1];
-			m.position.z = ob.pos[2];
+			if (ob.pos) {
+				/*
+				m.position.x = ob.pos[0];
+				m.position.y = ob.pos[1];
+				m.position.z = ob.pos[2];
+				*/
+				if ( name in UserAPI.position_tweens == false ) {
+					var tween = new TWEEN.Tween(m.position);//.to(
+					//	{x:ob.pos[0], y:ob.pos[1], z:ob.pos[2]}, 200
+					//);
+					var vec = new THREE.Vector3(ob.pos[0], ob.pos[1], ob.pos[2]);
+					UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
+					tween.to( vec );
+					tween.start();
 
-			m.scale.x = ob.scl[0];
-			m.scale.y = ob.scl[1];
-			m.scale.z = ob.scl[2];
+				} else {
 
-			m.quaternion.w = ob.rot[0];
-			m.quaternion.x = ob.rot[1];
-			m.quaternion.y = ob.rot[2];
-			m.quaternion.z = ob.rot[3];
+					UserAPI.position_tweens[ name ].tween.to(
+						{x:ob.pos[0], y:ob.pos[1], z:ob.pos[2]},
+						1000 // magic number
+					);
+					UserAPI.position_tweens[ name ].tween.start();
+					UserAPI.position_tweens[ name ].vector.set(
+						ob.pos[0], ob.pos[1], ob.pos[2]
+					);
+
+				}
+			}
+
+			if (ob.scl) {
+				m.scale.x = ob.scl[0];
+				m.scale.y = ob.scl[1];
+				m.scale.z = ob.scl[2];				
+			}
+
+			if (ob.rot) {
+				m.quaternion.w = ob.rot[0];
+				m.quaternion.x = ob.rot[1];
+				m.quaternion.y = ob.rot[2];
+				m.quaternion.z = ob.rot[3];
+
+			}
 
 			if (pak.color && m.LODs.length) {
 				if (pak.color.length==4) {
@@ -1975,9 +2007,12 @@ function render() {
 	var timer = Date.now() * 0.0005;
 	resize_view();
 	var delta = clock.getDelta();
+
 	if (CONTROLLER.enabled) {
 		CONTROLLER.update( delta );
 	}
+
+	TWEEN.update();
 
 	if (UserAPI.on_redraw) {
 		UserAPI.on_redraw( delta );

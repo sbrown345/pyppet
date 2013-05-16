@@ -515,7 +515,7 @@ class Player( object ):
 		self.camera_maxblur = 1.0
 		self.godrays = False
 
-
+		self._ticker = 0
 		self._mesh_requests = []	## do not pickle?
 		self.eval_queue = [] 		## eval javascript on the client side
 
@@ -721,7 +721,9 @@ class Player( object ):
 			elif ob.data and ob.data.materials and ob.data.materials[0]:
 				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
 
-			view['pos'] = loc
+			#if random() > 0.9:
+			if not self._ticker % 2:
+				view['pos'] = loc
 			view['rot'] = rot
 			view['scl'] = scl
 
@@ -822,6 +824,7 @@ class Player( object ):
 				p = selection[T]
 				p.pop('selected')
 
+		self._ticker += 1
 		return msg
 
 	################################ convert to stream #######################################
