@@ -161,34 +161,14 @@ class App( BlenderServer ):
 			self._mainloop_prev_time = now
 			#print('FPS', dt)
 
-			for ob in bpy.data.objects:
-				#ob.update_tag( {'OBJECT', 'DATA', 'TIME'} )
+			for ob in bpy.data.objects:  ## this is threadsafe?
+				#ob.update_tag( {'OBJECT', 'DATA', 'TIME'} )  ## super slow
 				ob.update_tag( {'OBJECT'} )
-
 
 			api_gen.AnimationManager.tick()
 			bpy.context.scene.update()  ## required for headless mode
 
 			fully_updated = self.update_blender()
-
-			#if ENGINE and ENGINE.active and not ENGINE.paused: self.update_physics( now, drop_frame )
-
-			#win = Blender.Window( self.context.window )
-			#print(win, win.winid, win.grabcursor, win.windowstate, win.modalcursor)
-			#self.context.blender_has_cursor = bool( win.grabcursor )
-			#if self.physics_running and self.context.scene.frame_current==1:
-			#	if self.context.screen.is_animation_playing:
-			#		clear_cloth_caches()
-
-			if not fully_updated:
-				# ImageEditor redraw callback will update http-server,
-				# if ImageEditor is now shown, still need to update the server.
-				#self.server.update( self.context )
-				pass
-
-			#if not self._threaded:
-			#	self.websocket_server.update( self.context, timeout=0.1 )
-
 			self.mainloop_poll(now, dt)
 
 

@@ -1961,8 +1961,32 @@ class WebServer( object ):
 #-----------------------------------------------------------------------
 
 
+class GroupLoader( object ):
+	def __init__(self):
+		self.objects = {} # (blend file, group name) : objects
+		self.groups = {}  # assumes unique group names
 
+	def load(self, path=None, name=None, link=True, strict=True):
+		if strict: assert name not in self.groups
+		key = (path,name)
+		if key in self.objects: return self.objects[ key ]
+		print('[GroupLoader] loading:', key)
 
+		names = list( bpy.data.objects.keys() )
+		bpy.ops.wm.link_append(
+			directory="%s/Group/" %path, 
+			filename=name, # the Group name 
+			link=link
+		)
+		objects = [] # TODO this should keep object names from the linked file
+		for ob in bpy.data.objects:
+			if ob.name not in names:
+				objects.append( ob )
+
+		self.objects[ key ] = objects
+		self.groups[ name ] = objects
+
+		return objects
 
 #-----------------------------------------------------------------------
 class Remote3dsMax(object):
