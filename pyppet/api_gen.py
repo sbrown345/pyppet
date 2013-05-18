@@ -623,11 +623,17 @@ class CallbackFunction(object):
 	def __init__( self, func, name, code, require_first_argument=None ):
 		spec = inspect.getargspec( func )
 		if spec.args and spec.args[0]=='self':
+			self.is_method = True
 			args = spec.args[ 1: ]
-			if not inspect.ismethod( func ):
-				print('unbound method')
+			if inspect.ismethod( func ):
+				self.is_method_bound = True
+			else:
+				self.is_method_bound = False
+				## TODO allow unbound methods ##
+				raise RuntimeError('you must resolve these to functions or methods on a singleton instance')
 
 		else:
+			self.is_method = False
 			args = spec.args
 
 		assert len(args) == len(spec.defaults) ## require all keyword args and typed

@@ -102,6 +102,8 @@ bpy.types.Object.UID = IntProperty(
     name="unique ID", description="unique ID for webGL client", 
     default=0, min=0, max=2**14)
 
+
+STRICT = True
 def get_object_by_UID( uid ):
 	if type(uid) is str: uid = int( uid.replace('_','') )
 	ids = []
@@ -110,11 +112,12 @@ def get_object_by_UID( uid ):
 		if o.UID:
 			if o.UID == uid: ob = o
 			ids.append( o.UID )
-			print(o.name, o.UID)
 
 	assert len(ids) == len( set(ids) )
 
-	if not ob: print('UID not found', uid)
+	if not ob:
+		print('[ERROR] blender object UID not found', uid)
+		if STRICT: raise RuntimeError
 	return ob
 
 def UID( ob ):
