@@ -133,9 +133,12 @@ class BlenderServer( core.BlenderHack ):
 
 ## decorators ##
 _decorated = {}
+_singleton_classes = {}
 def _new_singleton(cls):
+	assert cls not in _singleton_classes  ## ensure a singleton instance
 	#self = super(A, cls).__new__(cls)
 	self = object.__new__(cls)  ## assumes that cls subclasses from object
+	_singleton_classes[ cls ] = self
 	for name in dir(self):
 		if name in _decorated:  ## check for callbacks
 			func = _decorated[ name ]
