@@ -552,6 +552,7 @@ def create_object_view( ob ):
 		if on_click in CallbackFunction.callbacks:
 			on_click = CallbackFunction.callbacks[ on_click ]
 		else:
+			print(CallbackFunction.callbacks)
 			print('WARNING: undefined callback:', on_click)
 			raise RuntimeError
 	if on_input:
@@ -621,8 +622,13 @@ class CallbackFunction(object):
 
 	def __init__( self, func, name, code, require_first_argument=None ):
 		spec = inspect.getargspec( func )
-		if spec.args and spec.args[0]=='self': args = spec.args[ 1: ]
-		else: args = spec.args
+		if spec.args and spec.args[0]=='self':
+			args = spec.args[ 1: ]
+			if not inspect.ismethod( func ):
+				print('unbound method')
+
+		else:
+			args = spec.args
 
 		assert len(args) == len(spec.defaults) ## require all keyword args and typed
 
