@@ -1965,27 +1965,45 @@ class GroupLoader( object ):
 	def __init__(self):
 		self.objects = {} # (blend file, group name) : objects
 		self.groups = {}  # assumes unique group names
+		self._mtimes = {}  # file : mtime
 
 	def load(self, path=None, name=None, link=True, strict=True):
 		if strict: assert name not in self.groups
+
+		mtime = os.stat( path ).st_mtime
+		use_cache = path in self._mtimes
+		if path in self._mtimes and self._mtimes[path] < mtime:
+			use_cache = False
+
 		key = (path,name)
-		if key in self.objects: return self.objects[ key ]
+		if use_cache and key in self.objects:
+			return self.objects[ key ]
+
 		print('[GroupLoader] loading:', key)
 
-		names = list( bpy.data.objects.keys() )
+		#names = list( bpy.data.objects.keys() )
 		bpy.ops.wm.link_append(
 			directory="%s/Group/" %path, 
 			filename=name, # the Group name 
-			link=link
+			link=link,
+			autoselect=True, 
+			active_layer=True, 
+			instance_groups=True
 		)
-		objects = [] # TODO this should keep object names from the linked file
-		for ob in bpy.data.objects:
-			if ob.name not in names:
-				objects.append( ob )
+		dupli = None
+		#objects = [] # TODO this should keep object names from the linked file
+		#for ob in bpy.data.objects:
+		#	if ob.name not in names:
+		#		if ob.type == 'EMPTY' and ob.dupli_group:
+		#			assert ob.dupli_group.name == name
+		#			dupli = ob
+		#		else:
+		#			objects.append( ob )
+		objects = list( bpy.context.active_object.dupli_group.objects )
 
 		self.objects[ key ] = objects
 		self.groups[ name ] = objects
-
+		self._mtimes[ path ] = mtime
 		return objects
 
 #-----------------------------------------------------------------------

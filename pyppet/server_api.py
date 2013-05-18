@@ -131,11 +131,20 @@ class BlenderServer( core.BlenderHack ):
 		simple_action_api.create_callback_api( api )
 
 
+## decorator ##
+_decorated = {}
+def websocket_callback(func):
+	name = func.__name__
+	_decorated[ name ] = func
+	return func
 
+def websocket_callback_names():
+	return list(_decorated.keys())
 
 class App( BlenderServer ):
 	def __init__(self, api):
 		print('init server app')
+		api.update( _decorated )
 		self.setup_server(api)
 
 	def setup_server(self, api):
