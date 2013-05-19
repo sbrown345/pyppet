@@ -160,7 +160,7 @@ var UserAPI = {
 
 		return mesh;
 	},
-	create_lod : function (_mesh, model_config) {
+	create_lod : function (_mesh, position, rotation, scale, model_config) {
 
 		var lod = new THREE.LOD();
 
@@ -181,20 +181,27 @@ var UserAPI = {
 		lod.has_displacement = false;
 		lod.has_AO = false;	// TODO fix baking to hide LOD proxy
 
-		lod.position.copy( _mesh.position );
-		lod.scale.copy( _mesh.scale );
-		lod.quaternion.copy( _mesh.quaternion );
-
-		_mesh.position.set(0,0,0);
-		_mesh.scale.set(1,1,1);
-		_mesh.quaternion.set(0,0,0,1);
-		_mesh.updateMatrix();
+		if ( position != undefined ) {
+			lod.position.x = position[0];
+			lod.position.y = position[1];
+			lod.position.z = position[2];
+		}
+		if ( scale != undefined ) {
+			lod.scale.x = scale[0];
+			lod.scale.y = scale[1];
+			lod.scale.z = scale[2];
+		}
+		if ( rotation != undefined ) {
+			lod.quaternion.w = rotation[0];
+			lod.quaternion.x = rotation[1];
+			lod.quaternion.y = rotation[2];
+			lod.quaternion.z = rotation[3];
+		}
 
 		// custom attributes (for callbacks)
 		lod.custom_attributes = {};
-		console.log(lod);
-		console.log(lod.name);
 		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') );
+
 		lod.do_mouse_up_callback = function () {
 			lod.on_mouse_up_callback( lod.custom_attributes );
 		};
@@ -942,7 +949,13 @@ function on_json_message( data ) {
 
 		if (pak.geometry) { // request_mesh response
 			var mesh = UserAPI.create_geometry( pak.geometry, name );
-			var lod = UserAPI.create_lod( mesh, pak.model_config );
+			var lod = UserAPI.create_lod(
+				mesh, 
+				pak.pos,
+				pak.rot,
+				pak.scl,
+				pak.model_config 
+			);
 		}
 
 		if (name in Objects && Objects[name]) {
@@ -968,17 +981,17 @@ function on_json_message( data ) {
 			//m.has_progressive_textures = ob.ptex;
 			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
-			if (ob.pos) {
+			if (pak.pos) {
 				/*
-				m.position.x = ob.pos[0];
-				m.position.y = ob.pos[1];
-				m.position.z = ob.pos[2];
+				m.position.x = pak.pos[0];
+				m.position.y = pak.pos[1];
+				m.position.z = pak.pos[2];
 				*/
 				if ( name in UserAPI.position_tweens == false ) {
 					var tween = new TWEEN.Tween(m.position);//.to(
-					//	{x:ob.pos[0], y:ob.pos[1], z:ob.pos[2]}, 200
+					//	{x:pak.pos[0], y:pak.pos[1], z:pak.pos[2]}, 200
 					//);
-					var vec = new THREE.Vector3(ob.pos[0], ob.pos[1], ob.pos[2]);
+					var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
 					UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
 					tween.to( vec );
 					tween.start();
@@ -986,18 +999,18 @@ function on_json_message( data ) {
 				} else {
 
 					UserAPI.position_tweens[ name ].vector.set(
-						ob.pos[0], ob.pos[1], ob.pos[2]
+						pak.pos[0], pak.pos[1], pak.pos[2]
 					);
 
 					UserAPI.position_tweens[ name ].tween.to(
-						{x:ob.pos[0], y:ob.pos[1], z:ob.pos[2]},
+						{x:pak.pos[0], y:pak.pos[1], z:pak.pos[2]},
 						1000 // magic number
 					);
 
 					/*  using chain is WAY slower than just using to()
 					var prevec = UserAPI.position_tweens[ name ].vector.clone();
 					UserAPI.position_tweens[ name ].vector.set(
-						ob.pos[0], ob.pos[1], ob.pos[2]
+						pak.pos[0], pak.pos[1], pak.pos[2]
 					);
 					var tween = new TWEEN.Tween( prevec ).to(
 						UserAPI.position_tweens[ name ].vector,
@@ -1011,14 +1024,14 @@ function on_json_message( data ) {
 				}
 			}
 
-			if (ob.scl) {
-				//m.scale.x = ob.scl[0];
-				//m.scale.y = ob.scl[1];
-				//m.scale.z = ob.scl[2];				
+			if (pak.scl) {
+				//m.scale.x = pak.scl[0];
+				//m.scale.y = pak.scl[1];
+				//m.scale.z = pak.scl[2];				
 
 				if ( name in UserAPI.scale_tweens == false ) {
 					var tween = new TWEEN.Tween(m.scale);
-					var vec = new THREE.Vector3(ob.scl[0], ob.scl[1], ob.scl[2]);
+					var vec = new THREE.Vector3(pak.scl[0], pak.scl[1], pak.scl[2]);
 					UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
 					tween.to( vec );
 					tween.start();
@@ -1026,10 +1039,10 @@ function on_json_message( data ) {
 				} else {
 
 					UserAPI.scale_tweens[ name ].vector.set(
-						ob.scl[0], ob.scl[1], ob.scl[2]
+						pak.scl[0], pak.scl[1], pak.scl[2]
 					);
 					UserAPI.scale_tweens[ name ].tween.to(
-						{x:ob.scl[0], y:ob.scl[1], z:ob.scl[2]},
+						{x:pak.scl[0], y:pak.scl[1], z:pak.scl[2]},
 						1000 // magic number
 					);
 					UserAPI.scale_tweens[ name ].tween.start();  // required
@@ -1039,20 +1052,20 @@ function on_json_message( data ) {
 
 			}
 
-			if (ob.rot) {
-				m.quaternion.w = ob.rot[0];
-				m.quaternion.x = ob.rot[1];
-				m.quaternion.y = ob.rot[2];
-				m.quaternion.z = ob.rot[3];
+			if (pak.rot) {
+				m.quaternion.w = pak.rot[0];
+				m.quaternion.x = pak.rot[1];
+				m.quaternion.y = pak.rot[2];
+				m.quaternion.z = pak.rot[3];
 
 				/*  this looks funny
 				if ( name in UserAPI.rotation_tweens == false ) {
 					var tween = new TWEEN.Tween(m.quaternion);
 					var quat = {
-						w: ob.rot[0],
-						x: ob.rot[1],
-						y: ob.rot[2],
-						z: ob.rot[3],
+						w: pak.rot[0],
+						x: pak.rot[1],
+						y: pak.rot[2],
+						z: pak.rot[3],
 
 					}
 					UserAPI.rotation_tweens[ name ] = {'quat':quat, 'tween':tween};
@@ -1061,10 +1074,10 @@ function on_json_message( data ) {
 
 				} else {
 					var quat = UserAPI.rotation_tweens[ name ].quat;
-					quat.w = ob.rot[0];
-					quat.x = ob.rot[1];
-					quat.y = ob.rot[2];
-					quat.z = ob.rot[3];
+					quat.w = pak.rot[0];
+					quat.x = pak.rot[1];
+					quat.y = pak.rot[2];
+					quat.z = pak.rot[3];
 
 					UserAPI.rotation_tweens[ name ].tween.to(
 						quat,

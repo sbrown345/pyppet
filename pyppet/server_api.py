@@ -64,6 +64,14 @@ class BlenderServer( core.BlenderHack ):
 
 
 	def on_websocket_read_update(self, sock, frames):
+		'''
+		protocol:
+			if first byte is null, then the next 24 bytes is the camera location as packed floats,
+			if its a single byte then its a keystroke,
+			if it begins with "{" and ends with "}" then its a json message/request,
+			otherwise it is part of the generated websocket api.
+		'''
+
 		player = Server.GameManager.get_player_by_socket( sock )
 		if not player: return
 		addr = player.address
@@ -84,8 +92,9 @@ class BlenderServer( core.BlenderHack ):
 					player.set_location( (x1,y1,z1) )    # callbacks get triggered
 				else:
 					print('[websocket ERROR] client address not in GameManager.clients')
+					raise RuntimeError
 
-			elif len(frame) == 1:
+			elif len(frame) == 1: ## TODO unicode 2bytes
 				print(frame)
 				print( frame.decode('utf-8') ) 
 
@@ -110,7 +119,7 @@ class BlenderServer( core.BlenderHack ):
 
 	_bps = 0
 	_bps_start = None
-	_debug_kbps = False
+	_debug_kbps = True
 	def on_websocket_write_update(self, sock):
 		player = Server.GameManager.get_player_by_socket( sock )
 		msg = player.create_message_stream( bpy.context )
@@ -118,7 +127,7 @@ class BlenderServer( core.BlenderHack ):
 		if self._debug_kbps:
 			now = time.time()
 			self._bps += len( rawbytes )
-			print('frame Kbytes', len(rawbytes)/1024 )
+			#print('frame Kbytes', len(rawbytes)/1024 )
 			if self._bps_start is None or now-self._bps_start > 1.0:
 				print('kilobytes per second', self._bps/1024)
 				self._bps_start = now

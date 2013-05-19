@@ -507,6 +507,7 @@ class Player( object ):
 		self.token = None
 		self.name = None
 		self.objects = []	## list of objects client in client message stream
+		self._cache = {}
 
 		self.camera_stream_target = [None]*3   # pointers to this stay valid
 		self.camera_stream_position = [None]*3 # pointers to this stay valid
@@ -668,8 +669,8 @@ class Player( object ):
 
 		msg = {
 			'meshes':{}, 
-			'lights':{},
-			'peers' :peers
+			#'lights':{},
+			#'peers' :peers
 		}
 		if self.eval_queue:
 			msg['eval'] = ';'.join(self.eval_queue)
@@ -685,15 +686,26 @@ class Player( object ):
 		for ob in _objects:
 			#if ob.is_lod_proxy: continue # TODO update skipping logic
 			#if ob.type == 'EMPTY' and ob.dupli_type=='GROUP' and ob.dupli_group: ## instances can not have local offsets.
-			if ob.type not in ('MESH','LAMP'): continue
-			if ob.hide: continue
+			#if ob.type not in ('MESH','LAMP'): continue
+			if ob.type != 'MESH': continue
+			if ob.hide: continue  ## deprecate?
 
 			## allow mesh without UV's ##
 			#if ob.type=='MESH' and not ob.data.uv_textures:
 			#	#print('WARN: not streaming mesh without uvmapping', ob.name)
 			#	continue	# UV's required to generate tangents
 
-			if ob not in wobjects: api_gen.wrap_object( ob )
+			if ob not in self._cache:
+				self._cache[ ob ] = {
+					'trans':None,
+					'color':None,
+					'props':None
+				}
+
+			if ob not in wobjects:
+				print('WARN - should not wrap object here')
+				api_gen.wrap_object( ob )
+
 			w = wobjects[ ob ]
 			view = w( self ) # this is self and not self.address
 			transob = ob
@@ -709,26 +721,41 @@ class Player( object ):
 			rot = (rot.w, rot.x, rot.y, rot.z)
 
 
-			if ob.type == 'LAMP':
-				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
-				pak['energy'] = ob.data.energy
-				pak['color'] = [ round(a,3) for a in ob.data.color ]
-				pak['dist'] = ob.data.distance
-				pak['scale'] = 1.0
-				pak['pos'] = loc
-				continue
+			#if ob.type == 'LAMP':
+			#	msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
+			#	pak['energy'] = ob.data.energy
+			#	pak['color'] = [ round(a,3) for a in ob.data.color ]
+			#	pak['dist'] = ob.data.distance
+			#	pak['scale'] = 1.0
+			#	pak['pos'] = loc
+			#	continue
 
 
-			if not ob.data: print('WARN - threading bug? (see Server.py')
+			if not ob.data:
+				print('WARN - threading bug? (see Server.py')
+				raise RuntimeError
+
 			if ob.hide: pak['shade'] = 'WIRE'
 			elif ob.data and ob.data.materials and ob.data.materials[0]:
 				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
 
-			#if random() > 0.9:
-			if not self._ticker % 3:
-				view['pos'] = loc
-				view['scl'] = scl
-			view['rot'] = rot # rotation looks funny with interp
+
+
+			send = ob in self._mesh_requests and not sent_mesh
+			state = (loc,scl,rot)
+			if send or self._cache[ob]['trans'] != state:
+
+				## always send rotation for now - TODO fix me
+				pak['rot'] = rot # rotation looks funny with interp
+
+				if send or not self._ticker % 3:
+					pak['pos'] = loc
+					pak['scl'] = scl
+					self._cache[ob]['trans'] = state
+
+			else:
+				#print('cache insync', ob)
+				pass
 
 			#if ob == context.active_object: view[ 'selected' ] = True
 
@@ -739,7 +766,9 @@ class Player( object ):
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
 			pak['properties'] = {} #a.properties.copy()
 			for key in dir(view):
+				if key in ('location','scale', 'rotation_euler', 'color'): continue  ## special cases
 				pak['properties'][ key ] = view[key]
+
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			## special case for selected ##
@@ -758,8 +787,10 @@ class Player( object ):
 				elif ob.data.materials and ob.data.materials[0]:
 					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
 
-			if color:
+			color = tuple( color )
+			if color and self._cache[ob]['color'] != color:
 				pak['color'] = color
+				self._cache[ob]['color'] = color
 
 
 			if a.on_click: pak['on_click'] = a.on_click.code
@@ -828,6 +859,9 @@ class Player( object ):
 				p.pop('selected')
 
 		self._ticker += 1
+		#print('_'*80)
+		#print(msg)
+		#print('_'*80)
 		return msg
 
 	################################ convert to stream #######################################
