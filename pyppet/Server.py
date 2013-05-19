@@ -764,18 +764,22 @@ class Player( object ):
 			view['user'] = self.uid
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
-			pak['properties'] = {} #a.properties.copy()
+			props = {} #a.properties.copy()
 			for key in dir(view):
 				if key in ('location','scale', 'rotation_euler', 'color'): continue  ## special cases
-				pak['properties'][ key ] = view[key]
+				props[ key ] = view[key]
 
 			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			## special case for selected ##
 			if 'selected' in view and view['selected']:
 				T = view['selected']
-				selection[ T ] = pak['properties']
+				selection[ T ] = props
 
+			_props = str( props )
+			if send or self._cache[ob]['props'] != _props:
+				self._cache[ob]['props'] = _props
+				pak['properties'] = props
 
 			color = None
 			if 'color' in view:
@@ -787,10 +791,11 @@ class Player( object ):
 				elif ob.data.materials and ob.data.materials[0]:
 					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
 
-			color = tuple( color )
-			if color and self._cache[ob]['color'] != color:
-				pak['color'] = color
-				self._cache[ob]['color'] = color
+			if color:
+				color = tuple( color )
+				if send or self._cache[ob]['color'] != color:
+					pak['color'] = color
+					self._cache[ob]['color'] = color
 
 
 			if a.on_click: pak['on_click'] = a.on_click.code

@@ -960,17 +960,50 @@ function on_json_message( data ) {
 
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
-			for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
+
+			if (pak.properties) {
+				for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
+			}
+
 			var lod = m.LODs[0].object3D;
 
-			if (ob.selected) { 
-				SELECTED = m; 
-				INPUT_OBJECT = m; 
-				//console.log(m);
+			if (ob) {
+
+				if (ob.selected) { 
+					SELECTED = m; 
+					INPUT_OBJECT = m; 
+					//console.log(m);
+				}
+				if (ob.disable_input && m === INPUT_OBJECT) {
+					INPUT_OBJECT = null;
+				}
+
+				if (ob.title) {
+					title_object(		// note label_object is smart enough to not rebuild the texture etc.
+						m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
+						m,			// parent
+						ob.title  // title (can be undefined)
+					); // TODO optimize this only update on change
+				}
+
+				if (ob.label || ob.heading) {
+					// the client can force input into label body when object is selected.
+					// the toplevel title is controlled by the server side
+
+					var text = ob.label; // can also be undefined
+					if (INPUT_OBJECT == m) { text=undefined; }
+
+					label_object(		// note label_object is smart enough to not rebuild the texture etc.
+						m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
+						m,			// parent
+						text, 		// multiline text body
+						ob.heading  // title (can be undefined)
+					); // TODO optimize this only update on change
+				}
+
+
 			}
-			if (ob.disable_input && m === INPUT_OBJECT) {
-				INPUT_OBJECT = null;
-			}
+
 
 			if (pak.shade == 'WIRE') {
 				lod.material.wireframe = true;
@@ -1111,31 +1144,6 @@ function on_json_message( data ) {
 
 			if (pak.on_input) {
 				m.on_input_callback = _callbacks_[ pak.on_input ];
-			}
-
-
-			if (ob.title) {
-				title_object(		// note label_object is smart enough to not rebuild the texture etc.
-					m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
-					m,			// parent
-					ob.title  // title (can be undefined)
-				); // TODO optimize this only update on change
-			}
-
-
-			if (ob.label || ob.heading) {
-				// the client can force input into label body when object is selected.
-				// the toplevel title is controlled by the server side
-
-				var text = ob.label; // can also be undefined
-				if (INPUT_OBJECT == m) { text=undefined; }
-
-				label_object(		// note label_object is smart enough to not rebuild the texture etc.
-					m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
-					m,			// parent
-					text, 		// multiline text body
-					ob.heading  // title (can be undefined)
-				); // TODO optimize this only update on change
 			}
 
 			if (pak.eval) {
