@@ -2001,6 +2001,70 @@ class WebServer( object ):
 
 
 #-----------------------------------------------------------------------
+class MaterialLoader( object ): pass
+
+class MeshLoader( object ):
+	def __init__(self, path='.', prefix=''):
+		self.meshes = {} # blend file : objects
+		self.path = path
+		self.prefix = prefix
+
+	def _(self, path):
+		assert path
+		if path.endswith('.blend'): return path
+		if '.' not in path:
+			return os.path.join(self.path, self.prefix + path + '.blend')
+
+	def clear_cache(self, path=None, name=None):
+		path = self._(path)
+		if path:
+			if name: self.meshes[path].pop(name)
+			else: self.meshes[path].clear()
+		else: self.meshes.clear()
+
+	def load(self, path=None, names=[]):
+		path = self._(path)
+		if path not in self.meshes: self.meshes[ path ] = {}
+		objects = self.meshes[ path ]
+
+		for name in names:
+			if name in objects: continue
+
+			bpy.ops.wm.link_append(
+				directory="%s/Mesh/" %path, 
+				filename=name, # the Mesh name 
+				link=True
+			)
+			objects[ name ] = bpy.data.meshes[name]
+
+		return { name:objects[name] for name in names } ## only return the requested
+
+	def reload(self, path=None, objects={} ):
+		'''
+		objects is a dict of:
+			mesh-name : blender object
+		'''
+		raise RuntimeError  ## TODO fix me, this will segfault blender!
+
+		path = self._(path)
+		if path in self.meshes:
+			self.clear_cache( path=path )
+
+		for ob in objects.values():
+			print('removing->',ob)
+			ob.data.user_clear()
+			#ob.data.name = '_trashed_'
+			bpy.data.meshes.remove( ob.data )
+
+		bpy.context.scene.update()
+		loaded = self.load( path=path, names=objects.keys() )
+
+		assert tuple(loaded.keys()) == tuple(objects.keys())
+		for name in loaded.keys():
+			print('reloading->',name, loaded[name])
+			objects[name].data = loaded[name]
+			print(objects[name].data)
+
 
 
 class GroupLoader( object ):

@@ -22,6 +22,22 @@ var UserAPI = {
 	camera : null,
 	objects : Objects,
 	meshes : MESHES,
+
+	// allow for custom tween logic //
+	on_interpolate_position : function(name, tween, vector) {
+		tween.to(
+			vector,
+			1000 // magic number
+		);
+	},
+
+	on_interpolate_scale : function(name, tween, vector) {
+		tween.to(
+			vector,
+			1000 // magic number
+		);
+	},
+
 	get_object_by_id : function(id) {
 		return Objects['__'+id+'__'];
 	},
@@ -123,8 +139,11 @@ var UserAPI = {
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
 		mesh.doubleSided = true;
+
+		// TODO if clickable then add to UserAPI.clickables,
+		// should only some materials be clickable?
+		// TODO morph targets.
 		UserAPI.meshes.push( mesh );
-		//scene.add( mesh );
 
 		if (pak.lines.length) {
 			var linegeom = new THREE.Geometry();
@@ -155,9 +174,6 @@ var UserAPI = {
 			mesh.add( line );
 
 		}
-
-
-
 		return mesh;
 	},
 	create_lod : function (_mesh, position, rotation, scale, model_config) {
@@ -215,7 +231,7 @@ var UserAPI = {
 			UserAPI.on_model_loaded(
 				lod, 
 				_mesh, 
-				model_config 
+				model_config // extra user defined config
 			);
 		}
 
@@ -1021,39 +1037,19 @@ function on_json_message( data ) {
 				m.position.z = pak.pos[2];
 				*/
 				if ( name in UserAPI.position_tweens == false ) {
-					var tween = new TWEEN.Tween(m.position);//.to(
-					//	{x:pak.pos[0], y:pak.pos[1], z:pak.pos[2]}, 200
-					//);
+					var tween = new TWEEN.Tween(m.position);
 					var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
 					UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
 					tween.to( vec );
 					tween.start();
 
 				} else {
-
-					UserAPI.position_tweens[ name ].vector.set(
-						pak.pos[0], pak.pos[1], pak.pos[2]
-					);
-
-					UserAPI.position_tweens[ name ].tween.to(
-						{x:pak.pos[0], y:pak.pos[1], z:pak.pos[2]},
-						1000 // magic number
-					);
-
-					/*  using chain is WAY slower than just using to()
-					var prevec = UserAPI.position_tweens[ name ].vector.clone();
-					UserAPI.position_tweens[ name ].vector.set(
-						pak.pos[0], pak.pos[1], pak.pos[2]
-					);
-					var tween = new TWEEN.Tween( prevec ).to(
-						UserAPI.position_tweens[ name ].vector,
-						1000
-					);
-					UserAPI.position_tweens[ name ].tween.chain( tween );
-					*/
-
-					UserAPI.position_tweens[ name ].tween.start();  // required
-
+					var tween = UserAPI.position_tweens[ name ].tween;
+					var vector = UserAPI.position_tweens[ name ].vector;
+					vector.set( pak.pos[0], pak.pos[1], pak.pos[2] );
+					UserAPI.on_interpolate_position( name, tween, vector );
+					tween.start();
+					/* note using chain is WAY slower than just using tween.to()*/
 				}
 			}
 
@@ -1070,19 +1066,12 @@ function on_json_message( data ) {
 					tween.start();
 
 				} else {
-
-					UserAPI.scale_tweens[ name ].vector.set(
-						pak.scl[0], pak.scl[1], pak.scl[2]
-					);
-					UserAPI.scale_tweens[ name ].tween.to(
-						{x:pak.scl[0], y:pak.scl[1], z:pak.scl[2]},
-						1000 // magic number
-					);
-					UserAPI.scale_tweens[ name ].tween.start();  // required
-
+					var tween = UserAPI.scale_tweens[ name ].tween;
+					var vector = UserAPI.scale_tweens[ name ].vector;
+					vector.set( pak.scl[0], pak.scl[1], pak.scl[2] );
+					UserAPI.on_interpolate_scale( name, tween, vector );
+					tween.start();
 				}
-
-
 			}
 
 			if (pak.rot) {
