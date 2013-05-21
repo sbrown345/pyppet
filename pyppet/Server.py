@@ -521,6 +521,7 @@ class Player( object ):
 
 		self._ticker = 0
 		self._mesh_requests = []	## do not pickle?
+		self._sent_meshes = []		## clear on login, do not pickle
 		self.eval_queue = [] 		## eval javascript on the client side
 
 		ip = 'client(%s:%s)'%self.address
@@ -643,6 +644,9 @@ class Player( object ):
 	'''
 
 	def get_streaming_objects(self, limit=500):
+		'''
+		check all objects in world space, sort by distance to camera.
+		'''
 		r = {}
 		for ob in bpy.context.scene.objects:
 			distance = (self.location - ob.matrix_world.to_translation()).length
@@ -687,7 +691,7 @@ class Player( object ):
 			#if ob.is_lod_proxy: continue # TODO update skipping logic
 			#if ob.type == 'EMPTY' and ob.dupli_type=='GROUP' and ob.dupli_group: ## instances can not have local offsets.
 			#if ob.type not in ('MESH','LAMP'): continue
-			if ob.type != 'MESH': continue
+			if ob.type not in ('MESH', 'EMPTY'): continue
 			if ob.hide: continue  ## deprecate?
 
 			## allow mesh without UV's ##
@@ -715,7 +719,9 @@ class Player( object ):
 			pak = {} # pack into dict for json transfer.
 
 			## this is a special case that makes forces object animation to be shared by all users
-			loc, rot, scl = (SWAP_OBJECT * transob.matrix_world).decompose()
+			#loc, rot, scl = (SWAP_OBJECT * transob.matrix_world).decompose()
+			loc, rot, scl = (SWAP_OBJECT * transob.matrix_local).decompose()
+
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
 			rot = (rot.w, rot.x, rot.y, rot.z)
@@ -729,16 +735,6 @@ class Player( object ):
 			#	pak['scale'] = 1.0
 			#	pak['pos'] = loc
 			#	continue
-
-
-			if not ob.data:
-				print('WARN - threading bug? (see Server.py')
-				raise RuntimeError
-
-			if ob.hide: pak['shade'] = 'WIRE'
-			elif ob.data and ob.data.materials and ob.data.materials[0]:
-				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
-
 
 
 			send = ob in self._mesh_requests and not sent_mesh
@@ -759,6 +755,25 @@ class Player( object ):
 
 			#if ob == context.active_object: view[ 'selected' ] = True
 
+			###########################
+			if ob.type == 'MESH':
+				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
+			elif ob.type == 'EMPTY':
+				pak['empty'] = True
+				if ob.parent: pak['parent'] = UID( ob.parent )
+				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
+
+				continue
+
+			if not ob.data:
+				print('WARN - threading bug? (see Server.py')
+				raise RuntimeError
+
+			if ob.hide: pak['shade'] = 'WIRE'
+			elif ob.data and ob.data.materials and ob.data.materials[0]:
+				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
+
+
 			## ensure properties required by callbacks - TODO move this logic somewhere else
 			view['ob'] = UID(ob)
 			view['user'] = self.uid
@@ -769,7 +784,6 @@ class Player( object ):
 				if key in ('location','scale', 'rotation_euler', 'color'): continue  ## special cases
 				props[ key ] = view[key]
 
-			msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 
 			## special case for selected ##
 			if 'selected' in view and view['selected']:
@@ -809,10 +823,21 @@ class Player( object ):
 
 			## respond to a mesh data request ##
 			if ob in self._mesh_requests and not sent_mesh:
+				if not ob.parent: pass
+				elif ob.parent and ob.parent in self._sent_meshes:# or ob.parent.type == 'EMPTY':
+					pass
+				else:
+					continue
+
 				print('-------->sending',ob)
 
 				sent_mesh = True
 				self._mesh_requests.remove(ob)
+				self._sent_meshes.append( ob )
+
+				if ob.parent:
+					pak['parent'] = UID( ob.parent )
+
 				pak['geometry'] = geo = {
 					'triangles': [],
 					'quads'    : [],

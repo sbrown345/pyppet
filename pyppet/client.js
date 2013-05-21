@@ -176,7 +176,7 @@ var UserAPI = {
 		}
 		return mesh;
 	},
-	create_lod : function (_mesh, position, rotation, scale, model_config) {
+	create_lod : function (_mesh, position, rotation, scale, parent, model_config) {
 
 		var lod = new THREE.LOD();
 
@@ -242,7 +242,14 @@ var UserAPI = {
 		// add to scene //
 		//Objects[ lod.name ] = lod;
 		UserAPI.objects[ lod.name ] = lod;
-		scene.add( lod );
+
+		if (parent) {
+			UserAPI.objects[ '__'+parent+'__' ].add( lod );
+		} else {
+			scene.add( lod );
+		}
+
+
 		return lod;
 
 	}
@@ -949,7 +956,18 @@ function on_json_message( data ) {
 
 	}
 */
+	for (var name in msg['meshes']) {
+		var pak = msg['meshes'][ name ];
+		if ( !(name in Objects) && pak.empty) {
 
+			var empty = new THREE.Object3D();
+			empty.useQuaternion = true;
+			UserAPI.objects[ name ] = empty;
+			if (pak.parent === undefined) {
+				scene.add( empty );
+			}
+		}
+	}
 
 	for (var name in msg['meshes']) {
 
@@ -970,8 +988,15 @@ function on_json_message( data ) {
 				pak.pos,
 				pak.rot,
 				pak.scl,
+				pak.parent,
 				pak.model_config 
 			);
+		} else if (pak.empty) {
+			var empty = UserAPI.objects[ name ];
+			if (empty.parent === undefined && pak.parent) {
+				console.log('checking for parent:'+pak.parent);
+				UserAPI.objects[ '__'+pak.parent+'__'].add( empty );				
+			}
 		}
 
 		if (name in Objects && Objects[name]) {
@@ -981,9 +1006,30 @@ function on_json_message( data ) {
 				for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
 			}
 
-			var lod = m.LODs[0].object3D;
 
 			if (ob) {
+
+				var lod = m.LODs[0].object3D;
+
+				if (pak.shade == 'WIRE') {
+					lod.material.wireframe = true;
+				} else {
+					lod.material.wireframe = false;
+				}
+
+				if (pak.color && m.LODs.length) {
+					if (pak.color.length==4) {
+						m.LODs[0].object3D.material.opacity = pak.color[3];
+					}
+					if (pak.color.length >=3) {
+						m.LODs[0].object3D.material.color.r = pak.color[0];
+						m.LODs[0].object3D.material.color.g = pak.color[1];
+						m.LODs[0].object3D.material.color.b = pak.color[2];
+					}
+					if (pak.color.length == 1) { // special case to assign just alpha changes
+						m.LODs[0].object3D.material.opacity = pak.color[0];					
+					}
+				}
 
 				if (ob.selected) { 
 					SELECTED = m; 
@@ -1021,14 +1067,6 @@ function on_json_message( data ) {
 			}
 
 
-			if (pak.shade == 'WIRE') {
-				lod.material.wireframe = true;
-			} else {
-				lod.material.wireframe = false;
-			}
-			//lod.material = new THREE.LineDashedMaterial( { color: 0xffffff, dashSize: 1, gapSize: 0.5 } )
-			//m.has_progressive_textures = ob.ptex;
-			//if (m.shader) m.shader.uniforms[ "uNormalScale" ].value = ob.norm;
 
 			if (pak.pos) {
 				/*
@@ -1113,19 +1151,6 @@ function on_json_message( data ) {
 
 			}
 
-			if (pak.color && m.LODs.length) {
-				if (pak.color.length==4) {
-					m.LODs[0].object3D.material.opacity = pak.color[3];
-				}
-				if (pak.color.length >=3) {
-					m.LODs[0].object3D.material.color.r = pak.color[0];
-					m.LODs[0].object3D.material.color.g = pak.color[1];
-					m.LODs[0].object3D.material.color.b = pak.color[2];
-				}
-				if (pak.color.length == 1) { // special case to assign just alpha changes
-					m.LODs[0].object3D.material.opacity = pak.color[0];					
-				}
-			}
 
 			if (pak.on_click) {
 				m.on_mouse_up_callback = _callbacks_[ pak.on_click ];
