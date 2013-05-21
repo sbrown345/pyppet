@@ -2951,11 +2951,7 @@ UserAPI['init'] = function() {
 
 }
 
-
-UserAPI['animate'] = function() {
-	requestAnimationFrame( UserAPI['animate'] );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
-	//console.log('<<animate>>');
-
+UserAPI['update_modifiers'] = function() {
 	// subdiv modifier //
 	for (n in Objects) {
 		var lod = Objects[ n ];
@@ -3046,11 +3042,14 @@ UserAPI['animate'] = function() {
 			}
 		}
 	}
+}
 
+
+UserAPI['animate'] = function() {
+	requestAnimationFrame( UserAPI['animate'] );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
+	//console.log('<<animate>>');
 	if (DEBUG==true) { render_debug(); }
 	else { render(); }
-
-
 }
 
 

@@ -200,12 +200,17 @@ def dump_collada_pure_base_mesh( name, center=False ):	# NOT USED
 	return open(url,'rb').read()
 
 
-############ seems a bit funny that this works ############
+############ old collada style ############
 #SWAP_MESH = mathutils.Matrix.Rotation(math.pi/2, 4, 'X')
 #SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
+############ previous world space style ##########
 SWAP_MESH = mathutils.Matrix.Rotation(0.0, 4, 'X')
 SWAP_OBJECT = mathutils.Matrix.Rotation(-math.pi/2, 4, 'X')
-#######################################################
+
+############ new style local space style ##################
+#SWAP_MESH = mathutils.Matrix.Rotation(0, 4, 'X')
+#SWAP_OBJECT = mathutils.Matrix.Rotation(0, 4, 'X')
+###########################################################
 
 bpy.types.Object.is_lod_proxy = BoolProperty(
 	name='is LOD proxy',
@@ -692,7 +697,7 @@ class Player( object ):
 			#if ob.type == 'EMPTY' and ob.dupli_type=='GROUP' and ob.dupli_group: ## instances can not have local offsets.
 			#if ob.type not in ('MESH','LAMP'): continue
 			if ob.type not in ('MESH', 'EMPTY'): continue
-			if ob.hide: continue  ## deprecate?
+			#if ob.hide: continue  ## deprecate?
 
 			## allow mesh without UV's ##
 			#if ob.type=='MESH' and not ob.data.uv_textures:
@@ -718,14 +723,19 @@ class Player( object ):
 
 			pak = {} # pack into dict for json transfer.
 
-			## this is a special case that makes forces object animation to be shared by all users
+			## this is a special case that makes forces object animation to be shared by all users,
+			## the view().translation_proxy above can proxy something local for a viewer.
+			if ob.parent: # do not swap children
+				loc, rot, scl = transob.matrix_local.decompose()
+			else:
+				loc, rot, scl = (SWAP_OBJECT * transob.matrix_local).decompose()
+
+			## old style was matrix world ##
 			#loc, rot, scl = (SWAP_OBJECT * transob.matrix_world).decompose()
-			loc, rot, scl = (SWAP_OBJECT * transob.matrix_local).decompose()
 
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
 			rot = (rot.w, rot.x, rot.y, rot.z)
-
 
 			#if ob.type == 'LAMP':
 			#	msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
@@ -762,7 +772,8 @@ class Player( object ):
 				pak['empty'] = True
 				if ob.parent: pak['parent'] = UID( ob.parent )
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
-
+				if ob not in self._sent_meshes:
+					self._sent_meshes.append( ob )
 				continue
 
 			if not ob.data:
