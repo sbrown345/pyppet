@@ -12,6 +12,13 @@ Notes:
 var Objects = {};	// name : LOD
 var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
+function start_tween_if_needed( tween ) {
+	if ( TWEEN.getAll().indexOf(tween) == -1 ) {
+		tween.start();
+	} //else {tween._startTime = Date.now();}
+}
+
+
 var UserAPI = {
 	position_tweens : {},  // object : tween
 	scale_tweens : {},
@@ -22,16 +29,18 @@ var UserAPI = {
 	meshes : MESHES,
 
 	rebuild_hierarchy : function( ob, hierarchy ) {
-		console.log('rebuilding hierarchy', ob, hierarchy);
+		//console.log('rebuilding hierarchy', ob, hierarchy);
 		for (var i=0; i < hierarchy.length; i ++) {
 			var id = hierarchy[ i ];
-			if (!(id in ob.dynamic_hierarchy) && id in UserAPI.objects) {
-				ob.dynamic_hierarchy.push( id ); // keep track of children added
-				var child = UserAPI.objects[ id ];
-
-				console.log('adding child->', child);
-				ob.add( child );
-
+			if (!(id in ob.dynamic_hierarchy)) {
+				var child = null;
+				if (id in UserAPI.objects) {
+					child = UserAPI.objects[ id ];
+					//console.log('adding child->', child);
+					ob.add( child );
+					ob.dynamic_hierarchy.push( id );
+				}
+				//ob.dynamic_hierarchy[id] = child; // keep track of children added
 			}
 		}
 
@@ -40,7 +49,7 @@ var UserAPI = {
 	on_interpolate_position : function(name, tween, vector) {
 		tween.to(
 			vector,
-			1000 // magic number
+			1000 // magic number (if this number is too high, tween.js can consume 100percent CPU)
 		);
 	},
 
@@ -1024,8 +1033,19 @@ function on_json_message( data ) {
 				for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
 			}
 			if (pak.dynamic_hierarchy !== undefined) {
-
 				UserAPI.rebuild_hierarchy( m, pak.dynamic_hierarchy );
+			} else {
+				/*
+				for (id in m.dynamic_hierarchy) {
+					if (m.dynamic_hierarchy[id] === null) {
+						if (id in UserAPI.objects) {
+							//console.log('got child');
+							m.add( UserAPI.objects[id] );
+							m.dynamic_hierarchy[id] = UserAPI.objects[id];
+						}
+					}
+				}
+				*/
 			}
 
 
@@ -1100,15 +1120,16 @@ function on_json_message( data ) {
 					var tween = new TWEEN.Tween(m.position);
 					var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
 					UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
-					tween.to( vec );
+					tween.to( vec, 500 );
 					tween.start();
 
 				} else {
 					var tween = UserAPI.position_tweens[ name ].tween;
 					var vector = UserAPI.position_tweens[ name ].vector;
 					vector.set( pak.pos[0], pak.pos[1], pak.pos[2] );
-					UserAPI.on_interpolate_position( name, tween, vector );
-					tween.start();
+					//UserAPI.on_interpolate_position( name, tween, vector );
+					//tween.start();
+					start_tween_if_needed( tween );
 					/* note using chain is WAY slower than just using tween.to()*/
 				}
 			}
@@ -1122,15 +1143,17 @@ function on_json_message( data ) {
 					var tween = new TWEEN.Tween(m.scale);
 					var vec = new THREE.Vector3(pak.scl[0], pak.scl[1], pak.scl[2]);
 					UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
-					tween.to( vec );
+					tween.to( vec, 500 );
 					tween.start();
 
 				} else {
 					var tween = UserAPI.scale_tweens[ name ].tween;
 					var vector = UserAPI.scale_tweens[ name ].vector;
 					vector.set( pak.scl[0], pak.scl[1], pak.scl[2] );
-					UserAPI.on_interpolate_scale( name, tween, vector );
-					tween.start();
+					//UserAPI.on_interpolate_scale( name, tween, vector );
+					//tween.start();
+					start_tween_if_needed( tween );
+
 				}
 			}
 
@@ -2138,7 +2161,6 @@ function render() {
 		CONTROLLER.update( delta );
 	}
 
-	TWEEN.update();
 
 	if (UserAPI.on_redraw) {
 		UserAPI.on_redraw( delta );
@@ -2165,6 +2187,8 @@ function render() {
 	} else {
 		composer.render( 0.1 );
 	}
+
+	TWEEN.update();
 
 }
 

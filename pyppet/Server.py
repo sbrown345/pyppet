@@ -708,7 +708,8 @@ class Player( object ):
 				self._cache[ ob ] = {
 					'trans':None,
 					'color':None,
-					'props':None
+					'props':None,
+					'children':None
 				}
 
 			if ob not in wobjects:
@@ -723,7 +724,13 @@ class Player( object ):
 
 			# pack into dict for json transfer.
 			pak = {}
-			if ob.children: pak['dynamic_hierarchy'] = [ '__%s__'%UID(child) for child in ob.children ]
+			if ob.children:
+				dh = [ '__%s__'%UID(child) for child in ob.children ]
+				pak['dynamic_hierarchy'] = dh
+				#if self._cache[ob]['children'] != dh:
+				#	pak['dynamic_hierarchy'] = dh
+				#	self._cache[ob]['children'] = dh
+
 			if ob.parent: pak['parent'] = UID( ob.parent )
 
 
@@ -741,26 +748,27 @@ class Player( object ):
 			scl = scl.to_tuple()
 			rot = (rot.w, rot.x, rot.y, rot.z)
 
-			#if ob.type == 'LAMP':
-			#	msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
-			#	pak['energy'] = ob.data.energy
-			#	pak['color'] = [ round(a,3) for a in ob.data.color ]
-			#	pak['dist'] = ob.data.distance
-			#	pak['scale'] = 1.0
-			#	pak['pos'] = loc
-			#	continue
-
+			rloc = tuple(round(v,3) for v in loc) #(round(v,3) for v in loc) this is a generator
+			rscl = tuple(round(v,3) for v in scl)
+			rrot = tuple(round(v,3) for v in rot)
+			state = ( rloc, rscl, rrot )
 
 			send = ob in self._mesh_requests and not sent_mesh
-			state = (loc,scl,rot)
+
 			if send or self._cache[ob]['trans'] != state:
+				if self._cache[ob]['trans']:
+					a,b,c = self._cache[ob]['trans']
+				else:
+					a = b = c = None
 
-				## always send rotation for now - TODO fix me
-				pak['rot'] = rot # rotation looks funny with interp
+				if send or not self._ticker % 2:
+					if rloc != a or send:
+						pak['pos'] = loc
+					if rscl != b or send:
+						pak['scl'] = scl
+					if rrot != c or send:
+						pak['rot'] = rot # rotation looks funny with interp
 
-				if send or not self._ticker % 3:
-					pak['pos'] = loc
-					pak['scl'] = scl
 					self._cache[ob]['trans'] = state
 
 			else:
