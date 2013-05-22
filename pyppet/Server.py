@@ -721,7 +721,11 @@ class Player( object ):
 			if view().translation_proxy:
 				transob = view().translation_proxy
 
-			pak = {} # pack into dict for json transfer.
+			# pack into dict for json transfer.
+			pak = {}
+			if ob.children: pak['dynamic_hierarchy'] = [ '__%s__'%UID(child) for child in ob.children ]
+			if ob.parent: pak['parent'] = UID( ob.parent )
+
 
 			## this is a special case that makes forces object animation to be shared by all users,
 			## the view().translation_proxy above can proxy something local for a viewer.
@@ -846,8 +850,6 @@ class Player( object ):
 				self._mesh_requests.remove(ob)
 				self._sent_meshes.append( ob )
 
-				if ob.parent:
-					pak['parent'] = UID( ob.parent )
 
 				pak['geometry'] = geo = {
 					'triangles': [],

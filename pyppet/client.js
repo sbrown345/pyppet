@@ -8,11 +8,9 @@ Notes:
 	 [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
 
 */
-var T = null;
 
 var Objects = {};	// name : LOD
 var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
-
 
 var UserAPI = {
 	position_tweens : {},  // object : tween
@@ -23,6 +21,21 @@ var UserAPI = {
 	objects : Objects,
 	meshes : MESHES,
 
+	rebuild_hierarchy : function( ob, hierarchy ) {
+		console.log('rebuilding hierarchy', ob, hierarchy);
+		for (var i=0; i < hierarchy.length; i ++) {
+			var id = hierarchy[ i ];
+			if (!(id in ob.dynamic_hierarchy) && id in UserAPI.objects) {
+				ob.dynamic_hierarchy.push( id ); // keep track of children added
+				var child = UserAPI.objects[ id ];
+
+				console.log('adding child->', child);
+				ob.add( child );
+
+			}
+		}
+
+	},
 	// allow for custom tween logic //
 	on_interpolate_position : function(name, tween, vector) {
 		tween.to(
@@ -216,6 +229,7 @@ var UserAPI = {
 
 		// custom attributes (for callbacks)
 		lod.custom_attributes = {};
+		lod.dynamic_hierarchy = [];
 		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') );
 
 		lod.do_mouse_up_callback = function () {
@@ -244,7 +258,10 @@ var UserAPI = {
 		UserAPI.objects[ lod.name ] = lod;
 
 		if (parent) {
-			UserAPI.objects[ '__'+parent+'__' ].add( lod );
+			//console.log('mparent-name'+parent);
+			//var mparent = UserAPI.objects[ '__'+parent+'__' ];
+			//console.log('mparent'+mparent);
+			//mparent.add( lod );
 		} else {
 			scene.add( lod );
 		}
@@ -962,6 +979,7 @@ function on_json_message( data ) {
 
 			var empty = new THREE.Object3D();
 			empty.useQuaternion = true;
+			empty.dynamic_hierarchy = [];
 			UserAPI.objects[ name ] = empty;
 			if (pak.parent === undefined) {
 				scene.add( empty );
@@ -994,8 +1012,8 @@ function on_json_message( data ) {
 		} else if (pak.empty) {
 			var empty = UserAPI.objects[ name ];
 			if (empty.parent === undefined && pak.parent) {
-				console.log('checking for parent:'+pak.parent);
-				UserAPI.objects[ '__'+pak.parent+'__'].add( empty );				
+				//console.log('checking for parent:'+pak.parent);
+				//UserAPI.objects[ '__'+pak.parent+'__'].add( empty );				
 			}
 		}
 
@@ -1004,6 +1022,10 @@ function on_json_message( data ) {
 
 			if (pak.properties) {
 				for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
+			}
+			if (pak.dynamic_hierarchy !== undefined) {
+
+				UserAPI.rebuild_hierarchy( m, pak.dynamic_hierarchy );
 			}
 
 
