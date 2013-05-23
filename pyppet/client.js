@@ -32,15 +32,16 @@ var UserAPI = {
 		//console.log('rebuilding hierarchy', ob, hierarchy);
 		for (var i=0; i < hierarchy.length; i ++) {
 			var id = hierarchy[ i ];
-			if (!(id in ob.dynamic_hierarchy)) {
-				var child = null;
+			var child = ob.dynamic_hierarchy[id];
+			//if (!(id in ob.dynamic_hierarchy)) {
+			if ( child === undefined || child === null) {
 				if (id in UserAPI.objects) {
 					child = UserAPI.objects[ id ];
-					//console.log('adding child->', child);
+					console.log('adding child->', child);
 					ob.add( child );
-					ob.dynamic_hierarchy.push( id );
-				}
-				//ob.dynamic_hierarchy[id] = child; // keep track of children added
+					//ob.dynamic_hierarchy.push( id );
+				} else { console.log('waiting for->'+id)}
+				ob.dynamic_hierarchy[id] = child; // keep track of children added
 			}
 		}
 
@@ -69,7 +70,7 @@ var UserAPI = {
 	},
 
 	request_mesh : function(id, callback) {
-		UserAPI.objects[ id ] = null;
+		//UserAPI.objects[ id ] = null;
 		ws.send_string(
 			JSON.stringify({
 				request:"mesh",
@@ -198,6 +199,17 @@ var UserAPI = {
 		}
 		return mesh;
 	},
+
+	create_object : function(name) {
+		var o = new THREE.Object3D();
+		o.name = name;
+		o.useQuaternion = true;
+		o.dynamic_hierarchy = {};
+		o.custom_attributes = {};
+		UserAPI.objects[ name ] = o;
+		return o;
+	},
+
 	create_lod : function (_mesh, position, rotation, scale, parent, model_config) {
 
 		var lod = new THREE.LOD();
@@ -238,7 +250,7 @@ var UserAPI = {
 
 		// custom attributes (for callbacks)
 		lod.custom_attributes = {};
-		lod.dynamic_hierarchy = [];
+		lod.dynamic_hierarchy = {};
 		lod._uid_ = parseInt( lod.name.replace('__','').replace('__','') );
 
 		lod.do_mouse_up_callback = function () {
@@ -267,10 +279,15 @@ var UserAPI = {
 		UserAPI.objects[ lod.name ] = lod;
 
 		if (parent) {
+			var pid = '__'+parent+'__';
+			if (UserAPI.objects[pid]) {
+				var mparent = UserAPI.objects[ pid ];
+				console.log('mparent'+mparent);
+				mparent.add( lod );
+				mparent.dynamic_hierarchy[lod.name] = lod;
+
+			}
 			//console.log('mparent-name'+parent);
-			//var mparent = UserAPI.objects[ '__'+parent+'__' ];
-			//console.log('mparent'+mparent);
-			//mparent.add( lod );
 		} else {
 			scene.add( lod );
 		}
@@ -905,111 +922,48 @@ function on_json_message( data ) {
 	var msg = JSON.parse( data );
 	_msg = msg;
 	if (msg.eval) {
-		//console.log( msg.eval );
 		eval( msg.eval );
 	}
 	if (!UserAPI.initialized) {return}
 
-/*
 
-	for (var name in msg['lights']) {
-		var light;
-		var ob = msg['lights'][ name ];
-
-		if ( name in LIGHTS == false ) {
-			console.log('>> new light');
-			// note when adding new lights, old materials need to be reloaded
-
-			LIGHTS[ name ] = light = new THREE.PointLight( 0xffffff );
-			scene.add( light );
-
-			//var flareColor = new THREE.Color( 0xffffff );
-			//flareColor.copy( light.color );
-			//THREE.ColorUtils.adjustHSV( flareColor, 0, -0.5, 0.5 );
-
-			var lensFlare = new THREE.LensFlare( 
-				textureFlare0, 
-				700, 		// size in pixels (-1 use texture width)
-				0.0, 		// distance (0-1) from light source (0=at light source)
-				THREE.AdditiveBlending, 
-				light.color
-			);
-
-			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
-			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
-			lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
-
-			lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
-			lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
-			lensFlare.add( textureFlare3, 120, 0.9, THREE.AdditiveBlending );
-			lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
-
-			//lensFlare.customUpdateCallback = lensFlareUpdateCallback;
-			lensFlare.position = light.position;
-			light.flare = lensFlare;
-			scene.add( lensFlare );
-
-
-		}
-
-		light = LIGHTS[ name ];
-		light.color.r = ob.color[0];
-		light.color.g = ob.color[1];
-		light.color.b = ob.color[2];
-		light.distance = ob.dist;
-		light.intensity = ob.energy;
-
-		light.position.x = ob.pos[0];
-		light.position.y = ob.pos[1];
-		light.position.z = ob.pos[2];
-
-		for (var i=0; i < light.flare.lensFlares.length; i ++) {
-			var flare = light.flare.lensFlares[ i ];
-			flare.scale = ob.scale;
-		}
-
-	}
-*/
-
-/*
-	for (var name in msg['peers']) {
-		if (name in Peers == false) {
-			Peers[ name ] = PeerLights.pop();
-		}
-		Peers[ name ].position.x = msg['peers'][name][0];
-		Peers[ name ].position.y = msg['peers'][name][2];
-		Peers[ name ].position.z = -msg['peers'][name][1];
-
-	}
-*/
 	for (var name in msg['meshes']) {
 		var pak = msg['meshes'][ name ];
-		if ( !(name in Objects) && pak.empty) {
+		if (!(name in Objects)) {
 
-			var empty = new THREE.Object3D();
-			empty.useQuaternion = true;
-			empty.dynamic_hierarchy = [];
-			UserAPI.objects[ name ] = empty;
+			//var empty = new THREE.Object3D();
+			//empty.name = name;
+			//empty.useQuaternion = true;
+			//empty.dynamic_hierarchy = {};
+			//UserAPI.objects[ name ] = empty;
+			var o = UserAPI.create_object( name );
+			console.log('new',o, name);
 			if (pak.parent === undefined) {
-				scene.add( empty );
+				scene.add( o );
 			}
+
+			if (pak.empty === undefined) {
+				UserAPI.request_mesh( name );
+			}
+
 		}
 	}
 
 	for (var name in msg['meshes']) {
 
-		//if (name in Objects == false) {
-		if (name in UserAPI.objects === false) {
-			//console.log( '>> found new collada' );
-			//download_collada( name );
-			UserAPI.request_mesh( name );
-		}
 
 		var pak = msg['meshes'][ name ];
 		var ob = pak.properties;
 
+		//if (name in UserAPI.objects === false) {
+		//	if (pak.empty === undefined) {
+		//		UserAPI.request_mesh( name );
+		//	}
+		//}
+
 		if (pak.geometry) { // request_mesh response
 			var mesh = UserAPI.create_geometry( pak.geometry, name );
+			/*
 			var lod = UserAPI.create_lod(
 				mesh, 
 				pak.pos,
@@ -1018,38 +972,47 @@ function on_json_message( data ) {
 				pak.parent,
 				pak.model_config 
 			);
-		} else if (pak.empty) {
+			*/
+			console.log('adding mesh->', mesh, name);
+			UserAPI.objects[ name ].add( mesh );
+
+		} 
+		/*
+		else if (pak.empty) {
 			var empty = UserAPI.objects[ name ];
 			if (empty.parent === undefined && pak.parent) {
 				//console.log('checking for parent:'+pak.parent);
 				//UserAPI.objects[ '__'+pak.parent+'__'].add( empty );				
 			}
 		}
+		*/
 
 		if (name in Objects && Objects[name]) {
 			m = Objects[ name ];
-
+			if (m.parent === undefined) {
+				UserAPI.objects[ '__'+pak.parent+'__'].add( m );
+			}
 			if (pak.properties) {
 				for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
 			}
+
+			/*
 			if (pak.dynamic_hierarchy !== undefined) {
 				UserAPI.rebuild_hierarchy( m, pak.dynamic_hierarchy );
 			} else {
-				/*
 				for (id in m.dynamic_hierarchy) {
 					if (m.dynamic_hierarchy[id] === null) {
 						if (id in UserAPI.objects) {
-							//console.log('got child');
+							console.log('got child 2nd way'+id);
 							m.add( UserAPI.objects[id] );
 							m.dynamic_hierarchy[id] = UserAPI.objects[id];
 						}
 					}
 				}
-				*/
 			}
+			*/
 
-
-			if (ob) {
+			if (ob && false) {
 
 				var lod = m.LODs[0].object3D;
 
@@ -2167,9 +2130,9 @@ function render() {
 	}
 
 	scene.updateMatrixWorld();
-	scene.traverse(
-		function ( node ) { if ( node instanceof THREE.LOD ) node.update( camera ) } 
-	);
+	//scene.traverse(
+	//	function ( node ) { if ( node instanceof THREE.LOD ) node.update( camera ) } 
+	//);
 
 	for (var i=0; i<Sounds.length; i++) {
 		Sounds[i].update(camera);

@@ -726,10 +726,10 @@ class Player( object ):
 			pak = {}
 			if ob.children:
 				dh = [ '__%s__'%UID(child) for child in ob.children ]
-				pak['dynamic_hierarchy'] = dh
-				#if self._cache[ob]['children'] != dh:
-				#	pak['dynamic_hierarchy'] = dh
-				#	self._cache[ob]['children'] = dh
+				#pak['dynamic_hierarchy'] = dh
+				if self._cache[ob]['children'] != dh:
+					pak['dynamic_hierarchy'] = dh
+					self._cache[ob]['children'] = dh
 
 			if ob.parent: pak['parent'] = UID( ob.parent )
 
@@ -845,13 +845,12 @@ class Player( object ):
 				print('sending eval', pak['eval'])
 
 			## respond to a mesh data request ##
-			if ob in self._mesh_requests and not sent_mesh:
-				if not ob.parent: pass
-				elif ob.parent and ob.parent in self._sent_meshes:# or ob.parent.type == 'EMPTY':
-					pass
-				else:
-					continue
-
+			if ob in self._mesh_requests and not sent_mesh and ob.type=='MESH':
+				#if not ob.parent: pass
+				#elif ob.parent and ob.parent in self._sent_meshes:# or ob.parent.type == 'EMPTY':
+				#	pass
+				#else:
+				#	continue
 				print('-------->sending',ob)
 
 				sent_mesh = True
