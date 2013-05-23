@@ -33,11 +33,21 @@ var UserAPI = {
 		for (_ in pak.properties) {
 			ob.custom_attributes[_] = pak.properties[_] 
 		}
-		if (pak.color) {
-			console.log('setcolor',pak.color);
-			for (var i=0; i<ob.meshes.length; i++) {
-				var material = ob.meshes[i].material;
-				console.log('onmat', material);
+		for (var i=0; i<ob.meshes.length; i++) {
+			var mesh = ob.meshes[i];
+			var material = mesh.material; // can also use mesh.active_material
+
+			if (pak.shade=='WIRE') {
+				ob.wireframe = true;
+				material.wireframe = true;
+			} else {
+				ob.wireframe = false;
+				material.wireframe = false;
+				//material = new THREE.MeshPhongMaterial();
+				//mesh.material = material;
+			}
+
+			if (pak.color) {
 
 				if (pak.color.length==4) {
 					material.opacity = pak.color[3];
@@ -50,8 +60,13 @@ var UserAPI = {
 				if (pak.color.length == 1) { // special case to assign just alpha changes
 					material.opacity = pak.color[0];					
 				}
+
+
 			}
+
 		}
+
+
 
 
 		if (props.selected) { 
@@ -190,6 +205,26 @@ var UserAPI = {
 		scene.add( mesh );
 
 	},
+	set_material : function(mesh, config) {
+		console.log('setting material', mesh, config);
+		var mat;
+
+		if (config.type=='FLAT') {
+			mat = new THREE.MeshBasicMaterial();
+		} else if (config.type=='LAMBERT') {
+			mat = new THREE.MeshLambertMaterial();
+		} else if (config.type=='PHONG') {
+			mat = new THREE.MeshPhongMaterial();
+		} else if (config.type=='DEPTH') {
+			mat = new THREE.MeshDepthMaterial();
+		} else if (config.type=='SHADER') {
+			mat = null;
+		}
+		mat.type = config.type;
+		mesh.materials[ config.type ] = mat;
+		mesh.material = mat;
+		mesh.active_material = mat;
+	},
 	create_geometry : function(pak, name) {
 		console.log('creating new geometry');
 
@@ -220,11 +255,13 @@ var UserAPI = {
 		geometry.computeFaceNormals();
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
-		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
-		material.wireframe = true;
+		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide, wireframe:true});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
 		mesh.doubleSided = true;
+		material.type = 'FLAT';
+		mesh.materials = {flat:material};
+		mesh.active_material = material;
 
 		// TODO if clickable then add to UserAPI.clickables,
 		// should only some materials be clickable?
@@ -1038,7 +1075,12 @@ function on_json_message( data ) {
 			UserAPI.on_update_properties( o, pak );
 		}
 
-
+		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
+		if (pak.active_material && o.meshes[0]) {
+			if (pak.active_material.type != o.meshes[0].active_material.type) {
+				UserAPI.set_material( o.meshes[0], pak.active_material );
+			}
+		}
 		/*
 		else if (pak.empty) {
 			var empty = UserAPI.objects[ name ];

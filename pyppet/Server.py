@@ -97,10 +97,30 @@ def set_host_and_port(h, p):
 
 
 
-## ID of zero is a dead object ##
+########## ID of zero is a dead object ######
 bpy.types.Object.UID = IntProperty(
     name="unique ID", description="unique ID for webGL client", 
     default=0, min=0, max=2**14)
+
+#############################################
+
+def get_material_config(mat):
+	'''
+	hijacking some blender materials options and remapping
+	them to work with our Three.js settings
+	'''
+	cfg = {
+		'color': [ round(x,3) for x in mat.diffuse_color ],
+	}
+	if mat.use_shadeless: cfg['type'] = 'FLAT'
+	elif mat.specular_intensity > 0.0: cfg['type'] = 'PHONG'
+	elif mat.use_tangent_shading: cfg['type'] = 'DEPTH'
+	elif mat.diffuse_shader == 'LAMBERT': #(blender-default)
+		cfg['type'] = 'LAMBERT'
+
+	## TODO options for cubemapping, shaders, etc.
+
+	return cfg
 
 
 STRICT = True
@@ -825,8 +845,12 @@ class Player( object ):
 				#color = [ round(x,3) for x in ob.color ]  ## use "blender object color" ?
 				if not ob.data:
 					print('no ob.data threading bug?')
+					raise RuntimeError
+
 				elif ob.data.materials and ob.data.materials[0]:
-					color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+					#color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
+					pak['active_material'] = get_material_config( ob.data.materials[0] )
+
 
 			if color:
 				color = tuple( color )
