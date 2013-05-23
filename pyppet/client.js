@@ -28,6 +28,68 @@ var UserAPI = {
 	objects : Objects,
 	meshes : MESHES,
 
+	on_update_properties : function(ob, pak) {
+		var props = pak.properties;
+		for (_ in pak.properties) {
+			ob.custom_attributes[_] = pak.properties[_] 
+		}
+		if (pak.color) {
+			console.log('setcolor',pak.color);
+			for (var i=0; i<ob.meshes.length; i++) {
+				var material = ob.meshes[i].material;
+				console.log('onmat', material);
+
+				if (pak.color.length==4) {
+					material.opacity = pak.color[3];
+				}
+				if (pak.color.length >=3) {
+					material.color.r = pak.color[0];
+					material.color.g = pak.color[1];
+					material.color.b = pak.color[2];
+				}
+				if (pak.color.length == 1) { // special case to assign just alpha changes
+					material.opacity = pak.color[0];					
+				}
+			}
+		}
+
+
+		if (props.selected) { 
+			SELECTED = ob;
+			INPUT_OBJECT = ob;
+		}
+		if (props.disable_input && m === INPUT_OBJECT) {
+			INPUT_OBJECT = null;
+		}
+
+/*
+		if (props.title) {
+			title_object(		// note label_object is smart enough to not rebuild the texture etc.
+				ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
+				ob,			// parent
+				props.title // title (can be undefined)
+			); // TODO optimize this only update on change
+		}
+
+		if (props.label || props.heading) {
+			// the client can force input into label body when object is selected.
+			// the toplevel title is controlled by the server side
+
+			var text = props.label; // can also be undefined
+			if (INPUT_OBJECT == ob) { text=undefined; }
+
+			label_object(		// note label_object is smart enough to not rebuild the texture etc.
+				ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
+				ob,			// parent
+				text, 		// multiline text body
+				props.heading  // title (can be undefined)
+			);
+		}
+*/
+
+
+	},
+
 	rebuild_hierarchy : function( ob, hierarchy ) {
 		//console.log('rebuilding hierarchy', ob, hierarchy);
 		for (var i=0; i < hierarchy.length; i ++) {
@@ -159,6 +221,7 @@ var UserAPI = {
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
 		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+		material.wireframe = true;
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
 		mesh.doubleSided = true;
@@ -206,6 +269,7 @@ var UserAPI = {
 		o.useQuaternion = true;
 		o.dynamic_hierarchy = {};
 		o.custom_attributes = {};
+		o.meshes = [];
 		UserAPI.objects[ name ] = o;
 		return o;
 	},
@@ -927,39 +991,30 @@ function on_json_message( data ) {
 	if (!UserAPI.initialized) {return}
 
 
+	// ensure that all objects have been created //
 	for (var name in msg['meshes']) {
 		var pak = msg['meshes'][ name ];
 		if (!(name in Objects)) {
-
-			//var empty = new THREE.Object3D();
-			//empty.name = name;
-			//empty.useQuaternion = true;
-			//empty.dynamic_hierarchy = {};
-			//UserAPI.objects[ name ] = empty;
 			var o = UserAPI.create_object( name );
-			console.log('new',o, name);
 			if (pak.parent === undefined) {
 				scene.add( o );
 			}
-
+			// request mesh if its not an empty //
 			if (pak.empty === undefined) {
 				UserAPI.request_mesh( name );
 			}
-
 		}
 	}
 
 	for (var name in msg['meshes']) {
-
-
 		var pak = msg['meshes'][ name ];
-		var ob = pak.properties;
+		var props = pak.properties; //ob
+		var o = UserAPI.objects[ name ];
 
-		//if (name in UserAPI.objects === false) {
-		//	if (pak.empty === undefined) {
-		//		UserAPI.request_mesh( name );
-		//	}
-		//}
+		if (o.parent === undefined) {
+			UserAPI.objects[ '__'+pak.parent+'__'].add( o );
+		}
+
 
 		if (pak.geometry) { // request_mesh response
 			var mesh = UserAPI.create_geometry( pak.geometry, name );
@@ -975,8 +1030,15 @@ function on_json_message( data ) {
 			*/
 			console.log('adding mesh->', mesh, name);
 			UserAPI.objects[ name ].add( mesh );
+			UserAPI.objects[ name ].meshes.push( mesh );
 
 		} 
+
+		if (pak.properties) {
+			UserAPI.on_update_properties( o, pak );
+		}
+
+
 		/*
 		else if (pak.empty) {
 			var empty = UserAPI.objects[ name ];
@@ -988,13 +1050,6 @@ function on_json_message( data ) {
 		*/
 
 		if (name in Objects && Objects[name]) {
-			m = Objects[ name ];
-			if (m.parent === undefined) {
-				UserAPI.objects[ '__'+pak.parent+'__'].add( m );
-			}
-			if (pak.properties) {
-				for (_ in pak.properties) { m.custom_attributes[_]=pak.properties[_] }
-			}
 
 			/*
 			if (pak.dynamic_hierarchy !== undefined) {
@@ -1012,7 +1067,7 @@ function on_json_message( data ) {
 			}
 			*/
 
-			if (ob && false) {
+			if (false) {
 
 				var lod = m.LODs[0].object3D;
 
@@ -1020,52 +1075,6 @@ function on_json_message( data ) {
 					lod.material.wireframe = true;
 				} else {
 					lod.material.wireframe = false;
-				}
-
-				if (pak.color && m.LODs.length) {
-					if (pak.color.length==4) {
-						m.LODs[0].object3D.material.opacity = pak.color[3];
-					}
-					if (pak.color.length >=3) {
-						m.LODs[0].object3D.material.color.r = pak.color[0];
-						m.LODs[0].object3D.material.color.g = pak.color[1];
-						m.LODs[0].object3D.material.color.b = pak.color[2];
-					}
-					if (pak.color.length == 1) { // special case to assign just alpha changes
-						m.LODs[0].object3D.material.opacity = pak.color[0];					
-					}
-				}
-
-				if (ob.selected) { 
-					SELECTED = m; 
-					INPUT_OBJECT = m; 
-					//console.log(m);
-				}
-				if (ob.disable_input && m === INPUT_OBJECT) {
-					INPUT_OBJECT = null;
-				}
-
-				if (ob.title) {
-					title_object(		// note label_object is smart enough to not rebuild the texture etc.
-						m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
-						m,			// parent
-						ob.title  // title (can be undefined)
-					); // TODO optimize this only update on change
-				}
-
-				if (ob.label || ob.heading) {
-					// the client can force input into label body when object is selected.
-					// the toplevel title is controlled by the server side
-
-					var text = ob.label; // can also be undefined
-					if (INPUT_OBJECT == m) { text=undefined; }
-
-					label_object(		// note label_object is smart enough to not rebuild the texture etc.
-						m.LODs[0].object3D.geometry, // geom (needed to calc the bounds to fit the text)
-						m,			// parent
-						text, 		// multiline text body
-						ob.heading  // title (can be undefined)
-					); // TODO optimize this only update on change
 				}
 
 
@@ -1080,7 +1089,7 @@ function on_json_message( data ) {
 				m.position.z = pak.pos[2];
 				*/
 				if ( name in UserAPI.position_tweens == false ) {
-					var tween = new TWEEN.Tween(m.position);
+					var tween = new TWEEN.Tween(o.position);
 					var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
 					UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
 					tween.to( vec, 500 );
@@ -1103,7 +1112,7 @@ function on_json_message( data ) {
 				//m.scale.z = pak.scl[2];				
 
 				if ( name in UserAPI.scale_tweens == false ) {
-					var tween = new TWEEN.Tween(m.scale);
+					var tween = new TWEEN.Tween(o.scale);
 					var vec = new THREE.Vector3(pak.scl[0], pak.scl[1], pak.scl[2]);
 					UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
 					tween.to( vec, 500 );
@@ -1121,10 +1130,10 @@ function on_json_message( data ) {
 			}
 
 			if (pak.rot) {
-				m.quaternion.w = pak.rot[0];
-				m.quaternion.x = pak.rot[1];
-				m.quaternion.y = pak.rot[2];
-				m.quaternion.z = pak.rot[3];
+				o.quaternion.w = pak.rot[0];
+				o.quaternion.x = pak.rot[1];
+				o.quaternion.y = pak.rot[2];
+				o.quaternion.z = pak.rot[3];
 
 				/*  this looks funny
 				if ( name in UserAPI.rotation_tweens == false ) {
@@ -1161,11 +1170,11 @@ function on_json_message( data ) {
 
 
 			if (pak.on_click) {
-				m.on_mouse_up_callback = _callbacks_[ pak.on_click ];
+				o.on_mouse_up_callback = _callbacks_[ pak.on_click ];
 			}
 
 			if (pak.on_input) {
-				m.on_input_callback = _callbacks_[ pak.on_input ];
+				o.on_input_callback = _callbacks_[ pak.on_input ];
 			}
 
 			if (pak.eval) {
