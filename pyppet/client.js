@@ -308,6 +308,9 @@ var UserAPI = {
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
 		mesh.doubleSided = true;
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
+
 		material.type = 'FLAT';
 		mesh.materials = {flat:material};
 		mesh.active_material = material;
@@ -2085,8 +2088,7 @@ UserAPI.setup_depth_of_field = function ( enabled ) {
 var FX = {};
 var composer;
 
-function setupFX( renderer, scene, camera ) {
-	return;
+UserAPI.setup_compositor = function ( config ) {
 	var fx;
 	renderer.autoClear = false;	// required by bloom FX
 
@@ -2107,50 +2109,70 @@ function setupFX( renderer, scene, camera ) {
 	composer.addPass( renderModel );
 	FX['BASE'] = renderModel;
 
+	if (config.antialias) {
+		FX['fxaa'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "fxaa" ] );
+		fx.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
+		composer.addPass( fx );
 
-	FX['fxaa'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "fxaa" ] );
-	fx.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
-	composer.addPass( fx );
+	}
 
-	//FX['ssao'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "ssao" ] );	// TODO find tutorial
-	//composer.addPass( fx );
+	if (config.ao) {
+		FX['ssao'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "ssao" ] );	// TODO find tutorial
+		composer.addPass( fx );
+	}
+
+	if (config.dots) {
+		FX['dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 1.8 );	// center, angle, size
+		composer.addPass( fx );
+	}
+
+	if (config.vignette) {
+		FX['vignette'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "vignette" ] );
+		composer.addPass( fx );
+
+	}
+
+	if (config.bloom) {
+		FX['bloom'] = fx = new THREE.BloomPass( 1.1 );
+		composer.addPass( fx );		
+	}
+
+	if (config.dots2) {
+		FX['glowing_dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.01, 0.23 );
+		composer.addPass( fx );
+
+	}
 
 
-	FX['dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.5, 1.8 );	// center, angle, size
-	//composer.addPass( fx );
-
-
-	FX['vignette'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "vignette" ] );
-	composer.addPass( fx );
-
-	FX['bloom'] = fx = new THREE.BloomPass( 1.1 );
-	composer.addPass( fx );
-
-
-	FX['glowing_dots'] = fx = new THREE.DotScreenPass( new THREE.Vector2( 0, 0 ), 0.01, 0.23 );
-	//composer.addPass( fx );
-
-
-	// fake DOF //
+	// fake DOF //	
 	var bluriness = 3;
-	FX['blur_horizontal'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "horizontalTiltShift" ] );
-	fx.uniforms[ 'h' ].value = bluriness / SCREEN_WIDTH;
-	fx.uniforms[ 'r' ].value = 0.5;
-	composer.addPass( fx );
+	if (config.hblur) {
+		FX['blur_horizontal'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "horizontalTiltShift" ] );
+		fx.uniforms[ 'h' ].value = bluriness / SCREEN_WIDTH;
+		fx.uniforms[ 'r' ].value = 0.5;
+		composer.addPass( fx );
 
-	FX['blur_vertical'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
-	fx.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
-	fx.uniforms[ 'r' ].value = 0.5;
-	composer.addPass( fx );
+	}
 
-	//			noise intensity, scanline intensity, scanlines, greyscale
-	FX['noise'] = fx = new THREE.FilmPass( 0.01, 0.5, SCREEN_HEIGHT / 1.5, false );
-	composer.addPass( fx );
+	if (config.vblur) {
+		FX['blur_vertical'] = fx = new THREE.ShaderPass( THREE.ShaderExtras[ "verticalTiltShift" ] );
+		fx.uniforms[ 'v' ].value = bluriness / SCREEN_HEIGHT;
+		fx.uniforms[ 'r' ].value = 0.5;
+		composer.addPass( fx );
 
+	}
 
-	//			noise intensity, scanline intensity, scanlines, greyscale
-	FX['film'] = fx = new THREE.FilmPass( 0.01, 0.9, SCREEN_HEIGHT / 3, false );
-	composer.addPass( fx );
+	if (config.noise) {
+		//			noise intensity, scanline intensity, scanlines, greyscale
+		FX['noise'] = fx = new THREE.FilmPass( 0.01, 0.5, SCREEN_HEIGHT / 1.5, false );
+		composer.addPass( fx );		
+	}
+
+	if (config.film) {
+		//			noise intensity, scanline intensity, scanlines, greyscale
+		FX['film'] = fx = new THREE.FilmPass( 0.01, 0.9, SCREEN_HEIGHT / 3, false );
+		composer.addPass( fx );
+	}
 
 
 	////////////////////////////////////// dummy //////////////////////////////////
@@ -3054,15 +3076,9 @@ UserAPI.initialize = function( renderer_params ) {
 	renderer.sortObjects = false;		// LOD
 	//renderer.autoUpdateScene = false;	// LOD
 
-	if (DEBUG==false) {
-		setupFX( renderer, scene, camera );
-		//setupDOF( renderer );
-		setupGodRays();
-	}
-
 
 	console.log(">> THREE init complete <<");
-
+	return {renderer:renderer, scene:scene, camera:camera}
 }
 
 UserAPI['update_modifiers'] = function() {
