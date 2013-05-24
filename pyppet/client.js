@@ -27,6 +27,41 @@ var UserAPI = {
 	camera : null,
 	objects : Objects,
 	meshes : MESHES,
+	create_cubemap : function(path, format) {
+		//var path = "textures/cube/skybox/";
+		//var format = '.jpg';
+		var urls = [
+			path + 'px' + format, path + 'nx' + format,
+			path + 'py' + format, path + 'ny' + format,
+			path + 'pz' + format, path + 'nz' + format
+		];
+
+		return THREE.ImageUtils.loadTextureCube( urls, new THREE.CubeRefractionMapping() );
+
+	},
+	create_skybox : function(path, format, size) {
+		//var material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube, refractionRatio: 0.95 } );
+		if (size === undefined) { size = 100 }
+
+		var textureCube = UserAPI.create_cubemap(path, format);
+
+		var shader = THREE.ShaderLib[ "cube" ];
+		shader.uniforms[ "tCube" ].value = textureCube;
+
+		var material = new THREE.ShaderMaterial( {
+
+			fragmentShader: shader.fragmentShader,
+			vertexShader: shader.vertexShader,
+			uniforms: shader.uniforms,
+			depthWrite: false,
+			side: THREE.BackSide
+
+		} )
+
+		mesh = new THREE.Mesh( new THREE.CubeGeometry( size, size, size ), material );
+		return mesh;
+
+	},
 
 	on_update_properties : function(ob, pak) {
 		var props = pak.properties;
