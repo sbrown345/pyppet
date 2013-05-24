@@ -850,7 +850,7 @@ class Player( object ):
 				elif ob.data.materials and ob.data.materials[0]:
 					#color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
 					pak['active_material'] = get_material_config( ob.data.materials[0] )
-
+					color = pak['active_material']['color'] # TODO move this
 
 			if color:
 				color = tuple( color )

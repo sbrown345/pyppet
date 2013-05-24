@@ -1071,9 +1071,6 @@ function on_json_message( data ) {
 
 		} 
 
-		if (pak.properties) {
-			UserAPI.on_update_properties( o, pak );
-		}
 
 		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
 		if (pak.active_material && o.meshes[0]) {
@@ -1081,6 +1078,11 @@ function on_json_message( data ) {
 				UserAPI.set_material( o.meshes[0], pak.active_material );
 			}
 		}
+
+		if (pak.properties) {
+			UserAPI.on_update_properties( o, pak );
+		}
+
 		/*
 		else if (pak.empty) {
 			var empty = UserAPI.objects[ name ];
