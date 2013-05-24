@@ -533,8 +533,8 @@ function on_mouse_down(event) {
 		for (var i=0; i < UserAPI.meshes.length; i ++) {
 			var mesh = UserAPI.meshes[ i ];
 			if (mesh.name in UserAPI.objects) {
-				var lod = UserAPI.objects[ mesh.name ];
-				if (!lod.LODs[0].object3D.material.wireframe) {
+				var o = UserAPI.objects[ mesh.name ];
+				if (! o.wireframe) {
 					test.push( mesh );
 				}
 			}
@@ -615,7 +615,7 @@ function on_keydown ( evt ) {
 	if (update && INPUT_OBJECT) {
 		console.log('INPUT_OBJECT'+INPUT_OBJECT);
 		label_object(
-			INPUT_OBJECT.LODs[0].object3D.geometry,
+			INPUT_OBJECT.meshes[0].geometry,
 			INPUT_OBJECT,
 			_input_buffer.join(""), // text
 			undefined // title
@@ -664,7 +664,7 @@ function on_keypress( evt ) {
 	if (INPUT_OBJECT) {
 		console.log('INPUT_OBJECT'+INPUT_OBJECT);
 		label_object(
-			INPUT_OBJECT.LODs[0].object3D.geometry,
+			INPUT_OBJECT.meshes[0].geometry,
 			INPUT_OBJECT,
 			_input_buffer.join(""), // text
 			undefined // title
