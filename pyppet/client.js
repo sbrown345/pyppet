@@ -210,13 +210,13 @@ var UserAPI = {
 		var mat;
 
 		if (config.type=='FLAT') {
-			mat = new THREE.MeshBasicMaterial();
+			mat = new THREE.MeshBasicMaterial( {transparent: true} );
 		} else if (config.type=='LAMBERT') {
-			mat = new THREE.MeshLambertMaterial();
+			mat = new THREE.MeshLambertMaterial( {transparent: true} );
 		} else if (config.type=='PHONG') {
-			mat = new THREE.MeshPhongMaterial();
+			mat = new THREE.MeshPhongMaterial( {transparent: true} );
 		} else if (config.type=='DEPTH') {
-			mat = new THREE.MeshDepthMaterial();
+			mat = new THREE.MeshDepthMaterial( {transparent: true} );
 		} else if (config.type=='SHADER') {
 			mat = null;
 		}
@@ -2632,8 +2632,8 @@ CameraController = function ( object, domElement ) {
 
 		}
 
-		// smooth target //
-		if (_this.object.position_target) {
+		// custom extra position constraint //
+		if (_this.object.position_target && _this.object.use_position_constraint) {
 			var p = _this.object.position;
 			var u = p.clone();
 			u.sub( _this.object.position_target );
@@ -2939,6 +2939,7 @@ UserAPI['init'] = function() {
 	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / (window.innerHeight-10), 0.5, 1e7 );
 	camera.position.set( 0, 1, -10 );
 	camera.position_target = camera.position.clone();
+	camera.use_position_constraint = true;
 	scene.add( camera );
 	UserAPI.camera = camera;
 
@@ -2964,7 +2965,7 @@ UserAPI['init'] = function() {
 	scene.add( ambientLight );
 	UserAPI.ambient_light = ambientLight;
 
-	var sunIntensity = 0.75;
+	var sunIntensity = 0.5;
 	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
 	spotLight.position.set( 0, 500, 10 );
 	spotLight.target.position.set( 0, 0, 0 );
