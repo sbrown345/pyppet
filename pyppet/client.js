@@ -12,6 +12,16 @@ Notes:
 var Objects = {};	// name : LOD
 var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
+var container;
+var camera, scene, renderer;
+var spotLight, ambientLight;
+var CONTROLLER;
+var postprocessing = { enabled  : false }; // used by dof and godrays
+var material_depth; // dof
+var materialDepth; // god rays
+
+
+
 function start_tween_if_needed( tween ) {
 	if ( TWEEN.getAll().indexOf(tween) == -1 ) {
 		tween.start();
@@ -27,6 +37,9 @@ var UserAPI = {
 	camera : null,
 	objects : Objects,
 	meshes : MESHES,
+
+	skybox_cubemap : null,
+
 	create_cubemap : function(path, format) {
 		//var path = "textures/cube/skybox/";
 		//var format = '.jpg';
@@ -44,6 +57,7 @@ var UserAPI = {
 		if (size === undefined) { size = 100 }
 
 		var textureCube = UserAPI.create_cubemap(path, format);
+		UserAPI.skybox_cubemap = textureCube;
 
 		var shader = THREE.ShaderLib[ "cube" ];
 		shader.uniforms[ "tCube" ].value = textureCube;
@@ -245,13 +259,13 @@ var UserAPI = {
 		var mat;
 
 		if (config.type=='FLAT') {
-			mat = new THREE.MeshBasicMaterial( {transparent: true} );
+			mat = new THREE.MeshBasicMaterial( {transparent: false} );
 		} else if (config.type=='LAMBERT') {
-			mat = new THREE.MeshLambertMaterial( {transparent: true} );
+			mat = new THREE.MeshLambertMaterial( {transparent: false} );
 		} else if (config.type=='PHONG') {
-			mat = new THREE.MeshPhongMaterial( {transparent: true} );
+			mat = new THREE.MeshPhongMaterial( {transparent: false} );
 		} else if (config.type=='DEPTH') {
-			mat = new THREE.MeshDepthMaterial( {transparent: true} );
+			mat = new THREE.MeshDepthMaterial( {transparent: false} );
 		} else if (config.type=='SHADER') {
 			mat = null;
 		}
@@ -1927,16 +1941,6 @@ function create_normal_shader_deprecated( params ) {
 
 
 //////////////////////////////////////////////////////////////////////
-var container;
-var camera, scene, renderer;
-var spotLight, ambientLight;
-var CONTROLLER;
-
-
-
-var DEPTH_MATERIAL;
-var postprocessing = { enabled  : false };
-var materialDepth;
 
 
 function enable_godrays() {
@@ -2034,13 +2038,13 @@ function setupGodRays() {
 
 }
 
-function setupDOF( renderer ) {
-	DEPTH_MATERIAL = new THREE.MeshDepthMaterial();
-
-	//renderer.sortObjects = false;
-	//renderer.autoClear = false;
+UserAPI.setup_depth_of_field = function ( enabled ) {
+	// set the global depth material
+	//var height = window.innerHeight - 300;
+	material_depth = new THREE.MeshDepthMaterial();
 
 	postprocessing.scene = new THREE.Scene();
+	postprocessing.enabled = enabled;
 
 	postprocessing.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2,  window.innerHeight / 2, window.innerHeight / - 2, -10000, 10000 );
 	postprocessing.camera.position.z = 100;
@@ -2048,27 +2052,20 @@ function setupDOF( renderer ) {
 	postprocessing.scene.add( postprocessing.camera );
 
 	var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
-	postprocessing.rtTextureDepth = new THREE.WebGLRenderTarget( 
-		SCREEN_WIDTH, 
-		SCREEN_HEIGHT,
-		pars 
-	);
-	postprocessing.rtTextureColor = new THREE.WebGLRenderTarget( 
-		SCREEN_WIDTH, 
-		SCREEN_HEIGHT,
-		pars 
-	);
+	postprocessing.rtTextureDepth = new THREE.WebGLRenderTarget( window.innerWidth, height, pars );
+	postprocessing.rtTextureColor = new THREE.WebGLRenderTarget( window.innerWidth, height, pars );
 
-	var bokeh_shader = THREE.ShaderExtras[ "bokeh" ];
+	var bokeh_shader = THREE.BokehShader;
 
 	postprocessing.bokeh_uniforms = THREE.UniformsUtils.clone( bokeh_shader.uniforms );
 
-	postprocessing.bokeh_uniforms[ "tColor" ].texture = postprocessing.rtTextureColor;
-	postprocessing.bokeh_uniforms[ "tDepth" ].texture = postprocessing.rtTextureDepth;
-	postprocessing.bokeh_uniforms[ "focus" ].value = 2.1;
-	postprocessing.bokeh_uniforms[ "aspect" ].value = SCREEN_WIDTH / SCREEN_HEIGHT;
+	postprocessing.bokeh_uniforms[ "tColor" ].value = postprocessing.rtTextureColor;
+	postprocessing.bokeh_uniforms[ "tDepth" ].value = postprocessing.rtTextureDepth;
+	postprocessing.bokeh_uniforms[ "focus" ].value = 1.1;
+	postprocessing.bokeh_uniforms[ "aspect" ].value = window.innerWidth / height;
 
 	postprocessing.materialBokeh = new THREE.ShaderMaterial( {
+
 		uniforms: postprocessing.bokeh_uniforms,
 		vertexShader: bokeh_shader.vertexShader,
 		fragmentShader: bokeh_shader.fragmentShader
@@ -2078,6 +2075,8 @@ function setupDOF( renderer ) {
 	postprocessing.quad = new THREE.Mesh( new THREE.PlaneGeometry( window.innerWidth, window.innerHeight ), postprocessing.materialBokeh );
 	postprocessing.quad.position.z = - 500;
 	postprocessing.scene.add( postprocessing.quad );
+
+	return postprocessing;
 }
 
 
@@ -2087,6 +2086,7 @@ var FX = {};
 var composer;
 
 function setupFX( renderer, scene, camera ) {
+	return;
 	var fx;
 	renderer.autoClear = false;	// required by bloom FX
 
@@ -2234,7 +2234,7 @@ function render() {
 	}
 
 	if ( postprocessing.enabled ) {
-		render_godrays();
+		render_dof();
 	} else {
 		composer.render( 0.1 );
 	}
@@ -2252,8 +2252,27 @@ var sunColor = 0xffee00;
 var margin = 100;
 var height = window.innerHeight - 2 * margin;
 
+function render_dof() {
 
-function render_godrays() {	// TODO how to combine godrays and composer
+	renderer.clear();
+
+	// Render scene into texture
+
+	scene.overrideMaterial = null;
+	renderer.render( scene, camera, postprocessing.rtTextureColor, true );
+
+	// Render depth into texture
+
+	scene.overrideMaterial = material_depth;
+	renderer.render( scene, camera, postprocessing.rtTextureDepth, true );
+
+	// Render bokeh composite
+
+	renderer.render( postprocessing.scene, postprocessing.camera );
+
+}
+
+function render_godrays() {	// TODO how to combine godrays and composer - TODO update and test this
 	var timer = Date.now() * 0.0005;
 	resize_view();
 	var delta = clock.getDelta();
@@ -2959,7 +2978,7 @@ function create_point_light_with_flares( num ) {
 }
 
 
-UserAPI['init'] = function() {
+UserAPI.initialize = function( renderer_params ) {
 	console.log(">> THREE init");
 	UserAPI.initialized = true;
 
@@ -3016,10 +3035,7 @@ UserAPI['init'] = function() {
 	UserAPI.sun = spotLight;
 
 	// renderer //
-	renderer = new THREE.WebGLRenderer({
-		maxLights: 16, 
-		antialias: false
-	});
+	renderer = new THREE.WebGLRenderer( renderer_params );
 	renderer.setSize( window.innerWidth, window.innerHeight-10 );
 	container.appendChild( renderer.domElement );
 

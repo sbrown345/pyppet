@@ -1424,6 +1424,7 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 		'shaders/DotScreenShader.js',
 		'shaders/ConvolutionShader.js',
 		'shaders/FilmShader.js',
+		'shaders/BokehShader.js', # new depth of field shader
 
 		'loaders/ColladaLoader.js',
 		'modifiers/SubdivisionModifier.js', # note there are new modifiers in three, explode and triangulate.
