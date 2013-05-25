@@ -111,7 +111,12 @@ def get_material_config(mat):
 	'''
 	cfg = {
 		'color': [ round(x,3) for x in mat.diffuse_color ],
+		'transparent':mat.use_transparency,
 	}
+	if mat.raytrace_mirror.use:
+		cfg['envMap'] = mat.raytrace_mirror.use
+		cfg['refractionRatio'] = 0.9 - mat.raytrace_mirror.fresnel
+
 	if mat.use_shadeless: cfg['type'] = 'FLAT'
 	elif mat.specular_intensity > 0.0: cfg['type'] = 'PHONG'
 	elif mat.use_tangent_shading: cfg['type'] = 'DEPTH'

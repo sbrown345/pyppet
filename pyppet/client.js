@@ -37,19 +37,21 @@ var UserAPI = {
 	camera : null,
 	objects : Objects,
 	meshes : MESHES,
-
+	cubemaps : {},
 	skybox_cubemap : null,
 
 	create_cubemap : function(path, format) {
-		//var path = "textures/cube/skybox/";
-		//var format = '.jpg';
 		var urls = [
 			path + 'px' + format, path + 'nx' + format,
 			path + 'py' + format, path + 'ny' + format,
 			path + 'pz' + format, path + 'nz' + format
 		];
 
-		return THREE.ImageUtils.loadTextureCube( urls, new THREE.CubeRefractionMapping() );
+		var a = THREE.ImageUtils.loadTextureCube( urls, new THREE.CubeRefractionMapping() );
+		var n = path.split('/');
+		n = n[ n.length-1 ];
+		UserAPI.cubemaps[ n ] = a;
+		return a;
 
 	},
 	create_skybox : function(path, format, size) {
@@ -61,16 +63,18 @@ var UserAPI = {
 
 		var shader = THREE.ShaderLib[ "cube" ];
 		shader.uniforms[ "tCube" ].value = textureCube;
-
+		//shader.uniforms[ "uOpacity" ].value = 0.1; // cube in three.js shaderlib is hardcoded to be vec3
 		var material = new THREE.ShaderMaterial( {
 
 			fragmentShader: shader.fragmentShader,
 			vertexShader: shader.vertexShader,
 			uniforms: shader.uniforms,
 			depthWrite: false,
-			side: THREE.BackSide
-
-		} )
+			side: THREE.BackSide,
+			transparent: true,
+			//opacity:0.2, // note in three.js opacity on a shader is set with the uOpacity uniform.
+			blending: THREE.AdditiveBlending
+		});
 
 		mesh = new THREE.Mesh( new THREE.CubeGeometry( size, size, size ), material );
 		return mesh;
@@ -257,15 +261,28 @@ var UserAPI = {
 	set_material : function(mesh, config) {
 		console.log('setting material', mesh, config);
 		var mat;
+		var textureCube;
+
+		if (config.envMap && config.refractionRatio) {
+			console.log('NEW ENV MAP');
+			if (config.envMap in UserAPI.cubemaps) {
+				textureCube = UserAPI.cubemaps[ config.envMap ];
+			} else {
+				textureCube = UserAPI.skybox_cubemap;
+			}
+			console.log(textureCube);
+			config.envMap = textureCube;
+		}
+		//envMap: textureCube, refractionRatio: 0.95
 
 		if (config.type=='FLAT') {
-			mat = new THREE.MeshBasicMaterial( {transparent: false} );
+			mat = new THREE.MeshBasicMaterial( config );
 		} else if (config.type=='LAMBERT') {
-			mat = new THREE.MeshLambertMaterial( {transparent: false} );
+			mat = new THREE.MeshLambertMaterial( config );
 		} else if (config.type=='PHONG') {
-			mat = new THREE.MeshPhongMaterial( {transparent: false} );
+			mat = new THREE.MeshPhongMaterial( config );
 		} else if (config.type=='DEPTH') {
-			mat = new THREE.MeshDepthMaterial( {transparent: false} );
+			mat = new THREE.MeshDepthMaterial( config );
 		} else if (config.type=='SHADER') {
 			mat = null;
 		}
