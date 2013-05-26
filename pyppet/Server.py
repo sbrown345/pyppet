@@ -75,26 +75,6 @@ def set_host_and_port(h, p):
 	global _host, _port
 	_host = h; _port = p
 
-## this triggers a segmentation fault - need to import collada from inside blender's redraw loop?
-#test = os.path.expanduser('~/.wine/drive_c/Sphere01.dae')
-#assert os.path.isfile(test)
-#Blender.Scene( bpy.context.scene ).collada_import( test )
-#assert 0
-
-##################### PyRNA - DEPRECATED ###################
-#bpy.types.Object.webgl_lens_flare_scale = FloatProperty(
-#    name="lens flare scale", description="size of lens flare for webGL client", 
-#    default=1.0)
-#bpy.types.Object.webgl_progressive_textures = BoolProperty( 
-#	name='use progressive texture loading in webGL client', 
-#	default=False 
-#)
-#bpy.types.Object.webgl_stream_mesh = BoolProperty( name='stream mesh to webGL client', default=False )
-#bpy.types.Object.webgl_auto_subdivison = BoolProperty( name='auto subdivide', default=False )
-#bpy.types.Object.webgl_normal_map = FloatProperty(
-#    name="normal map scale", description="normal map scale for webGL client", 
-#    default=0.75)
-
 
 
 ########## ID of zero is a dead object ######
@@ -110,20 +90,40 @@ def get_material_config(mat):
 	them to work with our Three.js settings
 	'''
 	cfg = {
+		'name': mat.name,
 		'color': [ round(x,3) for x in mat.diffuse_color ],
 		'transparent':mat.use_transparency,
+		'opacity': mat.alpha
 	}
 	if mat.raytrace_mirror.use:
 		cfg['envMap'] = mat.raytrace_mirror.use
-		cfg['refractionRatio'] = 0.9 - mat.raytrace_mirror.fresnel
+		cfg['refractionRatio'] = 0.95 - mat.raytrace_mirror.fresnel
 
-	if mat.use_shadeless: cfg['type'] = 'FLAT'
-	elif mat.specular_intensity > 0.0: cfg['type'] = 'PHONG'
-	elif mat.use_tangent_shading: cfg['type'] = 'DEPTH'
+	mode = mat.game_settings.alpha_blend
+	if mode == 'OPAQUE': cfg['blending'] = 'NORMAL'
+	elif mode == 'ADD': cfg['blending'] = 'ADD'
+	elif mode == 'CLIP': cfg['blending'] = 'SUB'
+	elif mode == 'ALPHA': cfg['blending'] = 'MULT'
+	elif mode == 'ALPHA_SORT': cfg['blending'] = 'ADD_ALPHA'
+
+	if mat.game_settings.use_backface_culling:
+		cfg['side'] = 'SINGLE'
+	else:
+		cfg['side'] = 'DOUBLE'
+
+
+	if mat.use_shadeless:
+		cfg['type'] = 'FLAT'
+	elif mat.use_tangent_shading:
+		cfg['type'] = 'DEPTH'
+	elif mat.specular_intensity > 0.0:  # blender defaults to having specular
+		cfg['type'] = 'PHONG'
 	elif mat.diffuse_shader == 'LAMBERT': #(blender-default)
 		cfg['type'] = 'LAMBERT'
 
-	## TODO options for cubemapping, shaders, etc.
+	## TODO options for shaders, etc.
+	if mat.type == 'WIRE': cfg['wireframe'] = True
+	elif mat.type == 'SURFACE': cfg['wireframe'] = False
 
 	return cfg
 
@@ -942,234 +942,6 @@ class Player( object ):
 		#print(msg)
 		#print('_'*80)
 		return msg
-
-	################################ convert to stream #######################################
-	def DEPRECATED_create_stream_message( self, context ):  ## DEPRECATED
-		'''
-		packs all header data in message stream into a dictionary,
-		the dict is converted into json and later streamed to the client.
-		create binary message for numeric data
-
-		TODO
-		 use proxy object from api_gen
-		 proxy = api_gen.get_wrapped_objects()[bpy.data.objects['Cube']]
-		 if not proxy(): # returns attribute callback defs
-		 	proxy(
-		 		location = (mathutils.Vector, on_set_javascript_callback),
-		 		userdata = (lambda xxx=c_int16: server_callback(xxx), None),
-		 	)
-		 ## each send has 6 byte overhead, json has "{oid:100,aid:100,}" 12+ byte overhead
-		 ## sends binary data: uid(int32), attr-id(int16), data..
-		 proxy['location'] = (x,y,z) ## sets client side for next send by WebSocketServer
-		 proxy.location = (x,y,z) ## sets server side on blender object
-
-
-		'''
-		#ip,port = sock.getsockname()
-		#assert ip in self.clients
-		#player_location = mathutils.Vector( self.clients[ip] )
-		#player = GameManager.clients[ self.address ]
-
-		msg = { 
-			'meshes':{}, 
-			'lights':{}, 
-			'metas':{},
-			'curves':{},
-			'texts' :{},
-			'FX':{},
-			'camera': {
-				'rand':self.camera_randomize,
-				'focus':self.camera_focus,
-				'aperture':self.camera_aperture,
-				'maxblur':self.camera_maxblur,
-			},
-			'godrays': self.godrays,
-		}
-
-		streaming_meshes = []
-		far_objects = []		# far objects the player has not loaded yet
-
-		for ob in context.scene.objects:
-
-			if ob.is_lod_proxy: continue # TODO update skipping logic
-
-			if ob.type not in ('CURVE','META','MESH','LAMP', 'FONT'): continue
-			if ob.type=='MESH' and not ob.data.uv_textures:
-				#print('WARN: not streaming mesh without uvmapping', ob.name)
-				continue	# UV's required to generate tangents
-
-			## do not stream objects too far from camera/player ##
-			## if something is far, do not stream mesh data ##
-			far = False
-			distance = (self.location - ob.matrix_world.to_translation()).length
-			if distance > self.get_streaming_max_distance():
-				far = True
-				if ob not in self.objects:
-					if far_objects:
-						far_objects.append( ob )
-						continue
-					else:
-						far_objects.append( ob )	# let far obs slip thru one at a time
-				elif distance < self.get_streaming_max_distance( degraded='half' ):
-					if random() > 0.5: continue
-				elif distance < self.get_streaming_max_distance( degraded='full' ):
-					if random() > 0.25: continue
-				else:
-					continue
-
-			if ob not in self.objects:		# keep track of what objects player knows about
-				self.objects.append( ob )
-
-			loc, rot, scl = (SWAP_OBJECT*ob.matrix_world).decompose()
-			loc = loc.to_tuple()
-			scl = scl.to_tuple()
-			rot = (rot.w, rot.x, rot.y, rot.z)
-			pak = { 'pos':loc, 'rot':rot, 'scl':scl }
-
-			if ob.type == 'FONT':
-				msg[ 'texts' ][ '__%s__'%UID(ob) ] = pak
-				pak[ 'text' ] = ob.data.body
-				pak[ 'size' ] = ob.data.size
-
-			elif ob.type == 'CURVE':
-				msg[ 'curves' ][ '__%s__'%UID(ob) ] = pak
-				pak[ 'splines' ] = splines = []
-				pak[ 'segments_v' ] = ob.data.bevel_resolution
-				pak[ 'radius' ] = ob.data.bevel_depth
-
-				for spline in ob.data.splines:
-					if len( spline.points ):	# favor NURBS style spline
-						points = [ (v.co.x,v.co.y,v.co.z) for v in spline.points ]	# vec is len 4?
-					else:					# fallback to bezier spline
-						points = [ bez.co.to_tuple() for bez in spline.bezier_points ]
-
-					s = {
-						'closed' : spline.use_cyclic_u,
-						'points' : points,
-						'segments_u' : ob.data.resolution_u * spline.resolution_u,
-						'color' : [1,1,1],
-					}
-					if len(ob.data.materials) and spline.material_index < len(ob.data.materials) and ob.data.materials[ spline.material_index ]:
-						s['color'] = [ round(x,3) for x in ob.data.materials[spline.material_index].diffuse_color ]
-
-					splines.append( s )
-
-
-			elif ob.type == 'META':
-				# note Three.js marching cubes metaball x,y,z is normalized to 0.0-1.0 range,
-				# use fixed size scale as workaround #
-				msg[ 'metas' ][ '__%s__'%UID(ob) ] = pak
-				pak['elements'] = elements = []
-				#pak['scl'] = ob.dimensions.to_tuple()	# use dimensions instead of scale - TODO ignore rotation?
-				#sx,sy,sz = ob.dimensions
-				sx = sy = sz = 10.0
-				pak['scl'] = (sx,sy,sz)
-				for e in ob.data.elements:
-					elements.append(
-						{
-							'x':e.co.x / sx,
-							'y':e.co.y / sy, 
-							'z':e.co.z / sz,  
-							'radius':e.radius
-						}
-					)
-					# e also contains: radius, rotation, size_x,size_y,size_z, stiffness, type, use_negative
-
-				pak['color'] = [ round(x,3) for x in ob.color ]
-
-
-			elif ob.type == 'LAMP':
-				msg[ 'lights' ][ '__%s__'%UID(ob) ] = pak
-				pak['energy'] = ob.data.energy
-				pak['color'] = [ round(a,3) for a in ob.data.color ]
-				pak['dist'] = ob.data.distance
-				pak['scale'] = ob.webgl_lens_flare_scale
-
-			elif ob.type == 'MESH':
-				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
-				specular = None
-				if ob.data.materials:
-					mat = ob.data.materials[0]
-					specular = mat.specular_hardness
-				pak['color'] = [ round(x,3) for x in ob.color ]
-				pak['spec'] = specular
-
-				disp = 1.0
-				pak['disp_bias'] = 0.0
-				for mod in ob.modifiers:
-					if mod.type=='DISPLACE':
-						pak['disp_bias'] = mod.mid_level - 0.5
-						disp = mod.strength
-						break
-				pak['disp'] = disp
-
-				if ob == context.active_object: pak[ 'selected' ] = True
-				if ob.webgl_stream_mesh or ob == context.active_object:
-					if len(ob.data.vertices) < self.MAX_VERTS and not far:
-						streaming_meshes.append( ob )
-
-				if ob.name in GameManager.RELOAD_TEXTURES:
-					GameManager.RELOAD_TEXTURES.remove( ob.name )
-					pak[ 'reload_textures' ] = True
-
-				subsurf = 0
-				for mod in ob.modifiers:
-					if mod.type == 'SUBSURF':
-						subsurf += mod.levels		# mod.render_levels
-				pak[ 'subsurf' ] = subsurf
-				pak[ 'ptex' ] = ob.webgl_progressive_textures
-				pak[ 'norm' ] = ob.webgl_normal_map
-				pak[ 'auto_subdiv' ] = ob.webgl_auto_subdivison
-
-				## testing select callback ##
-				#proto = simple_action_api.API['select']
-				#ob.on_click = proto( ob, ob=ob )
-
-				#if ob.on_click:
-				#	pak[ 'on_click' ] = chr( ob.on_click ) # turn back into single byte
-
-				on_click, on_input = api_gen.get_callbacks( ob )
-				if on_click:
-					pak[ 'on_click' ] = on_click.code
-				#else:
-				#	print('--testing setup of select callback--')
-				#	ob['on_click'] = 'select'
-
-				if on_input:
-					pak[ 'on_input' ] = on_input.code
-
-				## this should come after - because get_callbacks above can trigger creation of custom attributes
-				a = api_gen.get_custom_attributes( ob, convert_objects=True )
-				if on_click or on_input:
-					assert a
-				if a:
-					print('custom attrs', ob, a)
-					pak[ 'custom_attributes'] = a
-
-		for ob in streaming_meshes:
-			pak = msg[ 'meshes' ][ '__%s__'%ob.UID ]
-
-			mods = []
-			for mod in ob.modifiers:
-				#if mod.type in ('SUBSURF','MULTIRES') and mod.show_viewport:
-				if mod.type in ('SUBSURF',) and mod.show_viewport:
-					mods.append( mod )
-			for mod in mods: mod.show_viewport = False
-			data = ob.to_mesh( context.scene, True, "PREVIEW")
-			for mod in mods: mod.show_viewport = True
-
-			data.transform( SWAP_MESH )
-			N = len( data.vertices )
-			verts = [ 0.0 for i in range(N*3) ]
-			data.vertices.foreach_get( 'co', verts )
-			bpy.data.meshes.remove( data )
-			verts = [ round(a,3) for a in verts ]	# optimize!
-
-			pak[ 'verts' ] = verts
-
-
-		return msg
-
 
 
 

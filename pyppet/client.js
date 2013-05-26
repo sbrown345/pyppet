@@ -62,13 +62,14 @@ var UserAPI = {
 		UserAPI.skybox_cubemap = textureCube;
 
 		var shader = THREE.ShaderLib[ "cube" ];
-		shader.uniforms[ "tCube" ].value = textureCube;
-		//shader.uniforms[ "uOpacity" ].value = 0.1; // cube in three.js shaderlib is hardcoded to be vec3
+		var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+		uniforms[ "tCube" ].value = textureCube;
+		//uniforms[ "uOpacity" ].value = 0.1; // cube in three.js shaderlib is hardcoded to be vec3
 		var material = new THREE.ShaderMaterial( {
 
 			fragmentShader: shader.fragmentShader,
 			vertexShader: shader.vertexShader,
-			uniforms: shader.uniforms,
+			uniforms: uniforms,
 			depthWrite: false,
 			side: THREE.BackSide,
 			transparent: true,
@@ -77,7 +78,7 @@ var UserAPI = {
 		});
 
 		mesh = new THREE.Mesh( new THREE.CubeGeometry( size, size, size ), material );
-		return mesh;
+		return {mesh:mesh, texture:textureCube};
 
 	},
 
@@ -86,40 +87,6 @@ var UserAPI = {
 		for (_ in pak.properties) {
 			ob.custom_attributes[_] = pak.properties[_] 
 		}
-		for (var i=0; i<ob.meshes.length; i++) {
-			var mesh = ob.meshes[i];
-			var material = mesh.material; // can also use mesh.active_material
-
-			if (pak.shade=='WIRE') {
-				ob.wireframe = true;
-				material.wireframe = true;
-			} else {
-				ob.wireframe = false;
-				material.wireframe = false;
-				//material = new THREE.MeshPhongMaterial();
-				//mesh.material = material;
-			}
-
-			if (pak.color) {
-
-				if (pak.color.length==4) {
-					material.opacity = pak.color[3];
-				}
-				if (pak.color.length >=3) {
-					material.color.r = pak.color[0];
-					material.color.g = pak.color[1];
-					material.color.b = pak.color[2];
-				}
-				if (pak.color.length == 1) { // special case to assign just alpha changes
-					material.opacity = pak.color[0];					
-				}
-
-
-			}
-
-		}
-
-
 
 
 		if (props.selected) { 
@@ -258,10 +225,55 @@ var UserAPI = {
 		scene.add( mesh );
 
 	},
+	update_material : function( mesh, pak ) {
+		var material = mesh.active_material;
+
+		if (pak.color) {
+
+			if (pak.color.length==4) {
+				material.opacity = pak.color[3];
+			}
+			if (pak.color.length >=3) {
+				material.color.r = pak.color[0];
+				material.color.g = pak.color[1];
+				material.color.b = pak.color[2];
+			}
+			if (pak.color.length == 1) { // special case to assign just alpha changes
+				material.opacity = pak.color[0];					
+			}
+
+		}
+
+	},
+
+
 	set_material : function(mesh, config) {
-		console.log('setting material', mesh, config);
+		console.log('setting material', mesh);
 		var mat;
 		var textureCube;
+
+		if (config.side=='SINGLE') {
+			config.side = THREE.FrontSide;
+		}
+		else if (config.side=='DOUBLE') {
+			config.side = THREE.DoubleSide;
+		}
+
+		if (config.blending == 'NORMAL') {
+			config.blending = THREE.NormalBlending;
+		}
+		else if (config.blending == 'ADD') {
+			config.blending = THREE.AdditiveBlending;
+		}
+		else if (config.blending == 'SUB') {
+			config.blending = THREE.SubtractiveBlending;
+		}
+		else if (config.blending == 'MULT') {
+			config.blending = THREE.MultiplyBlending;
+		}
+		else if (config.blending == 'ADD_ALPHA') {
+			config.blending = THREE.AdditiveAlphaBlending;
+		}
 
 		if (config.envMap && config.refractionRatio) {
 			console.log('NEW ENV MAP');
@@ -275,6 +287,10 @@ var UserAPI = {
 		}
 		//envMap: textureCube, refractionRatio: 0.95
 
+		console.log(config);
+
+
+
 		if (config.type=='FLAT') {
 			mat = new THREE.MeshBasicMaterial( config );
 		} else if (config.type=='LAMBERT') {
@@ -287,12 +303,13 @@ var UserAPI = {
 			mat = null;
 		}
 		mat.type = config.type;
+		mat.name = config.name;
 		mesh.materials[ config.type ] = mat;
 		mesh.material = mat;
 		mesh.active_material = mat;
 	},
 	create_geometry : function(pak, name) {
-		console.log('creating new geometry');
+		//console.log('creating new geometry');
 
 		var geometry = new THREE.Geometry();
 
@@ -328,8 +345,7 @@ var UserAPI = {
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
 
-		material.type = 'FLAT';
-		mesh.materials = {flat:material};
+		mesh.materials = {};
 		mesh.active_material = material;
 
 		// TODO if clickable then add to UserAPI.clickables,
@@ -372,8 +388,8 @@ var UserAPI = {
 	create_object : function(name) {
 		var o = new THREE.Object3D();
 		o.name = name;
-		o.useQuaternion = true;
-		o.dynamic_hierarchy = {};
+		o.useQuaternion = true;		// TODO euler
+		o.dynamic_hierarchy = {}; // DEPRECATED
 		o.custom_attributes = {};
 		o.meshes = [];
 		UserAPI.objects[ name ] = o;
@@ -601,11 +617,8 @@ function on_mouse_down(event) {
 		var test = [];
 		for (var i=0; i < UserAPI.meshes.length; i ++) {
 			var mesh = UserAPI.meshes[ i ];
-			if (mesh.name in UserAPI.objects) {
-				var o = UserAPI.objects[ mesh.name ];
-				if (! o.wireframe) {
-					test.push( mesh );
-				}
+			if (mesh.name in UserAPI.objects && mesh.clickable) {
+				test.push( mesh );
 			}
 		}
 		var intersects = ray.intersectObjects( test );
@@ -621,7 +634,7 @@ function on_mouse_down(event) {
 					if ( INTERSECTED != intersect.object ) {
 						if (UserAPI.on_model_click_pressed) {
 							UserAPI.on_model_click_pressed( 
-								Objects[ intersect.object.name ],
+								UserAPI.objects[ intersect.object.name ],
 								intersect.object, 
 								intersect.distance
 							);
@@ -1141,58 +1154,27 @@ function on_json_message( data ) {
 		} 
 
 
-		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
-		if (pak.active_material && o.meshes[0]) {
-			if (pak.active_material.type != o.meshes[0].active_material.type) {
-				UserAPI.set_material( o.meshes[0], pak.active_material );
-			}
-		}
-
 		if (pak.properties) {
+			console.log('on update props');
 			UserAPI.on_update_properties( o, pak );
 		}
 
-		/*
-		else if (pak.empty) {
-			var empty = UserAPI.objects[ name ];
-			if (empty.parent === undefined && pak.parent) {
-				//console.log('checking for parent:'+pak.parent);
-				//UserAPI.objects[ '__'+pak.parent+'__'].add( empty );				
+
+		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
+		if (pak.active_material && o.meshes[0]) {
+			o.meshes[0].clickable = !pak.active_material.wireframe;
+			if (pak.active_material.type != o.meshes[0].active_material.type) {
+
+				UserAPI.set_material( o.meshes[0], pak.active_material );
+				console.log('done active mat');
+
+			} else {
+				UserAPI.update_material( o.meshes[0], pak.active_material );
 			}
 		}
-		*/
+
 
 		if (name in Objects && Objects[name]) {
-
-			/*
-			if (pak.dynamic_hierarchy !== undefined) {
-				UserAPI.rebuild_hierarchy( m, pak.dynamic_hierarchy );
-			} else {
-				for (id in m.dynamic_hierarchy) {
-					if (m.dynamic_hierarchy[id] === null) {
-						if (id in UserAPI.objects) {
-							console.log('got child 2nd way'+id);
-							m.add( UserAPI.objects[id] );
-							m.dynamic_hierarchy[id] = UserAPI.objects[id];
-						}
-					}
-				}
-			}
-			*/
-
-			if (false) {
-
-				var lod = m.LODs[0].object3D;
-
-				if (pak.shade == 'WIRE') {
-					lod.material.wireframe = true;
-				} else {
-					lod.material.wireframe = false;
-				}
-
-
-			}
-
 
 
 			if (pak.pos) {
