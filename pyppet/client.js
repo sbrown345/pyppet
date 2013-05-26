@@ -40,6 +40,31 @@ var UserAPI = {
 	cubemaps : {},
 	skybox_cubemap : null,
 
+	create_debug_axis : function(axisLength){
+		//Shorten the vertex function
+		function v(x,y,z){ return new THREE.Vector3(x,y,z);}
+
+		//Create axis (point1, point2, colour)
+		function createAxis(p1, p2, color){
+			var line, lineGeometry = new THREE.Geometry(),
+			lineMat = new THREE.LineBasicMaterial({color: color, lineWidth: 1});
+			lineGeometry.vertices.push(p1, p2);
+			line = new THREE.Line(lineGeometry, lineMat);
+			return line;
+		}
+		var o = new THREE.Object3D();
+		o.add(
+			createAxis(v(-axisLength, 0, 0), v(axisLength, 0, 0), 0xFF0000)
+		);
+		o.add(
+			createAxis(v(0, -axisLength, 0), v(0, axisLength, 0), 0x00FF00)
+		);
+		o.add(
+			createAxis(v(0, 0, -axisLength), v(0, 0, axisLength), 0x0000FF)
+		);
+		return o;
+	},
+
 	create_cubemap : function(path, format) {
 		var urls = [
 			path + 'px' + format, path + 'nx' + format,
@@ -1119,8 +1144,10 @@ function on_json_message( data ) {
 				scene.add( o );
 			}
 			// request mesh if its not an empty //
-			if (pak.empty === undefined) {
-				UserAPI.request_mesh( name );
+			if (pak.empty) {
+				o.add( UserAPI.create_debug_axis(10.0) );
+			} else {
+				UserAPI.request_mesh( name );				
 			}
 		}
 	}
@@ -1159,6 +1186,110 @@ function on_json_message( data ) {
 			UserAPI.on_update_properties( o, pak );
 		}
 
+		////////////////////////////////xxxxxxxxxxxxxxx
+
+		if (pak.pos) {
+			/*
+			m.position.x = pak.pos[0];
+			m.position.y = pak.pos[1];
+			m.position.z = pak.pos[2];
+			*/
+			if ( name in UserAPI.position_tweens == false ) {
+				var tween = new TWEEN.Tween(o.position);
+				var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
+				UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
+				tween.to( vec, 500 );
+				tween.start();
+
+			} else {
+				var tween = UserAPI.position_tweens[ name ].tween;
+				var vector = UserAPI.position_tweens[ name ].vector;
+				vector.set( pak.pos[0], pak.pos[1], pak.pos[2] );
+				//UserAPI.on_interpolate_position( name, tween, vector );
+				//tween.start();
+				start_tween_if_needed( tween );
+				/* note using chain is WAY slower than just using tween.to()*/
+			}
+		}
+
+		if (pak.scl) {
+			//m.scale.x = pak.scl[0];
+			//m.scale.y = pak.scl[1];
+			//m.scale.z = pak.scl[2];				
+
+			if ( name in UserAPI.scale_tweens == false ) {
+				var tween = new TWEEN.Tween(o.scale);
+				var vec = new THREE.Vector3(pak.scl[0], pak.scl[1], pak.scl[2]);
+				UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
+				tween.to( vec, 500 );
+				tween.start();
+
+			} else {
+				var tween = UserAPI.scale_tweens[ name ].tween;
+				var vector = UserAPI.scale_tweens[ name ].vector;
+				vector.set( pak.scl[0], pak.scl[1], pak.scl[2] );
+				//UserAPI.on_interpolate_scale( name, tween, vector );
+				//tween.start();
+				start_tween_if_needed( tween );
+
+			}
+		}
+
+		if (pak.rot) {
+			o.quaternion.w = pak.rot[0];
+			o.quaternion.x = pak.rot[1];
+			o.quaternion.y = pak.rot[2];
+			o.quaternion.z = pak.rot[3];
+
+			/*  this looks funny
+			if ( name in UserAPI.rotation_tweens == false ) {
+				var tween = new TWEEN.Tween(m.quaternion);
+				var quat = {
+					w: pak.rot[0],
+					x: pak.rot[1],
+					y: pak.rot[2],
+					z: pak.rot[3],
+
+				}
+				UserAPI.rotation_tweens[ name ] = {'quat':quat, 'tween':tween};
+				tween.to( quat );
+				tween.start();
+
+			} else {
+				var quat = UserAPI.rotation_tweens[ name ].quat;
+				quat.w = pak.rot[0];
+				quat.x = pak.rot[1];
+				quat.y = pak.rot[2];
+				quat.z = pak.rot[3];
+
+				UserAPI.rotation_tweens[ name ].tween.to(
+					quat,
+					1000 // magic number
+				);
+				UserAPI.scale_tweens[ name ].tween.start();  // required
+
+			}
+			*/
+
+
+		}
+
+
+		if (pak.on_click) {
+			o.on_mouse_up_callback = _callbacks_[ pak.on_click ];
+		}
+
+		if (pak.on_input) {
+			o.on_input_callback = _callbacks_[ pak.on_input ];
+		}
+
+		if (pak.eval) {
+			//console.log( pak.eval );
+			eval( pak.eval );
+		}
+
+
+		//////////////////////////////xxxxxxxxxxxxxxxxxxx
 
 		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
 		if (pak.active_material && o.meshes[0]) {
@@ -1174,111 +1305,8 @@ function on_json_message( data ) {
 		}
 
 
-		if (name in Objects && Objects[name]) {
-
-
-			if (pak.pos) {
-				/*
-				m.position.x = pak.pos[0];
-				m.position.y = pak.pos[1];
-				m.position.z = pak.pos[2];
-				*/
-				if ( name in UserAPI.position_tweens == false ) {
-					var tween = new TWEEN.Tween(o.position);
-					var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
-					UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
-					tween.to( vec, 500 );
-					tween.start();
-
-				} else {
-					var tween = UserAPI.position_tweens[ name ].tween;
-					var vector = UserAPI.position_tweens[ name ].vector;
-					vector.set( pak.pos[0], pak.pos[1], pak.pos[2] );
-					//UserAPI.on_interpolate_position( name, tween, vector );
-					//tween.start();
-					start_tween_if_needed( tween );
-					/* note using chain is WAY slower than just using tween.to()*/
-				}
-			}
-
-			if (pak.scl) {
-				//m.scale.x = pak.scl[0];
-				//m.scale.y = pak.scl[1];
-				//m.scale.z = pak.scl[2];				
-
-				if ( name in UserAPI.scale_tweens == false ) {
-					var tween = new TWEEN.Tween(o.scale);
-					var vec = new THREE.Vector3(pak.scl[0], pak.scl[1], pak.scl[2]);
-					UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
-					tween.to( vec, 500 );
-					tween.start();
-
-				} else {
-					var tween = UserAPI.scale_tweens[ name ].tween;
-					var vector = UserAPI.scale_tweens[ name ].vector;
-					vector.set( pak.scl[0], pak.scl[1], pak.scl[2] );
-					//UserAPI.on_interpolate_scale( name, tween, vector );
-					//tween.start();
-					start_tween_if_needed( tween );
-
-				}
-			}
-
-			if (pak.rot) {
-				o.quaternion.w = pak.rot[0];
-				o.quaternion.x = pak.rot[1];
-				o.quaternion.y = pak.rot[2];
-				o.quaternion.z = pak.rot[3];
-
-				/*  this looks funny
-				if ( name in UserAPI.rotation_tweens == false ) {
-					var tween = new TWEEN.Tween(m.quaternion);
-					var quat = {
-						w: pak.rot[0],
-						x: pak.rot[1],
-						y: pak.rot[2],
-						z: pak.rot[3],
-
-					}
-					UserAPI.rotation_tweens[ name ] = {'quat':quat, 'tween':tween};
-					tween.to( quat );
-					tween.start();
-
-				} else {
-					var quat = UserAPI.rotation_tweens[ name ].quat;
-					quat.w = pak.rot[0];
-					quat.x = pak.rot[1];
-					quat.y = pak.rot[2];
-					quat.z = pak.rot[3];
-
-					UserAPI.rotation_tweens[ name ].tween.to(
-						quat,
-						1000 // magic number
-					);
-					UserAPI.scale_tweens[ name ].tween.start();  // required
-
-				}
-				*/
-
-
-			}
-
-
-			if (pak.on_click) {
-				o.on_mouse_up_callback = _callbacks_[ pak.on_click ];
-			}
-
-			if (pak.on_input) {
-				o.on_input_callback = _callbacks_[ pak.on_input ];
-			}
-
-			if (pak.eval) {
-				//console.log( pak.eval );
-				eval( pak.eval );
-			}
-
-
-		}
+		//if (name in Objects && Objects[name]) {
+		//}
 
 	}	// end meshes
 
@@ -3040,7 +3068,7 @@ UserAPI.initialize = function( renderer_params ) {
 	scene.add( ambientLight );
 	UserAPI.ambient_light = ambientLight;
 
-	var sunIntensity = 0.5;
+	var sunIntensity = 0.75;
 	spotLight = new THREE.SpotLight( 0xffffff, sunIntensity );
 	spotLight.position.set( 0, 500, 10 );
 	spotLight.target.position.set( 0, 0, 0 );
@@ -3051,7 +3079,7 @@ UserAPI.initialize = function( renderer_params ) {
 	spotLight.shadowBias = 0.001;
 	spotLight.shadowMapWidth = 1024;
 	spotLight.shadowMapHeight = 1024;
-	spotLight.shadowDarkness = 0.3 * sunIntensity;
+	spotLight.shadowDarkness = 0.1 * sunIntensity;
 	scene.add( spotLight );
 	UserAPI.sun = spotLight;
 

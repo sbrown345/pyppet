@@ -744,8 +744,8 @@ class Player( object ):
 			w = wobjects[ ob ]
 			view = w( self ) # this is self and not self.address
 			transob = ob
-			if view().translation_proxy:
-				transob = view().translation_proxy
+			#if view().translation_proxy:
+			#	transob = view().translation_proxy
 
 			# pack into dict for json transfer.
 			pak = {}
@@ -779,6 +779,7 @@ class Player( object ):
 			state = ( rloc, rscl, rrot )
 
 			send = ob in self._mesh_requests and not sent_mesh
+			if not send and ob.type == 'EMPTY': send = True
 
 			if send or self._cache[ob]['trans'] != state:
 				if self._cache[ob]['trans']:
@@ -800,7 +801,6 @@ class Player( object ):
 				#print('cache insync', ob)
 				pass
 
-			#if ob == context.active_object: view[ 'selected' ] = True
 
 			###########################
 			if ob.type == 'MESH':
@@ -809,17 +809,22 @@ class Player( object ):
 				pak['empty'] = True
 				if ob.parent: pak['parent'] = UID( ob.parent )
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
-				if ob not in self._sent_meshes:
-					self._sent_meshes.append( ob )
-				continue
+				#if ob not in self._sent_meshes:
+				#	self._sent_meshes.append( ob )
+				#if 'pos' in pak: print('pos', pak['pos'])
+				#if 'rot' in pak: print('rot', pak['rot'])
+				#if 'scl' in pak: print('scl', pak['scl'])
 
+				continue
+			###########################
 			if not ob.data:
 				print('WARN - threading bug? (see Server.py')
 				raise RuntimeError
 
-			if ob.hide: pak['shade'] = 'WIRE'
-			elif ob.data and ob.data.materials and ob.data.materials[0]:
-				pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
+			## DEPRECATED
+			#if ob.hide: pak['shade'] = 'WIRE'
+			#elif ob.data and ob.data.materials and ob.data.materials[0]:
+			#	pak['shade'] = ob.data.materials[0].type # SURFACE, WIRE, VOLUME, HALO
 
 
 			## ensure properties required by callbacks - TODO move this logic somewhere else
@@ -874,7 +879,8 @@ class Player( object ):
 				print('sending eval', pak['eval'])
 
 			## respond to a mesh data request ##
-			if ob in self._mesh_requests and not sent_mesh and ob.type=='MESH':
+			if ob in self._mesh_requests and not sent_mesh:
+				assert ob.type=='MESH'
 				#if not ob.parent: pass
 				#elif ob.parent and ob.parent in self._sent_meshes:# or ob.parent.type == 'EMPTY':
 				#	pass
