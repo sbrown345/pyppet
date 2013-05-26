@@ -98,6 +98,10 @@ def get_material_config(mat):
 	if mat.raytrace_mirror.use:
 		cfg['envMap'] = mat.raytrace_mirror.use
 		cfg['refractionRatio'] = 0.95 - mat.raytrace_mirror.fresnel
+		if mat.raytrace_mirror.reflect_factor > 0.0:
+			cfg['envmap_type'] = 'REFLECT'
+		else:
+			cfg['envmap_type'] = 'REFRACT'
 
 	mode = mat.game_settings.alpha_blend
 	if mode == 'OPAQUE': cfg['blending'] = 'NORMAL'

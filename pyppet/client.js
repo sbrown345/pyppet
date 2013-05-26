@@ -37,7 +37,10 @@ var UserAPI = {
 	camera : null,
 	objects : Objects,
 	meshes : MESHES,
-	cubemaps : {},
+	cubemaps : {
+		REFLECT:{},
+		REFRACT:{}
+	},
 	skybox_cubemap : null,
 
 	create_debug_axis : function(axisLength){
@@ -65,25 +68,44 @@ var UserAPI = {
 		return o;
 	},
 
+	get_cubemap : function(name, type) {
+		if (name in UserAPI.cubemaps[type]) {
+			return UserAPI.cubemaps[type][name];
+		} else {
+			return UserAPI.skybox_cubemap;
+		}
+	},
+
 	create_cubemap : function(path, format) {
 		var urls = [
 			path + 'px' + format, path + 'nx' + format,
 			path + 'py' + format, path + 'ny' + format,
 			path + 'pz' + format, path + 'nz' + format
 		];
-
-		var a = THREE.ImageUtils.loadTextureCube( urls, new THREE.CubeRefractionMapping() );
 		var n = path.split('/');
 		n = n[ n.length-1 ];
-		UserAPI.cubemaps[ n ] = a;
-		return a;
+
+		var mapping = new THREE.CubeReflectionMapping();
+		var reflect = UserAPI.cubemaps.REFLECT[ n ] = THREE.ImageUtils.loadTextureCube(
+			urls, 
+			mapping
+		);
+
+		var mapping = new THREE.CubeReflectionMapping();
+		var refract = UserAPI.cubemaps.REFRACT[ n ] = THREE.ImageUtils.loadTextureCube(
+			urls, 
+			mapping
+		);
+
+		return {reflection:reflect, refraction:refract};
+
 
 	},
 	create_skybox : function(path, format, size) {
 		//var material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube, refractionRatio: 0.95 } );
 		if (size === undefined) { size = 100 }
 
-		var textureCube = UserAPI.create_cubemap(path, format);
+		var textureCube = UserAPI.create_cubemap(path, format).reflection;
 		UserAPI.skybox_cubemap = textureCube;
 
 		var shader = THREE.ShaderLib[ "cube" ];
@@ -302,6 +324,12 @@ var UserAPI = {
 
 		if (config.envMap && config.refractionRatio) {
 			console.log('NEW ENV MAP');
+			config.envMap = UserAPI.get_cubemap( 
+				config.envMap, 
+				config.envmap_type 
+			);
+
+			/*
 			if (config.envMap in UserAPI.cubemaps) {
 				textureCube = UserAPI.cubemaps[ config.envMap ];
 			} else {
@@ -309,6 +337,7 @@ var UserAPI = {
 			}
 			console.log(textureCube);
 			config.envMap = textureCube;
+			*/
 		}
 		//envMap: textureCube, refractionRatio: 0.95
 
@@ -363,6 +392,7 @@ var UserAPI = {
 		geometry.computeFaceNormals();
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
+		geometry.computeVertexNormals(); // we do not send vertex normals, use "shading:THREE.FlatShading"
 		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide, wireframe:true});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
