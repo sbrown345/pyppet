@@ -762,8 +762,8 @@ class Player( object ):
 			w = wobjects[ ob ]
 			view = w( self ) # this is self and not self.address
 			transob = ob
-			#if view().translation_proxy:
-			#	transob = view().translation_proxy
+			if view().translation_proxy:
+				transob = view().translation_proxy
 
 			# pack into dict for json transfer.
 			pak = {}
