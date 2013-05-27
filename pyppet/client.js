@@ -85,9 +85,9 @@ var UserAPI = {
 
 	create_cubemap : function(path, format) {
 		var urls = [
-			path + 'px' + format, path + 'nx' + format,
-			path + 'py' + format, path + 'ny' + format,
-			path + 'pz' + format, path + 'nz' + format
+			path + '/px' + format, path + '/nx' + format,
+			path + '/py' + format, path + '/ny' + format,
+			path + '/pz' + format, path + '/nz' + format
 		];
 		var n = path.split('/');
 		n = n[ n.length-1 ];

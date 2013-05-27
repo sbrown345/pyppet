@@ -121,7 +121,10 @@ def get_material_config(mat, mesh=None):
 			cfg['vertexColors'] = True
 
 	if mat.raytrace_mirror.use:
-		cfg['envMap'] = mat.raytrace_mirror.use
+		cfg['envMap'] = mat.raytrace_mirror.use # default cubemap
+		if 'cubemap' in mat.keys():
+			cfg['envMap'] = mat['cubemap']
+
 		cfg['refractionRatio'] = 0.95 - mat.raytrace_mirror.fresnel
 		if mat.raytrace_mirror.reflect_factor > 0.0:
 			cfg['envmap_type'] = 'REFLECT'
