@@ -305,7 +305,7 @@ var UserAPI = {
 		var mat;
 
 		if (config.vertexColors) {
-			config.vertexColors = THREE.VertexColors;
+			config.vertexColors = THREE.VertexColors;  // THREE.FaceColors to use face.color
 		}
 
 		if (config.shading=='FLAT') {
@@ -376,14 +376,24 @@ var UserAPI = {
 			geometry.vertices.push(vec);
 		}
 		for ( var i = 0; i < pak.triangles.length; i ++ ) {
-			var tri = pak.triangles[i];
-			geometry.faces.push(
-				new THREE.Face3( tri[0], tri[1], tri[2] )
-			);
+			var f = pak.triangles[i];
+			var face = new THREE.Face3( f[0], f[1], f[2] );
+
+			if (pak.colors) {
+				for ( var j=0; j<3; j++) {
+					var rgb = pak.colors[ f[j] ];
+					var clr = new THREE.Color();
+					clr.setRGB( rgb[0], rgb[1], rgb[2] );
+					face.vertexColors.push( clr );
+
+				}
+			}
+			geometry.faces.push( face );
+
 		}
 		for ( var i = 0; i < pak.quads.length; i ++ ) {
 			var f = pak.quads[i];
-			var face = new THREE.Face4( f[0], f[1], f[2], f[3] )
+			var face = new THREE.Face4( f[0], f[1], f[2], f[3] );
 			if (pak.colors) {
 				for ( var j=0; j<4; j++) {
 					var rgb = pak.colors[ f[j] ];
@@ -392,7 +402,6 @@ var UserAPI = {
 					face.vertexColors.push( clr );
 
 				}
-				console.log(face);
 			}
 			geometry.faces.push(face);
 		}
@@ -412,7 +421,7 @@ var UserAPI = {
 
 		//geometry.mergeVertices(); //BAD
 		geometry.computeCentroids();
-		geometry.computeFaceNormals();
+		geometry.computeFaceNormals(); // required for dynamic lights
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
 		geometry.computeVertexNormals(); // we do not send vertex normals, use "shading:THREE.FlatShading"
@@ -460,20 +469,21 @@ var UserAPI = {
 				var vec = new THREE.Vector3( x,y,z );
 				linegeom.vertices.push(vec);
 
-				//TODO linegeom.colors.push(....)
 				if (pak.colors) {
-					var x = pak.colors[aidx][0];
-					var y = pak.colors[aidx][1];
-					var z = pak.colors[aidx][2];
-					var clr = new THREE.Color( x,y,z );
-					console.log(clr);
+					var r = pak.colors[aidx][0];
+					var g = pak.colors[aidx][1];
+					var b = pak.colors[aidx][2];
+					var clr = new THREE.Color();
+					clr.setRGB(r,g,b);
 					linegeom.colors.push(clr);
 
-					var x = pak.colors[bidx][0];
-					var y = pak.colors[bidx][1];
-					var z = pak.colors[bidx][2];
-					var clr = new THREE.Color( x,y,z );
+					var r = pak.colors[bidx][0];
+					var g = pak.colors[bidx][1];
+					var b = pak.colors[bidx][2];
+					var clr = new THREE.Color();
+					clr.setRGB(r,g,b);
 					linegeom.colors.push(clr);
+
 				}
 
 			}
