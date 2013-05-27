@@ -299,6 +299,13 @@ var UserAPI = {
 		var mat;
 		var textureCube;
 
+		if (config.shading=='FLAT') {
+			config.shading = THREE.FlatShading;
+		}
+		else if (config.shading=='SMOOTH') {
+			config.shading = THREE.SmoothShading;
+		}
+
 		if (config.side=='SINGLE') {
 			config.side = THREE.FrontSide;
 		}

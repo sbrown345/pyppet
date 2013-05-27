@@ -83,8 +83,15 @@ bpy.types.Object.UID = IntProperty(
     default=0, min=0, max=2**14)
 
 #############################################
+def mesh_is_smooth( mesh ):
+	'''
+	if any face is smooth, the entire mesh is considered smooth
+	'''
 
-def get_material_config(mat):
+	a = [ bool(poly.use_smooth) for poly in mesh.polygons ]
+	return True in a
+
+def get_material_config(mat, mesh=None):
 	'''
 	hijacking some blender materials options and remapping
 	them to work with our Three.js settings
@@ -95,6 +102,13 @@ def get_material_config(mat):
 		'transparent':mat.use_transparency,
 		'opacity': mat.alpha
 	}
+
+	if mesh:
+		if mesh_is_smooth( mesh ):
+			cfg['shading'] = 'SMOOTH'
+		else:
+			cfg['shading'] = 'FLAT'
+
 	if mat.raytrace_mirror.use:
 		cfg['envMap'] = mat.raytrace_mirror.use
 		cfg['refractionRatio'] = 0.95 - mat.raytrace_mirror.fresnel
@@ -863,7 +877,10 @@ class Player( object ):
 
 				elif ob.data.materials and ob.data.materials[0]:
 					#color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
-					pak['active_material'] = get_material_config( ob.data.materials[0] )
+					pak['active_material'] = get_material_config( 
+						ob.data.materials[0], 
+						mesh=ob.data 
+					)
 					color = pak['active_material']['color'] # TODO move this
 
 			if color:
