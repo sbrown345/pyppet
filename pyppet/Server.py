@@ -109,6 +109,9 @@ def get_material_config(mat, mesh=None):
 		else:
 			cfg['shading'] = 'FLAT'
 
+		if len(mesh.vertex_colors):
+			cfg['vertexColors'] = True
+
 	if mat.raytrace_mirror.use:
 		cfg['envMap'] = mat.raytrace_mirror.use
 		cfg['refractionRatio'] = 0.95 - mat.raytrace_mirror.fresnel
@@ -928,7 +931,7 @@ class Player( object ):
 					'quads'    : [],
 					'vertices' : [],
 					'lines'    : [],
-					'normals'  : [] # not used
+					#'normals'  : [] # not used
 				}
 				if on_mesh_request_model_config: ## hook for users to overload
 					pak['model_config'] = on_mesh_request_model_config( ob )
@@ -938,6 +941,13 @@ class Player( object ):
 				#data = ob.data
 				data.calc_normals() # required?
 				data.calc_tessface()
+
+				if len(data.vertex_colors):
+					geo['colors'] = []
+					for v in data.vertex_colors:
+						if not v.active_render: continue # only use if on in blender
+						for c in v.data:
+							geo['colors'].append( tuple(c.color) )
 
 				for vert in data.vertices:
 					x,y,z = vert.co.to_tuple()

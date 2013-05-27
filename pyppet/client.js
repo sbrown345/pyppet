@@ -302,8 +302,12 @@ var UserAPI = {
 
 
 	set_material : function(mesh, config) {
-		console.log('setting material', mesh);
 		var mat;
+
+		if (config.vertexColors) {
+			config.vertexColors = THREE.VertexColors;
+			console.log('set_material - vcolors', config.vertexColors);
+		}
 
 		if (config.shading=='FLAT') {
 			config.shading = THREE.FlatShading;
@@ -385,13 +389,28 @@ var UserAPI = {
 			);
 		}
 
+		if (pak.colors) {
+			console.log('model has vertex colors');
+			console.log(pak.colors);
+			for ( var i = 0; i < pak.colors.length; i ++ ) {
+				var clr = pak.colors[i];
+				geometry.colors.push(
+					new THREE.Color( clr[0], clr[1], clr[2] )
+				);
+			}
+
+		}
+
 		//geometry.mergeVertices(); //BAD
 		geometry.computeCentroids();
 		geometry.computeFaceNormals();
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
 		geometry.computeVertexNormals(); // we do not send vertex normals, use "shading:THREE.FlatShading"
-		var material = new THREE.MeshBasicMaterial({side:THREE.DoubleSide, wireframe:true});
+		var material = new THREE.MeshBasicMaterial({
+			side:THREE.DoubleSide, wireframe:true,
+			vertexColors: THREE.VertexColors
+		});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
 		mesh.doubleSided = true;
@@ -408,7 +427,11 @@ var UserAPI = {
 
 		if (pak.lines.length) {
 			var linegeom = new THREE.Geometry();
-			var linemat = new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 0.5 } )
+			var linemat = new THREE.LineBasicMaterial( { 
+				color: 0xffffff, opacity: 0.5,
+				vertexColors: THREE.VertexColors
+			} );
+
 			for ( var i = 0; i < pak.lines.length; i ++ ) {
 				var aidx = pak.lines[i][0];
 				var bidx = pak.lines[i][1];
@@ -425,6 +448,7 @@ var UserAPI = {
 				var vec = new THREE.Vector3( x,y,z );
 				linegeom.vertices.push(vec);
 
+				//TODO linegeom.colors.push(....)
 			}
 
 			var line = new THREE.Line( 
@@ -1210,28 +1234,13 @@ function on_json_message( data ) {
 			UserAPI.objects[ '__'+pak.parent+'__'].add( o );
 		}
 
-
 		if (pak.geometry) { // request_mesh response
-			var mesh = UserAPI.create_geometry( pak.geometry, name );
-			/*
-			var lod = UserAPI.create_lod(
-				mesh, 
-				pak.pos,
-				pak.rot,
-				pak.scl,
-				pak.parent,
-				pak.model_config 
-			);
-			*/
-			console.log('adding mesh->', mesh, name);
+			var mesh = UserAPI.create_geometry( pak.geometry, name ); // TODO check model_config
 			UserAPI.objects[ name ].add( mesh );
 			UserAPI.objects[ name ].meshes.push( mesh );
-
-		} 
-
+		}
 
 		if (pak.properties) {
-			console.log('on update props');
 			UserAPI.on_update_properties( o, pak );
 		}
 
@@ -3243,7 +3252,6 @@ UserAPI['update_modifiers'] = function() {
 
 
 UserAPI.animate = function() {
-	console.log('<<animate>>');
 	requestAnimationFrame( UserAPI.animate );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
 	render();
 }
