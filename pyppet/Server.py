@@ -947,10 +947,14 @@ class Player( object ):
 				if on_mesh_request_model_config: ## hook for users to overload
 					pak['model_config'] = on_mesh_request_model_config( ob )
 
+				if 'subsurf' in ob.keys():
+					ss = ob['subsurf']
+					assert type(ss) is int
+					geo['subdiv'] = ss
+
 				data = ob.to_mesh(bpy.context.scene, True, "PREVIEW") # why is this causing a segfault?
 				data.transform( SWAP_MESH )	# flip YZ for Three.js
-				#data = ob.data
-				data.calc_normals() # required?
+				#data.calc_normals() # required?
 				data.calc_tessface()
 
 				if len(data.vertex_colors):

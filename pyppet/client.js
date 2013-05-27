@@ -406,25 +406,19 @@ var UserAPI = {
 			geometry.faces.push(face);
 		}
 
-		if (pak.colors) {
-			console.log('model has vertex colors');
-			console.log(pak.colors);
-			/*
-			for ( var i = 0; i < pak.colors.length; i ++ ) {
-				var clr = pak.colors[i];
-				geometry.colors.push(
-					new THREE.Color( clr[0], clr[1], clr[2] )
-				);
-			}
-			*/
-		}
-
-		//geometry.mergeVertices(); //BAD
+		//geometry.mergeVertices(); //BAD?
 		geometry.computeCentroids();
 		geometry.computeFaceNormals(); // required for dynamic lights
 		geometry.computeBoundingSphere();
 		geometry.computeBoundingBox();
 		geometry.computeVertexNormals(); // we do not send vertex normals, use "shading:THREE.FlatShading"
+
+		if (pak.subdiv) {
+			var subsurf = new THREE.SubdivisionModifier( pak.subdiv );
+			subsurf.modify( geometry );
+		}
+
+
 		var material = new THREE.MeshBasicMaterial({
 			side:THREE.DoubleSide, wireframe:true,
 			vertexColors: THREE.VertexColors
