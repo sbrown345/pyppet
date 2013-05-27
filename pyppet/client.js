@@ -306,7 +306,6 @@ var UserAPI = {
 
 		if (config.vertexColors) {
 			config.vertexColors = THREE.VertexColors;
-			console.log('set_material - vcolors', config.vertexColors);
 		}
 
 		if (config.shading=='FLAT') {
@@ -383,22 +382,32 @@ var UserAPI = {
 			);
 		}
 		for ( var i = 0; i < pak.quads.length; i ++ ) {
-			var face = pak.quads[i];
-			geometry.faces.push(
-				new THREE.Face4( face[0], face[1], face[2], face[3] )
-			);
+			var f = pak.quads[i];
+			var face = new THREE.Face4( f[0], f[1], f[2], f[3] )
+			if (pak.colors) {
+				for ( var j=0; j<4; j++) {
+					var rgb = pak.colors[ f[j] ];
+					var clr = new THREE.Color();
+					clr.setRGB( rgb[0], rgb[1], rgb[2] );
+					face.vertexColors.push( clr );
+
+				}
+				console.log(face);
+			}
+			geometry.faces.push(face);
 		}
 
 		if (pak.colors) {
 			console.log('model has vertex colors');
 			console.log(pak.colors);
+			/*
 			for ( var i = 0; i < pak.colors.length; i ++ ) {
 				var clr = pak.colors[i];
 				geometry.colors.push(
 					new THREE.Color( clr[0], clr[1], clr[2] )
 				);
 			}
-
+			*/
 		}
 
 		//geometry.mergeVertices(); //BAD
@@ -410,6 +419,7 @@ var UserAPI = {
 		var material = new THREE.MeshBasicMaterial({
 			side:THREE.DoubleSide, wireframe:true,
 			vertexColors: THREE.VertexColors
+			//vertexColors: THREE.FaceColors
 		});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
@@ -428,8 +438,10 @@ var UserAPI = {
 		if (pak.lines.length) {
 			var linegeom = new THREE.Geometry();
 			var linemat = new THREE.LineBasicMaterial( { 
-				color: 0xffffff, opacity: 0.5,
-				vertexColors: THREE.VertexColors
+				color: 0xffffff, 
+				opacity: 0.95, transparent: true,
+				vertexColors: THREE.VertexColors,
+				linewidth: 4.20 // note mrdoob - this should have been "lineWidth"
 			} );
 
 			for ( var i = 0; i < pak.lines.length; i ++ ) {
@@ -449,6 +461,21 @@ var UserAPI = {
 				linegeom.vertices.push(vec);
 
 				//TODO linegeom.colors.push(....)
+				if (pak.colors) {
+					var x = pak.colors[aidx][0];
+					var y = pak.colors[aidx][1];
+					var z = pak.colors[aidx][2];
+					var clr = new THREE.Color( x,y,z );
+					console.log(clr);
+					linegeom.colors.push(clr);
+
+					var x = pak.colors[bidx][0];
+					var y = pak.colors[bidx][1];
+					var z = pak.colors[bidx][2];
+					var clr = new THREE.Color( x,y,z );
+					linegeom.colors.push(clr);
+				}
+
 			}
 
 			var line = new THREE.Line( 
