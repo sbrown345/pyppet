@@ -36,6 +36,14 @@ import Physics # for threading LOCK
 
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 400.0
 
+SpecialEdgeColors = {  ## blender edit-mode style
+	'CREASE':[1,0,1],
+	'BEVEL' :[1,1,0],
+	'SHARP': [0.5,0.5,1],
+	'SEAM' : [1,0,0],
+}
+
+
 ## hook into external API's ##
 ExternalAPI = NotImplemented
 def set_api( user_api=None ):
@@ -947,7 +955,7 @@ class Player( object ):
 					for v in data.vertex_colors:
 						if not v.active_render: continue # only use if on in blender
 						for c in v.data:
-							geo['colors'].append( tuple(c.color) )
+							geo['colors'].append( list(c.color) )
 
 				for vert in data.vertices:
 					x,y,z = vert.co.to_tuple()
@@ -969,9 +977,24 @@ class Player( object ):
 				for edge in data.edges:
 					if not edge.is_loose: continue
 					assert len(edge.vertices)==2
-					#v1 = data.vertices[ aidx ].co
-					#v2 = data.vertices[ bidx ].co
 					geo['lines'].append( tuple(edge.vertices) )
+					if 'colors' in geo:
+						if edge.use_edge_sharp:
+							clr = SpecialEdgeColors[ 'SHARP' ]
+						elif edge.use_seam:
+							clr = SpecialEdgeColors[ 'SEAM' ]
+						elif edge.crease > 0.0:
+							clr = SpecialEdgeColors[ 'CREASE' ]
+						elif edge.bevel_weight > 0.0:
+							clr = SpecialEdgeColors[ 'BEVEL' ]
+						else:
+							clr = None
+
+						if clr:
+							geo['colors'][ edge.vertices[0] ] = clr
+							geo['colors'][ edge.vertices[1] ] = clr
+
+
 
 				print('--------->ok---sent-verts:%s'%len(data.vertices))
 
