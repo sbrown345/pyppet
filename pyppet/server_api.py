@@ -99,13 +99,10 @@ class BlenderServer( core.BlenderHack ):
 				print( frame.decode('utf-8') ) 
 
 			elif len(frame) > 2 and chr(frame[0]) == '{' and chr(frame[-1]) == '}':
-				print('client sent json data')
 				jmsg = json.loads( frame.decode('utf-8') )
+				print('client sent json data', jmsg)
 				player.on_websocket_json_message( jmsg )
 
-				#if jmsg['request']=='mesh':
-				#	print('got mesh request')
-				#	print(jmsg)
 			else:
 				print('doing custom action...', frame)
 				## action api ##
@@ -123,6 +120,10 @@ class BlenderServer( core.BlenderHack ):
 	def on_websocket_write_update(self, sock):
 		player = Server.GameManager.get_player_by_socket( sock )
 		msg = player.create_message_stream( bpy.context )
+		if msg is None:
+			#return None
+			return bytes(0)
+
 		rawbytes = json.dumps( msg ).encode('utf-8')
 		if self._debug_kbps:
 			now = time.time()
@@ -132,7 +133,6 @@ class BlenderServer( core.BlenderHack ):
 				print('kilobytes per second', self._bps/1024)
 				self._bps_start = now
 				self._bps = 0
-
 		return rawbytes
 
 

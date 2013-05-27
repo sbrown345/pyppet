@@ -517,6 +517,10 @@ class Player( object ):
 			#w = api_gen.get_wrapped_objects()[ob]
 			assert ob not in self._mesh_requests
 			self._mesh_requests.append( ob )
+
+		elif msg['request'] == 'start_object_stream':
+			print('requesting start object stream')
+			self._streaming = True
 		else:
 			on_custom_websocket_json_message(self, msg)
 
@@ -546,6 +550,7 @@ class Player( object ):
 		self.objects is a list of objects that the client should know about from its message stream,
 		it can also be used as a cache.
 		'''
+		self._streaming = False ## client has to send json message to start streaming
 		Player.ID += 1
 		self.uid = Player.ID
 		self.last_update = time.time()  # this is used to limit the rate the client websocket is updated
@@ -572,7 +577,7 @@ class Player( object ):
 		self._sent_meshes = []		## clear on login, do not pickle
 		self.eval_queue = [] 		## eval javascript on the client side
 
-		ip = 'client(%s:%s)'%self.address
+		ip = '_temp(%s:%s)'%self.address
 		if ip not in bpy.data.objects:  ## TODO clean these up on player close
 			print('creating new player gizmos')
 			a = bpy.data.objects.new(name=ip, object_data=None)
@@ -713,11 +718,11 @@ class Player( object ):
 		this can be tuned perclient fps - limited to 24fps
 		'''
 
-		peers = {} # ID : location
+		#peers = {} # ID : location
 		## TODO GameManager.get_peers_nearby(self)
-		for p in GameManager.clients.values():
-			if p is self: continue
-			peers[ p.ID ] = p.location.to_tuple()
+		#for p in GameManager.clients.values():
+		#	if p is self: continue
+		#	peers[ p.ID ] = p.location.to_tuple()
 
 		msg = {
 			'meshes':{}, 
@@ -728,6 +733,9 @@ class Player( object ):
 			msg['eval'] = ';'.join(self.eval_queue)
 			while self.eval_queue: self.eval_queue.pop()
 
+		if not self._streaming: return msg
+
+
 		selection = {} # time : view
 		wobjects = api_gen.get_wrapped_objects()
 
@@ -736,6 +744,7 @@ class Player( object ):
 		_objects = self.get_streaming_objects()
 		#for ob in context.scene.objects:
 		for ob in _objects:
+			if ob.name.startswith('_'): continue
 			#if ob.is_lod_proxy: continue # TODO update skipping logic
 			#if ob.type == 'EMPTY' and ob.dupli_type=='GROUP' and ob.dupli_group: ## instances can not have local offsets.
 			#if ob.type not in ('MESH','LAMP'): continue
@@ -752,7 +761,7 @@ class Player( object ):
 					'trans':None,
 					'color':None,
 					'props':None,
-					'children':None
+					#'children':None
 				}
 
 			if ob not in wobjects:
@@ -767,12 +776,12 @@ class Player( object ):
 
 			# pack into dict for json transfer.
 			pak = {}
-			if ob.children:
-				dh = [ '__%s__'%UID(child) for child in ob.children ]
-				#pak['dynamic_hierarchy'] = dh
-				if self._cache[ob]['children'] != dh:
-					pak['dynamic_hierarchy'] = dh
-					self._cache[ob]['children'] = dh
+			#if ob.children:
+			#	dh = [ '__%s__'%UID(child) for child in ob.children ]
+			#	#pak['dynamic_hierarchy'] = dh
+			#	if self._cache[ob]['children'] != dh:
+			#		pak['dynamic_hierarchy'] = dh
+			#		self._cache[ob]['children'] = dh
 
 			if ob.parent: pak['parent'] = UID( ob.parent )
 
@@ -797,24 +806,25 @@ class Player( object ):
 			rrot = tuple(round(v,3) for v in rot)
 			state = ( rloc, rscl, rrot )
 
-			send = ob in self._mesh_requests and not sent_mesh
-			if not send and ob.type == 'EMPTY': send = True
+			#send = ob in self._mesh_requests and not sent_mesh
+			#if not send and ob.type == 'EMPTY': send = True
+			#send = True
 
-			if send or self._cache[ob]['trans'] != state:
+			if self._cache[ob]['trans'] != state:
 				if self._cache[ob]['trans']:
 					a,b,c = self._cache[ob]['trans']
 				else:
 					a = b = c = None
 
-				if send or not self._ticker % 2:
-					if rloc != a or send:
-						pak['pos'] = loc
-					if rscl != b or send:
-						pak['scl'] = scl
-					if rrot != c or send:
-						pak['rot'] = rot # rotation looks funny with interp
+				#if send or not self._ticker % 2:
+				if rloc != a:
+					pak['pos'] = loc
+				if rscl != b:
+					pak['scl'] = scl
+				if rrot != c:
+					pak['rot'] = rot
 
-					self._cache[ob]['trans'] = state
+				self._cache[ob]['trans'] = state
 
 			else:
 				#print('cache insync', ob)
@@ -826,15 +836,9 @@ class Player( object ):
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
 			elif ob.type == 'EMPTY':
 				pak['empty'] = True
-				if ob.parent: pak['parent'] = UID( ob.parent )
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
-				#if ob not in self._sent_meshes:
-				#	self._sent_meshes.append( ob )
-				#if 'pos' in pak: print('pos', pak['pos'])
-				#if 'rot' in pak: print('rot', pak['rot'])
-				#if 'scl' in pak: print('scl', pak['scl'])
-
 				continue
+
 			###########################
 			if not ob.data:
 				print('WARN - threading bug? (see Server.py')
@@ -861,6 +865,10 @@ class Player( object ):
 			if 'selected' in view and view['selected']:
 				T = view['selected']
 				selection[ T ] = props
+
+
+			##################################################
+			send = ob in self._mesh_requests and not sent_mesh
 
 			_props = str( props )
 			if send or self._cache[ob]['props'] != _props:

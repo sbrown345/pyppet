@@ -43,6 +43,13 @@ var UserAPI = {
 	},
 	skybox_cubemap : null,
 
+	start_object_stream : function() {
+		ws.send_string(
+			JSON.stringify({request : "start_object_stream"})
+		);
+		ws.flush();
+	},
+
 	create_debug_axis : function(axisLength){
 		//Shorten the vertex function
 		function v(x,y,z){ return new THREE.Vector3(x,y,z);}
@@ -431,13 +438,30 @@ var UserAPI = {
 		return mesh;
 	},
 
-	create_object : function(name) {
+	create_object : function(name, position, rotation, scale) {
 		var o = new THREE.Object3D();
 		o.name = name;
-		//o.useQuaternion = true;		// TODO euler
-		o.dynamic_hierarchy = {}; // DEPRECATED
-		o.custom_attributes = {};
-		o.meshes = [];
+		//o.useQuaternion = true;		// euler OK.
+		o.dynamic_hierarchy = {}; // not used anymore
+		o.custom_attributes = {}; // used by websocket callbacks
+		o.meshes = [];			// used to lazy load mesh data
+
+		//if ( position != undefined ) {
+			o.position.x = position[0];
+			o.position.y = position[1];
+			o.position.z = position[2];
+		//}
+		//if ( scale != undefined ) {
+			o.scale.x = scale[0];
+			o.scale.y = scale[1];
+			o.scale.z = scale[2];
+		//}
+		//if ( rotation != undefined ) {
+			o.rotation.x = rotation[0];
+			o.rotation.y = rotation[1];
+			o.rotation.z = rotation[2];
+		//}
+
 		UserAPI.objects[ name ] = o;
 		return o;
 	},
@@ -1155,12 +1179,16 @@ function on_json_message( data ) {
 	}
 	if (!UserAPI.initialized) {return}
 
-
 	// ensure that all objects have been created //
 	for (var name in msg['meshes']) {
 		var pak = msg['meshes'][ name ];
 		if (!(name in Objects)) {
-			var o = UserAPI.create_object( name );
+			var o = UserAPI.create_object(
+				name,
+				pak.pos,
+				pak.rot,
+				pak.scl
+			);
 			if (pak.parent === undefined) {
 				scene.add( o );
 			}
@@ -3214,11 +3242,10 @@ UserAPI['update_modifiers'] = function() {
 }
 
 
-UserAPI['animate'] = function() {
-	requestAnimationFrame( UserAPI['animate'] );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
-	//console.log('<<animate>>');
-	if (DEBUG==true) { render_debug(); }
-	else { render(); }
+UserAPI.animate = function() {
+	console.log('<<animate>>');
+	requestAnimationFrame( UserAPI.animate );  // requestAnimationFrame tries to maintain 60fps, but can fail to render, setInterval is safer.
+	render();
 }
 
 

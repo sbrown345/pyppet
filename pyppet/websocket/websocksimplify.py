@@ -665,26 +665,21 @@ Sec-WebSocket-Accept: %s\r
 
     def new_client(self):
         """ Do something with a WebSockets client connection. """
-        #raise("WebSocketServer.new_client() must be overloaded")
         assert self.client != self.listen_socket
         self.on_new_client( self.client )
 
         self.websocket_active = True
         while self.websocket_active:
-            #print('selecting client websocket...')
             ins, outs, excepts = select.select([self.client], [self.client], [self.client], 10)
             if excepts: self.websocket_active = False
 
             if outs:
-                #print('outs ready...')
                 data = self.on_client_write_ready( self.client )
-                #self.out_bytes += len(data)
-                #try:
-                pending = self.send_frames( [data] )
-                if pending: print('[websocket error] failed to send data', data)
+                if data is not None:
+                    pending = self.send_frames( [data] )  ## TODO raise some error if pending
+                    if pending: print('[websocket error] failed to send data', data)
 
             if ins:
-                #print('ins ready...')
                 frames, closed = self.recv_frames()
                 if closed:
                     self.websocket_active = False
