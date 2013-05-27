@@ -789,7 +789,8 @@ class Player( object ):
 
 			loc = loc.to_tuple()
 			scl = scl.to_tuple()
-			rot = (rot.w, rot.x, rot.y, rot.z)
+			#rot = (rot.w, rot.x, rot.y, rot.z)
+			rot = tuple( rot.to_euler("YXZ") ) #'XYZ', 'XZY', 'YXZ', 'YZX', 'ZXY', 'ZYX']
 
 			rloc = tuple(round(v,3) for v in loc) #(round(v,3) for v in loc) this is a generator
 			rscl = tuple(round(v,3) for v in scl)

@@ -297,7 +297,6 @@ var UserAPI = {
 	set_material : function(mesh, config) {
 		console.log('setting material', mesh);
 		var mat;
-		var textureCube;
 
 		if (config.shading=='FLAT') {
 			config.shading = THREE.FlatShading;
@@ -330,27 +329,11 @@ var UserAPI = {
 		}
 
 		if (config.envMap && config.refractionRatio) {
-			console.log('NEW ENV MAP');
 			config.envMap = UserAPI.get_cubemap( 
 				config.envMap, 
 				config.envmap_type 
 			);
-
-			/*
-			if (config.envMap in UserAPI.cubemaps) {
-				textureCube = UserAPI.cubemaps[ config.envMap ];
-			} else {
-				textureCube = UserAPI.skybox_cubemap;
-			}
-			console.log(textureCube);
-			config.envMap = textureCube;
-			*/
 		}
-		//envMap: textureCube, refractionRatio: 0.95
-
-		console.log(config);
-
-
 
 		if (config.type=='FLAT') {
 			mat = new THREE.MeshBasicMaterial( config );
@@ -368,6 +351,7 @@ var UserAPI = {
 		mesh.materials[ config.type ] = mat;
 		mesh.material = mat;
 		mesh.active_material = mat;
+		return mat;
 	},
 	create_geometry : function(pak, name) {
 		//console.log('creating new geometry');
@@ -450,7 +434,7 @@ var UserAPI = {
 	create_object : function(name) {
 		var o = new THREE.Object3D();
 		o.name = name;
-		o.useQuaternion = true;		// TODO euler
+		//o.useQuaternion = true;		// TODO euler
 		o.dynamic_hierarchy = {}; // DEPRECATED
 		o.custom_attributes = {};
 		o.meshes = [];
@@ -1273,41 +1257,32 @@ function on_json_message( data ) {
 		}
 
 		if (pak.rot) {
+			/*
 			o.quaternion.w = pak.rot[0];
 			o.quaternion.x = pak.rot[1];
 			o.quaternion.y = pak.rot[2];
 			o.quaternion.z = pak.rot[3];
+			*/
+			//o.rotation.x = pak.rot[0];
+			//o.rotation.y = pak.rot[1];
+			//o.rotation.z = pak.rot[2];
 
-			/*  this looks funny
 			if ( name in UserAPI.rotation_tweens == false ) {
-				var tween = new TWEEN.Tween(m.quaternion);
-				var quat = {
-					w: pak.rot[0],
-					x: pak.rot[1],
-					y: pak.rot[2],
-					z: pak.rot[3],
-
-				}
-				UserAPI.rotation_tweens[ name ] = {'quat':quat, 'tween':tween};
-				tween.to( quat );
+				var tween = new TWEEN.Tween(o.rotation);
+				var vec = new THREE.Vector3(pak.rot[0], pak.rot[1], pak.rot[2]);
+				UserAPI.rotation_tweens[ name ] = {'vector':vec, 'tween':tween};
+				tween.to( vec, 500 );
 				tween.start();
 
 			} else {
-				var quat = UserAPI.rotation_tweens[ name ].quat;
-				quat.w = pak.rot[0];
-				quat.x = pak.rot[1];
-				quat.y = pak.rot[2];
-				quat.z = pak.rot[3];
-
-				UserAPI.rotation_tweens[ name ].tween.to(
-					quat,
-					1000 // magic number
-				);
-				UserAPI.scale_tweens[ name ].tween.start();  // required
+				var tween = UserAPI.rotation_tweens[ name ].tween;
+				var vector = UserAPI.rotation_tweens[ name ].vector;
+				vector.set( pak.rot[0], pak.rot[1], pak.rot[2] );
+				//UserAPI.on_interpolate_scale( name, tween, vector );
+				//tween.start();
+				start_tween_if_needed( tween );
 
 			}
-			*/
-
 
 		}
 
