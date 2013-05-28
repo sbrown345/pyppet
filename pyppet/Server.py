@@ -91,6 +91,18 @@ bpy.types.Object.UID = IntProperty(
     default=0, min=0, max=2**14)
 
 #############################################
+def get_free_vertices( mesh ):
+	used = []
+	for edge in mesh.edges:
+		a,b = edge.vertices
+		if a not in used: used.append(a)
+		if b not in used: used.append(b)
+	free = []
+	for v in mesh.vertices:
+		if v.index not in used:
+			free.append( v )
+	return free
+
 def mesh_is_smooth( mesh ):
 	'''
 	if any face is smooth, the entire mesh is considered smooth
@@ -900,8 +912,8 @@ class Player( object ):
 						ob.data.materials[0], 
 						mesh=ob.data 
 					)
-					if 'color' in view:
-						pak['active_material']['color'] = view['color']
+					if 'color' in view:  ## TODO get other animated material options from view
+						mconfig['color'] = view['color']
 
 					_mconfig = str(mconfig)
 					if self._cache[ob]['material'] != _mconfig:
@@ -1001,6 +1013,10 @@ class Player( object ):
 				if len( geo['lines'] ):
 					if ob.data.materials and ob.data.materials[0]:
 						geo['linewidth'] = ob.data.materials[0].strand.root_size
+
+				free_verts = get_free_vertices( data )  ## particles
+				if free_verts:
+					geo['points'] = [v.index for v in free_verts]
 
 				print('--------->ok---sent-verts:%s'%len(data.vertices))
 

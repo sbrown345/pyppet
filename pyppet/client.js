@@ -500,6 +500,27 @@ var UserAPI = {
 			mesh.add( line );
 
 		}
+		if (pak.points) {
+
+			var pgeom = new THREE.Geometry();
+
+			for ( var i = 0; i < pak.points.length; i ++ ) {
+				var idx = pak.points[i];
+				var x = pak.vertices[idx][0];
+				var y = pak.vertices[idx][1];
+				var z = pak.vertices[idx][2];
+				var vec = new THREE.Vector3( x,y,z );
+				pgeom.vertices.push(vec);
+			}
+
+			var particles = new THREE.ParticleSystem(
+				pgeom, 
+				new THREE.ParticleBasicMaterial( { color: 0xffffff, size: 1, opacity: 0.5, transparent:true } ) 
+			);
+
+			mesh.add( particles );
+
+		}
 		return mesh;
 	},
 
