@@ -775,7 +775,7 @@ class Player( object ):
 					'trans':None,
 					'color':None,
 					'props':None,
-					#'children':None
+					'material':None
 				}
 
 			if ob not in wobjects:
@@ -889,10 +889,8 @@ class Player( object ):
 				self._cache[ob]['props'] = _props
 				pak['properties'] = props
 
-			color = None
-			if 'color' in view:
-				color = view['color']
-			else:
+			#color = None
+			if send or ob in self._sent_meshes:
 				#color = [ round(x,3) for x in ob.color ]  ## use "blender object color" ?
 				if not ob.data:
 					print('no ob.data threading bug?')
@@ -900,17 +898,24 @@ class Player( object ):
 
 				elif ob.data.materials and ob.data.materials[0]:
 					#color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
-					pak['active_material'] = get_material_config( 
+					mconfig = get_material_config( 
 						ob.data.materials[0], 
 						mesh=ob.data 
 					)
-					color = pak['active_material']['color'] # TODO move this
+					_mconfig = str(mconfig)
+					if self._cache[ob]['material'] != _mconfig:
+						self._cache[ob]['material'] = _mconfig
+						pak['active_material'] = mconfig
+						#color = pak['active_material']['color'] # TODO move this
+						if 'color' in view:
+							pak['active_material']['color'] = view['color']
 
-			if color:
-				color = tuple( color )
-				if send or self._cache[ob]['color'] != color:
-					pak['color'] = color
-					self._cache[ob]['color'] = color
+
+			#if color:
+			#	color = tuple( color )
+			#	if send or self._cache[ob]['color'] != color:
+			#		pak['color'] = color
+			#		self._cache[ob]['color'] = color
 
 
 			if a.on_click: pak['on_click'] = a.on_click.code

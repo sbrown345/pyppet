@@ -281,9 +281,9 @@ var UserAPI = {
 	},
 	update_material : function( mesh, pak ) {
 		var material = mesh.active_material;
-
+		console.log('update_material>',material, pak.color);
 		if (pak.color) {
-
+			console.log('update_material>>', pak.color);
 			if (pak.color.length==4) {
 				material.opacity = pak.color[3];
 			}
@@ -303,6 +303,12 @@ var UserAPI = {
 
 	set_material : function(mesh, config) {
 		var mat;
+
+		if (config.color) {
+			var clr = new THREE.Color();
+			clr.setRGB( config.color[0],config.color[1],config.color[2] )
+			config.color = clr;
+		}
 
 		if (config.vertexColors) {
 			config.vertexColors = THREE.VertexColors;  // THREE.FaceColors to use face.color
@@ -1372,7 +1378,7 @@ function on_json_message( data ) {
 		//////////////////////////////xxxxxxxxxxxxxxxxxxx
 
 		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
-		if (pak.active_material && o.meshes[0]) {
+		if (pak.active_material) {
 			o.meshes[0].clickable = !pak.active_material.wireframe;
 			if (pak.active_material.type != o.meshes[0].active_material.type) {
 
