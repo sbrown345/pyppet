@@ -400,7 +400,7 @@ var UserAPI = {
 		for ( var i = 0; i < pak.quads.length; i ++ ) {
 			var f = pak.quads[i];
 			var face = new THREE.Face4( f[0], f[1], f[2], f[3] );
-			if (pak.colors) {
+			if (pak.colors && pak.subdiv===undefined) {
 				for ( var j=0; j<4; j++) {
 					var rgb = pak.colors[ f[j] ];
 					var clr = new THREE.Color();
@@ -445,12 +445,16 @@ var UserAPI = {
 		UserAPI.meshes.push( mesh );
 
 		if (pak.lines.length) {
+			var linewidth = 1.0;
+			if (pak.linewidth) {
+				linewidth = pak.linewidth;
+			}
 			var linegeom = new THREE.Geometry();
 			var linemat = new THREE.LineBasicMaterial( { 
 				color: 0xffffff, 
 				opacity: 0.95, transparent: true,
 				vertexColors: THREE.VertexColors,
-				linewidth: 4.20 // note mrdoob - this should have been "lineWidth"
+				linewidth: linewidth // note mrdoob - this should have been "lineWidth"
 			} );
 
 			for ( var i = 0; i < pak.lines.length; i ++ ) {

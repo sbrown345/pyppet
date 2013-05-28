@@ -889,9 +889,7 @@ class Player( object ):
 				self._cache[ob]['props'] = _props
 				pak['properties'] = props
 
-			#color = None
 			if send or ob in self._sent_meshes:
-				#color = [ round(x,3) for x in ob.color ]  ## use "blender object color" ?
 				if not ob.data:
 					print('no ob.data threading bug?')
 					raise RuntimeError
@@ -902,20 +900,13 @@ class Player( object ):
 						ob.data.materials[0], 
 						mesh=ob.data 
 					)
+					if 'color' in view:
+						pak['active_material']['color'] = view['color']
+
 					_mconfig = str(mconfig)
 					if self._cache[ob]['material'] != _mconfig:
 						self._cache[ob]['material'] = _mconfig
 						pak['active_material'] = mconfig
-						#color = pak['active_material']['color'] # TODO move this
-						if 'color' in view:
-							pak['active_material']['color'] = view['color']
-
-
-			#if color:
-			#	color = tuple( color )
-			#	if send or self._cache[ob]['color'] != color:
-			#		pak['color'] = color
-			#		self._cache[ob]['color'] = color
 
 
 			if a.on_click: pak['on_click'] = a.on_click.code
@@ -1006,7 +997,10 @@ class Player( object ):
 							geo['colors'][ edge.vertices[0] ] = clr
 							geo['colors'][ edge.vertices[1] ] = clr
 
-
+				## use strand material settings to change line width ##
+				if len( geo['lines'] ):
+					if ob.data.materials and ob.data.materials[0]:
+						geo['linewidth'] = ob.data.materials[0].strand.root_size
 
 				print('--------->ok---sent-verts:%s'%len(data.vertices))
 
