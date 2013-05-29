@@ -777,6 +777,9 @@ class Player( object ):
 			if ob.type not in ('MESH', 'EMPTY'): continue
 			#if ob.hide: continue  ## deprecate?
 
+			if ob.type == 'EMPTY' and not ob.children:
+				#print('skipping empty empty', ob)
+				continue
 			## allow mesh without UV's ##
 			#if ob.type=='MESH' and not ob.data.uv_textures:
 			#	#print('WARN: not streaming mesh without uvmapping', ob.name)
