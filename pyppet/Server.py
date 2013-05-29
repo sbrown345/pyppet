@@ -846,8 +846,10 @@ class Player( object ):
 					a = b = c = None
 
 					if ob.type == 'MESH':
-						pak['min'] = tuple(ob.bound_box[0])
-						pak['max'] = tuple(ob.bound_box[6])
+						x,y,z = ob.bound_box[0]
+						pak['min'] = (x,y,-z)
+						x,y,z = ob.bound_box[6]
+						pak['max'] = (x,y,-z)
 
 				#if send or not self._ticker % 2:
 				if rloc != a:
@@ -902,6 +904,9 @@ class Player( object ):
 				T = view['selected']
 				selection[ T ] = props
 
+			if 'color' in view:  ## TODO get other animated material options from view
+				pak['color'] = view['color']
+
 
 			##################################################
 			send = ob in self._mesh_requests and not sent_mesh
@@ -922,8 +927,8 @@ class Player( object ):
 						ob.data.materials[0], 
 						mesh=ob.data 
 					)
-					if 'color' in view:  ## TODO get other animated material options from view
-						mconfig['color'] = view['color']
+					#if 'color' in view:  ## TODO get other animated material options from view
+					#	mconfig['color'] = view['color']
 
 					_mconfig = str(mconfig)
 					if self._cache[ob]['material'] != _mconfig:

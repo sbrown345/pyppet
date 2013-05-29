@@ -1056,12 +1056,8 @@ function title_object(geometry, parent, title ) {
 }
 
 function label_object(geometry, parent, txt, title, alignment ) {
-	var offset = 0.1;
-	if (geometry !== undefined) {
-		var bb = geometry.boundingBox;
-		//var offset = ((bb.max.y - bb.min.y)/2)+0.05;
-		offset = bb.max.y + 0.1;		
-	}
+	var bb = parent;
+	var offset = bb.max.y + 0.1;		
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1102,8 +1098,10 @@ function label_object(geometry, parent, txt, title, alignment ) {
 		);
 		parent._label_objects = lines;
 		for (var i=0; i<lines.length; i++) {
-			lines[i].position.x -= bb.min.x + 0.2;
-			lines[i].position.z += bb.max.z - 0.6;
+			//lines[i].position.x -= bb.min.x + 0.2;
+			//lines[i].position.z += bb.max.z - 0.6;
+			//lines[i].position.x += bb.min.x;// + 0.2;
+			//lines[i].position.z += bb.max.z - 0.6;
 		}
 	}
 }
@@ -1297,8 +1295,9 @@ function on_json_message( data ) {
 			}
 			// request mesh if its not an empty //
 			if (pak.empty) {
-				o.add( UserAPI.create_debug_axis(10.0) );
+				o.add( UserAPI.create_debug_axis(3.0) );
 			} else {
+				o.add( UserAPI.create_debug_axis(6.0) );
 				UserAPI.request_mesh( name );				
 			}
 		}
@@ -1429,6 +1428,9 @@ function on_json_message( data ) {
 
 			} else {
 				UserAPI.update_material( o.meshes[0], pak.active_material );
+			}
+			if (pak.color) { // special case //
+				UserAPI.update_material( o.meshes[0], {color:pak.color} );
 			}
 		}
 
@@ -2613,6 +2615,8 @@ CameraController = function ( object, domElement ) {
 	this.keys = [ 65 /*A*/, 83 /*S*/, 68 /*D*/ ];
 
 	// internals
+	this.use_smooth_target = true;
+	this.smooth_target = new THREE.Vector3();
 	this.allow_tilt = false;
 
 	this.target = new THREE.Vector3();
@@ -2860,6 +2864,14 @@ CameraController = function ( object, domElement ) {
 			_this.dispatchEvent( changeEvent );
 
 			lastPosition.copy( _this.object.position );
+
+		}
+		if (_this.use_smooth_target) {
+			var p = _this.target;
+			var u = p.clone();
+			u.sub( _this.smooth_target );
+			u.multiplyScalar( 0.1 );
+			p.sub( u );
 
 		}
 
