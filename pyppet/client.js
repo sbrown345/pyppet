@@ -151,10 +151,9 @@ var UserAPI = {
 			INPUT_OBJECT = null;
 		}
 
-/*
 		if (props.title) {
 			title_object(		// note label_object is smart enough to not rebuild the texture etc.
-				ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
+				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
 				ob,			// parent
 				props.title // title (can be undefined)
 			); // TODO optimize this only update on change
@@ -168,14 +167,12 @@ var UserAPI = {
 			if (INPUT_OBJECT == ob) { text=undefined; }
 
 			label_object(		// note label_object is smart enough to not rebuild the texture etc.
-				ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
+				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
 				ob,			// parent
 				text, 		// multiline text body
 				props.heading  // title (can be undefined)
 			);
 		}
-*/
-
 
 	},
 
@@ -515,7 +512,10 @@ var UserAPI = {
 
 			var particles = new THREE.ParticleSystem(
 				pgeom, 
-				new THREE.ParticleBasicMaterial( { color: 0xffffff, size: 1, opacity: 0.5, transparent:true } ) 
+				new THREE.ParticleBasicMaterial({
+					color: 0xffffff, size: 1, opacity: 0.5, 
+					transparent:true, blending: THREE.AdditiveBlending 
+				})
 			);
 
 			mesh.add( particles );
@@ -524,7 +524,7 @@ var UserAPI = {
 		return mesh;
 	},
 
-	create_object : function(name, position, rotation, scale) {
+	create_object : function(name, position, rotation, scale, min, max) {
 		var o = new THREE.Object3D();
 		o.name = name;
 		//o.useQuaternion = true;		// euler OK.
@@ -547,6 +547,12 @@ var UserAPI = {
 			o.rotation.y = rotation[1];
 			o.rotation.z = rotation[2];
 		//}
+		if (min !== undefined) {
+			o.min = new THREE.Vector3( min[0], min[1], min[2] );
+		}
+		if (max !== undefined) {
+			o.max = new THREE.Vector3( max[0], max[1], max[2] );
+		}
 
 		UserAPI.objects[ name ] = o;
 		return o;
@@ -1009,9 +1015,15 @@ function create_multiline_text( text, title, parent, offset, alignment, color, s
 
 /////////////// label any object ///////////////
 function title_object(geometry, parent, title ) {
-	var bb = geometry.boundingBox;
-	//var offset = ((bb.max.y - bb.min.y)/2)+0.15;
+	//var offset = 0.1;
+	//if (geometry !== undefined) {
+	//	var bb = geometry.boundingBox;
+	//	//var offset = ((bb.max.y - bb.min.y)/2)+0.15;
+	//	offset = bb.max.y + 0.1;		
+	//}
+	var bb = parent;
 	var offset = bb.max.y + 0.1;
+
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
 
@@ -1044,9 +1056,12 @@ function title_object(geometry, parent, title ) {
 }
 
 function label_object(geometry, parent, txt, title, alignment ) {
-	var bb = geometry.boundingBox;
-	//var offset = ((bb.max.y - bb.min.y)/2)+0.05;
-	var offset = bb.max.y + 0.1;
+	var offset = 0.1;
+	if (geometry !== undefined) {
+		var bb = geometry.boundingBox;
+		//var offset = ((bb.max.y - bb.min.y)/2)+0.05;
+		offset = bb.max.y + 0.1;		
+	}
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1273,7 +1288,9 @@ function on_json_message( data ) {
 				name,
 				pak.pos,
 				pak.rot,
-				pak.scl
+				pak.scl,
+				pak.min,
+				pak.max
 			);
 			if (pak.parent === undefined) {
 				scene.add( o );

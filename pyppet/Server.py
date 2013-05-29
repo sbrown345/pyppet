@@ -842,6 +842,10 @@ class Player( object ):
 				else:
 					a = b = c = None
 
+					if ob.type == 'MESH':
+						pak['min'] = tuple(ob.bound_box[0])
+						pak['max'] = tuple(ob.bound_box[6])
+
 				#if send or not self._ticker % 2:
 				if rloc != a:
 					pak['pos'] = loc
@@ -860,6 +864,9 @@ class Player( object ):
 			###########################
 			if ob.type == 'MESH':
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
+				#pak['min'] = tuple(ob.bound_box[0])
+				#pak['max'] = tuple(ob.bound_box[6])
+
 			elif ob.type == 'EMPTY':
 				pak['empty'] = True
 				msg[ 'meshes' ][ '__%s__'%UID(ob) ] = pak
