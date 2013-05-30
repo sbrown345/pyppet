@@ -166,8 +166,7 @@ class Animations( AnimAPI ):
 	def tick( self, T ):
 		for anim in self.animations:
 			if not anim.done:
-				anim.tick( T )
-				break
+				return anim.tick( T )
 
 	def finish(self):
 		for anim in self.animations:
@@ -258,12 +257,14 @@ class Animation( AnimAPI ):
 	def finish(self):
 		self.done = True
 		if self.value is not None:
+			attr = self.target[ self.attribute ]
 			self.target[ self.attribute ] = self.value
 		else:
 			assert self.indices
 			attr = self.target[self.attribute]
 			for index in self.indices:
 				attr[ index ] = self.indices[ index ]
+			self.target[self.attribute] = attr # reassign
 
 		if self.animations:
 			idx = self.animations.index(self)
@@ -295,7 +296,9 @@ class Animation( AnimAPI ):
 
 		else:
 			d = T - self.last_tick
-			if not d: return self.done  ## prevent divide by zero
+			if not d:
+				print('WARN T - self.last_tick div by zero!')
+				return self.done  ## prevent divide by zero
 
 			step = d / self.seconds
 			attr = self.target[self.attribute]
@@ -306,6 +309,7 @@ class Animation( AnimAPI ):
 				value = attr
 				value += self.delta * step
 				self.target[ self.attribute ] = value
+
 			else:
 				assert self.indices
 				for index in self.indices:
@@ -313,7 +317,8 @@ class Animation( AnimAPI ):
 					delta = self.deltas[ index ]
 					value += delta * step
 					attr[ index ] = value
-				self.target[self.attribute] = attr
+
+				self.target[self.attribute] = attr # reassign
 
 		self.last_tick = T
 

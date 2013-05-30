@@ -847,9 +847,9 @@ class Player( object ):
 
 					if ob.type == 'MESH':
 						x,y,z = ob.bound_box[0]
-						pak['min'] = (x,y,-z)
+						pak['min'] = (x,y,z)
 						x,y,z = ob.bound_box[6]
-						pak['max'] = (x,y,-z)
+						pak['max'] = (x,y,z)
 
 				#if send or not self._ticker % 2:
 				if rloc != a:

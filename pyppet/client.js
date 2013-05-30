@@ -1295,9 +1295,9 @@ function on_json_message( data ) {
 			}
 			// request mesh if its not an empty //
 			if (pak.empty) {
-				o.add( UserAPI.create_debug_axis(3.0) );
+				//o.add( UserAPI.create_debug_axis(3.0) );
 			} else {
-				o.add( UserAPI.create_debug_axis(6.0) );
+				//o.add( UserAPI.create_debug_axis(6.0) );
 				UserAPI.request_mesh( name );				
 			}
 		}
