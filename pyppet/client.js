@@ -527,7 +527,7 @@ var UserAPI = {
 	create_object : function(name, position, rotation, scale, min, max) {
 		var o = new THREE.Object3D();
 		o.name = name;
-		//o.useQuaternion = true;		// euler OK.
+		//o.useQuaternion = true;		// euler OK.?
 		o.dynamic_hierarchy = {}; // not used anymore
 		o.custom_attributes = {}; // used by websocket callbacks
 		o.meshes = [];			// used to lazy load mesh data
@@ -543,10 +543,19 @@ var UserAPI = {
 			o.scale.z = scale[2];
 		//}
 		//if ( rotation != undefined ) {
+
 			o.rotation.x = rotation[0];
 			o.rotation.y = rotation[1];
 			o.rotation.z = rotation[2];
+
 		//}
+/*
+			o.quaternion.w = rotation[0];
+			o.quaternion.x = rotation[1];
+			o.quaternion.y = rotation[2];
+			o.quaternion.z = rotation[3];
+*/
+
 		if (min !== undefined) {
 			o.min = new THREE.Vector3( min[0], min[1], min[2] );
 		}
@@ -1395,14 +1404,16 @@ function on_json_message( data ) {
 
 		if (pak.rot) {
 			/*
-			o.quaternion.w = pak.rot[0];
-			o.quaternion.x = pak.rot[1];
-			o.quaternion.y = pak.rot[2];
-			o.quaternion.z = pak.rot[3];
+			o.quaternion.w = pak.quat[0];
+			o.quaternion.x = pak.quat[1];
+			o.quaternion.y = pak.quat[2];
+			o.quaternion.z = pak.quat[3];
 			*/
+
 			//o.rotation.x = pak.rot[0];
 			//o.rotation.y = pak.rot[1];
 			//o.rotation.z = pak.rot[2];
+			//o.rotation.setEulerFromQuaternion( pak.quat );
 
 			if ( name in UserAPI.rotation_tweens == false ) {
 				var tween = new TWEEN.Tween(o.rotation);
