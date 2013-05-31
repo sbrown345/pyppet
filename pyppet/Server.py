@@ -1278,10 +1278,14 @@ def insert_custom_html():
 def insert_custom_javascript_module():
 	return ''
 
+def insert_custom_body_onload():
+	return ''
+
 def generate_html_header(title='webgl', external_three=False, websocket_port=8081, websocket_path=None, dancer=False ):
 	h = [
 		'<!DOCTYPE html><html lang="en">',
-		'<head><title>%s</title>' %title,
+		'<head>',
+		'<title>%s</title>' %title,
 		'<meta charset="utf-8">',
 		'<meta name="viewport" content="width=device-width, user-scalable=yes, minimum-scale=1.0, maximum-scale=1.0">',
 	]
@@ -1297,7 +1301,9 @@ def generate_html_header(title='webgl', external_three=False, websocket_port=808
 	h.append( insert_custom_css() )
 	h.append( '</style>' )
 
-	h.append( '</head><body>' )
+	a = insert_custom_body_onload()
+	if a and not a.startswith('javascript:'): a = 'javascript:' + a
+	h.append( '</head><body onload="%s">'%a )
 
 	h.append( insert_custom_html() )
 
