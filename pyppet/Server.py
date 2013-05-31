@@ -851,15 +851,15 @@ class Player( object ):
 						x,y,z = ob.bound_box[6]
 						pak['max'] = (x,y,z)
 
-				#if send or not self._ticker % 2:
-				if rloc != a:
-					pak['pos'] = loc
-				if rscl != b:
-					pak['scl'] = scl
-				if rrot != c:
-					pak['rot'] = rot
+				if not self._ticker % 2:
+					if rloc != a:
+						pak['pos'] = loc
+					if rscl != b:
+						pak['scl'] = scl
+					if rrot != c:
+						pak['rot'] = rot
 
-				self._cache[ob]['trans'] = state
+					self._cache[ob]['trans'] = state
 
 			else:
 				#print('cache insync', ob)

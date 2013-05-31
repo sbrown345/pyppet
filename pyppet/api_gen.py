@@ -140,6 +140,8 @@ AnimationManager = SimpleAnimationManager()
 class AnimAPI(object):
 	def animate( self, loop=False ):
 		self.start_time = time.time()
+		if self.delay: self.start_time += self.delay
+
 		self.last_tick = self.start_time
 		self.done = False
 		self.loop = loop
@@ -191,12 +193,13 @@ class Animation( AnimAPI ):
 
 	'''
 
-	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None, mode='ABSOLUTE' ):
+	def __init__(self, seconds=1.0, value=None, x=None, y=None, z=None, mode='ABSOLUTE', delay=None ):
 		assert mode in ('RELATIVE', 'ABSOLUTE')
 		self.mode = mode
 		self.done = False
 		self.value = value
 		self.type = type(value)
+		self.delay = delay
 		self.x = x; self.y = y; self.z = z
 		self.indices = {}
 		self.deltas = {}

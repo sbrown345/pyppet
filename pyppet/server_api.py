@@ -160,6 +160,7 @@ def _new_singleton(cls, *args, **kw):
 
 def websocket_singleton( cls ):
 	'''
+	class decorator @
 	use __new__ to capture creation of class
 	'''
 	cls.__new__ = _new_singleton
