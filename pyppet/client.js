@@ -815,22 +815,75 @@ function on_mouse_down(event) {
 
 }
 
+function tween_position( o, name, pos ) {
+	if ( name in UserAPI.position_tweens == false ) {
+		var tween = new TWEEN.Tween(o.position);
+		var vec = new THREE.Vector3(pos[0], pos[1], pos[2]);
+		UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
+		tween.to( vec, 500 );
+		tween.start();
+
+	} else {
+		var tween = UserAPI.position_tweens[ name ].tween;
+		var vector = UserAPI.position_tweens[ name ].vector;
+		vector.set( pos[0], pos[1], pos[2] );
+		//UserAPI.on_interpolate_position( name, tween, vector );
+		start_tween_if_needed( tween );
+	}
+}
+
+function tween_scale( o, name, scl ) {
+	if ( name in UserAPI.scale_tweens == false ) {
+		var tween = new TWEEN.Tween(o.scale);
+		var vec = new THREE.Vector3(scl[0], scl[1], scl[2]);
+		UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
+		tween.to( vec, 500 );
+		tween.start();
+
+	} else {
+		var tween = UserAPI.scale_tweens[ name ].tween;
+		var vector = UserAPI.scale_tweens[ name ].vector;
+		vector.set( scl[0], scl[1], scl[2] );
+		//UserAPI.on_interpolate_scale( name, tween, vector );
+		start_tween_if_needed( tween );
+	}
+}
+
 function on_mouse_up( event ) {
 	if ( INTERSECTED ) {
-		var a = Objects[ INTERSECTED.name ];
+		var a = UserAPI.objects[ INTERSECTED.name ];
 		while (_input_buffer.length) { _input_buffer.pop() }
-		//INPUT_OBJECT = a;
+
+		if (a.custom_attributes.on_mouse_up_tween) {
+			// kick off animation before sending message to server 
+			if (a.custom_attributes.on_mouse_up_tween.scale) {
+				tween_scale(
+					a, 
+					a.name, 
+					a.custom_attributes.on_mouse_up_tween.scale
+				);
+			}
+
+			if (a.custom_attributes.on_mouse_up_tween.position) {
+				tween_position(
+					a, 
+					a.name, 
+					a.custom_attributes.on_mouse_up_tween.position
+				);
+			}
+
+		}
+
 		if (a.on_mouse_up_callback) {
-			//a.do_mouse_up_callback(); 
 			a.on_mouse_up_callback( a.custom_attributes );
 		}
+
 		if (UserAPI.on_model_click_released) {
 			UserAPI.on_model_click_released(
 				a, //lod
 				INTERSECTED
 			)
 		}
-		//INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
 		INTERSECTED = null;
 	}
 }
@@ -1330,45 +1383,14 @@ function on_json_message( data ) {
 			m.position.y = pak.pos[1];
 			m.position.z = pak.pos[2];
 			*/
-			if ( name in UserAPI.position_tweens == false ) {
-				var tween = new TWEEN.Tween(o.position);
-				var vec = new THREE.Vector3(pak.pos[0], pak.pos[1], pak.pos[2]);
-				UserAPI.position_tweens[ name ] = {'vector':vec, 'tween':tween};
-				tween.to( vec, 500 );
-				tween.start();
-
-			} else {
-				var tween = UserAPI.position_tweens[ name ].tween;
-				var vector = UserAPI.position_tweens[ name ].vector;
-				vector.set( pak.pos[0], pak.pos[1], pak.pos[2] );
-				//UserAPI.on_interpolate_position( name, tween, vector );
-				//tween.start();
-				start_tween_if_needed( tween );
-				/* note using chain is WAY slower than just using tween.to()*/
-			}
+			tween_position( o, name, pak.pos );
 		}
 
 		if (pak.scl) {
 			//m.scale.x = pak.scl[0];
 			//m.scale.y = pak.scl[1];
 			//m.scale.z = pak.scl[2];				
-
-			if ( name in UserAPI.scale_tweens == false ) {
-				var tween = new TWEEN.Tween(o.scale);
-				var vec = new THREE.Vector3(pak.scl[0], pak.scl[1], pak.scl[2]);
-				UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
-				tween.to( vec, 500 );
-				tween.start();
-
-			} else {
-				var tween = UserAPI.scale_tweens[ name ].tween;
-				var vector = UserAPI.scale_tweens[ name ].vector;
-				vector.set( pak.scl[0], pak.scl[1], pak.scl[2] );
-				//UserAPI.on_interpolate_scale( name, tween, vector );
-				//tween.start();
-				start_tween_if_needed( tween );
-
-			}
+			tween_scale( o, name, pak.scl );
 		}
 
 		if (pak.rot) {
