@@ -981,76 +981,77 @@ function on_keypress( evt ) {
 }
 window.addEventListener( 'keypress', on_keypress, false );
 
-function create_text( line, parent, offset, resolution, scale, alignment, bgcolor ) {
-	console.log('createlabel');
-	console.log(line);
-	if (offset == undefined) { offset=-1.1; }
-	if (scale == undefined) { scale=0.01; }
-	if (resolution == undefined) { resolution=100; }
+function create_text( line, parent, params ) {
 
-	var color = "white";
-	//if (alignment=='center') { color='black'; }
+	if (params.offset === undefined) { params.offset=-1.1; }
+	if (params.scale === undefined) { params.scale=0.01; }
+	if (params.resolution === undefined) { params.resolution=100; }
+	if (params.color === undefined) { params.color="white"; }
+	if (params.transparent === undefined) { params.transparent=true; }
+	if (params.x === undefined) { params.x=0; }
+	if (params.y === undefined) { params.y=0; }
+	if (params.z === undefined) { params.z=0; }
 
 	var mesh = createLabel(
 		line, 
-		0, offset, 0,  // location, x,y,z
-		resolution,
-		color, // font color
-		true, // transparent
-		alignment,
-		bgcolor
+		params.x, params.y+params.offset, params.z,  // location, x,y,z
+		params.resolution,
+		params.color, // font color
+		params.transparent,
+		params.alignment,
+		params.bgcolor
 	);
-	mesh.scale.x = scale;
-	mesh.scale.y = scale;
-	mesh.scale.z = scale;
+
+	if (params.flip) {
+		mesh.scale.x = -params.scale;
+		mesh.scale.y = -params.scale;
+		mesh.scale.z = -params.scale;
+	} else {
+		mesh.scale.x = params.scale;
+		mesh.scale.y = params.scale;
+		mesh.scale.z = params.scale;		
+	}
+
 	mesh.rotation.x = Math.PI/2.0;
 	mesh.rotation.y = Math.PI;
-	if (alignment=='left') {
-		mesh.position.x = -((mesh.width/2) * scale); //align
+
+	if (params.alignment == 'left') {
+		mesh.position.x = -((mesh.width/2) * params.scale); //align
 	}
+
 	parent.add( mesh );
 	return mesh;
 }
 
-function create_multiline_text( text, title, parent, offset, alignment, color, spacing ) {
-	if (spacing==undefined) { spacing=0.3; }
-	var scale = 0.0035;
+function create_multiline_text( text, title, parent, params ) {
+
+	if (params.spacing==undefined) { params.spacing=0.3; }
+	if (params.scale==undefined) { params.scale=0.0035; }
 	var lines = [];
 
 	if (title != undefined) {
+
+		if (params.title_resolution==undefined) { params.resolution=100; }  // default
+
 		var _lines = title.split('\n');
 		for (var i=0; i<_lines.length; i ++) {
 			var line = _lines[ i ];
 			var mesh = create_text( 
 				line, 
 				parent, 
-				offset,
-				100,  // res
-				scale,
-				alignment,
-				color
+				params
 			);
 			if (lines.length) {
-				mesh.position.z = -(spacing+0.15)*i;
+				mesh.position.z = -(params.spacing+0.15)*i;
 				//mesh.position.z -= lines[lines.length-1].height*scale;
 			}
 			lines.push( mesh );
 		}
 
-
-		/*
-		var mesh = create_text( 
-			title, 
-			parent, 
-			offset,
-			100, // res
-			scale,
-			alignment,
-			color
-		);
-		lines.push( mesh );
-		*/
 	}
+
+	if (params.text_resolution==undefined) { params.resolution=75; } // default
+
 	if (text != undefined) {
 		var _lines = text.split('\n');
 		for (var i=0; i<_lines.length; i ++) {
@@ -1058,14 +1059,10 @@ function create_multiline_text( text, title, parent, offset, alignment, color, s
 			var mesh = create_text( 
 				line, 
 				parent, 
-				offset,
-				75,  // res
-				scale,
-				alignment,
-				color
+				params
 			);
 			if (lines.length) {
-				mesh.position.z = -spacing*i;
+				mesh.position.z = -params.spacing*i;
 				//mesh.position.z -= lines[lines.length-1].height*scale;
 			}
 			lines.push( mesh );
@@ -1083,8 +1080,9 @@ function title_object(geometry, parent, title ) {
 	//	//var offset = ((bb.max.y - bb.min.y)/2)+0.15;
 	//	offset = bb.max.y + 0.1;		
 	//}
-	var bb = parent;
-	var offset = bb.max.y + 0.1;
+
+	//var bb = parent;
+	//var offset = bb.max.y + 0.1;
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1106,9 +1104,10 @@ function title_object(geometry, parent, title ) {
 			undefined, 
 			title,
 			parent,
-			offset,
-			"center" //alignment
-			//"brown"
+			{
+				offset : parent.max.y + 0.1,
+				alignment : "center"
+			}
 		);
 		parent._title_objects = lines;
 		//lines[0].position.z = -(bb.max.z - bb.min.z) / 2.0;
@@ -1118,8 +1117,6 @@ function title_object(geometry, parent, title ) {
 }
 
 function label_object(geometry, parent, txt, title, alignment ) {
-	var bb = parent;
-	var offset = bb.max.y + 0.1;		
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1133,14 +1130,17 @@ function label_object(geometry, parent, txt, title, alignment ) {
 			undefined, 
 			title,
 			parent,
-			offset,
-			"center" //alignment
+			{
+				offset:parent.max.y + 0.1,
+				alignment:"center"
+			}
 		);
 		parent._title_objects = lines;
-		lines[0].position.z = bb.max.z - 0.2;
-		//lines[0].position.x -= bb.min.x;
+		lines[0].position.z = parent.max.z - 0.2;
 	}
-	if (alignment==undefined) {
+
+	//////////////////////////////////////////////////////
+	if (alignment==undefined) { // left default alignment
 		alignment = 'left';
 	}
 	if (txt != undefined && txt != parent._label_text) {
@@ -1155,8 +1155,10 @@ function label_object(geometry, parent, txt, title, alignment ) {
 			txt+'|', 
 			undefined,
 			parent,
-			offset,
-			alignment
+			{
+				offset:parent.max.y + 0.1,
+				alignment:alignment
+			}
 		);
 		parent._label_objects = lines;
 		for (var i=0; i<lines.length; i++) {
@@ -1210,7 +1212,7 @@ function createLabel(text, x, y, z, size, color, transparent, alignment, backGro
 	// context.strokeRect(0, 0, canvas.width, canvas.height);
 	var texture = new THREE.Texture(canvas);
 	//texture.flipY = false;
-	//texture.flipX = true;
+	//texture.flipX = false;
 	texture.needsUpdate = true;
 
 	var material = new THREE.MeshBasicMaterial({
@@ -1224,6 +1226,8 @@ function createLabel(text, x, y, z, size, color, transparent, alignment, backGro
 	mesh.position.x = x;
 	mesh.position.y = y;
 	mesh.position.z = z;
+	mesh.scale.y = -1.0;
+	mesh.scale.z = -1.0;
 
 	mesh.width = canvas.width;
 	mesh.height = canvas.height;
