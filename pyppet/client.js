@@ -155,7 +155,8 @@ var UserAPI = {
 			title_object(		// note label_object is smart enough to not rebuild the texture etc.
 				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
 				ob,			// parent
-				props.title // title (can be undefined)
+				props.title, // title (can be undefined)
+				ob.custom_attributes.text_flip  // special case to force flipped text
 			); // TODO optimize this only update on change
 		}
 
@@ -170,7 +171,8 @@ var UserAPI = {
 				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
 				ob,			// parent
 				text, 		// multiline text body
-				props.heading  // title (can be undefined)
+				props.heading,  // title (can be undefined)
+				ob.custom_attributes.text_flip  // special case to force flipped text
 			);
 		}
 
@@ -1073,16 +1075,10 @@ function create_multiline_text( text, title, parent, params ) {
 
 
 /////////////// label any object ///////////////
-function title_object(geometry, parent, title ) {
-	//var offset = 0.1;
-	//if (geometry !== undefined) {
-	//	var bb = geometry.boundingBox;
-	//	//var offset = ((bb.max.y - bb.min.y)/2)+0.15;
-	//	offset = bb.max.y + 0.1;		
-	//}
+function title_object(geometry, parent, title, flip ) {
+	console.log('title-object:'+flip);
 
-	//var bb = parent;
-	//var offset = bb.max.y + 0.1;
+	if (flip === undefined) { flip = false; }
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1099,14 +1095,14 @@ function title_object(geometry, parent, title ) {
 			}
 		}
 
-
 		var lines = create_multiline_text(
 			undefined, 
 			title,
 			parent,
 			{
 				offset : parent.max.y + 0.1,
-				alignment : "center"
+				alignment : "center",
+				flip : flip
 			}
 		);
 		parent._title_objects = lines;
@@ -1116,7 +1112,11 @@ function title_object(geometry, parent, title ) {
 
 }
 
-function label_object(geometry, parent, txt, title, alignment ) {
+function label_object(geometry, parent, txt, title, flip ) {
+	console.log('label-object:'+flip);
+
+	if (flip === undefined) { flip = false; }
+
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1132,7 +1132,8 @@ function label_object(geometry, parent, txt, title, alignment ) {
 			parent,
 			{
 				offset:parent.max.y + 0.1,
-				alignment:"center"
+				alignment:"center",
+				flip:flip
 			}
 		);
 		parent._title_objects = lines;
@@ -1140,9 +1141,7 @@ function label_object(geometry, parent, txt, title, alignment ) {
 	}
 
 	//////////////////////////////////////////////////////
-	if (alignment==undefined) { // left default alignment
-		alignment = 'left';
-	}
+
 	if (txt != undefined && txt != parent._label_text) {
 		parent._label_text = txt;
 
@@ -1157,7 +1156,8 @@ function label_object(geometry, parent, txt, title, alignment ) {
 			parent,
 			{
 				offset:parent.max.y + 0.1,
-				alignment:alignment
+				alignment:"left",
+				flip:flip
 			}
 		);
 		parent._label_objects = lines;

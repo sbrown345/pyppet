@@ -491,7 +491,6 @@ class Container(object):
 	def __getitem__(self, name):
 		'''
 		a["x"] # get custom property
-		a[viewer]["x"] # get a property local to a viewer
 		'''
 		if type(name) is str:
 			if name in self.__properties:
@@ -503,10 +502,6 @@ class Container(object):
 				raise KeyError
 
 		else:
-			## DEPRECATED get a viewer wrapper has moved to "a(viewer)"
-			#if self.__allow_viewers:
-			#	return self.__viewers[ name ]  # "a[ viewer ]" the View is also returned by "a(viewer)"
-			#else:
 			raise KeyError
 
 class View( Container ):
@@ -539,6 +534,9 @@ class ObjectView( Container ):
 	#__allow_upstream_attributes = []
 	pass
 
+# monkey patch this to allow the blender user to attach properties to objects from blender
+USER_CUSTOM_ATTRIBUTES = ['text_flip']
+
 def create_object_view( ob ):
 	print('------------create object view-----------')
 	on_click = None #'default_click' # defaults for testing
@@ -546,14 +544,23 @@ def create_object_view( ob ):
 	on_input = None #'default_input'  # defaults for testing
 
 	############ Blender's ID-Props API #########
+	user_props = {}
 	if hasattr(ob, 'items'):
 		print('////////checking blender id props////////')
 		for prop in ob.items():
-			print(prop)
 			name, value = prop
-			if name == 'on_click': on_click = value
-			elif name == 'on_input': on_input = value
-			else: print('WARN unknown id-prop:', name, value)
+			if name == '_RNA_UI': continue  # used by blender internally
+
+			if name == 'on_click':
+				on_click = value
+			elif name == 'on_input':
+				on_input = value
+			elif name in USER_CUSTOM_ATTRIBUTES:
+				user_props[ name ] = value
+			else:
+				print('WARN unknown id-prop:', name, value)
+				raise RuntimeError
+
 	#############################################
 	print(ob, on_click, on_input)
 	if on_click:
@@ -577,6 +584,10 @@ def create_object_view( ob ):
 		label=None,
 		allow_viewers=True,
 	)
+	if user_props:
+		for name in user_props:
+			v[ name ] = user_props[ name ]
+
 	return v
 
 

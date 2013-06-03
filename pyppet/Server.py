@@ -805,13 +805,6 @@ class Player( object ):
 
 			# pack into dict for json transfer.
 			pak = {}
-			#if ob.children:
-			#	dh = [ '__%s__'%UID(child) for child in ob.children ]
-			#	#pak['dynamic_hierarchy'] = dh
-			#	if self._cache[ob]['children'] != dh:
-			#		pak['dynamic_hierarchy'] = dh
-			#		self._cache[ob]['children'] = dh
-
 			if ob.parent: pak['parent'] = UID( ob.parent )
 
 
@@ -899,7 +892,6 @@ class Player( object ):
 			for key in dir(view):
 				if key in ('location','scale', 'rotation_euler', 'color'): continue  ## special cases
 				props[ key ] = view[key]
-
 
 			## special case for selected ##
 			if 'selected' in view and view['selected']:
