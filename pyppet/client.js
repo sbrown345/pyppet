@@ -141,7 +141,14 @@ var UserAPI = {
 		for (_ in pak.properties) {
 			ob.custom_attributes[_] = pak.properties[_] 
 		}
+		if (props.visible !== undefined) {
+			ob.visible = props.visible; // this has no affect on an Object3D without mesh
 
+			for (var i=0; i<ob.children.length; i++) { 		// show/hide meshes
+				var child = ob.children[ i ];
+				child.visible = props.visible;
+			}
+		}
 
 		if (props.selected) { 
 			SELECTED = ob;
