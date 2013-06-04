@@ -853,6 +853,23 @@ function tween_position( o, name, pos ) {
 function tween_scale( o, name, scl ) {
 	if ( name in UserAPI.scale_tweens == false ) {
 		var tween = new TWEEN.Tween(o.scale);
+		tween.onUpdate(
+			function () {
+				var thresh = 0.01
+				if (this.x <= thresh || this.y <= thresh || this.z <= thresh ) {
+					o.visible = false;
+					for (var i=0; i<o.children.length; i++) {
+						o.children[ i ].visible = true;
+					}
+				} else {
+					o.visible = false;
+					for (var i=0; i<o.children.length; i++) {
+						o.children[ i ].visible = true;
+					}
+				}
+			}
+
+		);
 		var vec = new THREE.Vector3(scl[0], scl[1], scl[2]);
 		UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
 		tween.to( vec, 500 );
@@ -1381,8 +1398,15 @@ function on_json_message( data ) {
 		var props = pak.properties; //ob
 		var o = UserAPI.objects[ name ];
 
-		if (o.parent === undefined) {
-			UserAPI.objects[ '__'+pak.parent+'__'].add( o );
+		if (o.parent === undefined && pak.parent !== undefined) {
+			var pid = '__'+pak.parent+'__';
+			if (pid in UserAPI.objects) {
+				console.log( 'ADDING-> '+pak.parent );
+				UserAPI.objects[ pid ].add( o );
+			} else {
+				console.log( 'waiting for.. '+pak.parent );
+			}
+
 		}
 
 		if (pak.geometry) { // request_mesh response

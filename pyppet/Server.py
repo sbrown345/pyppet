@@ -728,16 +728,31 @@ class Player( object ):
 		'''
 		r = {}
 		for ob in bpy.context.scene.objects:
+			if ob.name.startswith('_'): continue  ## ignore objects that starts with "_"
 			distance = (self.location - ob.matrix_world.to_translation()).length
 			if distance not in r: r[distance] = []
 			r[distance].append( ob )
 		k = list(r.keys())
 		k.sort()
-		a = []
+
+		wobjects = api_gen.get_wrapped_objects()
+		visible = []
+		invisible = []
 		for d in k:
-			if d > limit: continue
-			a.extend( r[d] )
-		return a
+			#if d > limit: continue  ## this would cause problems if something distant was the parent of something near
+			for ob in r[ d ]:
+				if ob not in wobjects: continue ## ignore template source objects, and possibly other things not wrapped
+				w = wobjects[ ob ]
+				if 'visible' in w:
+					if w['visible']: visible.append( ob )
+					else: invisible.append( ob )
+				else:
+					visible.append( ob )
+
+		print('visible', visible)
+		print('invisible', invisible)
+
+		return visible + invisible
 
 	def create_message_stream( self, context ):
 		'''
