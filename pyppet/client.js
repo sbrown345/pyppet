@@ -154,7 +154,7 @@ var UserAPI = {
 			SELECTED = ob;
 			INPUT_OBJECT = ob;
 		}
-		if (props.disable_input && m === INPUT_OBJECT) {
+		if (props.disable_input && ob === INPUT_OBJECT) {
 			INPUT_OBJECT = null;
 		}
 
@@ -853,16 +853,20 @@ function tween_position( o, name, pos ) {
 function tween_scale( o, name, scl ) {
 	if ( name in UserAPI.scale_tweens == false ) {
 		var tween = new TWEEN.Tween(o.scale);
-		tween.onUpdate(
-			function () {
-				var thresh = 0.01
+		tween.onUpdate(  // automatically hide something if its scale becomes 'small'
+			function () { // this is an issue if the mesh children are still loading.. loading needs to check if o.visible
+				var thresh = 0.01;
 				if (this.x <= thresh || this.y <= thresh || this.z <= thresh ) {
-					o.visible = false;
-					for (var i=0; i<o.children.length; i++) {
-						o.children[ i ].visible = true;
+					if (o.visible) {
+						console.log('making INvisible', o);
+						o.visible = false;
+						for (var i=0; i<o.children.length; i++) {
+							o.children[ i ].visible = false;
+						}
 					}
-				} else {
-					o.visible = false;
+				} else if (o.visible === false) {
+					console.log('making visible', o);
+					o.visible = true;
 					for (var i=0; i<o.children.length; i++) {
 						o.children[ i ].visible = true;
 					}
@@ -1132,6 +1136,13 @@ function title_object(geometry, parent, title, flip ) {
 		parent._title_objects = lines;
 		//lines[0].position.z = -(bb.max.z - bb.min.z) / 2.0;
 		//lines[0].position.x -= bb.min.x; // for left alignment
+
+		if (parent.visible === false) { // hide text if parent is also hidden
+			for (var i=0; i<lines.length; i++) {
+				lines[i].visible=false;
+			}
+		}
+
 	}
 
 }
@@ -1162,6 +1173,13 @@ function label_object(geometry, parent, txt, title, flip ) {
 		);
 		parent._title_objects = lines;
 		lines[0].position.z = parent.max.z - 0.2;
+
+		if (parent.visible === false) { // hide text if parent is also hidden
+			for (var i=0; i<lines.length; i++) {
+				lines[i].visible=false;
+			}
+		}
+
 	}
 
 	//////////////////////////////////////////////////////
@@ -1185,12 +1203,14 @@ function label_object(geometry, parent, txt, title, flip ) {
 			}
 		);
 		parent._label_objects = lines;
-		for (var i=0; i<lines.length; i++) {
-			//lines[i].position.x -= bb.min.x + 0.2;
-			//lines[i].position.z += bb.max.z - 0.6;
-			//lines[i].position.x += bb.min.x;// + 0.2;
-			//lines[i].position.z += bb.max.z - 0.6;
+
+		if (parent.visible === false) { // hide text if parent is also hidden
+			for (var i=0; i<lines.length; i++) {
+				lines[i].visible=false;
+			}
 		}
+
+
 	}
 }
 

@@ -741,16 +741,19 @@ class Player( object ):
 		for d in k:
 			#if d > limit: continue  ## this would cause problems if something distant was the parent of something near
 			for ob in r[ d ]:
-				if ob not in wobjects: continue ## ignore template source objects, and possibly other things not wrapped
+				if ob not in wobjects:
+					if ob.UID:
+						print('WARN object not in wrapped - name: %s - ID: %s' %(ob.name,ob.UID))
+						raise RuntimeError
+					else:
+						continue ## ignore template source objects, and possibly other things not wrapped
+
 				w = wobjects[ ob ]
 				if 'visible' in w:
 					if w['visible']: visible.append( ob )
 					else: invisible.append( ob )
 				else:
 					visible.append( ob )
-
-		print('visible', visible)
-		print('invisible', invisible)
 
 		return visible + invisible
 
