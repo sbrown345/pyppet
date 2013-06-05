@@ -1046,7 +1046,8 @@ function create_text( line, parent, params ) {
 	mesh.rotation.y = Math.PI;
 
 	if (params.alignment == 'left') {
-		mesh.position.x = -((mesh.width/2) * params.scale); //align
+		//mesh.position.x = -((mesh.width/2) * params.scale); // old
+		mesh.position.x = -parent.min.x;
 	}
 
 	parent.add( mesh );
@@ -1243,11 +1244,17 @@ function createLabel(text, x, y, z, size, color, transparent, alignment, backGro
 			textWidth + backgroundMargin, size + backgroundMargin);
 	}
 
-	context.textAlign = alignment; //"center";
+	context.textAlign = alignment;
 	context.textBaseline = "middle";
 	context.fillStyle = color;
+
+	var geom = new THREE.PlaneGeometry(canvas.width, canvas.height);
+
 	if (alignment=="left") {
 		context.fillText(text, backgroundMargin/2, canvas.height/2);
+		for (var i=0; i<geom.vertices.length; i++) {
+			geom.vertices[i].x += canvas.width/2;
+		}
 	} else {
 		context.fillText(text, canvas.width/2, canvas.height/2);
 	}
@@ -1264,7 +1271,7 @@ function createLabel(text, x, y, z, size, color, transparent, alignment, backGro
 		transparent : transparent,
 	});
 
-	var mesh = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), material);
+	var mesh = new THREE.Mesh(geom, material);
 	mesh.overdraw = true; // what is this option for?
 	mesh.doubleSided = true;
 	mesh.position.x = x;
