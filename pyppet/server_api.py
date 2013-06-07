@@ -143,10 +143,10 @@ class BlenderServer( core.BlenderHack ):
 ## decorators ##
 _decorated = {}
 _singleton_classes = {}
-def _new_singleton(cls, *args, **kw):
+def _new_singleton(cls, *args, **kw): # this was ok until python 3.2.3 - invalid in python 3.3.1
 	assert cls not in _singleton_classes  ## ensure a singleton instance
 	#self = super(A, cls).__new__(cls)
-	self = object.__new__(cls, *args, **kw)  ## assumes that cls subclasses from object
+	self = object.__new__(cls)  ## assumes that cls subclasses from object
 	_singleton_classes[ cls ] = self
 	for name in dir(self):
 		if name in _decorated:  ## check for callbacks

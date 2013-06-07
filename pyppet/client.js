@@ -287,9 +287,7 @@ var UserAPI = {
 	},
 	update_material : function( mesh, pak ) {
 		var material = mesh.active_material;
-		console.log('update_material>',material, pak.color);
 		if (pak.color) {
-			console.log('update_material>>', pak.color);
 			if (pak.color.length==4) {
 				material.opacity = pak.color[3];
 			}
@@ -980,12 +978,18 @@ function on_keypress( evt ) {
 			}
 			if (INPUT_OBJECT) {
 				console.log('doing input callback');
-				INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
+				//INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
 
 				//if (_input_mesh) { scene.remove(_input_mesh); }
 				//_input_mesh = createLabel( _input_buffer.join(""), 0,0, 0,100, "white" ); 
 				//scene.add( _input_mesh );
 
+				if (INPUT_OBJECT.on_input_callback) {
+					INPUT_OBJECT.on_input_callback(
+						INPUT_OBJECT.custom_attributes, 
+						_input_buffer.join("") 
+					);
+				}
 			}
 			break;
 		default:
@@ -1511,9 +1515,6 @@ function on_json_message( data ) {
 		}
 
 
-		//////////////////////////////xxxxxxxxxxxxxxxxxxx
-
-		//if (pak.active_material) {  // note that in Chrome debugger, it reports the line below as having the error - yet it is this line that needs " && o.meshes[0]"
 		if (pak.active_material) {
 			o.meshes[0].clickable = !pak.active_material.wireframe;
 			if (pak.active_material.type != o.meshes[0].active_material.type) {
@@ -1524,14 +1525,12 @@ function on_json_message( data ) {
 			} else {
 				UserAPI.update_material( o.meshes[0], pak.active_material );
 			}
-			if (pak.color) { // special case //
-				UserAPI.update_material( o.meshes[0], {color:pak.color} );
-			}
 		}
 
+		if (pak.color && o.meshes.length > 0) { // special case for color //
+			UserAPI.update_material( o.meshes[0], {color:pak.color} );
+		}
 
-		//if (name in Objects && Objects[name]) {
-		//}
 
 	}	// end meshes
 
