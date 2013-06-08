@@ -755,7 +755,22 @@ class Player( object ):
 				else:
 					visible.append( ob )
 
-		return visible + invisible
+		a = {}
+		visible_empties = []
+		for ob in visible:
+			if ob.type == 'MESH':
+				n = len(ob.data.vertices)
+				if n not in a: a[ n ] = []
+				a[n].append( ob )
+			else:
+				visible_empties.append( ob )
+
+		rank = list( a.keys() ); rank.sort()
+
+		visible_meshes = []
+		for n in rank: visible_meshes.extend( a[n] )
+
+		return visible_empties + visible_meshes + invisible
 
 	def create_message_stream( self, context ):
 		'''
@@ -870,7 +885,7 @@ class Player( object ):
 						pak['scl'] = scl
 					if rrot != c:
 						pak['rot'] = rot
-						pak['quat'] = quat
+						#pak['quat'] = quat
 
 					self._cache[ob]['trans'] = state
 
@@ -950,7 +965,7 @@ class Player( object ):
 
 			if a.on_click: pak['on_click'] = a.on_click.code
 			if a.on_input: pak['on_input'] = a.on_input.code
-			if a.label: pak['label'] = a.label ## TODO deprecated
+			#if a.label: pak['label'] = a.label ## TODO deprecated
 
 			if a.eval_queue:
 				pak['eval'] = ';'.join(a.eval_queue)
