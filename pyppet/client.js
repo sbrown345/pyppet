@@ -1518,10 +1518,7 @@ function on_json_message( data ) {
 		if (pak.active_material) {
 			o.meshes[0].clickable = !pak.active_material.wireframe;
 			if (pak.active_material.type != o.meshes[0].active_material.type) {
-
 				UserAPI.set_material( o.meshes[0], pak.active_material );
-				console.log('done active mat');
-
 			} else {
 				UserAPI.update_material( o.meshes[0], pak.active_material );
 			}
@@ -2952,6 +2949,16 @@ CameraController = function ( object, domElement ) {
 		_this.checkDistances();
 
 		_this.object.lookAt( _this.target );
+
+		// new controller_options extra user options //
+		if (_this.object.controller_options !== undefined) {
+			if (_this.object.controller_options.follows_target !== undefined) {
+				//_this.object.controller_options.follows_target.lookAt( _this.target );
+				_this.object.controller_options.follows_target.target.position.x = _this.target.x;
+				_this.object.controller_options.follows_target.target.position.y = _this.target.y;
+				_this.object.controller_options.follows_target.target.position.z = _this.target.z;
+			}
+		}
 
 		if ( lastPosition.distanceToSquared( _this.object.position ) > 0 ) {
 
