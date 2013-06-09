@@ -7,6 +7,10 @@ Notes:
 	or forget to computeTangents before assignment.
 	 [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
 
+def go_modal
+
+click_masking_objects
+
 */
 
 var Objects = {};	// name : LOD
@@ -443,9 +447,6 @@ var UserAPI = {
 		mesh.materials = {};
 		mesh.active_material = material;
 
-		// TODO if clickable then add to UserAPI.clickables,
-		// should only some materials be clickable?
-		// TODO morph targets.
 		UserAPI.meshes.push( mesh );
 
 		if (pak.lines.length) {
@@ -795,13 +796,15 @@ function on_mouse_down(event) {
 		var test = [];
 		for (var i=0; i < UserAPI.meshes.length; i ++) {
 			var mesh = UserAPI.meshes[ i ];
-			if (mesh.name in UserAPI.objects && mesh.clickable) {
-				test.push( mesh );
+			if (mesh.name in UserAPI.objects && !mesh.material.wireframe) {
+				var o = UserAPI.objects[mesh.name];
+				if (o.clickable) {
+					test.push( mesh );
+				}
 			}
+
 		}
 		var intersects = ray.intersectObjects( test );
-		//var intersects = ray.intersectObjects( MESHES );
-		//testing = intersects;
 
 		INTERSECTED = null;
 
@@ -1448,9 +1451,10 @@ function on_json_message( data ) {
 
 		if (pak.properties) {
 			UserAPI.on_update_properties( o, pak );
-		}
+			// api_gen.py sets this custom attribute
+			o.clickable = o.custom_attributes.clickable;
 
-		////////////////////////////////xxxxxxxxxxxxxxx
+		}
 
 		if (pak.pos) {
 			/*
@@ -1514,9 +1518,8 @@ function on_json_message( data ) {
 			eval( pak.eval );
 		}
 
-
 		if (pak.active_material) {
-			o.meshes[0].clickable = !pak.active_material.wireframe;
+
 			if (pak.active_material.type != o.meshes[0].active_material.type) {
 				UserAPI.set_material( o.meshes[0], pak.active_material );
 			} else {

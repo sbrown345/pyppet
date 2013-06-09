@@ -15,6 +15,47 @@ except ImportError: pass
 #    name="function id", description="(internal) on keyboard input function id", 
 #    default=0, min=0, max=256)
 
+## decorators ##
+_decorated = {}
+_singleton_classes = {}
+def _new_singleton(cls, *args, **kw): # this was ok until python 3.2.3 - invalid in python 3.3.1
+	assert cls not in _singleton_classes  ## ensure a singleton instance
+	#self = super(A, cls).__new__(cls)
+	self = object.__new__(cls)  ## assumes that cls subclasses from object
+	_singleton_classes[ cls ] = self
+	for name in dir(self):
+		if name in _decorated:  ## check for callbacks
+			func = _decorated[ name ]
+			if not inspect.ismethod( func ):
+				method = getattr(self, name)
+				assert inspect.ismethod( method )
+				_decorated[ name ] = method
+
+	return self
+
+def websocket_singleton( cls ):
+	'''
+	class decorator @
+	use __new__ to capture creation of class
+	'''
+	cls.__new__ = _new_singleton
+	return cls
+
+def websocket_callback(func):
+	name = func.__name__
+	assert name not in _decorated
+	_decorated[ name ] = func
+	return func
+
+def websocket_callback_names():
+	return list(_decorated.keys())
+
+def get_decorated():
+	return _decorated
+
+######################################
+
+
 def get_callback( name ):
 	return CallbackFunction.callbacks[ name ]
 
@@ -24,43 +65,6 @@ def get_callbacks( ob, viewer=None ): ## deprecated
 	else: b = a() # get internal
 	return b.on_click, b.on_input
 
-def get_callbacks_old( ob ):
-	'''
-	user sets callback by name in Blender using "custom properties" (id-props)
-	'''
-	on_click = on_input = None
-	for prop in ob.items():
-		name, value = prop
-		if name not in ('on_click', 'on_input'): continue
-		if value not in CallbackFunction.callbacks: continue
-
-		c = CallbackFunction.callbacks[ value ]
-		if ob not in CallbackFunction.CACHE: c(ob) # TODO change this to class method "cache_object"
-
-		if name == 'on_click' and value in CallbackFunction.callbacks: on_click = c
-		elif name == 'on_input' and value in CallbackFunction.callbacks: on_input = c
-
-	return on_click, on_input
-
-
-def get_custom_attributes_old( ob, convert_objects=False ):
-	if ob not in CallbackFunction.CACHE: return None
-
-	if convert_objects:
-		d = {}
-		d.update( CallbackFunction.CACHE[ob] )
-		for n in d:
-			if n in CallbackFunction._shared_namespace:
-				T = CallbackFunction._shared_namespace[n]
-				if T in CallbackFunction.TYPES:
-					a = d[n]
-					if hasattr( a, 'UID' ):
-						d[n] = a.UID
-					else:
-						d[n] = id( a )
-		return d
-	else:
-		return CallbackFunction.CACHE[ ob ]
 
 
 def generate_api( a, **kw ):
@@ -561,11 +565,16 @@ def create_object_view( ob ):
 				print('WARN unknown id-prop:', name, value)
 				raise RuntimeError
 
+	#if hasattr(ob, 'name') and ob.name in CallbackFunction.callbacks:
+	#	print('auto hooking object by name to callback function')
+	#	on_click = ob.name
+
 	#############################################
 	print(ob, on_click, on_input)
 	if on_click:
 		if on_click in CallbackFunction.callbacks:
 			on_click = CallbackFunction.callbacks[ on_click ]
+			user_props[ 'clickable' ] = True
 		else:
 			print(CallbackFunction.callbacks)
 			print('WARNING: undefined callback:', on_click)

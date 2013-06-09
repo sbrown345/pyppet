@@ -140,40 +140,6 @@ class BlenderServer( core.BlenderHack ):
 		simple_action_api.create_callback_api( api )
 
 
-## decorators ##
-_decorated = {}
-_singleton_classes = {}
-def _new_singleton(cls, *args, **kw): # this was ok until python 3.2.3 - invalid in python 3.3.1
-	assert cls not in _singleton_classes  ## ensure a singleton instance
-	#self = super(A, cls).__new__(cls)
-	self = object.__new__(cls)  ## assumes that cls subclasses from object
-	_singleton_classes[ cls ] = self
-	for name in dir(self):
-		if name in _decorated:  ## check for callbacks
-			func = _decorated[ name ]
-			if not inspect.ismethod( func ):
-				method = getattr(self, name)
-				assert inspect.ismethod( method )
-				_decorated[ name ] = method
-
-	return self
-
-def websocket_singleton( cls ):
-	'''
-	class decorator @
-	use __new__ to capture creation of class
-	'''
-	cls.__new__ = _new_singleton
-	return cls
-
-def websocket_callback(func):
-	name = func.__name__
-	assert name not in _decorated
-	_decorated[ name ] = func
-	return func
-
-def websocket_callback_names():
-	return list(_decorated.keys())
 
 class App( BlenderServer ):
 	def __init__(self, api):
@@ -181,7 +147,7 @@ class App( BlenderServer ):
 		self.setup_server(api)
 
 	def setup_server(self, api):
-		api.update( _decorated )
+		api.update( api_gen.get_decorated() )
 		self.setup_websocket_callback_api(api)
 		self.setup_blender_hack( bpy.context, use_gtk=False, headless=True )
 		print('blender hack setup ok')
