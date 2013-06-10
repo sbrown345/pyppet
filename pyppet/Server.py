@@ -17,6 +17,7 @@ import wsgiref.simple_server
 import io, socket, select, pickle, urllib
 import urllib.request
 import urllib.parse
+import hashlib
 
 #from websocket import websockify
 from websocket import websocksimplify
@@ -83,7 +84,10 @@ def set_host_and_port(h, p):
 	global _host, _port
 	_host = h; _port = p
 
-
+def get_mesh_id( mesh ):
+	s = mesh.name
+	if mesh.library: s += mesh.library.filepath
+	return hashlib.md5( s.encode('utf-8') ).hexdigest()
 
 ########## ID of zero is a dead object ######
 bpy.types.Object.UID = IntProperty(
@@ -950,6 +954,9 @@ class Player( object ):
 			##################################################
 			send = ob in self._mesh_requests and not sent_mesh
 
+			#if send:
+			pak['mesh_id'] = get_mesh_id( ob.data )
+
 			_props = str( props )
 			if send or self._cache[ob]['props'] != _props:
 				self._cache[ob]['props'] = _props
@@ -998,8 +1005,8 @@ class Player( object ):
 				self._mesh_requests.remove(ob)
 				self._sent_meshes.append( ob )
 
-
 				pak['geometry'] = geo = {
+					'mesh_id'  : get_mesh_id( ob.data ),
 					'triangles': [],
 					'quads'    : [],
 					'vertices' : [],

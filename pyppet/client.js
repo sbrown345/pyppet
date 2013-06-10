@@ -41,6 +41,7 @@ var UserAPI = {
 	camera : null,
 	objects : Objects,
 	meshes : MESHES,
+	mesh_cache : {},
 	cubemaps : {
 		REFLECT:{},
 		REFRACT:{}
@@ -290,7 +291,7 @@ var UserAPI = {
 
 	},
 	update_material : function( mesh, pak ) {
-		var material = mesh.active_material;
+		var material = mesh.material;
 		if (pak.color) {
 			if (pak.color.length==4) {
 				material.opacity = pak.color[3];
@@ -440,14 +441,15 @@ var UserAPI = {
 		});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = name;
+		mesh.mesh_id = pak.mesh_id;
 		mesh.doubleSided = true;
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
-
 		mesh.materials = {};
 		mesh.active_material = material;
 
 		UserAPI.meshes.push( mesh );
+		UserAPI.mesh_cache[ pak.mesh_id ] = mesh;
 
 		if (pak.lines.length) {
 			var linewidth = 1.0;
@@ -859,14 +861,12 @@ function tween_scale( o, name, scl ) {
 				var thresh = 0.01;
 				if (this.x <= thresh || this.y <= thresh || this.z <= thresh ) {
 					if (o.visible) {
-						console.log('making INvisible', o);
 						o.visible = false;
 						for (var i=0; i<o.children.length; i++) {
 							o.children[ i ].visible = false;
 						}
 					}
 				} else if (o.visible === false) {
-					console.log('making visible', o);
 					o.visible = true;
 					for (var i=0; i<o.children.length; i++) {
 						o.children[ i ].visible = true;
@@ -1419,7 +1419,15 @@ function on_json_message( data ) {
 			}
 			// request mesh if its not an empty //
 			if (pak.empty) {
-				//o.add( UserAPI.create_debug_axis(3.0) );
+				o.add( UserAPI.create_debug_axis(3.0) );
+			} else if (pak.mesh_id in UserAPI.mesh_cache) {
+				console.log('pulling from cache',pak.mesh_id);
+				var _mesh = UserAPI.mesh_cache[pak.mesh_id].clone()
+				_mesh.clickable = UserAPI.mesh_cache[pak.mesh_id];
+				_mesh.name = o.name;
+				UserAPI.meshes.push( _mesh );
+				o.add( _mesh );
+				o.meshes.push( _mesh );
 			} else {
 				//o.add( UserAPI.create_debug_axis(6.0) );
 				UserAPI.request_mesh( name );				
@@ -1435,10 +1443,10 @@ function on_json_message( data ) {
 		if (o.parent === undefined && pak.parent !== undefined) {
 			var pid = '__'+pak.parent+'__';
 			if (pid in UserAPI.objects) {
-				console.log( 'ADDING-> '+pak.parent );
+				//console.log( 'ADDING-> '+pak.parent );
 				UserAPI.objects[ pid ].add( o );
 			} else {
-				console.log( 'waiting for.. '+pak.parent );
+				console.log( 'waiting for parent: '+pak.parent );
 			}
 
 		}
