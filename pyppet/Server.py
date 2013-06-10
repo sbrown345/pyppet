@@ -586,7 +586,7 @@ class Player( object ):
 		self.token = None
 		self.name = None
 		self.objects = []	## list of objects client in client message stream
-		self._cache = {}
+		self._cache = {'invisibles':[]}
 
 		self.camera_stream_target = [None]*3   # pointers to this stay valid
 		self.camera_stream_position = [None]*3 # pointers to this stay valid
@@ -738,6 +738,7 @@ class Player( object ):
 		wobjects = api_gen.get_wrapped_objects()
 		visible = []
 		invisible = []
+		turned_invisible = []
 		for d in k:
 			#if d > limit: continue  ## this would cause problems if something distant was the parent of something near
 			for ob in r[ d ]:
@@ -749,11 +750,22 @@ class Player( object ):
 						continue ## ignore template source objects, and possibly other things not wrapped
 
 				w = wobjects[ ob ]
+				vis = True
 				if 'visible' in w:
-					if w['visible']: visible.append( ob )
-					else: invisible.append( ob )
-				else:
+					if w['visible']: vis = True
+					else:
+						vis = False
+						if ob in self._cache['invisibles']:
+							self._cache['invisibles'].remove(ob)
+							turned_invisible.append( ob )
+				if vis:
 					visible.append( ob )
+					if ob in self._cache['invisibles']:
+						self._cache['invisibles'].remove(ob)
+				else:
+					invisible.append( ob )
+					if ob not in self._cache['invisibles']:
+						self._cache['invisibles'].append(ob)
 
 		a = {}
 		visible_empties = []
@@ -770,7 +782,7 @@ class Player( object ):
 		visible_meshes = []
 		for n in rank: visible_meshes.extend( a[n] )
 
-		return visible_empties + visible_meshes + invisible
+		return visible_empties + visible_meshes + turned_invisible # + invisible # do not send invisibles
 
 	def create_message_stream( self, context ):
 		'''
