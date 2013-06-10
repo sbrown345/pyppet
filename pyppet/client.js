@@ -334,7 +334,11 @@ var UserAPI = {
 			config.side = THREE.FrontSide;
 		}
 		else if (config.side=='DOUBLE') {
-			config.side = THREE.DoubleSide;
+			if (! config.transparent) {
+				config.side = THREE.DoubleSide;
+			} else if (config.blending == 'ADD' || config.blending == 'SUB' || config.blending == 'MULT') {
+				config.side = THREE.DoubleSide;
+			}
 		}
 
 		if (config.blending == 'NORMAL') {
@@ -1528,7 +1532,7 @@ function on_json_message( data ) {
 
 		if (pak.active_material) {
 
-			if (pak.active_material.type != o.meshes[0].active_material.type) {
+			if (pak.active_material.type != o.meshes[0].material.type) {
 				UserAPI.set_material( o.meshes[0], pak.active_material );
 			} else {
 				UserAPI.update_material( o.meshes[0], pak.active_material );
@@ -2969,6 +2973,14 @@ CameraController = function ( object, domElement ) {
 				_this.object.controller_options.follows_target.target.position.y = _this.target.y;
 				_this.object.controller_options.follows_target.target.position.z = _this.target.z;
 			}
+
+			if (_this.object.controller_options.follows !== undefined) {
+				//_this.object.controller_options.follows_target.lookAt( _this.target );
+				_this.object.controller_options.follows.position.x = _this.object.position.x;
+				_this.object.controller_options.follows.position.y = _this.object.position.y;
+				_this.object.controller_options.follows.position.z = _this.object.position.z;
+			}
+
 		}
 
 		if ( lastPosition.distanceToSquared( _this.object.position ) > 0 ) {
@@ -3329,8 +3341,8 @@ UserAPI.initialize = function( renderer_params ) {
 	spotLight.shadowCameraFar = camera.far;
 	spotLight.shadowCameraFov = 30;
 	spotLight.shadowBias = 0.001;
-	spotLight.shadowMapWidth = 1024;
-	spotLight.shadowMapHeight = 1024;
+	spotLight.shadowMapWidth = 512;
+	spotLight.shadowMapHeight = 512;
 	spotLight.shadowDarkness = 0.1 * sunIntensity;
 	scene.add( spotLight );
 	UserAPI.sun = spotLight;
@@ -3352,7 +3364,7 @@ UserAPI.initialize = function( renderer_params ) {
 	renderer.setClearColor( {r:0.4,g:0.4,b:0.4}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
-	renderer.sortObjects = false;		// LOD
+	renderer.sortObjects = true;
 	//renderer.autoUpdateScene = false;	// LOD
 
 
