@@ -379,6 +379,7 @@ var UserAPI = {
 		mat.name = config.name;
 		mesh.materials[ config.type ] = mat;
 		mesh.material = mat;
+		mesh.original_material = mat.clone();
 		mesh.active_material = mat;
 		return mat;
 	},
@@ -1024,7 +1025,7 @@ window.addEventListener( 'keypress', on_keypress, false );
 
 function create_text( line, parent, params ) {
 
-	if (params.offset === undefined) { params.offset=-1.1; }
+	if (params.offset === undefined) { params.offset=-1.5; }
 	if (params.scale === undefined) { params.scale=0.01; }
 	if (params.resolution === undefined) { params.resolution=100; }
 	if (params.color === undefined) { params.color="white"; }
@@ -1052,6 +1053,9 @@ function create_text( line, parent, params ) {
 		mesh.scale.y = params.scale;
 		mesh.scale.z = params.scale;		
 	}
+
+	mesh.normal_width = mesh.width * params.scale;
+	mesh.normal_height = mesh.height * params.scale;
 
 	mesh.rotation.x = Math.PI/2.0;
 	mesh.rotation.y = Math.PI;
@@ -1116,7 +1120,6 @@ function create_multiline_text( text, title, parent, params ) {
 
 /////////////// label any object ///////////////
 function title_object(geometry, parent, title, flip ) {
-	console.log('title-object:'+flip);
 
 	if (flip === undefined) { flip = false; }
 
@@ -1140,7 +1143,7 @@ function title_object(geometry, parent, title, flip ) {
 			title,
 			parent,
 			{
-				offset : parent.max.y + 0.1,
+				offset : parent.max.y + 0.25,
 				alignment : "center",
 				flip : flip
 			}
@@ -1148,6 +1151,8 @@ function title_object(geometry, parent, title, flip ) {
 		parent._title_objects = lines;
 		//lines[0].position.z = -(bb.max.z - bb.min.z) / 2.0;
 		//lines[0].position.x -= bb.min.x; // for left alignment
+		var width = lines[ lines.length-1 ].normal_width;
+		console.log('text-width', width);
 
 		if (parent.visible === false) { // hide text if parent is also hidden
 			for (var i=0; i<lines.length; i++) {
@@ -1178,7 +1183,7 @@ function label_object(geometry, parent, txt, title, flip ) {
 			title,
 			parent,
 			{
-				offset:parent.max.y + 0.1,
+				offset:parent.max.y + 0.25,
 				alignment:"center",
 				flip:flip
 			}
@@ -1209,7 +1214,7 @@ function label_object(geometry, parent, txt, title, flip ) {
 			undefined,
 			parent,
 			{
-				offset:parent.max.y + 0.1,
+				offset:parent.max.y + 0.25,
 				alignment:"left",
 				flip:flip
 			}
@@ -1221,8 +1226,6 @@ function label_object(geometry, parent, txt, title, flip ) {
 				lines[i].visible=false;
 			}
 		}
-
-
 	}
 }
 
@@ -1426,7 +1429,8 @@ function on_json_message( data ) {
 				o.add( UserAPI.create_debug_axis(3.0) );
 			} else if (pak.mesh_id in UserAPI.mesh_cache) {
 				console.log('pulling from cache',pak.mesh_id);
-				var _mesh = UserAPI.mesh_cache[pak.mesh_id].clone()
+				var _mesh = UserAPI.mesh_cache[pak.mesh_id].clone();
+				_mesh.material = UserAPI.mesh_cache[pak.mesh_id].original_material.clone();
 				_mesh.clickable = UserAPI.mesh_cache[pak.mesh_id];
 				_mesh.name = o.name;
 				UserAPI.meshes.push( _mesh );
