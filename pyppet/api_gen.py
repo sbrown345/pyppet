@@ -3,6 +3,7 @@
 # License: "New" BSD
 
 import time, inspect, struct, ctypes, random
+import collections
 try: import bpy, mathutils
 except ImportError: pass
 
@@ -213,6 +214,11 @@ class Animation( AnimAPI ):
 		if z is not None: self.indices[ 2 ] = z
 		self.seconds = seconds
 		self.animations = []
+		self.callbacks = collections.OrderedDict() # keep callback order
+
+	def on_finished( self, callback, *args):
+		self.callbacks[ callback ] = args
+		return self  # so we can so singleliners like: a=Animation().on_finished(mycb)
 
 	def link_animations(self, anims):
 		self.animations = anims
@@ -272,6 +278,11 @@ class Animation( AnimAPI ):
 			for index in self.indices:
 				attr[ index ] = self.indices[ index ]
 			self.target[self.attribute] = attr # reassign
+
+		if self.callbacks:
+			for cb in self.callbacks:
+				args = self.callbacks[cb]
+				cb( *args )
 
 		if self.animations:
 			idx = self.animations.index(self)
