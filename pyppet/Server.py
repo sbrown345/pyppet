@@ -1021,15 +1021,28 @@ class Player( object ):
 				if on_mesh_request_model_config: ## hook for users to overload
 					pak['model_config'] = on_mesh_request_model_config( ob )
 
-				if 'subsurf' in ob.keys():
-					ss = ob['subsurf']
-					assert type(ss) is int
-					geo['subdiv'] = ss
+				#if 'subsurf' in ob.keys(): ## DEPRECATED
+				#	ss = ob['subsurf']
+				#	assert type(ss) is int
+				#	geo['subdiv'] = ss
+				ss = 0; restore = []
+				for mod in ob.modifiers:
+					if mod.type == 'SUBSURF':
+						if mod.show_viewport and mod.subdivision_type == 'CATMULL_CLARK':
+							if not mod.show_in_editmode:
+								mod.show_viewport = False
+								restore.append( mod )
+								ss += mod.levels
 
+				if ss: geo['subdiv'] = ss
+
+				## convert modifier strack into plain mesh ##
 				data = ob.to_mesh(bpy.context.scene, True, "PREVIEW") # why is this causing a segfault?
 				data.transform( SWAP_MESH )	# flip YZ for Three.js
 				#data.calc_normals() # required?
 				data.calc_tessface()
+
+				for mod in restore: mod.show_viewport = True
 
 				if len(data.vertex_colors):
 					geo['colors'] = []

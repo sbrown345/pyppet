@@ -462,6 +462,7 @@ var UserAPI = {
 
 		if (pak.subdiv) {
 			var subsurf = new THREE.SubdivisionModifier( pak.subdiv );
+			console.log( subsurf );
 			subsurf.modify( geometry );
 		}
 
