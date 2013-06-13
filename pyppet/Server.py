@@ -123,8 +123,10 @@ def get_material_config(mat, mesh=None):
 	cfg = {
 		'name': mat.name,
 		'color': [ round(x,3) for x in mat.diffuse_color ],
-		'transparent':mat.use_transparency,
-		'opacity': mat.alpha
+		'transparent': mat.use_transparency,
+		'opacity': mat.alpha,
+		'emissive': mat.emit,  # color in three.js
+		'ambient' : mat.ambient, # color in three.js
 	}
 
 	if mesh:
@@ -159,13 +161,16 @@ def get_material_config(mat, mesh=None):
 	else:
 		cfg['side'] = 'DOUBLE'
 
-
 	if mat.use_shadeless:
 		cfg['type'] = 'FLAT'
 	elif mat.use_tangent_shading:
 		cfg['type'] = 'DEPTH'
 	elif mat.specular_intensity > 0.0:  # blender defaults to having specular
 		cfg['type'] = 'PHONG'
+		cfg['specular'] = [round(a,3) for a in mat.specular_color]
+		cfg['shininess'] = mat.specular_intensity
+		# three.js MeshPhongMaterial has options: metal
+
 	elif mat.diffuse_shader == 'LAMBERT': #(blender-default)
 		cfg['type'] = 'LAMBERT'
 

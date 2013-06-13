@@ -315,8 +315,28 @@ var UserAPI = {
 
 		if (config.color) {
 			var clr = new THREE.Color();
-			clr.setRGB( config.color[0],config.color[1],config.color[2] )
+			clr.setRGB( config.color[0],config.color[1],config.color[2] );
 			config.color = clr;
+		}
+
+		if (config.emissive) {
+			var clr = new THREE.Color();
+			clr.setRGB(
+				config.color[0] * config.emissive,
+				config.color[1] * config.emissive,
+				config.color[2] * config.emissive 
+			);
+			config.emissive = clr;
+		}
+
+		if (config.ambient) {
+			var clr = new THREE.Color();
+			clr.setRGB(
+				config.color[0] * config.ambient,
+				config.color[1] * config.ambient,
+				config.color[2] * config.ambient 
+			);
+			config.ambient = clr.getHex(); // note the above accept a Color, docs say they should all be hex
 		}
 
 		if (config.vertexColors) {
@@ -369,6 +389,13 @@ var UserAPI = {
 		} else if (config.type=='LAMBERT') {
 			mat = new THREE.MeshLambertMaterial( config );
 		} else if (config.type=='PHONG') {
+			//config.specular = 0xffffff;
+			var clr = new THREE.Color();
+			clr.setRGB( config.specular[0],config.specular[1],config.specular[2] )
+			config.specular = clr;
+
+
+			config.metal = true;
 			mat = new THREE.MeshPhongMaterial( config );
 		} else if (config.type=='DEPTH') {
 			mat = new THREE.MeshDepthMaterial( config );
