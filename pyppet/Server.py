@@ -36,6 +36,8 @@ import Physics # for threading LOCK
 import bender  # for reading .blend files directly
 Bender = bender.Bender()
 
+def introspect_blend( path ): return Bender.load_blend( path )
+
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 400.0
 
 SpecialEdgeColors = {  ## blender edit-mode style
@@ -2090,11 +2092,11 @@ class MeshLoader( object ):
 			print(objects[name].data)
 
 
-
 class GroupLoader( object ):
 	def __init__(self):
 		self.objects = {} # (blend file, group name) : objects
 		self.groups = {}  # assumes unique group names
+		self.sibling_groups = {} # group name : list of other group names
 		self._mtimes = {}  # file : mtime
 
 	def load(self, path=None, name=None, link=True, strict=True):
@@ -2110,11 +2112,6 @@ class GroupLoader( object ):
 			return self.objects[ key ]
 
 		print('[GroupLoader] loading:', key)
-
-		db = Bender.load_blend( path )
-		print(db)
-		print(db.groups)
-		assert name in db.groups
 
 		#names = list( bpy.data.objects.keys() )
 		bpy.ops.wm.link_append(
@@ -2138,8 +2135,10 @@ class GroupLoader( object ):
 
 		self.objects[ key ] = objects
 		self.groups[ name ] = objects
+		self.sibling_groups[ name ] = list(introspect_blend(  path ).groups.keys())
 		self._mtimes[ path ] = mtime
 		return objects
+
 
 #-----------------------------------------------------------------------
 class Remote3dsMax(object):
