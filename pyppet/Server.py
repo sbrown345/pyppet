@@ -33,7 +33,8 @@ from random import *
 import api_gen
 import simple_action_api
 import Physics # for threading LOCK
-
+import bender  # for reading .blend files directly
+Bender = bender.Bender()
 
 DEFAULT_STREAMING_LEVEL_OF_INTEREST_MAX_DISTANCE = 400.0
 
@@ -2109,6 +2110,11 @@ class GroupLoader( object ):
 			return self.objects[ key ]
 
 		print('[GroupLoader] loading:', key)
+
+		db = Bender.load_blend( path )
+		print(db)
+		print(db.groups)
+		assert name in db.groups
 
 		#names = list( bpy.data.objects.keys() )
 		bpy.ops.wm.link_append(
