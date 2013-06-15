@@ -2099,8 +2099,9 @@ class GroupLoader( object ):
 		self.sibling_groups = {} # group name : list of other group names
 		self._mtimes = {}  # file : mtime
 
-	def load(self, path=None, name=None, link=True, strict=True):
-		if strict: assert name not in self.groups
+	def load(self, path=None, name=None, link=True, strict=True, inspect_blend_file=False):
+		if strict:
+			assert name not in self.groups
 
 		mtime = os.stat( path ).st_mtime
 		use_cache = path in self._mtimes
@@ -2122,7 +2123,7 @@ class GroupLoader( object ):
 			active_layer=True, 
 			instance_groups=True
 		)
-		dupli = None
+		#dupli = None
 		#objects = [] # TODO this should keep object names from the linked file
 		#for ob in bpy.data.objects:
 		#	if ob.name not in names:
@@ -2135,8 +2136,10 @@ class GroupLoader( object ):
 
 		self.objects[ key ] = objects
 		self.groups[ name ] = objects
-		self.sibling_groups[ name ] = list(introspect_blend(  path ).groups.keys())
 		self._mtimes[ path ] = mtime
+		if inspect_blend_file:
+			self.sibling_groups[ name ] = list(introspect_blend(  path ).groups.keys())
+
 		return objects
 
 

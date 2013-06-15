@@ -441,7 +441,7 @@ var UserAPI = {
 		for ( var i = 0; i < pak.quads.length; i ++ ) {
 			var f = pak.quads[i];
 			var face = new THREE.Face4( f[0], f[1], f[2], f[3] );
-			if (pak.colors && pak.subdiv===undefined) {
+			if (pak.colors) {
 				for ( var j=0; j<4; j++) {
 					var rgb = pak.colors[ f[j] ];
 					var clr = new THREE.Color();
@@ -462,7 +462,9 @@ var UserAPI = {
 
 		if (pak.subdiv) {
 			var subsurf = new THREE.SubdivisionModifier( pak.subdiv );
-			console.log( subsurf );
+			if (pak.colors) {
+				subsurf.useOldVertexColors = true;  // enable vertex colors
+			}
 			subsurf.modify( geometry );
 		}
 

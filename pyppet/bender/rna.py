@@ -65,6 +65,6 @@ class RNA_Database(object):
 			## TODO how to iterate a dna link?
 			mesh.materials = {}
 			link = mesh.mat
-			if link.next:
+			if link and link.next:
 				mesh.materials[ link.next.name ] = link.next
 
