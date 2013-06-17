@@ -599,6 +599,10 @@ class ObjectView( Container ):
 # monkey patch this to allow the blender user to attach properties to objects from blender
 USER_CUSTOM_ATTRIBUTES = ['text_flip']
 
+def compile_script( text ):
+	exec( text )
+	return locals()
+
 def create_object_view( ob ):
 	print('------------create object view-----------')
 	on_click = None #'default_click' # defaults for testing
@@ -607,6 +611,7 @@ def create_object_view( ob ):
 
 	############ Blender's ID-Props API #########
 	user_props = {}
+	special_attrs = {}
 	if hasattr(ob, 'items'):
 		print('////////checking blender id props////////')
 		for prop in ob.items():
@@ -629,6 +634,11 @@ def create_object_view( ob ):
 	for script in get_game_settings( ob ):
 		if script['clickable']:
 			on_click = 'generic_on_click'
+			c = compile_script( script['text'] )
+			func = c['on_click']
+			assert inspect.isfunction( func )
+			special_attrs['on_click_callback'] = func
+
 		if script['inputable']:
 			on_input = 'generic_on_input'
 
@@ -659,6 +669,10 @@ def create_object_view( ob ):
 	if user_props:
 		for name in user_props:
 			v[ name ] = user_props[ name ]
+
+	if special_attrs:
+		for name in special_attrs:
+			setattr(v, name, special_attrs[name])
 
 	return v
 
@@ -878,12 +892,12 @@ register_type( BlenderProxy, get_blender_object_by_uid )
 
 def generic_on_click(user=UserProxy, ob=BlenderProxy):
 	print('generic on click')
-	get_wrapped_objects()[ob].on_click_callback( user )
+	get_wrapped_objects()[ob].on_click_callback( user=user )
 
 
 def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p):
 	print('generic on input')
-	get_wrapped_objects()[ob].on_input_callback( user, input_string.strip() )
+	get_wrapped_objects()[ob].on_input_callback( user=user, input_string=input_string.strip() )
 
 
 
