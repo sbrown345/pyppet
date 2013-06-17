@@ -54,6 +54,21 @@ def websocket_callback_names():
 def get_decorated():
 	return _decorated
 
+
+def register_type(T, unpacker):
+	'''
+	unpacker is a function that can take the uid and return the proxy object
+	'''
+	cls = CallbackFunction
+	#CallbackFunction.register_type(T,unpacker)
+	id_byte_size=4
+	assert id_byte_size in (1,2,4,8)
+	cls.TYPES[ T ] = {'unpacker':unpacker,'bytes':id_byte_size}
+
+
+class BlenderProxy(object): pass
+class UserProxy(object): pass  ## this needs to be registered with an unpacker that can deal with your custom user class
+
 ######################################
 
 
@@ -75,12 +90,44 @@ def generate_api( a, **kw ):
 	(all arguments must be type using ctypes or a object that subclasses from Proxy)
 	'''
 	api = {}
+	a.update(
+		{'generic_on_click':generic_on_click, 'generic_on_input':generic_on_input}
+	)
 	for i,name in enumerate( a ):
 		func = a[name] # get function
 		byte_code = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'[ i ]
 		api[ name ] = CallbackFunction( func, name, byte_code, **kw )
 	print('generate_api', api)
 	return api
+
+
+def get_game_settings( ob ):
+	scripts = []
+	for con in ob.game.controllers:
+		if con.type != 'PYTHON': continue
+		script = {
+			'text_block':con.text, 
+			'text':con.text.as_string(),
+			'clickable': False,
+			'inputable': False,
+		}
+		scripts.append( script )
+
+		for act in con.actuators:
+			if act.type == 'MOTION': pass
+
+		for sen in ob.game.sensors:
+			if sen.type not in ('TOUCH', 'KEYBOARD'): continue
+			if con.name not in sen.controllers: continue
+
+			if sen.type == 'TOUCH':
+				script['clickable'] = True
+				assert _check_for_function_name( script['text'], 'on_click' )
+			elif sen.type == 'KEYBOARD':
+				script['inputable'] = True
+				assert _check_for_function_name( script['text'], 'on_input' )
+
+	return scripts
 
 
 def generate_javascript():
@@ -579,6 +626,11 @@ def create_object_view( ob ):
 	#if hasattr(ob, 'name') and ob.name in CallbackFunction.callbacks:
 	#	print('auto hooking object by name to callback function')
 	#	on_click = ob.name
+	for script in get_game_settings( ob ):
+		if script['clickable']:
+			on_click = 'generic_on_click'
+		if script['inputable']:
+			on_input = 'generic_on_input'
 
 	#############################################
 	print(ob, on_click, on_input)
@@ -610,20 +662,16 @@ def create_object_view( ob ):
 
 	return v
 
+##########################################################################
+def _check_for_function_name( txt, name ):
+	for line in txt.splitlines():
+		line = line.strip()	# strip whitespace
+		if line.startswith('def %s('%name):
+			return True
 
 
 
 ##########################################################################
-def register_type(T, unpacker):
-	'''
-	unpacker is a function that can take the uid and return the proxy object
-	'''
-	cls = CallbackFunction
-	#CallbackFunction.register_type(T,unpacker)
-	id_byte_size=4
-	assert id_byte_size in (1,2,4,8)
-	cls.TYPES[ T ] = {'unpacker':unpacker,'bytes':id_byte_size}
-
 
 class CallbackFunction(object):
 	#CACHE = {}
@@ -669,6 +717,7 @@ class CallbackFunction(object):
 			else:
 				self.is_method_bound = False
 				## TODO allow unbound methods ##
+				print(func, name)
 				raise RuntimeError('you must resolve these to functions or methods on a singleton instance')
 
 		else:
@@ -821,18 +870,21 @@ class CallbackFunction(object):
 		return '\n'.join(r)
 
 
-
-
-
-class BlenderProxy(object): pass
-
 def get_blender_object_by_uid(uid):
 	for o in bpy.data.objects:
 		if o.UID == uid: return o
 
 register_type( BlenderProxy, get_blender_object_by_uid )
 
-class UserProxy(object): pass  ## this needs to be registered with an unpacker that can deal with your custom user class
+def generic_on_click(user=UserProxy, ob=BlenderProxy):
+	print('generic on click')
+	get_wrapped_objects()[ob].on_click_callback( user )
+
+
+def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p):
+	print('generic on input')
+	get_wrapped_objects()[ob].on_input_callback( user, input_string.strip() )
+
 
 
 if __name__ == '__main__':
