@@ -632,14 +632,20 @@ def create_object_view( ob ):
 	#	print('auto hooking object by name to callback function')
 	#	on_click = ob.name
 	for script in get_game_settings( ob ):
+
+		if not script['clickable'] and not script['inputable']:
+			continue  ## do not allow scripts that do nothing
+
+
+		c = compile_script( script['text'] )
+		classes = []  ## check script for classes
+		for a in c.values():
+			if inspect.isclass( a ):
+				classes.append( a )
+		instance = None  ## class instance if needs to be made
+
 		if script['clickable']:
 			on_click = 'generic_on_click'
-			c = compile_script( script['text'] )
-
-			classes = []
-			for a in c.values():
-				if inspect.isclass( a ):
-					classes.append( a )
 
 			if 'on_click' in c and inspect.isfunction( c['on_click'] ):
 				special_attrs['on_click_callback'] = c['on_click']  ## simple function
@@ -656,6 +662,17 @@ def create_object_view( ob ):
 
 		if script['inputable']:
 			on_input = 'generic_on_input'
+
+			if 'on_input' in c and inspect.isfunction( c['on_input'] ):
+				special_attrs['on_input_callback'] = c['on_input']  ## simple function
+
+			elif len(classes):
+				assert len(classes) == 1  ## we can support multiple classes with user decorators
+				if not instance:
+					instance = classes[0]()   ## what args should be passed to instance?
+				method = getattr( instance, 'on_input' )
+				special_attrs[ 'on_input_callback' ] = method
+
 
 	#############################################
 	print(ob, on_click, on_input)
