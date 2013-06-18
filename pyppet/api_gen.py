@@ -635,9 +635,24 @@ def create_object_view( ob ):
 		if script['clickable']:
 			on_click = 'generic_on_click'
 			c = compile_script( script['text'] )
-			func = c['on_click']
-			assert inspect.isfunction( func )
-			special_attrs['on_click_callback'] = func
+
+			classes = []
+			for a in c.values():
+				if inspect.isclass( a ):
+					classes.append( a )
+
+			if 'on_click' in c and inspect.isfunction( c['on_click'] ):
+				special_attrs['on_click_callback'] = c['on_click']  ## simple function
+
+			elif len(classes):
+				assert len(classes) == 1  ## we can support multiple classes with user decorators
+				instance = classes[0]()   ## what args should be passed to instance?
+				method = getattr( instance, 'on_click' )
+				special_attrs[ 'on_click_callback' ] = method
+
+			else:
+				raise RuntimeError
+
 
 		if script['inputable']:
 			on_input = 'generic_on_input'
