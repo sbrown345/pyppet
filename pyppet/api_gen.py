@@ -16,7 +16,21 @@ except ImportError: pass
 #    name="function id", description="(internal) on keyboard input function id", 
 #    default=0, min=0, max=256)
 
-## decorators ##
+##################### blender python script decorators #######################
+class decorators(object):
+	'''
+	mark a functions or methods as callbacks using the "generic api"
+	if a python script contains more than one class then it must be
+	marked with @decorators.instance
+	'''
+	@staticmethod
+	def click(a): a._user_callback_click = True; return a
+	@staticmethod
+	def input(a): a._user_callback_input = True; return a
+	@staticmethod
+	def instance(a): a._user_callback_class = True; return a
+
+##################### normal python decorators ###################
 _decorated = {}
 _singleton_classes = {}
 def _new_singleton(cls, *args, **kw): # this was ok until python 3.2.3 - invalid in python 3.3.1
@@ -102,6 +116,10 @@ def generate_api( a, **kw ):
 
 
 def get_game_settings( ob ):
+	'''
+	checks an objects logic bricks, and extracts some basic logic and options from it.
+	the python code will be cached and executed later.
+	'''
 	scripts = []
 	for con in ob.game.controllers:
 		if con.type != 'PYTHON': continue
@@ -122,10 +140,12 @@ def get_game_settings( ob ):
 
 			if sen.type == 'TOUCH':
 				script['clickable'] = True
-				assert _check_for_function_name( script['text'], 'on_click' )
+				#assert _check_for_function_name( script['text'], 'on_click' )
+				assert _check_for_decorator( script['text'], 'decorators.click' )
 			elif sen.type == 'KEYBOARD':
 				script['inputable'] = True
-				assert _check_for_function_name( script['text'], 'on_input' )
+				#assert _check_for_function_name( script['text'], 'on_input' )
+				assert _check_for_decorator( script['text'], 'decorators.input' )
 
 	return scripts
 
@@ -600,6 +620,7 @@ class ObjectView( Container ):
 USER_CUSTOM_ATTRIBUTES = ['text_flip']
 
 def compile_script( text ):
+	print(text)
 	exec( text )
 	return locals()
 
@@ -639,22 +660,39 @@ def create_object_view( ob ):
 
 		c = compile_script( script['text'] )
 		classes = []  ## check script for classes
+		click_func = input_func = cls = None
+
 		for a in c.values():
 			if inspect.isclass( a ):
 				classes.append( a )
+				if hasattr(a,'_user_callback_class'):  ## @decorators.instance
+					assert cls is None  ## do not allow multiple classes to be marked in a single script.
+					cls = a
+			elif inspect.isfunction( a ):
+				if hasattr( a, '_user_callback_click'):
+					click_func = a
+				if hasattr( a, '_user_callback_input'):
+					input_func = a
+
+		if not cls and classes:
+			assert len(classes) == 1  ## if the class is not marked, we only allow a single class per script.
+			cls = classes[0]
+
 		instance = None  ## class instance if needs to be made
+
 
 		if script['clickable']:
 			on_click = 'generic_on_click'
+			if click_func:
+				special_attrs['on_click_callback'] = click_func  ## simple function
 
-			if 'on_click' in c and inspect.isfunction( c['on_click'] ):
-				special_attrs['on_click_callback'] = c['on_click']  ## simple function
-
-			elif len(classes):
-				assert len(classes) == 1  ## we can support multiple classes with user decorators
-				instance = classes[0]()   ## what args should be passed to instance?
-				method = getattr( instance, 'on_click' )
-				special_attrs[ 'on_click_callback' ] = method
+			elif cls:
+				if instance is None: instance = cls()   ## what args should be passed to instance?
+				for n in dir(instance):
+					method = getattr(instance, n)
+					if hasattr(method, '_user_callback_click'):
+						special_attrs[ 'on_click_callback' ] = method
+						break
 
 			else:
 				raise RuntimeError
@@ -663,15 +701,21 @@ def create_object_view( ob ):
 		if script['inputable']:
 			on_input = 'generic_on_input'
 
-			if 'on_input' in c and inspect.isfunction( c['on_input'] ):
-				special_attrs['on_input_callback'] = c['on_input']  ## simple function
 
-			elif len(classes):
-				assert len(classes) == 1  ## we can support multiple classes with user decorators
-				if not instance:
-					instance = classes[0]()   ## what args should be passed to instance?
-				method = getattr( instance, 'on_input' )
-				special_attrs[ 'on_input_callback' ] = method
+			if click_func:
+				special_attrs['on_input_callback'] = input_func  ## simple function
+
+			elif cls:
+				if instance is None: instance = cls()   ## what args should be passed to instance?
+				for n in dir(instance):
+					method = getattr(instance, n)
+					if hasattr(method, '_user_callback_input'):
+						special_attrs[ 'on_input_callback' ] = method
+						break
+
+			else:
+				raise RuntimeError
+
 
 
 	#############################################
@@ -714,8 +758,14 @@ def _check_for_function_name( txt, name ):
 		line = line.strip()	# strip whitespace
 		if line.startswith('def %s('%name):
 			return True
+	return False
 
-
+def _check_for_decorator( txt, name ):
+	for line in txt.splitlines():
+		line = line.strip()	# strip whitespace
+		if line.startswith('@%s'%name):
+			return True
+	return False
 
 ##########################################################################
 
