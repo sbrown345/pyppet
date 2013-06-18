@@ -883,7 +883,7 @@ class CallbackFunction(object):
 
 		return '\n'.join(r)
 
-
+#####################################################################################
 def get_blender_object_by_uid(uid):
 	for o in bpy.data.objects:
 		if o.UID == uid: return o
@@ -891,13 +891,39 @@ def get_blender_object_by_uid(uid):
 register_type( BlenderProxy, get_blender_object_by_uid )
 
 def generic_on_click(user=UserProxy, ob=BlenderProxy):
-	print('generic on click')
-	get_wrapped_objects()[ob].on_click_callback( user=user )
+	'''
+	the wrapper.on_click_callback is defined by the blender-user,
+	from the BGE (blender game engine) logic bricks editor they need to create
+	or link in a TextNode and attach it to the Python-controller in the logic editor,
+	for each object that will have a given on click callback.
+	The Python script in the TextNode must define a function called: "on_click"
+	And, the Python-controller must have a Touch sensor as input.
+	'''
+	wrapper = get_wrapped_objects()[ob]
+	wrapper.on_click_callback(
+		wrapper=wrapper,
+		user=user, 
+		object=ob,
+		view=wrapper( user ),
+	)
 
 
 def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p):
-	print('generic on input')
-	get_wrapped_objects()[ob].on_input_callback( user=user, input_string=input_string.strip() )
+	'''
+	this works the same as the above on click callback.
+
+	blender example:
+		def on_input( wrapper=None, user=None, object=None, view=None, text=None ):
+			print(text)
+	'''
+	wrapper = get_wrapped_objects()[ob]
+	wrapper.on_input_callback(
+		wrapper=wrapper,
+		user=user,
+		object=ob,
+		view=wrapper( user ),
+		text=input_string.strip()
+	)
 
 
 
