@@ -29,6 +29,8 @@ class decorators(object):
 	def input(a): a._user_callback_input = True; return a
 	@staticmethod
 	def instance(a): a._user_callback_class = True; return a
+	@staticmethod
+	def init(a): a._user_init_func = True; return a
 
 ##################### normal python decorators ###################
 _decorated = {}
@@ -131,6 +133,7 @@ def get_game_settings( ob ):
 			'text':con.text.as_string(),
 			'clickable': False,
 			'inputable': False,
+			'init'  : False,
 		}
 		scripts.append( script )
 
@@ -164,6 +167,9 @@ def get_game_settings( ob ):
 				#assert _check_for_function_name( script['text'], 'on_input' )
 				assert _check_for_decorator( script['text'], 'decorators.input' )
 
+		if _check_for_decorator( script['text'], 'decorators.init' ):
+			script['init'] = True
+
 	return scripts
 
 
@@ -178,8 +184,8 @@ def generate_javascript():
 def get_wrapped_objects():
 	return Cache.objects
 
-def wrap_object( ob ):
-	return Cache.wrap_object(ob )
+def wrap_object( ob, **kw ):
+	return Cache.wrap_object(ob, **kw)
 
 ###################################################
 
@@ -188,13 +194,15 @@ def wrap_object( ob ):
 class CacheSingleton(object):
 	def __init__(self):
 		self.objects = {} # blender object : object view
-	#@classmethod
-	def wrap_object(cls,ob):
+
+	def wrap_object(self, ob, **kw):
 		#assert ob not in cls.objects  ## threading?
-		if ob not in cls.objects:
-			view = create_object_view( ob )
-			cls.objects[ ob ] = view
+		if ob not in self.objects:
+			view = create_object_view( ob, **kw )
+			self.objects[ ob ] = view
 			return view
+		else:
+			return self.objects[ ob ]
 
 Cache = CacheSingleton()
 
@@ -642,7 +650,7 @@ def compile_script( text ):
 	exec( text, g )
 	return g
 
-def create_object_view( ob ):
+def create_object_view( ob, **kwargs ):
 	print('------------create object view-----------')
 	on_click = None #'default_click' # defaults for testing
 	on_touch = None #'default_touch' # TODO
@@ -670,10 +678,11 @@ def create_object_view( ob ):
 	#if hasattr(ob, 'name') and ob.name in CallbackFunction.callbacks:
 	#	print('auto hooking object by name to callback function')
 	#	on_click = ob.name
+	init_funcs = []
 	for script in get_game_settings( ob ):
 
-		if not script['clickable'] and not script['inputable']:
-			continue  ## do not allow scripts that do nothing
+		#if not script['clickable'] and not script['inputable']:
+		#	continue  ## do not allow scripts that do nothing
 
 
 		c = compile_script( script['text'] )
@@ -686,15 +695,20 @@ def create_object_view( ob ):
 				if hasattr(a,'_user_callback_class'):  ## @decorators.instance
 					assert cls is None  ## do not allow multiple classes to be marked in a single script.
 					cls = a
+				elif hasattr( a, '_user_init_func'):
+					init_funcs.append( a )
+
 			elif inspect.isfunction( a ):
 				if hasattr( a, '_user_callback_click'):
 					click_func = a
-				if hasattr( a, '_user_callback_input'):
+				elif hasattr( a, '_user_callback_input'):
 					input_func = a
+				elif hasattr( a, '_user_init_func'):
+					init_funcs.append( a )
 
-		if not cls and classes:
-			assert len(classes) == 1  ## if the class is not marked, we only allow a single class per script.
-			cls = classes[0]
+		#if not cls and classes:
+		#	assert len(classes) == 1  ## if the class is not marked, we only allow a single class per script.
+		#	cls = classes[0]
 
 		instance = None  ## class instance if needs to be made
 
@@ -746,6 +760,7 @@ def create_object_view( ob ):
 			print(CallbackFunction.callbacks)
 			print('WARNING: undefined callback:', on_click)
 			raise RuntimeError
+
 	if on_input:
 		if on_input in CallbackFunction.callbacks:
 			on_input = CallbackFunction.callbacks[ on_input ]
@@ -767,6 +782,13 @@ def create_object_view( ob ):
 	if special_attrs:
 		for name in special_attrs:
 			setattr(v, name, special_attrs[name])
+
+	if kwargs:  ## for props that need to be set before
+		for name in kwargs:
+			setattr(v, name, kwargs[name])
+
+	for func in init_funcs:  ## pass the wrapper view to the user init functions
+		func( wrapper=v, object=ob )
 
 	return v
 

@@ -300,7 +300,7 @@ class Object(object):
 			with a: pass
 
 	def __enter__(self):
-		if not self.__cached:
+		if not self.__cached and False:
 			self.__with_temp = []
 			for n in dir(self):
 				a = getattr(self,n)
