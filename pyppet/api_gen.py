@@ -1,8 +1,8 @@
 # API Generator with binary data packing
 # Copyright Brett Hartshorn 2012-2013
 # License: "New" BSD
-
-import time, inspect, struct, ctypes, random
+import os, sys, time
+import inspect, struct, ctypes, random
 import collections
 try: import bpy, mathutils
 except ImportError: pass
@@ -115,6 +115,9 @@ def generate_api( a, **kw ):
 	return api
 
 
+RELOAD_EXTERNAL_LINKED_TEXT = True
+RELOAD_EXTERNAL_TEXT = True
+
 def get_game_settings( ob ):
 	'''
 	checks an objects logic bricks, and extracts some basic logic and options from it.
@@ -130,6 +133,20 @@ def get_game_settings( ob ):
 			'inputable': False,
 		}
 		scripts.append( script )
+
+		if con.text.filepath:
+			path = bpy.path.abspath(con.text.filepath)
+			if not os.path.isfile( path ):
+				print('WARNING: can not find source script!')
+				print(path)
+			else:
+				file_text = open( path, 'rb' ).read().decode('utf-8')
+				if file_text != script['text']:
+					#if con.text.is_library_indirect and RELOAD_EXTERNAL_LINKED_TEXT: ( text.is_library_indirect is new in blender 2.66) are text nodes that are linked in considered "indirect"
+					if con.text.library and RELOAD_EXTERNAL_LINKED_TEXT:
+						script['text'] = file_text
+					elif not con.text.library and RELOAD_EXTERNAL_TEXT:
+						script['text'] = file_text
 
 		for act in con.actuators:
 			if act.type == 'MOTION': pass
