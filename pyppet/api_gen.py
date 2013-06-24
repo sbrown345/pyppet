@@ -128,6 +128,8 @@ def get_game_settings( ob ):
 	scripts = []
 	for con in ob.game.controllers:
 		if con.type != 'PYTHON': continue
+		if con.text is None: continue
+
 		script = {
 			'text_block':con.text, 
 			'text':con.text.as_string(),
@@ -151,8 +153,10 @@ def get_game_settings( ob ):
 					elif not con.text.library and RELOAD_EXTERNAL_TEXT:
 						script['text'] = file_text
 
-		for act in con.actuators:
-			if act.type == 'MOTION': pass
+		if len(con.actuators):
+			script['actuators'] = []
+			for act in con.actuators:
+				script['actuators'].append( act )
 
 		for sen in ob.game.sensors:
 			if sen.type not in ('TOUCH', 'KEYBOARD'): continue
@@ -651,7 +655,6 @@ def compile_script( text ):
 	return g
 
 def create_object_view( ob, **kwargs ):
-	print('------------create object view-----------')
 	on_click = None #'default_click' # defaults for testing
 	on_touch = None #'default_touch' # TODO
 	on_input = None #'default_input'  # defaults for testing
@@ -660,7 +663,6 @@ def create_object_view( ob, **kwargs ):
 	user_props = {}
 	special_attrs = {}
 	if hasattr(ob, 'items'):
-		print('////////checking blender id props////////')
 		for prop in ob.items():
 			name, value = prop
 			if name == '_RNA_UI': continue  # used by blender internally
@@ -675,15 +677,9 @@ def create_object_view( ob, **kwargs ):
 				print('WARN unknown id-prop:', name, value)
 				raise RuntimeError
 
-	#if hasattr(ob, 'name') and ob.name in CallbackFunction.callbacks:
-	#	print('auto hooking object by name to callback function')
-	#	on_click = ob.name
 	init_funcs = []
+
 	for script in get_game_settings( ob ):
-
-		#if not script['clickable'] and not script['inputable']:
-		#	continue  ## do not allow scripts that do nothing
-
 
 		c = compile_script( script['text'] )
 		classes = []  ## check script for classes
@@ -697,6 +693,8 @@ def create_object_view( ob, **kwargs ):
 					cls = a
 				elif hasattr( a, '_user_init_func'):
 					init_funcs.append( a )
+					if 'actuators' in script:
+						a.actuators = script['actuators']
 
 			elif inspect.isfunction( a ):
 				if hasattr( a, '_user_callback_click'):
@@ -706,15 +704,15 @@ def create_object_view( ob, **kwargs ):
 				elif hasattr( a, '_user_init_func'):
 					init_funcs.append( a )
 
-		#if not cls and classes:
-		#	assert len(classes) == 1  ## if the class is not marked, we only allow a single class per script.
-		#	cls = classes[0]
 
 		instance = None  ## class instance if needs to be made
 
-
 		if script['clickable']:
 			on_click = 'generic_on_click'
+
+			if 'actuators' in script:
+				special_attrs[ 'on_click_actuators' ] = script['actuators']
+
 			if click_func:
 				special_attrs['on_click_callback'] = click_func  ## simple function
 
@@ -732,6 +730,9 @@ def create_object_view( ob, **kwargs ):
 
 		if script['inputable']:
 			on_input = 'generic_on_input'
+
+			if 'actuators' in script:
+				special_attrs[ 'on_input_actuators' ] = script['actuators']
 
 
 			if click_func:
@@ -788,7 +789,11 @@ def create_object_view( ob, **kwargs ):
 			setattr(v, name, kwargs[name])
 
 	for func in init_funcs:  ## pass the wrapper view to the user init functions
-		func( wrapper=v, object=ob )
+		func(
+			wrapper=v, 
+			object=ob, 
+			actuators=getattr(func,'actuators', [])
+		)
 
 	return v
 
@@ -1027,6 +1032,7 @@ def generic_on_click(user=UserProxy, ob=BlenderProxy):
 		user=user, 
 		object=ob,
 		view=wrapper( user ),
+		actuators=wrapper.on_click_actuators,
 	)
 
 
@@ -1044,7 +1050,8 @@ def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char
 		user=user,
 		object=ob,
 		view=wrapper( user ),
-		text=input_string.strip()
+		text=input_string.strip(),
+		actuators=wrapper.on_input_actuators,
 	)
 
 
