@@ -381,7 +381,10 @@ def create_object_view( ob, **kwargs ):
 
 	############ Blender's ID-Props API #########
 	user_props = {}
-	special_attrs = {}
+	special_attrs = {
+		'on_click_callbacks': [],
+		'on_input_callbacks': [],
+	}
 	if hasattr(ob, 'items'):
 		for prop in ob.items():
 			name, value = prop
@@ -423,6 +426,8 @@ def create_object_view( ob, **kwargs ):
 					input_func = a
 				elif hasattr( a, '_user_init_func'):
 					init_funcs.append( a )
+					if 'actuators' in script:
+						a.actuators = script['actuators']
 
 
 		instance = None  ## class instance if needs to be made
@@ -434,14 +439,14 @@ def create_object_view( ob, **kwargs ):
 				special_attrs[ 'on_click_actuators' ] = script['actuators']
 
 			if click_func:
-				special_attrs['on_click_callback'] = click_func  ## simple function
+				special_attrs['on_click_callbacks'].append( click_func )  ## simple function
 
 			elif cls:
 				if instance is None: instance = cls()   ## what args should be passed to instance?
 				for n in dir(instance):
 					method = getattr(instance, n)
 					if hasattr(method, '_user_callback_click'):
-						special_attrs[ 'on_click_callback' ] = method
+						special_attrs[ 'on_click_callbacks' ].append( method )
 						break
 
 			else:
@@ -455,15 +460,15 @@ def create_object_view( ob, **kwargs ):
 				special_attrs[ 'on_input_actuators' ] = script['actuators']
 
 
-			if click_func:
-				special_attrs['on_input_callback'] = input_func  ## simple function
+			if input_func:
+				special_attrs['on_input_callbacks'].append( input_func ) ## simple function
 
 			elif cls:
 				if instance is None: instance = cls()   ## what args should be passed to instance?
 				for n in dir(instance):
 					method = getattr(instance, n)
 					if hasattr(method, '_user_callback_input'):
-						special_attrs[ 'on_input_callback' ] = method
+						special_attrs[ 'on_input_callbacks' ].append( method )
 						break
 
 			else:
@@ -725,7 +730,7 @@ register_type( BlenderProxy, get_blender_object_by_uid )
 
 def generic_on_click(user=UserProxy, ob=BlenderProxy):
 	'''
-	the wrapper.on_click_callback is defined by the blender-user,
+	the wrapper.on_click_callbacks is defined by the blender-user,
 	from the BGE (blender game engine) logic bricks editor they need to create
 	or link in a TextNode and attach it to the Python-controller in the logic editor,
 	for each object that will have a given on click callback.
@@ -733,13 +738,15 @@ def generic_on_click(user=UserProxy, ob=BlenderProxy):
 	And, the Python-controller must have a Touch sensor as input.
 	'''
 	wrapper = get_wrapped_objects()[ob]
-	wrapper.on_click_callback(
-		wrapper=wrapper,
-		user=user, 
-		object=ob,
-		view=wrapper( user ),
-		actuators=wrapper.on_click_actuators,
-	)
+	if wrapper.on_click_callbacks:
+		for callback in wrapper.on_click_callbacks:
+			callback(
+				wrapper=wrapper,
+				user=user, 
+				object=ob,
+				view=wrapper( user ),
+				actuators=wrapper.on_click_actuators,
+			)
 
 
 def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p):
@@ -751,14 +758,16 @@ def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char
 			print(text)
 	'''
 	wrapper = get_wrapped_objects()[ob]
-	wrapper.on_input_callback(
-		wrapper=wrapper,
-		user=user,
-		object=ob,
-		view=wrapper( user ),
-		text=input_string.strip(),
-		actuators=wrapper.on_input_actuators,
-	)
+	if wrapper.on_input_callbacks:
+		for callback in wrapper.on_input_callbacks:
+			callback(
+				wrapper=wrapper,
+				user=user,
+				object=ob,
+				view=wrapper( user ),
+				text=input_string.strip(),
+				actuators=wrapper.on_input_actuators,
+			)
 
 
 
