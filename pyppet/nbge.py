@@ -4,8 +4,8 @@
 import os, bpy
 from animation_api import *
 
-RELOAD_EXTERNAL_LINKED_TEXT = True
-RELOAD_EXTERNAL_TEXT = True
+RELOAD_EXTERNAL_LINKED_TEXT = False
+RELOAD_EXTERNAL_TEXT = False
 
 ##########################################################################
 def _check_for_function_name( txt, name ):
@@ -22,6 +22,34 @@ def _check_for_decorator( txt, name ):
 			return True
 	return False
 
+def actuators_to_animations( wrapper=None, actuators=None ):
+	assert wrapper is not None
+	assert actuators is not None
+	loc_anims = []
+	rot_anims = []
+	for act in actuators:
+		if act.type == 'MOTION':
+			if act.use_local_location:  ## we hijack the use-local option in blender to toggle loc/rot
+				x,y,z = act.offset_location
+				loc_anims.append(
+					Animation(x=x, y=y, z=z)
+				)
+
+			if act.use_local_rotation:
+				x,y,z = act.offset_rotation ## euler in radians
+				rot_anims.append(
+					Animation(x=x, y=y, z=z)
+				)
+
+	r = {}
+	if len(loc_anims):
+		a = Animations( *loc_anims ); r['location'] = a
+		wrapper['location'] = a
+	if len(rot_anims):
+		a = Animations( *rot_anims ); r['rotation'] = a
+		wrapper['rotation_euler'] = a
+
+	return r
 
 ##########################################################################
 def get_game_settings( ob ):

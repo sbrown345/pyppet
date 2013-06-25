@@ -368,6 +368,7 @@ class ObjectView( Container ):
 USER_CUSTOM_ATTRIBUTES = ['text_flip']
 
 def compile_script( text ):
+	print(text)
 	#local = {}  ## TODO return just the objects in the text, not all globals
 	g = {}; g.update( globals() )
 	exec( text, g )
