@@ -736,17 +736,32 @@ def generic_on_click(user=UserProxy, ob=BlenderProxy):
 	for each object that will have a given on click callback.
 	The Python script in the TextNode must define a function called: "on_click"
 	And, the Python-controller must have a Touch sensor as input.
+
+	Mini-protocol - if callback returns:
+		. if returns True or "STOP" then following callbacks are not called.
+		. if returns "REMOVE" then the callback is removed from the list.
+		. if returns "STOP_AND_REMOVE" then do both things.
+	I
 	'''
 	wrapper = get_wrapped_objects()[ob]
 	if wrapper.on_click_callbacks:
+		rem = []
 		for callback in wrapper.on_click_callbacks:
-			callback(
+			a = callback(
 				wrapper=wrapper,
 				user=user, 
 				object=ob,
 				view=wrapper( user ),
 				actuators=wrapper.on_click_actuators,
 			)
+			if a:
+				if a in ('REMOVE','STOP_AND_REMOVE'): rem.append( callback )
+				if a in ('STOP', 'STOP_AND_REMOVE'):
+					break
+
+		if rem:
+			for cb in rem:
+				wrapper.on_click_callbacks.remove( cb )
 
 
 def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char_p):
@@ -759,8 +774,9 @@ def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char
 	'''
 	wrapper = get_wrapped_objects()[ob]
 	if wrapper.on_input_callbacks:
+		rem = []
 		for callback in wrapper.on_input_callbacks:
-			callback(
+			a = callback(
 				wrapper=wrapper,
 				user=user,
 				object=ob,
@@ -768,7 +784,14 @@ def generic_on_input(user=UserProxy, ob=BlenderProxy, input_string=ctypes.c_char
 				text=input_string.strip(),
 				actuators=wrapper.on_input_actuators,
 			)
+			if a:
+				if a in ('REMOVE','STOP_AND_REMOVE'): rem.append( callback )
+				if a in ('STOP', 'STOP_AND_REMOVE'):
+					break
 
+		if rem:
+			for cb in rem:
+				wrapper.on_input_callbacks.remove( cb )
 
 
 if __name__ == '__main__':
