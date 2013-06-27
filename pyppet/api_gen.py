@@ -366,11 +366,16 @@ class ObjectView( Container ):
 
 # monkey patch this to allow the blender user to attach properties to objects from blender
 USER_CUSTOM_ATTRIBUTES = ['text_flip']
+USER_CUSTOM_FUNCTIONS = {}
+def register_script_function( func ):
+	name = func.__name__
+	assert name not in USER_CUSTOM_FUNCTIONS
+	USER_CUSTOM_FUNCTIONS[ name ] = func
 
 def compile_script( text ):
 	print(text)
 	#local = {}  ## TODO return just the objects in the text, not all globals
-	g = {}; g.update( globals() )
+	g = {}; g.update( globals() ); g.update( USER_CUSTOM_FUNCTIONS )
 	exec( text, g )
 	return g
 
