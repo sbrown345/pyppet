@@ -1,7 +1,7 @@
 ## Not Blender Game Engine API ##
 ## by Brett Hartshorn - 2013 ##
 ## License: New BSD ##
-import os, bpy
+import os, collections, bpy
 from animation_api import *
 
 RELOAD_EXTERNAL_LINKED_TEXT = False
@@ -22,12 +22,10 @@ def _check_for_decorator( txt, name ):
 			return True
 	return False
 
-def actions_to_animations( wrapper=None, actuators=None, location=True, rotation=True ):
-	assert wrapper is not None
+def actions_to_animations( wrapper=None, actuators=None, location=True, rotation=True, scale=True ):
 	assert actuators is not None
+	D = collections.OrderedDict()
 
-	loc_anims = []
-	rot_anims = []
 	for act in actuators:
 		if act.type != 'ACTION':
 			continue
@@ -35,13 +33,17 @@ def actions_to_animations( wrapper=None, actuators=None, location=True, rotation
 			print('WARNING: ActionActuator is missing a target Action')
 			continue
 
+
+		assert act.play_mode == 'PLAY' ## TODO support pingpong and others...
+		loc_anims = []
+		rot_anims = []
+		scl_anims = []
+		loc_curves = [None]*3
+		rot_curves = [None]*3
+		scl_curves = [None]*3
 		action = act.action
 		print('action name', action.name)  ## user defined name
 
-		assert act.play_mode == 'PLAY' ## TODO support pingpong and others...
-
-		loc_curves = [None]*3
-		rot_curves = [None]*3
 
 		for f in action.fcurves:
 			if f.data_path == 'location':
@@ -56,6 +58,13 @@ def actions_to_animations( wrapper=None, actuators=None, location=True, rotation
 				if not loc_anims:
 					rot_anims = [ Animation(seconds=k.co[0]/24.0, x=1,y=1,z=1, mode="RELATIVE") for k in f.keyframe_points ]
 
+			if f.data_path == 'scale':
+				scl_curves[ f.array_index ] = f
+
+				if not scl_anims:
+					scl_anims = [ Animation(seconds=k.co[0]/24.0, x=1,y=1,z=1, mode="RELATIVE") for k in f.keyframe_points ]
+
+
 		if location:
 			for i,anim in enumerate(loc_anims):
 				anim.x = loc_curves[ 0 ].keyframe_points[ i ].co[1]
@@ -68,16 +77,29 @@ def actions_to_animations( wrapper=None, actuators=None, location=True, rotation
 				anim.y = rot_curves[ 1 ].keyframe_points[ i ].co[1]
 				anim.z = rot_curves[ 2 ].keyframe_points[ i ].co[1]
 
+		if scale:
+			for i,anim in enumerate(scl_anims):
+				anim.x = scl_curves[ 0 ].keyframe_points[ i ].co[1]
+				anim.y = scl_curves[ 1 ].keyframe_points[ i ].co[1]
+				anim.z = scl_curves[ 2 ].keyframe_points[ i ].co[1]
 
-	r = {}
-	if len(loc_anims):
-		a = Animations( *loc_anims ); r['location'] = a
-		wrapper['location'] = a
-	if len(rot_anims):
-		a = Animations( *rot_anims ); r['rotation'] = a
-		wrapper['rotation_euler'] = a
+		r = {}
+		if len(loc_anims):
+			a = Animations( *loc_anims ); r['location'] = a
+			if wrapper: wrapper['location'] = a
+		if len(rot_anims):
+			a = Animations( *rot_anims ); r['rotation'] = a
+			if wrapper: wrapper['rotation_euler'] = a
 
-	return r
+		if len(scl_anims):
+			a = Animations( *scl_anims ); r['scale'] = a
+			if wrapper: wrapper['scale'] = a
+
+
+		if r:
+			D[action.name] = r
+
+	return D
 
 
 
@@ -171,3 +193,26 @@ def get_game_settings( ob ):
 			script['init'] = True
 
 	return scripts
+
+
+
+class AnimationGroup(object):
+	def __init__(self, actuators):
+		self.tracks = actions_to_animations( actuators=actuators ) # note, OrderedDict
+
+	def get_track_names(self):
+		return self.tracks.keys()
+
+	def play_track(self, wrapper=None, track_name=None, location=True, rotation=True, scale=True):
+		assert wrapper # need a wrapper object to play the track on
+		assert track_name in self.tracks
+		track = self.tracks[ track_name ]
+		if 'location' in track and location:
+			wrapper['location'] = track['location'] # Animations object
+
+		if 'rotation' in track and location:
+			wrapper['rotation_euler'] = track['rotation']
+
+		if 'scale' in track and location:
+			wrapper['scale'] = track['scale']
+
