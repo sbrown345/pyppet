@@ -22,6 +22,65 @@ def _check_for_decorator( txt, name ):
 			return True
 	return False
 
+def actions_to_animations( wrapper=None, actuators=None, location=True, rotation=True ):
+	assert wrapper is not None
+	assert actuators is not None
+
+	loc_anims = []
+	rot_anims = []
+	for act in actuators:
+		if act.type != 'ACTION':
+			continue
+		if not act.action:
+			print('WARNING: ActionActuator is missing a target Action')
+			continue
+
+		action = act.action
+		print('action name', action.name)  ## user defined name
+
+		assert act.play_mode == 'PLAY' ## TODO support pingpong and others...
+
+		loc_curves = [None]*3
+		rot_curves = [None]*3
+
+		for f in action.fcurves:
+			if f.data_path == 'location':
+				loc_curves[ f.array_index ] = f
+
+				if not loc_anims:
+					loc_anims = [ Animation(seconds=k.co[0]/24.0, x=1,y=1,z=1, mode="RELATIVE") for k in f.keyframe_points ]
+
+			if f.data_path == 'rotation_euler':
+				rot_curves[ f.array_index ] = f
+
+				if not loc_anims:
+					rot_anims = [ Animation(seconds=k.co[0]/24.0, x=1,y=1,z=1, mode="RELATIVE") for k in f.keyframe_points ]
+
+		if location:
+			for i,anim in enumerate(loc_anims):
+				anim.x = loc_curves[ 0 ].keyframe_points[ i ].co[1]
+				anim.y = loc_curves[ 1 ].keyframe_points[ i ].co[1]
+				anim.z = loc_curves[ 2 ].keyframe_points[ i ].co[1]
+
+		if rotation:
+			for i,anim in enumerate(rot_anims):
+				anim.x = rot_curves[ 0 ].keyframe_points[ i ].co[1]
+				anim.y = rot_curves[ 1 ].keyframe_points[ i ].co[1]
+				anim.z = rot_curves[ 2 ].keyframe_points[ i ].co[1]
+
+
+	r = {}
+	if len(loc_anims):
+		a = Animations( *loc_anims ); r['location'] = a
+		wrapper['location'] = a
+	if len(rot_anims):
+		a = Animations( *rot_anims ); r['rotation'] = a
+		wrapper['rotation_euler'] = a
+
+	return r
+
+
+
 def actuators_to_animations( wrapper=None, actuators=None, location=True, rotation=True ):
 	assert wrapper is not None
 	assert actuators is not None

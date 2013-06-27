@@ -94,7 +94,6 @@ class Animation( AnimAPI ):
 		self.value = value
 		self.type = type(value)
 		self.delay = delay
-		self.x = x; self.y = y; self.z = z
 		self.indices = {}
 		self.deltas = {}
 		self.offsets = {} ## abs/rel mode ##
@@ -104,6 +103,18 @@ class Animation( AnimAPI ):
 		self.seconds = seconds
 		self.animations = []
 		self.callbacks = collections.OrderedDict() # keep callback order
+
+	def get_x(self): return self.indices[0]
+	def set_x(self,v): self.indices[0] = v
+	x = property( get_x, set_x )
+
+	def get_y(self): return self.indices[1]
+	def set_y(self,v): self.indices[1] = v
+	y = property( get_y, set_y )
+
+	def get_z(self): return self.indices[2]
+	def set_z(self,v): self.indices[2] = v
+	z = property( get_z, set_z )
 
 	def on_finished( self, callback, *args):
 		self.callbacks[ callback ] = args
