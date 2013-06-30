@@ -862,7 +862,11 @@ class Player( object ):
 
 			# pack into dict for json transfer.
 			pak = {}
-			if ob.parent: pak['parent'] = UID( ob.parent )
+			if ob.parent:
+				if ob.parent.type == 'CAMERA': pak['parent'] = -1
+				else:
+					assert ob.parent.type in ('MESH', 'EMPTY')
+					pak['parent'] = UID( ob.parent )
 
 
 			## this is a special case that makes forces object animation to be shared by all users,

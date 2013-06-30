@@ -1479,12 +1479,16 @@ function on_json_message( data ) {
 		var o = UserAPI.objects[ name ];
 
 		if (o.parent === undefined && pak.parent !== undefined) {
-			var pid = '__'+pak.parent+'__';
-			if (pid in UserAPI.objects) {
-				//console.log( 'ADDING-> '+pak.parent );
-				UserAPI.objects[ pid ].add( o );
+			if (pak.parent == -1) {
+				UserAPI.camera.add( o );
 			} else {
-				console.log( 'waiting for parent: '+pak.parent );
+				var pid = '__'+pak.parent+'__';
+				if (pid in UserAPI.objects) {
+					//console.log( 'ADDING-> '+pak.parent );
+					UserAPI.objects[ pid ].add( o );
+				} else {
+					console.log( 'waiting for parent: '+pak.parent );
+				}
 			}
 
 		}
