@@ -50,7 +50,7 @@ def _new_singleton(cls, *args, **kw): # this was ok until python 3.2.3 - invalid
 				method = getattr(self, name)
 				assert inspect.ismethod( method )
 				_decorated[ name ] = method
-
+	cls.Instance = self
 	return self
 
 def websocket_singleton( cls ):
@@ -372,6 +372,12 @@ def register_script_function( func ):
 	assert name not in USER_CUSTOM_FUNCTIONS
 	USER_CUSTOM_FUNCTIONS[ name ] = func
 
+
+def user_api( func ): ## decorator to expose a function to the namespace of the blender py scripts.
+	register_script_function( func )
+	return func
+
+###############################################
 def compile_script( text ):
 	print(text)
 	#local = {}  ## TODO return just the objects in the text, not all globals
