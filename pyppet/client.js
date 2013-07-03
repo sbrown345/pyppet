@@ -168,7 +168,8 @@ var UserAPI = {
 				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
 				ob,			// parent
 				props.title, // title (can be undefined)
-				ob.custom_attributes.text_flip  // special case to force flipped text
+				ob.custom_attributes.text_flip,  // special case to force flipped text
+				ob.custom_attributes.text_scale
 			); // TODO optimize this only update on change
 		}
 
@@ -184,7 +185,8 @@ var UserAPI = {
 				ob,			// parent
 				text, 		// multiline text body
 				props.heading,  // title (can be undefined)
-				ob.custom_attributes.text_flip  // special case to force flipped text
+				ob.custom_attributes.text_flip,  // special case to force flipped text
+				ob.custom_attributes.text_scale
 			);
 		}
 
@@ -987,10 +989,12 @@ function on_keydown ( evt ) {
 	if (update && INPUT_OBJECT) {
 		console.log('INPUT_OBJECT'+INPUT_OBJECT);
 		label_object(
-			INPUT_OBJECT.meshes[0].geometry,
+			undefined, //INPUT_OBJECT.meshes[0].geometry,
 			INPUT_OBJECT,
 			_input_buffer.join(""), // text
-			undefined // title
+			undefined, // title
+			undefined,  // special case to force flipped text
+			ob.custom_attributes.text_scale
 		); // TODO optimize this only update on change
 
 	}
@@ -1042,10 +1046,12 @@ function on_keypress( evt ) {
 	if (INPUT_OBJECT) {
 		console.log('INPUT_OBJECT'+INPUT_OBJECT);
 		label_object(
-			INPUT_OBJECT.meshes[0].geometry,
+			undefined, //INPUT_OBJECT.meshes[0].geometry,
 			INPUT_OBJECT,
 			_input_buffer.join(""), // text
-			undefined // title
+			undefined, // title
+			undefined,  // special case to force flipped text
+			INPUT_OBJECT.custom_attributes.text_scale
 		); // TODO optimize this only update on change
 
 	}
@@ -1194,10 +1200,11 @@ function title_object(geometry, parent, title, flip ) {
 
 }
 
-function label_object(geometry, parent, txt, title, flip ) {
+function label_object(geometry, parent, txt, title, flip, scale ) {
 	console.log('label-object:'+flip);
 
 	if (flip === undefined) { flip = false; }
+	if (scale === undefined) { scale = 0.0035; }
 
 
 	if (title != undefined && title != parent._label_title) {
@@ -1215,7 +1222,8 @@ function label_object(geometry, parent, txt, title, flip ) {
 			{
 				offset:parent.max.y + 0.25,
 				alignment:"center",
-				flip:flip
+				flip:flip,
+				scale:scale
 			}
 		);
 		parent._title_objects = lines;
@@ -1246,7 +1254,8 @@ function label_object(geometry, parent, txt, title, flip ) {
 			{
 				offset:parent.max.y + 0.25,
 				alignment:"left",
-				flip:flip
+				flip:flip,
+				scale:scale
 			}
 		);
 		parent._label_objects = lines;

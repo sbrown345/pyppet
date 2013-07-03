@@ -64,7 +64,7 @@ class RNA_Database(object):
 			## setup mesh.materials similar to bpy API ##
 			## TODO how to iterate a dna link?
 			mesh.materials = {}
-			link = mesh.mat
-			if link and link.next:
-				mesh.materials[ link.next.name ] = link.next
+			#link = mesh.mat  ## TODO - fixme
+			#if link and link.next:
+			#	mesh.materials[ link.next.name ] = link.next
 

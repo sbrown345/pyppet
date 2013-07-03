@@ -38,9 +38,8 @@ class decorators(object):
 ##################### normal python decorators ###################
 _decorated = {}
 _singleton_classes = {}
-def _new_singleton(cls, *args, **kw): # this was ok until python 3.2.3 - invalid in python 3.3.1
+def _new_singleton(cls, *args, **kw):	# note until python 3.3.1 we could pass *args,**kw to object.__new__
 	assert cls not in _singleton_classes  ## ensure a singleton instance
-	#self = super(A, cls).__new__(cls)
 	self = object.__new__(cls)  ## assumes that cls subclasses from object
 	_singleton_classes[ cls ] = self
 	for name in dir(self):
@@ -364,18 +363,16 @@ class ObjectView( Container ):
 	#__allow_upstream_attributes = []
 	pass
 
-# monkey patch this to allow the blender user to attach properties to objects from blender
-USER_CUSTOM_ATTRIBUTES = ['text_flip']
+
 USER_CUSTOM_FUNCTIONS = {}
+
+## decorator to expose a function to the namespace of the blender py scripts ##
 def register_script_function( func ):
 	name = func.__name__
 	assert name not in USER_CUSTOM_FUNCTIONS
 	USER_CUSTOM_FUNCTIONS[ name ] = func
-
-
-def user_api( func ): ## decorator to expose a function to the namespace of the blender py scripts.
-	register_script_function( func )
 	return func
+
 
 ###############################################
 def compile_script( text ):
@@ -384,6 +381,10 @@ def compile_script( text ):
 	g = {}; g.update( globals() ); g.update( USER_CUSTOM_FUNCTIONS )
 	exec( text, g )
 	return g
+
+
+# monkey patch this to allow the blender user to attach properties to objects from blender
+USER_CUSTOM_ATTRIBUTES = ['text_flip']
 
 def create_object_view( ob, **kwargs ):
 	on_click = None #'default_click' # defaults for testing

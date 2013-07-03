@@ -954,6 +954,9 @@ class Player( object ):
 				if key in ('location','scale', 'rotation_euler', 'color'): continue  ## special cases
 				props[ key ] = view[key]
 
+			if 'text_scale' not in props and ob.slow_parent_offset != 0.0:
+				props['text_scale'] = ob.slow_parent_offset * 0.001
+
 			## special case for selected ##
 			if 'selected' in view and view['selected']:
 				T = view['selected']
