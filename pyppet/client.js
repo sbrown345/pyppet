@@ -1141,6 +1141,9 @@ function create_multiline_text( text, title, parent, params ) {
 	if (text != undefined) {
 		var _lines = text.split('\n');
 		for (var i=0; i<_lines.length; i ++) {
+			if (-params.spacing*i <= parent.min.z) {
+				continue;
+			}
 			var line = _lines[ i ];
 			var mesh = create_text( 
 				line, 
@@ -1150,6 +1153,11 @@ function create_multiline_text( text, title, parent, params ) {
 			if (lines.length) {
 				mesh.position.z = -params.spacing*i;
 				//mesh.position.z -= lines[lines.length-1].height*scale;
+				if (mesh.position.z <= parent.min.z) {
+					console.log('WARN text below parent');
+					console.log( mesh.position );
+					console.log( parent.min )
+				}
 			}
 			lines.push( mesh );
 		}
