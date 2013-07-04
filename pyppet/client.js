@@ -7,13 +7,22 @@ Notes:
 	or forget to computeTangents before assignment.
 	 [..:ERROR:gles2_cmd_decoder.cc(4561)] glDrawXXX: attempt to access out of range vertices
 
-def go_modal
-
-click_masking_objects
-
 */
 
-var Objects = {};	// name : LOD
+Array.prototype.insert = function (index, item) {
+	this.splice(index, 0, item); // changes array inplace
+};
+
+Array.prototype.remove = function (index) {
+	this.splice(index, 0); // changes array inplace
+};
+
+Array.prototype.copy = function (index) {
+	return [].concat( this );
+};
+
+
+var Objects = {};	// name : Object3D
 var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
 var container;
@@ -158,10 +167,10 @@ var UserAPI = {
 
 		if (props.selected) { 
 			SELECTED = ob;
-			INPUT_OBJECT = ob;
+			Input.object = ob;
 		}
-		if (props.disable_input && ob === INPUT_OBJECT) {
-			INPUT_OBJECT = null;
+		if (props.disable_input && ob === Input.object) {
+			Input.object = null;
 		}
 
 		if (props.title) {
@@ -179,7 +188,7 @@ var UserAPI = {
 			// the toplevel title is controlled by the server side
 
 			var text = props.label; // can also be undefined
-			if (INPUT_OBJECT == ob) { text=undefined; }
+			if (ob === Input.object) { text=undefined; }
 
 			label_object(		// note label_object is smart enough to not rebuild the texture etc.
 				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
@@ -783,7 +792,58 @@ var CURVES = {};
 var dbugmsg = null;
 
 // note: keyup event charCode is invalid in firefox, the keypress event should work in all browsers.
-var _input_buffer = [];
+var Input = {
+	buffer : [],
+	cursor : 0,
+	object : null
+}
+Input.clear = function() {
+	while (Input.buffer.length) { Input.buffer.pop() }
+}
+Input.insert = function(char) {
+	Input.buffer.insert(
+		Input.cursor,
+		char
+	);
+	Input.cursor += 1;
+}
+
+Input.backspace = function() {
+	if (Input.cursor >= 1) {
+		Input.cursor -= 1;
+	}
+	Input.buffer.remove( Input.cursor );
+}
+
+Input.move = function( direction ) {
+	switch( direction ) {
+		case "LEFT":
+			if (Input.cursor >= 1) {
+				Input.cursor -= 1;
+			}
+			break;
+		case "RIGHT":
+			if (Input.cursor < Input.buffer.length) {
+				Input.cursor += 1;
+			}
+			break;
+
+		default:
+			break;
+	}
+}
+
+Input.get_text_with_cursor = function( cursor ) {
+	if (cursor === undefined) {
+		cursor = '|';
+	}
+	var arr = Input.buffer.copy();
+	arr.insert( Input.cursor, cursor );
+	return arr.join("");
+}
+
+
+//var _input_buffer = [];
 var INPUT_OBJECT = null;
 var _input_mesh = null; // deprecated
 
@@ -932,7 +992,7 @@ function tween_scale( o, name, scl ) {
 function on_mouse_up( event ) {
 	if ( INTERSECTED ) {
 		var a = UserAPI.objects[ INTERSECTED.name ];
-		while (_input_buffer.length) { _input_buffer.pop() }
+		Input.clear();
 
 		if (a.custom_attributes.on_mouse_up_tween) {
 			// kick off animation before sending message to server 
@@ -972,33 +1032,50 @@ function on_mouse_up( event ) {
 function on_keydown ( evt ) {
 	var update = false;
 	switch( evt.keyCode ) {
-		case 38: break; //up
-		case 37: break; //left
-		case 40: break; //down
-		case 39: break; //right
+		case 38:
+			break; //up
+
+		case 37: // left
+			Input.move( "LEFT" );
+			update = true;
+			break;
+
+		case 40:
+			break; //down
+
+		case 39: // right
+			Input.move( "RIGHT" );
+			update = true;
+			break;
+
 		case 9: //tab
-			_input_buffer.push(' ');
+			Input.insert( '	' );
+			//_input_buffer.push(' ');
 			update=true;
 			break;
+
 		case 8: //backspace
 			event.preventDefault(); // this fixes backspace on windows/osx?
-			_input_buffer.pop(); 
+			//_input_buffer.pop();
+			Input.backspace();
 			update=true; break;
+
 		case 27: 		//esc
-			while (_input_buffer.length) { _input_buffer.pop() }
+			//while (_input_buffer.length) { _input_buffer.pop() }
+			Input.clear();
 			update=true;
 			break;
 	}
-	if (update && INPUT_OBJECT) {
-		console.log('INPUT_OBJECT'+INPUT_OBJECT);
+	if (update && Input.object) {
+
 		label_object(
 			undefined, //INPUT_OBJECT.meshes[0].geometry,
-			INPUT_OBJECT,
-			_input_buffer.join(""), // text
+			Input.object,
+			Input.get_text_with_cursor(), // text
 			undefined, // title
 			undefined,  // special case to force flipped text
-			ob.custom_attributes.text_scale
-		); // TODO optimize this only update on change
+			Input.object.custom_attributes.text_scale
+		);
 
 	}
 
@@ -1014,14 +1091,16 @@ function on_keypress( evt ) {
 
 	switch( evt.keyCode ) {
 		case 32: // space
-			_input_buffer.push(' ');
+			Input.insert(' ');
 			break;
 		case 13: // enter - can trigger input and callbacks
-			_input_buffer.push('\n');
+
+			Input.insert('\n');
+
 			if (UserAPI.on_enter_key) {
-				UserAPI.on_enter_key(_input_buffer.join(""));
+				UserAPI.on_enter_key( Input.buffer.join(""));
 			}
-			if (INPUT_OBJECT) {
+			if (Input.object) {
 				console.log('doing input callback');
 				//INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
 
@@ -1029,10 +1108,10 @@ function on_keypress( evt ) {
 				//_input_mesh = createLabel( _input_buffer.join(""), 0,0, 0,100, "white" ); 
 				//scene.add( _input_mesh );
 
-				if (INPUT_OBJECT.on_input_callback) {
-					INPUT_OBJECT.on_input_callback(
-						INPUT_OBJECT.custom_attributes, 
-						_input_buffer.join("") 
+				if (Input.object.on_input_callback) {
+					Input.object.on_input_callback(
+						Input.object.custom_attributes, 
+						Input.buffer.join("") 
 					);
 				}
 			}
@@ -1040,21 +1119,21 @@ function on_keypress( evt ) {
 		default:
 			var string = String.fromCharCode(evt.charCode);
 			if (string) {
-				_input_buffer.push( string );
+				Input.insert( string );
 				ws.send_string( string );
 			}
 	}
-	console.log( _input_buffer.join("") );
+	console.log( Input.buffer.join("") );
 
-	if (INPUT_OBJECT) {
-		console.log('INPUT_OBJECT'+INPUT_OBJECT);
+	if (Input.object) {
+
 		label_object(
 			undefined, //INPUT_OBJECT.meshes[0].geometry,
-			INPUT_OBJECT,
-			_input_buffer.join(""), // text
+			Input.object,
+			Input.get_text_with_cursor(), // text
 			undefined, // title
 			undefined,  // special case to force flipped text
-			INPUT_OBJECT.custom_attributes.text_scale
+			Input.object.custom_attributes.text_scale
 		); // TODO optimize this only update on change
 
 	}
@@ -1262,7 +1341,7 @@ function label_object(geometry, parent, txt, title, flip, scale ) {
 			}
 		}
 		var lines = create_multiline_text(
-			txt+'|', 
+			txt, 
 			undefined,
 			parent,
 			{
@@ -3539,30 +3618,33 @@ UserAPI.animate = function() {
 
 ///////////////////// init and run ///////////////////
 var ws;
-
+var _ws_ticker = false;
 function on_message(e) {
 	//console.log('on_message');
 	// check first byte, if null then read following binary data //
 	var length = ws.rQlen();
 	if (UserAPI.initialized) {
+		_ws_ticker = ! _ws_ticker;
+
+		if (Input.object) {
+			var a = '|';
+			if (_ws_ticker) {
+				a = '.';
+			}
+			label_object(
+				undefined, //INPUT_OBJECT.meshes[0].geometry,
+				Input.object,
+				Input.get_text_with_cursor(a), // text
+				undefined, // title
+				undefined,  // special case to force flipped text
+				Input.object.custom_attributes.text_scale
+			);
+
+		}
 
 		switch( ws.rQpeek8() ) {
 			case 0:
 				on_binary_message( ws.rQshiftBytes().slice(1,length) );
-				break;
-			case 60: // <xml>
-				console.log('loading collada');
-				var xmlParser = new DOMParser();
-				var responseXML = xmlParser.parseFromString( ws.rQshiftStr(), "application/xml" );
-
-				var loader = new THREE.ColladaLoader();
-				loader.options.convertUpAxis = true;
-				//loader.options.centerGeometry = true; // hires has this on.
-				loader.parse(
-					responseXML, 
-					on_collada_ready,
-					collada_path
-				);	
 				break;
 			default:
 				on_json_message( ws.rQshiftStr() );
