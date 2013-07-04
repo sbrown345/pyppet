@@ -34,6 +34,7 @@ function start_tween_if_needed( tween ) {
 
 
 var UserAPI = {
+	text_fudge_factor : 0.01,
 	position_tweens : {},  // object : tween
 	scale_tweens : {},
 	rotation_tweens : {},
@@ -893,10 +894,11 @@ function tween_position( o, name, pos ) {
 function tween_scale( o, name, scl ) {
 	if ( name in UserAPI.scale_tweens == false ) {
 		var tween = new TWEEN.Tween(o.scale);
+
 		tween.onUpdate(  // automatically hide something if its scale becomes 'small'
 			function () { // this is an issue if the mesh children are still loading.. loading needs to check if o.visible
 				var thresh = 0.01;
-				if (this.x <= thresh || this.y <= thresh || this.z <= thresh ) {
+				if (this.x <= thresh && this.y <= thresh && this.z <= thresh ) {
 					if (o.visible) {
 						o.visible = false;
 						for (var i=0; i<o.children.length; i++) {
@@ -912,6 +914,7 @@ function tween_scale( o, name, scl ) {
 			}
 
 		);
+
 		var vec = new THREE.Vector3(scl[0], scl[1], scl[2]);
 		UserAPI.scale_tweens[ name ] = {'vector':vec, 'tween':tween};
 		tween.to( vec, 500 );
@@ -1099,6 +1102,7 @@ function create_text( line, parent, params ) {
 	if (params.alignment == 'left') {
 		//mesh.position.x = -((mesh.width/2) * params.scale); // old
 		mesh.position.x = -parent.min.x;
+
 	}
 
 	parent.add( mesh );
@@ -1155,9 +1159,10 @@ function create_multiline_text( text, title, parent, params ) {
 
 
 /////////////// label any object ///////////////
-function title_object(geometry, parent, title, flip ) {
+function title_object(geometry, parent, title, flip, scale ) {
 
 	if (flip === undefined) { flip = false; }
+	if (scale === undefined) { scale = 0.0035; }
 
 	if (title != undefined && title != parent._label_title) {
 		parent._label_title = title;
@@ -1179,9 +1184,10 @@ function title_object(geometry, parent, title, flip ) {
 			title,
 			parent,
 			{
-				offset : parent.max.y + 0.25,
+				offset : parent.max.y + UserAPI.text_fudge_factor,
 				alignment : "center",
-				flip : flip
+				flip : flip,
+				scale : scale
 			}
 		);
 		parent._title_objects = lines;
@@ -1201,7 +1207,7 @@ function title_object(geometry, parent, title, flip ) {
 }
 
 function label_object(geometry, parent, txt, title, flip, scale ) {
-	console.log('label-object:'+flip);
+	var fudge = 0.0;
 
 	if (flip === undefined) { flip = false; }
 	if (scale === undefined) { scale = 0.0035; }
@@ -1220,7 +1226,7 @@ function label_object(geometry, parent, txt, title, flip, scale ) {
 			title,
 			parent,
 			{
-				offset:parent.max.y + 0.25,
+				offset:parent.max.y + UserAPI.text_fudge_factor,
 				alignment:"center",
 				flip:flip,
 				scale:scale
@@ -1252,13 +1258,17 @@ function label_object(geometry, parent, txt, title, flip, scale ) {
 			undefined,
 			parent,
 			{
-				offset:parent.max.y + 0.25,
+				offset:parent.max.y + UserAPI.text_fudge_factor,
 				alignment:"left",
 				flip:flip,
 				scale:scale
 			}
 		);
 		parent._label_objects = lines;
+
+		//for (var i=0; i<lines.length; i++) {
+		//	lines[i].position.x += (parent.min.x / 2) - fudge;
+		//}
 
 		if (parent.visible === false) { // hide text if parent is also hidden
 			for (var i=0; i<lines.length; i++) {
@@ -1465,7 +1475,7 @@ function on_json_message( data ) {
 			}
 			// request mesh if its not an empty //
 			if (pak.empty) {
-				o.add( UserAPI.create_debug_axis(3.0) );
+				o.add( UserAPI.create_debug_axis(0.25) );
 			} else if (pak.mesh_id in UserAPI.mesh_cache) {
 				console.log('pulling from cache',pak.mesh_id);
 				var _mesh = UserAPI.mesh_cache[pak.mesh_id].clone();
@@ -1476,7 +1486,7 @@ function on_json_message( data ) {
 				o.add( _mesh );
 				o.meshes.push( _mesh );
 			} else {
-				//o.add( UserAPI.create_debug_axis(6.0) );
+				o.add( UserAPI.create_debug_axis(0.1) );
 				UserAPI.request_mesh( name );				
 			}
 		}

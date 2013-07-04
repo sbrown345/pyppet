@@ -902,9 +902,9 @@ class Player( object ):
 
 					if ob.type == 'MESH':
 						x,y,z = ob.bound_box[0]
-						pak['min'] = (x,y,z)
+						pak['min'] = (x,z,y)
 						x,y,z = ob.bound_box[6]
-						pak['max'] = (x,y,z)
+						pak['max'] = (x,z,y)
 
 				if not self._ticker % 2:
 					if rloc != a:
@@ -955,7 +955,7 @@ class Player( object ):
 				props[ key ] = view[key]
 
 			if 'text_scale' not in props and ob.slow_parent_offset != 0.0:
-				props['text_scale'] = ob.slow_parent_offset * 0.001
+				props['text_scale'] = ob.slow_parent_offset * 0.0035  # 0.001 
 
 			## special case for selected ##
 			if 'selected' in view and view['selected']:
