@@ -809,6 +809,15 @@ Input.clear = function() {
 	Input.cursor_x = 0;
 	Input.cursor_y = -1;
 }
+
+Input.insert_string = function(string) {
+	var arr = string.split("")
+	for (i=0; i<arr.length; i++) {
+		var char = arr[ i ]
+		Input.insert( char )
+	}
+}
+
 Input.insert = function(char) {
 	if (Input.object === null) {
 		return;
@@ -1106,8 +1115,25 @@ function on_mouse_up( event ) {
 	}
 }
 
+function on_paste( evt ) {
+	var data = evt.clipboardData.getData('text/plain');
+	console.log(data);
+	if (Input.object) {
+		Input.insert_string( data );
+	}
+
+}
+window.addEventListener( 'paste', on_paste, false );
+
+
 // note: using both on_keydown and on_keypress to catch all events
 function on_keydown ( evt ) {
+
+	if (evt.ctrlKey) {
+		//console.log(evt.keyCode); // 67 is C, 86 is V
+		return;
+	}
+
 	var update = false;
 	switch( evt.keyCode ) {
 		case 38: // up
@@ -1170,6 +1196,8 @@ function on_keypress( evt ) {
 	//console.log( evt.charCode );
 	//console.log( evt.keyCode );
 	//event.preventDefault(); // this fixes backspace on windows/osx?
+
+
 
 	switch( evt.keyCode ) {
 		case 32: // space
