@@ -793,53 +793,113 @@ var dbugmsg = null;
 
 // note: keyup event charCode is invalid in firefox, the keypress event should work in all browsers.
 var Input = {
-	buffer : [],
-	cursor : 0,
+	lines : [],
+	cursor_x : 0,
+	cursor_y : -1,
 	object : null
 }
 Input.clear = function() {
-	while (Input.buffer.length) { Input.buffer.pop() }
+	while (Input.lines.length) { Input.lines.pop() }
 }
 Input.insert = function(char) {
-	Input.buffer.insert(
-		Input.cursor,
-		char
-	);
-	Input.cursor += 1;
-}
-
-Input.backspace = function() {
-	if (Input.cursor >= 1) {
-		Input.cursor -= 1;
+	if (char == '\n' || Input.lines.length==0) {
+		Input.newline();
 	}
-	Input.buffer.remove( Input.cursor );
+	if (char != '\n') {
+		Input.lines[ Input.cursor_y ].insert(
+			Input.cursor_x,
+			char
+		);
+		Input.cursor_x += 1;
+	}
+}
+Input.newline = function() {
+	Input.lines.push( [] );
+	Input.cursor_y += 1;
+}
+Input.backspace = function() {
+	if (Input.cursor_x == 0) {
+		Input.lines.remove( Input.cursor_y );
+		Input.cursor_y -= 1;
+		Input.cursor_x = Input.lines[ Input.cursor_y ].length - 1;
+
+	} else {
+		Input.cursor_x -= 1;
+		Input.lines[Input.cursor_y].remove( Input.cursor_x );
+	}
 }
 
 Input.move = function( direction ) {
 	switch( direction ) {
+
 		case "LEFT":
-			if (Input.cursor >= 1) {
-				Input.cursor -= 1;
+			if (Input.cursor_x >= 1) {
+				Input.cursor_x -= 1;
 			}
 			break;
+
 		case "RIGHT":
-			if (Input.cursor < Input.buffer.length) {
-				Input.cursor += 1;
+			if (Input.cursor_x < Input.lines[ Input.cursor_y ].length) {
+				Input.cursor_x += 1;
 			}
 			break;
+
+		case "UP":
+			if (Input.cursor_y > 0) {
+				Input.cursor_y -= 1;
+				var len = Input.get_line().length;
+				if (Input.cursor_x > len) {
+					Input.cursor_x = len;
+				}
+			}
+			break;
+
+		case "DOWN":
+			if (Input.cursor_y < Input.lines.length) {
+				Input.cursor_y += 1;
+				var len = Input.get_line().length;
+				if (Input.cursor_x > len) {
+					Input.cursor_x = len;
+				}
+			}
+
 
 		default:
 			break;
 	}
 }
 
+Input.get_text = function() {
+	var arr = [];
+	for (var i=0; i<Input.lines.length; i++) {
+		var line = Input.lines[i].join("");
+		arr.push( line );
+	}
+	return arr.join("\n");
+}
+Input.get_line = function( index ) {
+	if (index === undefined) {
+		index = Input.cursor_y;
+	}
+	return Input.lines[ Input.cursor_y ].join("");
+}
+
+
 Input.get_text_with_cursor = function( cursor ) {
 	if (cursor === undefined) {
 		cursor = '|';
 	}
-	var arr = Input.buffer.copy();
-	arr.insert( Input.cursor, cursor );
-	return arr.join("");
+
+	var arr = [];
+	for (var i=0; i<Input.lines.length; i++) {
+		var buff = Input.lines[i];
+		if (i == Input.cursor_y) {
+			buff = buff.copy();
+			buff.insert( Input.cursor_x, cursor );
+		}
+		arr.push( buff.join("") );
+	}
+	return arr.join("\n");
 }
 
 
@@ -1032,16 +1092,20 @@ function on_mouse_up( event ) {
 function on_keydown ( evt ) {
 	var update = false;
 	switch( evt.keyCode ) {
-		case 38:
-			break; //up
+		case 38: // up
+			Input.move( "UP" );
+			update = true;
+			break;
 
 		case 37: // left
 			Input.move( "LEFT" );
 			update = true;
 			break;
 
-		case 40:
-			break; //down
+		case 40: // down
+			Input.move( "DOWN" );
+			update = true;
+			break;
 
 		case 39: // right
 			Input.move( "RIGHT" );
@@ -1098,7 +1162,7 @@ function on_keypress( evt ) {
 			Input.insert('\n');
 
 			if (UserAPI.on_enter_key) {
-				UserAPI.on_enter_key( Input.buffer.join(""));
+				UserAPI.on_enter_key( Input.get_text() );
 			}
 			if (Input.object) {
 				console.log('doing input callback');
@@ -1111,7 +1175,7 @@ function on_keypress( evt ) {
 				if (Input.object.on_input_callback) {
 					Input.object.on_input_callback(
 						Input.object.custom_attributes, 
-						Input.buffer.join("") 
+						Input.get_text() 
 					);
 				}
 			}
@@ -1123,7 +1187,6 @@ function on_keypress( evt ) {
 				ws.send_string( string );
 			}
 	}
-	console.log( Input.buffer.join("") );
 
 	if (Input.object) {
 
