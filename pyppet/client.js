@@ -167,10 +167,12 @@ var UserAPI = {
 
 		if (props.selected) { 
 			SELECTED = ob;
-			Input.object = ob;
+			//Input.object = ob;
+			Input.set_object( ob );
 		}
 		if (props.disable_input && ob === Input.object) {
-			Input.object = null;
+			//Input.object = null;
+			Input.set_object( null );
 		}
 
 		if (props.title) {
@@ -798,14 +800,26 @@ var Input = {
 	cursor_y : -1,
 	object : null
 }
+Input.set_object = function(object) {
+	Input.object = object;
+	Input.clear();
+}
 Input.clear = function() {
 	while (Input.lines.length) { Input.lines.pop() }
+	Input.cursor_x = 0;
+	Input.cursor_y = -1;
 }
 Input.insert = function(char) {
+	if (Input.object === null) {
+		return;
+	}
+
 	if (char == '\n' || Input.lines.length==0) {
 		Input.newline();
 	}
 	if (char != '\n') {
+		console.log( Input.lines )
+		console.log( Input.cursor_y )
 		Input.lines[ Input.cursor_y ].insert(
 			Input.cursor_x,
 			char
@@ -856,7 +870,11 @@ Input.move = function( direction ) {
 
 		case "DOWN":
 			if (Input.cursor_y < Input.lines.length) {
-				Input.cursor_y += 1;
+				if (Input.cursor_y == Input.lines.length-1) {
+					Input.newline();
+				} else {
+					Input.cursor_y += 1;
+				}
 				var len = Input.get_line().length;
 				if (Input.cursor_x > len) {
 					Input.cursor_x = len;
@@ -1282,6 +1300,8 @@ function create_multiline_text( text, title, parent, params ) {
 
 	if (text != undefined) {
 		var _lines = text.split('\n');
+
+
 		for (var i=0; i<_lines.length; i ++) {
 			if (-params.spacing*i <= parent.min.z) {
 				continue;
@@ -1358,6 +1378,7 @@ function title_object(geometry, parent, title, flip, scale ) {
 
 function label_object(geometry, parent, txt, title, flip, scale ) {
 	var fudge = 0.0;
+	var spacing = 0.3;
 
 	if (flip === undefined) { flip = false; }
 	if (scale === undefined) { scale = 0.0035; }
@@ -1403,15 +1424,25 @@ function label_object(geometry, parent, txt, title, flip, scale ) {
 				parent.remove( parent._label_objects[i] );
 			}
 		}
+
+
+		// use Input cursor to scroll text //
+		var fit = ~~(Math.abs(parent.min.z) / spacing); //http://stackoverflow.com/questions/596467/how-do-i-convert-a-float-to-an-int-in-javascript
+		var lines = txt.split('\n');
+		if (Input.object === parent && Input.cursor_y > fit) {
+			lines.splice(0, Input.cursor_y - fit );
+		}
+
 		var lines = create_multiline_text(
-			txt, 
+			lines.join('\n'), 
 			undefined,
 			parent,
 			{
-				offset:parent.max.y + UserAPI.text_fudge_factor,
-				alignment:"left",
-				flip:flip,
-				scale:scale
+				offset : parent.max.y + UserAPI.text_fudge_factor,
+				alignment : "left",
+				flip : flip,
+				scale : scale,
+				spacing: spacing
 			}
 		);
 		parent._label_objects = lines;
