@@ -14,7 +14,7 @@ Array.prototype.insert = function (index, item) {
 };
 
 Array.prototype.remove = function (index) {
-	this.splice(index, 0); // changes array inplace
+	this.splice(index, 1); // changes array inplace
 };
 
 Array.prototype.copy = function (index) {
@@ -903,6 +903,7 @@ Input.backspace = function() {
 	} else {
 		Input.cursor_x -= 1;
 		Input.lines[Input.cursor_y].remove( Input.cursor_x );
+		console.log( Input.lines[Input.cursor_y] );
 	}
 }
 
