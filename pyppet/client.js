@@ -1352,8 +1352,10 @@ function create_text( line, parent, params ) {
 
 function create_multiline_text( text, title, parent, params ) {
 
-	if (params.spacing==undefined) { params.spacing=0.3; }
 	if (params.scale==undefined) { params.scale=0.0035; }
+	if (params.spacing==undefined) { params.spacing = 0.3; }
+
+
 	var lines = [];
 
 	if (title != undefined) {
@@ -1458,11 +1460,9 @@ function title_object(geometry, parent, title, flip, scale ) {
 }
 
 function label_object(geometry, parent, txt, title, flip, scale ) {
-	var fudge = 0.0;
-	var spacing = 0.3;
-
 	if (flip === undefined) { flip = false; }
 	if (scale === undefined) { scale = 0.0035; }
+	var spacing = (1.0 / scale) * scale * 0.15;
 
 
 	if (title != undefined && title != parent._label_title) {
@@ -1527,10 +1527,6 @@ function label_object(geometry, parent, txt, title, flip, scale ) {
 			}
 		);
 		parent._label_objects = lines;
-
-		//for (var i=0; i<lines.length; i++) {
-		//	lines[i].position.x += (parent.min.x / 2) - fudge;
-		//}
 
 		if (parent.visible === false) { // hide text if parent is also hidden
 			for (var i=0; i<lines.length; i++) {
