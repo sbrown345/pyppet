@@ -22,6 +22,54 @@ Array.prototype.copy = function (index) {
 };
 
 
+// http://wiki.ecmascript.org/doku.php?id=harmony%3astring_extras
+if (typeof String.prototype.startsWith != 'function') {
+  // see below for better implementation!
+  String.prototype.startsWith = function (str){
+    return this.indexOf(str) == 0;
+  };
+}
+
+
+// http://stackoverflow.com/questions/728360/most-elegant-way-to-clone-a-javascript-object
+function clone(obj) {
+    // Handle the 3 simple types, and null or undefined
+    if (null == obj || "object" != typeof obj) return obj;
+
+    // Handle Date
+    if (obj instanceof Date) {
+        var copy = new Date();
+        copy.setTime(obj.getTime());
+        return copy;
+    }
+
+    // Handle Array
+    if (obj instanceof Array) {
+        var copy = [];
+        for (var i = 0, len = obj.length; i < len; i++) {
+            copy[i] = clone(obj[i]);
+        }
+        return copy;
+    }
+
+    // Handle Object
+    if (obj instanceof Object) {
+        var copy = {};
+        for (var attr in obj) {
+            if (obj.hasOwnProperty(attr)) copy[attr] = clone(obj[attr]);
+        }
+        return copy;
+    }
+
+    throw new Error("Unable to copy obj! Its type isn't supported.");
+}
+
+
+
+
+
+
+/////////////////////////////////////////////////////////
 var Objects = {};	// name : Object3D
 var MESHES = [];	// list for intersect checking - not a dict because LOD's share names
 
@@ -63,6 +111,12 @@ var UserAPI = {
 			JSON.stringify({request : "start_object_stream"})
 		);
 		ws.flush();
+	},
+	on_draw_html_link : function( line, params ) {
+		var p = clone( params );
+		p.scale *= 0.5;
+		p.bgcolor = 'blue';
+		return p;
 	},
 
 	create_debug_axis : function(axisLength){
@@ -1212,11 +1266,6 @@ function on_keypress( evt ) {
 			}
 			if (Input.object) {
 				console.log('doing input callback');
-				//INPUT_OBJECT.do_input_callback( _input_buffer.join("") ); // custom_attributes is passed first in do_input_callback
-
-				//if (_input_mesh) { scene.remove(_input_mesh); }
-				//_input_mesh = createLabel( _input_buffer.join(""), 0,0, 0,100, "white" ); 
-				//scene.add( _input_mesh );
 
 				if (Input.object.on_input_callback) {
 					Input.object.on_input_callback(
@@ -1260,6 +1309,10 @@ function create_text( line, parent, params ) {
 	if (params.x === undefined) { params.x=0; }
 	if (params.y === undefined) { params.y=0; }
 	if (params.z === undefined) { params.z=0; }
+
+	if ( line.startsWith('http://') === true ) {
+		params = UserAPI.on_draw_html_link( line, params );
+	}
 
 	var mesh = createLabel(
 		line, 
