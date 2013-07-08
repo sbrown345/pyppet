@@ -146,8 +146,8 @@ class CacheSingleton(object):
 	def wrap_object(self, ob, **kw):
 		#assert ob not in cls.objects  ## threading?
 		if ob not in self.objects:
-			view = create_object_view( ob, **kw )
-			self.objects[ ob ] = view
+			view = create_object_view( ob, **kw )  ## pass self.objects to create_object_view so it can add it to the main look up dict (for init scripts)
+			#self.objects[ ob ] = view
 			return view
 		else:
 			return self.objects[ ob ]
@@ -513,6 +513,10 @@ def create_object_view( ob, **kwargs ):
 		label=None,
 		allow_viewers=True,
 	)
+
+	assert ob not in Cache.objects  ## moved here for user init scripts (@decorators.init)
+	Cache.objects[ ob ] = v
+
 	if user_props:
 		for name in user_props:
 			v[ name ] = user_props[ name ]

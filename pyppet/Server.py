@@ -118,7 +118,7 @@ def mesh_is_smooth( mesh ):
 	a = [ bool(poly.use_smooth) for poly in mesh.polygons ]
 	return True in a
 
-def get_material_config(mat, mesh=None):
+def get_material_config(mat, mesh=None, wrapper=None):
 	'''
 	hijacking some blender materials options and remapping
 	them to work with our Three.js settings
@@ -180,6 +180,10 @@ def get_material_config(mat, mesh=None):
 	## TODO options for shaders, etc.
 	if mat.type == 'WIRE': cfg['wireframe'] = True
 	elif mat.type == 'SURFACE': cfg['wireframe'] = False
+
+	if wrapper:  ## check for special texture links
+		if 'overlay' in wrapper:
+			cfg['overlay'] = wrapper['overlay']
 
 	return cfg
 
@@ -986,7 +990,8 @@ class Player( object ):
 					#color = [ round(x,3) for x in ob.data.materials[0].diffuse_color ]
 					mconfig = get_material_config( 
 						ob.data.materials[0], 
-						mesh=ob.data 
+						mesh=ob.data,
+						wrapper=api_gen.get_wrapped_objects()[ob]
 					)
 					#if 'color' in view:  ## TODO get other animated material options from view
 					#	mconfig['color'] = view['color']

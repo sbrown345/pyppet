@@ -204,6 +204,17 @@ var UserAPI = {
 		return {mesh:mesh, texture:textureCube};
 
 	},
+	new_overlay : function(ob, url) {
+		if (ob.overlay) { ob.remove( ob.overlay ) }
+
+		var tex = THREE.ImageUtils.loadTexture( "textures/land_ocean_ice_cloud_1024.jpg" );
+		var mat = new THREE.MeshPhongMaterial( { color: 0xffffff, map: tex } );
+
+		var geom = new THREE.PlaneGeometry( 10, 10 );
+		var mesh = new THREE.Mesh( geom, mat );
+
+		ob.add( mesh );
+	},
 
 	on_update_properties : function(ob, pak) {
 		var props = pak.properties;
@@ -227,6 +238,10 @@ var UserAPI = {
 		if (props.disable_input && ob === Input.object) {
 			//Input.object = null;
 			Input.set_object( null );
+		}
+
+		if (props.overlay !== ob.overlay) {
+			UserAPI.new_overlay( ob, props.overlay );
 		}
 
 		if (props.title) {
