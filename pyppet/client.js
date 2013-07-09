@@ -205,15 +205,29 @@ var UserAPI = {
 
 	},
 	new_overlay : function(ob, url) {
-		if (ob.overlay) { ob.remove( ob.overlay ) }
-
-		var tex = THREE.ImageUtils.loadTexture( "textures/land_ocean_ice_cloud_1024.jpg" );
-		var mat = new THREE.MeshPhongMaterial( { color: 0xffffff, map: tex } );
-
-		var geom = new THREE.PlaneGeometry( 10, 10 );
-		var mesh = new THREE.Mesh( geom, mat );
-
+		if (ob._overlay_mesh) { ob.remove( ob._overlay_mesh ) }
+		var mesh;
+		console.log('new overlay:' + url);
+		ob.overlay = url;
+		if (url.startsWith('http://') || url.startsWith('https://')) {
+			url = '/proxy/'+url;
+		}
+		var geom = new THREE.PlaneGeometry( 1.0, 1.0 );
+		var tex = THREE.ImageUtils.loadTexture(
+			url, 
+			undefined, // uv mapping
+			function (tex) {
+				var a = 1.0 / tex.image.width;
+				mesh.scale.x = -1.0;
+				mesh.scale.y = -tex.image.height * a;
+			}
+		);
+		var mat = new THREE.MeshBasicMaterial( { color: 0xffffff, map: tex } );
+		mesh = new THREE.Mesh( geom, mat );
+		mesh.rotation.x = -Math.PI / 2;
+		mesh.position.y = 0.05;
 		ob.add( mesh );
+		ob._overlay_mesh = mesh;
 	},
 
 	on_update_properties : function(ob, pak) {

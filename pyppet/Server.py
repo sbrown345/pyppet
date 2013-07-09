@@ -3,7 +3,7 @@
 # License: "New" BSD
 
 
-import os, sys, time, struct, multiprocessing
+import os, sys, time, struct, urllib.request
 from base64 import b64encode, b64decode
 
 
@@ -183,7 +183,11 @@ def get_material_config(mat, mesh=None, wrapper=None):
 
 	if wrapper:  ## check for special texture links
 		if 'overlay' in wrapper:
-			cfg['overlay'] = wrapper['overlay']
+			url = wrapper['overlay']
+			#if url.lower().startswith( ('http://', 'https://') ):
+			#	## because of the new standard cross-domain resource-policy, we need to proxy images.
+			#	url = '/proxy/%s'%url
+			cfg['overlay'] = url
 
 	return cfg
 
@@ -1307,6 +1311,13 @@ class WebsocketHTTP_RequestHandler( websocksimplify.WSRequestHandler ):
 		elif path == '/test':
 			content_type = 'text/html; charset=utf-8'
 			data = TESTING 
+
+		elif path.startswith('/proxy/'): ## proxy images and other data
+			url = path.split('/proxy/')[-1]
+			assert url.startswith( ('http://', 'https://') )
+			f = urllib.request.urlopen(url)
+			data = f.read()
+			f.close()
 
 		else: print('warn: unknown request url', path)
 
