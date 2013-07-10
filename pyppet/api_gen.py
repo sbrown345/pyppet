@@ -252,7 +252,7 @@ class Container(object):
 
 	################### Dict-Like Features ####################
 	def __dir__(self):
-		keys = list( self.__properties.keys() )
+		keys = list( self.__dict__.keys() )
 		allow = self.__allow_upstream_attributes
 		if allow:
 			if allow is True:
@@ -522,6 +522,7 @@ def create_object_view( ob, **kwargs ):
 			v[ name ] = user_props[ name ]
 
 	if special_attrs:
+		print('special attributes', special_attrs)
 		for name in special_attrs:
 			setattr(v, name, special_attrs[name])
 
