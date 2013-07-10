@@ -958,7 +958,7 @@ class Player( object ):
 
 			a = view()  # calling a view with no args returns wrapper to internal hidden attributes #
 			props = {} #a.properties.copy()
-			for key in dir(view):
+			for key in view.keys():
 				if key in ('location','scale', 'rotation_euler', 'color'): continue  ## special cases
 				props[ key ] = view[key]
 

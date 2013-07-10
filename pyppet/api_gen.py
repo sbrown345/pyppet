@@ -250,18 +250,34 @@ class Container(object):
 		if (allow is True or name in allow) and self.__parent:
 			return getattr(self.__parent, name)
 
+	#def __dir__(self):
+	#	keys = list( self.__dict__.keys() )
+	#	allow = self.__allow_upstream_attributes
+	#	if allow:
+	#		if allow is True:
+	#			if self.__parent:
+	#				keys.extend( dir(self.__parent) )
+	#		else:
+	#			assert type(allow) is list
+	#			keys.extend( allow )
+	#	return keys
+
+
 	################### Dict-Like Features ####################
-	def __dir__(self):
-		keys = list( self.__dict__.keys() )
+	def keys(self):
+		keys = list(self.__properties.keys())
 		allow = self.__allow_upstream_attributes
 		if allow:
 			if allow is True:
 				if self.__parent:
-					keys.extend( dir(self.__parent) )
+					keys.extend( self.__parent.keys() )
 			else:
 				assert type(allow) is list
 				keys.extend( allow )
+
 		return keys
+
+	def values(self): return self.__properties.values()
 
 	def __contains__(self, name):
 		allow = self.__allow_upstream_attributes
