@@ -869,7 +869,7 @@ class Player( object ):
 				transob = view().translation_proxy
 
 			# pack into dict for json transfer.
-			pak = {}
+			pak = {'name':ob.name}
 			if ob.parent:
 				if ob.parent.type == 'CAMERA': pak['parent'] = -1
 				else:
@@ -902,8 +902,8 @@ class Player( object ):
 			#if not send and ob.type == 'EMPTY': send = True
 			#send = True
 
-			if self._cache[ob]['trans'] != state:
-				if self._cache[ob]['trans']:
+			if self._cache[ob]['trans'] != state or True:
+				if self._cache[ob]['trans'] and False:  ## TODO fix me
 					a,b,c = self._cache[ob]['trans']
 				else:
 					a = b = c = None
@@ -914,7 +914,7 @@ class Player( object ):
 						x,y,z = ob.bound_box[6]
 						pak['max'] = (x,y,z)
 
-				if not self._ticker % 2:
+				if not self._ticker % 2 or True:
 					if rloc != a:
 						pak['pos'] = loc
 					if rscl != b:

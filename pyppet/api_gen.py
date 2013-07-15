@@ -417,6 +417,7 @@ def create_object_view( ob, **kwargs ):
 		for prop in ob.items():
 			name, value = prop
 			if name == '_RNA_UI': continue  # used by blender internally
+			elif name == 'UID':   continue  # used by pyppet internally
 
 			if name == 'on_click':
 				on_click = value

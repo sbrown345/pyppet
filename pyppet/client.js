@@ -245,12 +245,12 @@ var UserAPI = {
 		}
 
 		if (props.selected) { 
-			SELECTED = ob;
-			//Input.object = ob;
-			Input.set_object( ob );
+			SELECTED = ob; // TODO deprecate SELECTED
+			if (Input.object !== ob) {				
+				Input.set_object( ob );
+			}
 		}
 		if (props.disable_input && ob === Input.object) {
-			//Input.object = null;
 			Input.set_object( null );
 		}
 
@@ -273,7 +273,9 @@ var UserAPI = {
 			// the toplevel title is controlled by the server side
 
 			var text = props.label; // can also be undefined
-			if (ob === Input.object) { text=undefined; }
+			//if (ob === Input.object) { text=undefined; console.log('ob is Input.object'); }
+			//else { console.log('ob is not Input.object:'+text); }
+			console.log("setting text from server - " + text);
 
 			label_object(		// note label_object is smart enough to not rebuild the texture etc.
 				undefined, //ob.meshes[0].geometry, // geom (needed to calc the bounds to fit the text)
@@ -283,6 +285,7 @@ var UserAPI = {
 				ob.custom_attributes.text_flip,  // special case to force flipped text
 				ob.custom_attributes.text_scale
 			);
+			console.log('_____________');
 		}
 
 	},
@@ -666,9 +669,11 @@ var UserAPI = {
 		return mesh;
 	},
 
-	create_object : function(name, position, rotation, scale, min, max) {
+	create_object : function(id, name, position, rotation, scale, min, max) {
+		console.log(name, id);
 		var o = new THREE.Object3D();
-		o.name = name;
+		o.name = id;
+		o.blender_name = name;
 		//o.useQuaternion = true;		// euler OK.?
 		o.dynamic_hierarchy = {}; // not used anymore
 		o.custom_attributes = {}; // used by websocket callbacks
@@ -705,7 +710,7 @@ var UserAPI = {
 			o.max = new THREE.Vector3( max[0], max[1], max[2] );
 		}
 
-		UserAPI.objects[ name ] = o;
+		UserAPI.objects[ id ] = o;
 		return o;
 	},
 
@@ -884,16 +889,19 @@ var Input = {
 	object : null
 }
 Input.set_object = function(object) {
+	console.log('Input.set_object', object);
 	Input.object = object;
 	Input.clear();
 }
 Input.clear = function() {
+	console.log('Input.clear');
 	while (Input.lines.length) { Input.lines.pop() }
 	Input.cursor_x = 0;
 	Input.cursor_y = -1;
 }
 
 Input.insert_string = function(string) {
+	console.log('Input.insert_string: ' + string);
 	var arr = string.split("")
 	for (i=0; i<arr.length; i++) {
 		var char = arr[ i ]
@@ -920,10 +928,12 @@ Input.insert = function(char) {
 	}
 }
 Input.newline = function() {
+	console.log('Input.newline');
 	Input.lines.push( [] );
 	Input.cursor_y += 1;
 }
 Input.backspace = function() {
+	console.log('Input.backspace');
 	if (Input.cursor_x == 0) {
 		Input.lines.remove( Input.cursor_y );
 		Input.cursor_y -= 1;
@@ -1073,7 +1083,6 @@ function on_mouse_down(event) {
 					test.push( mesh );
 				}
 			}
-
 		}
 		var intersects = ray.intersectObjects( test );
 
@@ -1091,7 +1100,7 @@ function on_mouse_down(event) {
 								intersect.distance
 							);
 						}
-						console.log('distance'+intersect.distance);
+						console.log(intersect.object.name + ' - distance'+intersect.distance);
 						INTERSECTED = intersect.object;
 						//INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
 						//INTERSECTED.material.color.setHex( 0xff0000 );
@@ -1163,7 +1172,7 @@ function tween_scale( o, name, scl ) {
 function on_mouse_up( event ) {
 	if ( INTERSECTED ) {
 		var a = UserAPI.objects[ INTERSECTED.name ];
-		Input.clear();
+		//Input.clear();
 
 		if (a.custom_attributes.on_mouse_up_tween) {
 			// kick off animation before sending message to server 
@@ -1259,7 +1268,7 @@ function on_keydown ( evt ) {
 			break;
 	}
 	if (update && Input.object) {
-
+		console.log("onkeydown - update ok");
 		label_object(
 			undefined, //INPUT_OBJECT.meshes[0].geometry,
 			Input.object,
@@ -1268,8 +1277,8 @@ function on_keydown ( evt ) {
 			undefined,  // special case to force flipped text
 			Input.object.custom_attributes.text_scale
 		);
-
-	}
+	} else if (update || Input.object) { console.log("onkeydown - update or Input.object");
+	} else { console.log('onkeydown - shit'); }
 
 }
 window.addEventListener( 'keydown', on_keydown, false );
@@ -1306,24 +1315,29 @@ function on_keypress( evt ) {
 			}
 			break;
 		default:
+			console.log("onkeypress - default");
 			var string = String.fromCharCode(evt.charCode);
 			if (string) {
 				Input.insert( string );
-				ws.send_string( string );
+				//ws.send_string( string );
 			}
 	}
 
 	if (Input.object) {
-
+		console.log("onkeypress - Input.object: " + Input.object.blender_name + Input.object.name);
+		var text = Input.get_text_with_cursor();
+		console.log( text );
 		label_object(
 			undefined, //INPUT_OBJECT.meshes[0].geometry,
 			Input.object,
-			Input.get_text_with_cursor(), // text
+			text, // text
 			undefined, // title
 			undefined,  // special case to force flipped text
 			Input.object.custom_attributes.text_scale
 		); // TODO optimize this only update on change
 
+	} else {
+		console.log("onkeypress - missing Input.object");
 	}
 
 }
@@ -1528,6 +1542,7 @@ function label_object(geometry, parent, txt, title, flip, scale ) {
 	//////////////////////////////////////////////////////
 
 	if (txt != undefined && txt != parent._label_text) {
+		console.log('label_object->', txt, parent);
 		parent._label_text = txt;
 
 		if (parent._label_objects != undefined) {
@@ -1751,7 +1766,8 @@ function on_json_message( data ) {
 		var pak = msg['meshes'][ name ];
 		if (!(name in Objects)) {
 			var o = UserAPI.create_object(
-				name,
+				name, // ID
+				pak.name,
 				pak.pos,
 				pak.rot,
 				pak.scl,
@@ -1763,18 +1779,19 @@ function on_json_message( data ) {
 			}
 			// request mesh if its not an empty //
 			if (pak.empty) {
-				o.add( UserAPI.create_debug_axis(0.25) );
+				o.add( UserAPI.create_debug_axis(0.5) );
 			} else if (pak.mesh_id in UserAPI.mesh_cache) {
 				console.log('pulling from cache',pak.mesh_id);
 				var _mesh = UserAPI.mesh_cache[pak.mesh_id].clone();
 				_mesh.material = UserAPI.mesh_cache[pak.mesh_id].original_material.clone();
-				_mesh.clickable = UserAPI.mesh_cache[pak.mesh_id];
+				_mesh.clickable = UserAPI.mesh_cache[pak.mesh_id].clickable;
 				_mesh.name = o.name;
 				UserAPI.meshes.push( _mesh );
+				o.add( UserAPI.create_debug_axis(0.15) );
 				o.add( _mesh );
 				o.meshes.push( _mesh );
 			} else {
-				o.add( UserAPI.create_debug_axis(0.1) );
+				o.add( UserAPI.create_debug_axis(0.25) );
 				UserAPI.request_mesh( name );				
 			}
 		}
@@ -3709,7 +3726,7 @@ UserAPI.initialize = function( renderer_params ) {
 	renderer.setClearColor( {r:0.4,g:0.4,b:0.4}, 1.0 )
 	renderer.physicallyBasedShading = true;		// allows per-pixel shading
 
-	renderer.sortObjects = true;
+	//renderer.sortObjects = true;
 	//renderer.autoUpdateScene = false;	// LOD
 
 
@@ -3825,8 +3842,8 @@ function on_message(e) {
 	// check first byte, if null then read following binary data //
 	var length = ws.rQlen();
 	if (UserAPI.initialized) {
-		_ws_ticker = ! _ws_ticker;
 
+		_ws_ticker = ! _ws_ticker;
 		if (Input.object) {
 			var a = '|';
 			if (_ws_ticker) {
