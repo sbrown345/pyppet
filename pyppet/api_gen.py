@@ -10,6 +10,10 @@ except ImportError: pass
 from nbge import *
 from animation_api import *
 
+
+on_create_object_view_callback = None  ## for monkey patching, should accept keywoard args: object, wrapper, scripts
+
+
 #from bpy.props import *
 #bpy.types.Object.on_click = IntProperty(
 #    name="function id", description="(internal) on click function id", 
@@ -34,6 +38,10 @@ class decorators(object):
 	def instance(a): a._user_callback_class = True; return a
 	@staticmethod
 	def init(a): a._user_init_func = True; return a
+	@staticmethod
+	def input_event(a): a._user_input_event = True; return a
+	@staticmethod
+	def output_event(a): a._user_output_event = True; return a
 
 ##################### normal python decorators ###################
 _decorated = {}
@@ -430,14 +438,14 @@ def create_object_view( ob, **kwargs ):
 				raise RuntimeError
 
 	init_funcs = []
-
-	for script in get_game_settings( ob ):
+	game_scripts = get_game_settings( ob )
+	for script in game_scripts:
 
 		c = compile_script( script['text'] )
 		classes = []  ## check script for classes
 		click_func = input_func = cls = None
 
-		for a in c.values():
+		for a in c.values():  ## check for classes and functions inside the compiled script.
 			if inspect.isclass( a ):
 				classes.append( a )
 				if hasattr(a,'_user_callback_class'):  ## @decorators.instance
@@ -457,6 +465,13 @@ def create_object_view( ob, **kwargs ):
 					init_funcs.append( a )
 					if 'actuators' in script:
 						a.actuators = script['actuators']
+
+				elif hasattr( a, '_user_output_event'):  ## hook the compiled callback to the generic message object.
+					for msg in script['out_messages']:
+						msg.callback = a
+				elif hasattr( a, '_user_input_event'):
+					for msg in script['in_messages']:
+						msg.callback = a  ## this should be a list of callbacks?
 
 
 		instance = None  ## class instance if needs to be made
@@ -554,7 +569,12 @@ def create_object_view( ob, **kwargs ):
 			actuators=getattr(func,'actuators', [])
 		)
 
+	if on_create_object_view_callback:
+		on_create_object_view_callback( object=ob, wrapper=v, scripts=game_scripts )
+
 	return v
+
+
 
 
 ##########################################################################

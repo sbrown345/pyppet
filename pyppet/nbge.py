@@ -138,6 +138,19 @@ def actuators_to_animations( wrapper=None, actuators=None, location=True, rotati
 	return r
 
 ##########################################################################
+class Message(object):
+	def __init__(self, msg):
+		assert msg.type == 'MESSAGE'
+		self.name = msg.subject
+		self.callback = None
+
+		if hasattr(msg, 'body_message'):
+			self.type = "OUTPUT"
+			self.data = eval( msg.body_message )
+			self.to = msg.to_property # (string name of object)
+		else:
+			self.type = "INPUT"
+
 def get_game_settings( ob ):
 	'''
 	checks an objects logic bricks, and extracts some basic logic and options from it.
@@ -154,6 +167,8 @@ def get_game_settings( ob ):
 			'clickable': False,
 			'inputable': False,
 			'init'  : False,
+			'in_messages' : [],
+			'out_messages': [],
 		}
 		scripts.append( script )
 
@@ -174,11 +189,21 @@ def get_game_settings( ob ):
 		if len(con.actuators):
 			script['actuators'] = []
 			for act in con.actuators:
-				script['actuators'].append( act )
+				if act.type == 'MESSAGE':
+					script['out_messages'].append( Message(act) )
+				else:
+					script['actuators'].append( act )
 
 		for sen in ob.game.sensors:
-			if sen.type not in ('TOUCH', 'KEYBOARD'): continue
 			if con.name not in sen.controllers: continue
+
+			if sen.type == 'MESSAGE':
+				script['in_messages'].append( Message(sen) )
+				continue
+
+
+			if sen.type not in ('TOUCH', 'KEYBOARD'):
+				continue
 
 			if sen.type == 'TOUCH':
 				script['clickable'] = True
